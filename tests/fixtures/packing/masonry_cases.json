@@ -1,0 +1,541 @@
+{
+    "kind": "packing_masonry",
+    "fixtures": [
+        {
+            "id": "masonry_shelf_layout_is_deterministic",
+            "kind": "packing_masonry",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "request": {
+                    "policy": "bottom_left",
+                    "max_bin_count": 1,
+                    "bin": {
+                        "base_bin_id": 20,
+                        "polygon": {
+                            "outer": [
+                                [
+                                    0.0,
+                                    0.0
+                                ],
+                                [
+                                    10.0,
+                                    0.0
+                                ],
+                                [
+                                    10.0,
+                                    10.0
+                                ],
+                                [
+                                    0.0,
+                                    10.0
+                                ]
+                            ],
+                            "holes": []
+                        },
+                        "geometry_revision": 100
+                    },
+                    "pieces": [
+                        {
+                            "piece_id": 1,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        4.0
+                                    ],
+                                    [
+                                        0.0,
+                                        4.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 1
+                        },
+                        {
+                            "piece_id": 2,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        4.0,
+                                        0.0
+                                    ],
+                                    [
+                                        4.0,
+                                        4.0
+                                    ],
+                                    [
+                                        0.0,
+                                        4.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 2
+                        },
+                        {
+                            "piece_id": 3,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        5.0,
+                                        0.0
+                                    ],
+                                    [
+                                        5.0,
+                                        3.0
+                                    ],
+                                    [
+                                        0.0,
+                                        3.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 3
+                        }
+                    ],
+                    "config": {
+                        "placement": {
+                            "allowed_rotations": [
+                                0.0,
+                                90.0,
+                                180.0,
+                                270.0
+                            ]
+                        },
+                        "enable_hole_first_placement": false
+                    },
+                    "masonry": {
+                        "fill_existing_shelves_first": true,
+                        "shelf_alignment_tolerance": 0.000001
+                    }
+                }
+            },
+            "expected": {
+                "bin_count": 1,
+                "unplaced_piece_ids": [],
+                "trace_count": 3,
+                "progress_count": 3,
+                "placed_piece_count": 3,
+                "trace": [
+                    {
+                        "piece_id": 1,
+                        "bin_id": 20,
+                        "shelf_index": 0,
+                        "translation": [
+                            0.0,
+                            0.0
+                        ],
+                        "resolved_rotation_degrees": 0.0,
+                        "opened_new_bin": true,
+                        "started_new_shelf": true,
+                        "inside_hole": false,
+                        "hole_index": -1
+                    },
+                    {
+                        "piece_id": 2,
+                        "bin_id": 20,
+                        "shelf_index": 0,
+                        "translation": [
+                            6.0,
+                            0.0
+                        ],
+                        "resolved_rotation_degrees": 0.0,
+                        "opened_new_bin": false,
+                        "started_new_shelf": false,
+                        "inside_hole": false,
+                        "hole_index": -1
+                    },
+                    {
+                        "piece_id": 3,
+                        "bin_id": 20,
+                        "shelf_index": 1,
+                        "translation": [
+                            3.0,
+                            5.0
+                        ],
+                        "resolved_rotation_degrees": 90.0,
+                        "opened_new_bin": false,
+                        "started_new_shelf": true,
+                        "inside_hole": false,
+                        "hole_index": -1
+                    }
+                ],
+                "progress": [
+                    {
+                        "current_piece_id": 1,
+                        "processed_piece_count": 1,
+                        "placed_piece_count": 1,
+                        "unplaced_piece_count": 0,
+                        "bin_count": 1
+                    },
+                    {
+                        "current_piece_id": 2,
+                        "processed_piece_count": 2,
+                        "placed_piece_count": 2,
+                        "unplaced_piece_count": 0,
+                        "bin_count": 1
+                    },
+                    {
+                        "current_piece_id": 3,
+                        "processed_piece_count": 3,
+                        "placed_piece_count": 3,
+                        "unplaced_piece_count": 0,
+                        "bin_count": 1
+                    }
+                ]
+            }
+        },
+        {
+            "id": "masonry_hole_first_places_inside_detected_hole",
+            "kind": "packing_masonry",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "request": {
+                    "policy": "bottom_left",
+                    "max_bin_count": 1,
+                    "bin": {
+                        "base_bin_id": 30,
+                        "polygon": {
+                            "outer": [
+                                [
+                                    0.0,
+                                    0.0
+                                ],
+                                [
+                                    10.0,
+                                    0.0
+                                ],
+                                [
+                                    10.0,
+                                    10.0
+                                ],
+                                [
+                                    0.0,
+                                    10.0
+                                ]
+                            ],
+                            "holes": []
+                        },
+                        "geometry_revision": 200
+                    },
+                    "pieces": [
+                        {
+                            "piece_id": 10,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        6.0
+                                    ],
+                                    [
+                                        0.0,
+                                        6.0
+                                    ]
+                                ],
+                                "holes": [
+                                    [
+                                        [
+                                            2.0,
+                                            2.0
+                                        ],
+                                        [
+                                            4.0,
+                                            2.0
+                                        ],
+                                        [
+                                            4.0,
+                                            4.0
+                                        ],
+                                        [
+                                            2.0,
+                                            4.0
+                                        ]
+                                    ]
+                                ]
+                            },
+                            "geometry_revision": 10
+                        },
+                        {
+                            "piece_id": 11,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        2.0,
+                                        0.0
+                                    ],
+                                    [
+                                        2.0,
+                                        2.0
+                                    ],
+                                    [
+                                        0.0,
+                                        2.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 11
+                        }
+                    ],
+                    "config": {
+                        "placement": {
+                            "allowed_rotations": [
+                                0.0,
+                                90.0,
+                                180.0,
+                                270.0
+                            ],
+                            "enable_part_in_part_placement": true
+                        },
+                        "enable_hole_first_placement": true
+                    },
+                    "masonry": {
+                        "fill_existing_shelves_first": true,
+                        "shelf_alignment_tolerance": 0.000001
+                    }
+                }
+            },
+            "expected": {
+                "bin_count": 1,
+                "unplaced_piece_ids": [],
+                "trace_count": 2,
+                "progress_count": 2,
+                "placed_piece_count": 2,
+                "trace": [
+                    {
+                        "piece_id": 10,
+                        "bin_id": 30,
+                        "shelf_index": 0,
+                        "translation": [
+                            0.0,
+                            0.0
+                        ],
+                        "resolved_rotation_degrees": 0.0,
+                        "opened_new_bin": true,
+                        "started_new_shelf": true,
+                        "inside_hole": false,
+                        "hole_index": -1
+                    },
+                    {
+                        "piece_id": 11,
+                        "bin_id": 30,
+                        "shelf_index": 1,
+                        "translation": [
+                            2.0,
+                            2.0
+                        ],
+                        "resolved_rotation_degrees": 0.0,
+                        "opened_new_bin": false,
+                        "started_new_shelf": true,
+                        "inside_hole": true,
+                        "hole_index": 0
+                    }
+                ],
+                "progress": [
+                    {
+                        "current_piece_id": 10,
+                        "processed_piece_count": 1,
+                        "placed_piece_count": 1,
+                        "unplaced_piece_count": 0,
+                        "bin_count": 1
+                    },
+                    {
+                        "current_piece_id": 11,
+                        "processed_piece_count": 2,
+                        "placed_piece_count": 2,
+                        "unplaced_piece_count": 0,
+                        "bin_count": 1
+                    }
+                ]
+            }
+        },
+        {
+            "id": "masonry_grain_and_keepout_constraints_leave_invalid_piece_unplaced",
+            "kind": "packing_masonry",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "request": {
+                    "policy": "bottom_left",
+                    "max_bin_count": 1,
+                    "bin": {
+                        "base_bin_id": 40,
+                        "polygon": {
+                            "outer": [
+                                [
+                                    0.0,
+                                    0.0
+                                ],
+                                [
+                                    10.0,
+                                    0.0
+                                ],
+                                [
+                                    10.0,
+                                    4.0
+                                ],
+                                [
+                                    0.0,
+                                    4.0
+                                ]
+                            ],
+                            "holes": []
+                        },
+                        "geometry_revision": 400
+                    },
+                    "pieces": [
+                        {
+                            "piece_id": 21,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        4.0,
+                                        0.0
+                                    ],
+                                    [
+                                        4.0,
+                                        2.0
+                                    ],
+                                    [
+                                        0.0,
+                                        2.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 21,
+                            "grain_compatibility": "parallel_to_bed"
+                        },
+                        {
+                            "piece_id": 22,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        2.0,
+                                        0.0
+                                    ],
+                                    [
+                                        2.0,
+                                        4.0
+                                    ],
+                                    [
+                                        0.0,
+                                        4.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 22,
+                            "grain_compatibility": "parallel_to_bed"
+                        }
+                    ],
+                    "config": {
+                        "placement": {
+                            "allowed_rotations": [
+                                0.0,
+                                90.0
+                            ],
+                            "bed_grain_direction": "along_y",
+                            "exclusion_zones": [
+                                {
+                                    "zone_id": 1,
+                                    "region": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            10.0,
+                                            0.0
+                                        ],
+                                        [
+                                            10.0,
+                                            4.0
+                                        ],
+                                        [
+                                            0.0,
+                                            4.0
+                                        ]
+                                    ]
+                                }
+                            ]
+                        },
+                        "enable_hole_first_placement": false
+                    },
+                    "masonry": {
+                        "fill_existing_shelves_first": true,
+                        "shelf_alignment_tolerance": 0.000001
+                    }
+                }
+            },
+            "expected": {
+                "bin_count": 0,
+                "unplaced_piece_ids": [
+                    21,
+                    22
+                ],
+                "trace_count": 0,
+                "progress_count": 2,
+                "placed_piece_count": 0,
+                "trace": [],
+                "progress": [
+                    {
+                        "current_piece_id": 21,
+                        "processed_piece_count": 1,
+                        "placed_piece_count": 0,
+                        "unplaced_piece_count": 1,
+                        "bin_count": 0
+                    },
+                    {
+                        "current_piece_id": 22,
+                        "processed_piece_count": 2,
+                        "placed_piece_count": 0,
+                        "unplaced_piece_count": 2,
+                        "bin_count": 0
+                    }
+                ]
+            },
+            "notes": "A full-bed keep-out should prevent any placement even when the rotation family satisfies grain compatibility."
+        }
+    ]
+}

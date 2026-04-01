@@ -1,0 +1,335 @@
+{
+    "kind": "segment_contact",
+    "fixtures": [
+        {
+            "id": "segment_contact_proper_intersection",
+            "kind": "segment_contact",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "lhs": {
+                    "start": [
+                        0.0,
+                        0.0
+                    ],
+                    "end": [
+                        4.0,
+                        4.0
+                    ]
+                },
+                "rhs": {
+                    "start": [
+                        0.0,
+                        4.0
+                    ],
+                    "end": [
+                        4.0,
+                        0.0
+                    ]
+                }
+            },
+            "expected": {
+                "kind": "proper_intersection",
+                "point_count": 1,
+                "points": [
+                    [
+                        2.0,
+                        2.0
+                    ]
+                ],
+                "a_vertex_contact": false,
+                "b_vertex_contact": false
+            },
+            "notes": "Crossing interior to both segments."
+        },
+        {
+            "id": "segment_contact_endpoint_touch",
+            "kind": "segment_contact",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "lhs": {
+                    "start": [
+                        0.0,
+                        0.0
+                    ],
+                    "end": [
+                        4.0,
+                        0.0
+                    ]
+                },
+                "rhs": {
+                    "start": [
+                        4.0,
+                        0.0
+                    ],
+                    "end": [
+                        4.0,
+                        3.0
+                    ]
+                }
+            },
+            "expected": {
+                "kind": "endpoint_touch",
+                "point_count": 1,
+                "points": [
+                    [
+                        4.0,
+                        0.0
+                    ]
+                ],
+                "a_vertex_contact": true,
+                "b_vertex_contact": true
+            },
+            "notes": "Shared segment endpoint."
+        },
+        {
+            "id": "segment_contact_endpoint_touches_edge_interior",
+            "kind": "segment_contact",
+            "normative": false,
+            "source": "handmade",
+            "inputs": {
+                "lhs": {
+                    "start": [
+                        0.0,
+                        0.0
+                    ],
+                    "end": [
+                        4.0,
+                        0.0
+                    ]
+                },
+                "rhs": {
+                    "start": [
+                        2.0,
+                        0.0
+                    ],
+                    "end": [
+                        2.0,
+                        3.0
+                    ]
+                }
+            },
+            "expected": {
+                "kind": "endpoint_touch",
+                "point_count": 1,
+                "points": [
+                    [
+                        2.0,
+                        0.0
+                    ]
+                ],
+                "a_vertex_contact": false,
+                "b_vertex_contact": true
+            },
+            "notes": "One segment endpoint lands on the other segment interior."
+        },
+        {
+            "id": "segment_contact_collinear_overlap_partial",
+            "kind": "segment_contact",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "lhs": {
+                    "start": [
+                        0.0,
+                        0.0
+                    ],
+                    "end": [
+                        5.0,
+                        0.0
+                    ]
+                },
+                "rhs": {
+                    "start": [
+                        3.0,
+                        0.0
+                    ],
+                    "end": [
+                        7.0,
+                        0.0
+                    ]
+                }
+            },
+            "expected": {
+                "kind": "collinear_overlap",
+                "point_count": 2,
+                "points": [
+                    [
+                        3.0,
+                        0.0
+                    ],
+                    [
+                        5.0,
+                        0.0
+                    ]
+                ],
+                "a_vertex_contact": true,
+                "b_vertex_contact": true
+            },
+            "notes": "Partial overlap on a shared line."
+        },
+        {
+            "id": "segment_contact_collinear_overlap_full_containment",
+            "kind": "segment_contact",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "lhs": {
+                    "start": [
+                        0.0,
+                        0.0
+                    ],
+                    "end": [
+                        6.0,
+                        0.0
+                    ]
+                },
+                "rhs": {
+                    "start": [
+                        2.0,
+                        0.0
+                    ],
+                    "end": [
+                        4.0,
+                        0.0
+                    ]
+                }
+            },
+            "expected": {
+                "kind": "collinear_overlap",
+                "point_count": 2,
+                "points": [
+                    [
+                        2.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        0.0
+                    ]
+                ],
+                "a_vertex_contact": false,
+                "b_vertex_contact": true
+            },
+            "notes": "One segment fully contains the other."
+        },
+        {
+            "id": "segment_contact_collinear_overlap_reversed_order",
+            "kind": "segment_contact",
+            "normative": false,
+            "source": "handmade",
+            "inputs": {
+                "lhs": {
+                    "start": [
+                        6.0,
+                        0.0
+                    ],
+                    "end": [
+                        0.0,
+                        0.0
+                    ]
+                },
+                "rhs": {
+                    "start": [
+                        4.0,
+                        0.0
+                    ],
+                    "end": [
+                        2.0,
+                        0.0
+                    ]
+                }
+            },
+            "expected": {
+                "kind": "collinear_overlap",
+                "point_count": 2,
+                "points": [
+                    [
+                        2.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        0.0
+                    ]
+                ],
+                "a_vertex_contact": false,
+                "b_vertex_contact": true
+            },
+            "notes": "Overlap normalization should ignore endpoint ordering."
+        },
+        {
+            "id": "segment_contact_parallel_disjoint",
+            "kind": "segment_contact",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "lhs": {
+                    "start": [
+                        0.0,
+                        0.0
+                    ],
+                    "end": [
+                        4.0,
+                        0.0
+                    ]
+                },
+                "rhs": {
+                    "start": [
+                        0.0,
+                        1.0
+                    ],
+                    "end": [
+                        4.0,
+                        1.0
+                    ]
+                }
+            },
+            "expected": {
+                "kind": "parallel_disjoint",
+                "point_count": 0,
+                "points": [],
+                "a_vertex_contact": false,
+                "b_vertex_contact": false
+            },
+            "notes": "Parallel non-collinear segments."
+        },
+        {
+            "id": "segment_contact_skew_disjoint",
+            "kind": "segment_contact",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "lhs": {
+                    "start": [
+                        0.0,
+                        0.0
+                    ],
+                    "end": [
+                        1.0,
+                        1.0
+                    ]
+                },
+                "rhs": {
+                    "start": [
+                        2.0,
+                        0.0
+                    ],
+                    "end": [
+                        3.0,
+                        2.0
+                    ]
+                }
+            },
+            "expected": {
+                "kind": "disjoint",
+                "point_count": 0,
+                "points": [],
+                "a_vertex_contact": false,
+                "b_vertex_contact": false
+            },
+            "notes": "Non-parallel disjoint segments."
+        }
+    ]
+}

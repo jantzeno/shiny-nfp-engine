@@ -1,0 +1,371 @@
+{
+    "kind": "convex_ifp",
+    "algorithm": "convex_ifp",
+    "fixtures": [
+        {
+            "id": "convex_ifp_small_rectangle_inside_large_rectangle",
+            "kind": "convex_ifp",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "container_id": 1,
+                "piece_id": 2,
+                "container": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            6.0,
+                            0.0
+                        ],
+                        [
+                            6.0,
+                            5.0
+                        ],
+                        [
+                            0.0,
+                            5.0
+                        ]
+                    ],
+                    "holes": []
+                },
+                "piece": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            2.0,
+                            0.0
+                        ],
+                        [
+                            2.0,
+                            1.0
+                        ],
+                        [
+                            0.0,
+                            1.0
+                        ]
+                    ],
+                    "holes": []
+                },
+                "container_rotation": 0,
+                "piece_rotation": 0
+            },
+            "expected": {
+                "outer": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        4.0
+                    ],
+                    [
+                        0.0,
+                        4.0
+                    ]
+                ],
+                "holes": [],
+                "interior_samples": [
+                    [
+                        1.0,
+                        1.0
+                    ],
+                    [
+                        3.5,
+                        2.0
+                    ]
+                ]
+            },
+            "notes": "IFP for a smaller rectangle in a larger rectangle is the expected translation box."
+        },
+        {
+            "id": "convex_ifp_triangle_inside_convex_pentagon",
+            "kind": "convex_ifp",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "container_id": 3,
+                "piece_id": 4,
+                "container": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            6.0,
+                            0.0
+                        ],
+                        [
+                            7.0,
+                            3.0
+                        ],
+                        [
+                            3.0,
+                            6.0
+                        ],
+                        [
+                            0.0,
+                            4.0
+                        ]
+                    ],
+                    "holes": []
+                },
+                "piece": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            2.0,
+                            0.0
+                        ],
+                        [
+                            1.0,
+                            1.0
+                        ]
+                    ],
+                    "holes": []
+                },
+                "container_rotation": 0,
+                "piece_rotation": 0
+            },
+            "expected": {
+                "outer": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        0.0
+                    ],
+                    [
+                        4.93333,
+                        2.8
+                    ],
+                    [
+                        2.0,
+                        5.0
+                    ],
+                    [
+                        0.0,
+                        3.66667
+                    ]
+                ],
+                "holes": [],
+                "interior_samples": [
+                    [
+                        1.0,
+                        1.0
+                    ],
+                    [
+                        3.0,
+                        2.0
+                    ]
+                ]
+            },
+            "notes": "Convex pentagon erosion produces a convex five-vertex feasible region for the triangle anchor."
+        },
+        {
+            "id": "convex_ifp_rectangle_with_forbidden_hole_region",
+            "kind": "convex_ifp",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "container_id": 5,
+                "piece_id": 6,
+                "container": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            8.0,
+                            0.0
+                        ],
+                        [
+                            8.0,
+                            8.0
+                        ],
+                        [
+                            0.0,
+                            8.0
+                        ]
+                    ],
+                    "holes": [
+                        [
+                            [
+                                2.0,
+                                2.0
+                            ],
+                            [
+                                2.0,
+                                4.0
+                            ],
+                            [
+                                4.0,
+                                4.0
+                            ],
+                            [
+                                4.0,
+                                2.0
+                            ]
+                        ]
+                    ]
+                },
+                "piece": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            1.0,
+                            0.0
+                        ],
+                        [
+                            1.0,
+                            1.0
+                        ],
+                        [
+                            0.0,
+                            1.0
+                        ]
+                    ],
+                    "holes": []
+                },
+                "container_rotation": 0,
+                "piece_rotation": 0
+            },
+            "expected": {
+                "outer": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        7.0,
+                        0.0
+                    ],
+                    [
+                        7.0,
+                        7.0
+                    ],
+                    [
+                        0.0,
+                        7.0
+                    ]
+                ],
+                "holes": [
+                    [
+                        [
+                            1.0,
+                            1.0
+                        ],
+                        [
+                            1.0,
+                            4.0
+                        ],
+                        [
+                            4.0,
+                            4.0
+                        ],
+                        [
+                            4.0,
+                            1.0
+                        ]
+                    ]
+                ],
+                "interior_samples": [
+                    [
+                        0.5,
+                        0.5
+                    ],
+                    [
+                        6.0,
+                        6.0
+                    ]
+                ],
+                "hole_samples": [
+                    [
+                        2.5,
+                        2.5
+                    ]
+                ]
+            },
+            "notes": "Container holes become forbidden translation holes in the feasible region."
+        },
+        {
+            "id": "convex_ifp_piece_too_large_for_container",
+            "kind": "convex_ifp",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "container_id": 7,
+                "piece_id": 8,
+                "container": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            3.0,
+                            0.0
+                        ],
+                        [
+                            3.0,
+                            2.0
+                        ],
+                        [
+                            0.0,
+                            2.0
+                        ]
+                    ],
+                    "holes": []
+                },
+                "piece": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            4.0,
+                            0.0
+                        ],
+                        [
+                            4.0,
+                            1.0
+                        ],
+                        [
+                            0.0,
+                            1.0
+                        ]
+                    ],
+                    "holes": []
+                },
+                "container_rotation": 0,
+                "piece_rotation": 0
+            },
+            "expected": {
+                "outer": [],
+                "holes": []
+            },
+            "notes": "An oversized convex piece yields no feasible translation region."
+        }
+    ]
+}

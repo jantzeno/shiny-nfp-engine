@@ -1,0 +1,335 @@
+{
+    "kind": "search_observer",
+    "algorithm": "genetic_search",
+    "fixtures": [
+        {
+            "id": "observer_genetic_completed_sequence",
+            "kind": "search_observer",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "mode": "complete",
+                "request": {
+                    "local_search": {
+                        "max_iterations": 3,
+                        "deterministic_seed": 11,
+                        "plateau_budget": 2
+                    },
+                    "genetic_search": {
+                        "max_generations": 6,
+                        "population_size": 8,
+                        "deterministic_seed": 17,
+                        "mutation_rate_percent": 20,
+                        "elite_count": 2,
+                        "tournament_size": 3,
+                        "plateau_generations": 3,
+                        "enable_local_search_polish": true,
+                        "enabled": true
+                    },
+                    "decoder_request": {
+                        "policy": "bottom_left",
+                        "max_bin_count": 1,
+                        "bin": {
+                            "base_bin_id": 5,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        4.0
+                                    ],
+                                    [
+                                        0.0,
+                                        4.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 100
+                        },
+                        "pieces": [
+                            {
+                                "piece_id": 1,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 1
+                            },
+                            {
+                                "piece_id": 2,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 2
+                            },
+                            {
+                                "piece_id": 3,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            4.0
+                                        ],
+                                        [
+                                            0.0,
+                                            4.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 3
+                            }
+                        ],
+                        "config": {
+                            "placement": {
+                                "allowed_rotations": [
+                                    0.0
+                                ]
+                            },
+                            "enable_hole_first_placement": false
+                        }
+                    }
+                }
+            },
+            "expected": {
+                "status": "completed",
+                "event_kinds": [
+                    "run_started",
+                    "step_progress",
+                    "step_progress",
+                    "improvement_found",
+                    "step_progress",
+                    "step_progress",
+                    "step_progress",
+                    "run_completed"
+                ],
+                "progress_iterations": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4
+                ],
+                "improvement_iterations": [
+                    1
+                ],
+                "best_piece_order": [
+                    1,
+                    3,
+                    2
+                ]
+            },
+            "notes": "The GA emits one improvement event on the canonical three-piece case before plateau termination."
+        },
+        {
+            "id": "observer_genetic_cancellation_sequence",
+            "kind": "search_observer",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "mode": "cancel_after_first_progress",
+                "request": {
+                    "local_search": {
+                        "max_iterations": 3,
+                        "deterministic_seed": 11,
+                        "plateau_budget": 2
+                    },
+                    "genetic_search": {
+                        "max_generations": 6,
+                        "population_size": 8,
+                        "deterministic_seed": 17,
+                        "mutation_rate_percent": 20,
+                        "elite_count": 2,
+                        "tournament_size": 3,
+                        "plateau_generations": 3,
+                        "enable_local_search_polish": true,
+                        "enabled": true
+                    },
+                    "decoder_request": {
+                        "policy": "bottom_left",
+                        "max_bin_count": 1,
+                        "bin": {
+                            "base_bin_id": 5,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        4.0
+                                    ],
+                                    [
+                                        0.0,
+                                        4.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 100
+                        },
+                        "pieces": [
+                            {
+                                "piece_id": 1,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 1
+                            },
+                            {
+                                "piece_id": 2,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 2
+                            },
+                            {
+                                "piece_id": 3,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            4.0
+                                        ],
+                                        [
+                                            0.0,
+                                            4.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 3
+                            }
+                        ],
+                        "config": {
+                            "placement": {
+                                "allowed_rotations": [
+                                    0.0
+                                ]
+                            },
+                            "enable_hole_first_placement": false
+                        }
+                    }
+                }
+            },
+            "expected": {
+                "status": "cancelled",
+                "event_kinds": [
+                    "run_started",
+                    "step_progress",
+                    "cancellation_acknowledged"
+                ],
+                "progress_iterations": [
+                    0
+                ],
+                "improvement_iterations": [],
+                "best_piece_order": [
+                    1,
+                    2,
+                    3
+                ]
+            },
+            "notes": "Cancellation remains observable at the same safe baseline boundary before the first GA generation begins."
+        }
+    ]
+}

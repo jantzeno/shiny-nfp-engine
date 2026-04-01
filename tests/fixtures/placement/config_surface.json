@@ -1,0 +1,210 @@
+{
+    "kind": "placement_config",
+    "fixtures": [
+        {
+            "id": "placement_config_default_cardinal_rotations",
+            "kind": "placement_config",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "config": {
+                    "part_clearance": 0.0,
+                    "allowed_rotations": [
+                        0.0,
+                        90.0,
+                        180.0,
+                        270.0
+                    ],
+                    "enable_part_in_part_placement": false,
+                    "explore_concave_candidates": false
+                },
+                "rotation_index": 1
+            },
+            "expected": {
+                "valid": true,
+                "rotation_allowed": true
+            },
+            "notes": "The milestone 7 default placement surface remains valid and accepts cardinal rotations."
+        },
+        {
+            "id": "placement_config_negative_clearance_invalid",
+            "kind": "placement_config",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "config": {
+                    "part_clearance": -1.0,
+                    "allowed_rotations": [
+                        0.0,
+                        90.0,
+                        180.0,
+                        270.0
+                    ],
+                    "enable_part_in_part_placement": false,
+                    "explore_concave_candidates": false
+                },
+                "rotation_index": 0
+            },
+            "expected": {
+                "valid": false,
+                "rotation_allowed": false
+            },
+            "notes": "Negative clearance is rejected by the config validator and therefore no rotation is considered allowed."
+        },
+        {
+            "id": "placement_config_duplicate_rotation_invalid",
+            "kind": "placement_config",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "config": {
+                    "part_clearance": 0.0,
+                    "allowed_rotations": [
+                        0.0,
+                        90.0,
+                        90.0
+                    ],
+                    "enable_part_in_part_placement": false,
+                    "explore_concave_candidates": false
+                },
+                "rotation_index": 1
+            },
+            "expected": {
+                "valid": false,
+                "rotation_allowed": false
+            },
+            "notes": "Duplicate discrete rotation angles violate the placement config contract."
+        },
+        {
+            "id": "placement_config_excluded_rotation_is_not_allowed",
+            "kind": "placement_config",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "config": {
+                    "part_clearance": 0.0,
+                    "allowed_rotations": [
+                        0.0
+                    ],
+                    "enable_part_in_part_placement": false,
+                    "explore_concave_candidates": false
+                },
+                "rotation_index": 1
+            },
+            "expected": {
+                "valid": true,
+                "rotation_allowed": false
+            },
+            "notes": "A valid config can still reject a specific queried rotation when the angle is absent from the allowed set."
+        },
+        {
+            "id": "placement_config_non_cardinal_rotation_index_is_allowed",
+            "kind": "placement_config",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "config": {
+                    "part_clearance": 0.0,
+                    "allowed_rotations": [
+                        22.5,
+                        45.0,
+                        112.5
+                    ],
+                    "enable_part_in_part_placement": false,
+                    "explore_concave_candidates": false
+                },
+                "rotation_index": 1
+            },
+            "expected": {
+                "valid": true,
+                "rotation_allowed": true
+            },
+            "notes": "Rotation validation is ordinal and continues to work when the configured discrete angles are not integer degrees."
+        },
+        {
+            "id": "placement_config_grain_and_keep_out_surface_valid",
+            "kind": "placement_config",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "config": {
+                    "part_clearance": 0.0,
+                    "allowed_rotations": [
+                        0.0,
+                        90.0
+                    ],
+                    "bed_grain_direction": "along_x",
+                    "enable_part_in_part_placement": false,
+                    "explore_concave_candidates": false,
+                    "exclusion_zones": [
+                        {
+                            "zone_id": 9,
+                            "region": [
+                                [
+                                    0.0,
+                                    0.0
+                                ],
+                                [
+                                    2.0,
+                                    0.0
+                                ],
+                                [
+                                    2.0,
+                                    1.0
+                                ],
+                                [
+                                    0.0,
+                                    1.0
+                                ]
+                            ]
+                        }
+                    ]
+                },
+                "rotation_index": 0
+            },
+            "expected": {
+                "valid": true,
+                "rotation_allowed": true
+            },
+            "notes": "Explicit bed grain and clamp keep-outs participate in the placement config surface without changing discrete rotation resolution."
+        },
+        {
+            "id": "placement_config_invalid_exclusion_zone_rejected",
+            "kind": "placement_config",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "config": {
+                    "part_clearance": 0.0,
+                    "allowed_rotations": [
+                        0.0
+                    ],
+                    "bed_grain_direction": "along_y",
+                    "enable_part_in_part_placement": false,
+                    "explore_concave_candidates": false,
+                    "exclusion_zones": [
+                        {
+                            "zone_id": 10,
+                            "region": [
+                                [
+                                    0.0,
+                                    0.0
+                                ],
+                                [
+                                    1.0,
+                                    0.0
+                                ]
+                            ]
+                        }
+                    ]
+                },
+                "rotation_index": 0
+            },
+            "expected": {
+                "valid": false,
+                "rotation_allowed": false
+            },
+            "notes": "Malformed exclusion zones keep the placement config invalid so downstream queries cannot consume an ill-formed keep-out surface."
+        }
+    ]
+}

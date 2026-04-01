@@ -1,0 +1,117 @@
+{
+    "kind": "convex_nfp_perfect_fit",
+    "algorithm": "convex_nfp",
+    "fixtures": [
+        {
+            "id": "convex_nfp_identical_rectangles_locking_points",
+            "kind": "convex_nfp_perfect_fit",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "piece_a_id": 9,
+                "piece_b_id": 10,
+                "convex_a": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        2.0,
+                        0.0
+                    ],
+                    [
+                        2.0,
+                        1.0
+                    ],
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ],
+                "convex_b": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        2.0,
+                        0.0
+                    ],
+                    [
+                        2.0,
+                        1.0
+                    ],
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ],
+                "rotation_a": 0,
+                "rotation_b": 0
+            },
+            "expected": {
+                "perfect_fit_points": [
+                    [
+                        -2.0,
+                        -1.0
+                    ],
+                    [
+                        -2.0,
+                        1.0
+                    ],
+                    [
+                        2.0,
+                        -1.0
+                    ],
+                    [
+                        2.0,
+                        1.0
+                    ]
+                ],
+                "perfect_sliding_segments": [
+                    {
+                        "start": [
+                            -2.0,
+                            -1.0
+                        ],
+                        "end": [
+                            -2.0,
+                            1.0
+                        ]
+                    },
+                    {
+                        "start": [
+                            -2.0,
+                            -1.0
+                        ],
+                        "end": [
+                            2.0,
+                            -1.0
+                        ]
+                    },
+                    {
+                        "start": [
+                            -2.0,
+                            1.0
+                        ],
+                        "end": [
+                            2.0,
+                            1.0
+                        ]
+                    },
+                    {
+                        "start": [
+                            2.0,
+                            -1.0
+                        ],
+                        "end": [
+                            2.0,
+                            1.0
+                        ]
+                    }
+                ]
+            },
+            "notes": "Identical rectangles expose four exact locking points and the full set of maximal edge-sliding spans."
+        }
+    ]
+}

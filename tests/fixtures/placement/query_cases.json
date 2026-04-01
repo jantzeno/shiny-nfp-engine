@@ -1,0 +1,1777 @@
+{
+    "kind": "placement_query",
+    "fixtures": [
+        {
+            "id": "placement_query_rejects_excluded_rotation",
+            "kind": "placement_query",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "policy": "bottom_left",
+                "repeat_same_query": true,
+                "request": {
+                    "bin_id": 1,
+                    "piece_id": 7,
+                    "piece": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                2.0
+                            ],
+                            [
+                                0.0,
+                                2.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "bin": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                10.0,
+                                0.0
+                            ],
+                            [
+                                10.0,
+                                10.0
+                            ],
+                            [
+                                0.0,
+                                10.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "merged_region": {
+                        "outer": [],
+                        "holes": []
+                    },
+                    "holes": [],
+                    "rotation_index": 1,
+                    "merged_region_revision": 11,
+                    "hole_set_revision": 19,
+                    "config": {
+                        "part_clearance": 0.0,
+                        "allowed_rotations": [
+                            0.0
+                        ],
+                        "enable_part_in_part_placement": false,
+                        "explore_concave_candidates": false
+                    }
+                },
+                "bin_ifp": {
+                    "outer_loops": [
+                        [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                8.0,
+                                0.0
+                            ],
+                            [
+                                8.0,
+                                8.0
+                            ],
+                            [
+                                0.0,
+                                8.0
+                            ]
+                        ]
+                    ],
+                    "holes": [],
+                    "perfect_fit_points": [],
+                    "perfect_sliding_segments": []
+                }
+            },
+            "expected": {
+                "candidate_count": 0,
+                "ordered_translations": [],
+                "cache_size_after_first": 0,
+                "cache_size_after_second": 0
+            },
+            "notes": "Placement queries return early without caching when the requested rotation is excluded by the config."
+        },
+        {
+            "id": "placement_query_non_hole_candidate_survives_hole_duplicate",
+            "kind": "placement_query",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "policy": "bottom_left",
+                "request": {
+                    "bin_id": 2,
+                    "piece_id": 8,
+                    "piece": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                2.0
+                            ],
+                            [
+                                0.0,
+                                2.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "bin": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                12.0,
+                                0.0
+                            ],
+                            [
+                                12.0,
+                                12.0
+                            ],
+                            [
+                                0.0,
+                                12.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "merged_region": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                12.0,
+                                0.0
+                            ],
+                            [
+                                12.0,
+                                12.0
+                            ],
+                            [
+                                0.0,
+                                12.0
+                            ]
+                        ],
+                        "holes": [
+                            [
+                                [
+                                    4.0,
+                                    4.0
+                                ],
+                                [
+                                    8.0,
+                                    4.0
+                                ],
+                                [
+                                    8.0,
+                                    8.0
+                                ],
+                                [
+                                    4.0,
+                                    8.0
+                                ]
+                            ]
+                        ]
+                    },
+                    "holes": [
+                        {
+                            "outer": [
+                                [
+                                    4.0,
+                                    4.0
+                                ],
+                                [
+                                    8.0,
+                                    4.0
+                                ],
+                                [
+                                    8.0,
+                                    8.0
+                                ],
+                                [
+                                    4.0,
+                                    8.0
+                                ]
+                            ],
+                            "holes": []
+                        }
+                    ],
+                    "rotation_index": 0,
+                    "merged_region_revision": 12,
+                    "hole_set_revision": 13,
+                    "config": {
+                        "part_clearance": 0.0,
+                        "allowed_rotations": [
+                            0.0
+                        ],
+                        "enable_part_in_part_placement": false,
+                        "explore_concave_candidates": false
+                    }
+                },
+                "bin_ifp": {
+                    "outer_loops": [],
+                    "holes": [],
+                    "perfect_fit_points": [
+                        [
+                            4.0,
+                            4.0
+                        ]
+                    ],
+                    "perfect_sliding_segments": []
+                },
+                "hole_ifps": [
+                    {
+                        "outer_loops": [],
+                        "holes": [],
+                        "perfect_fit_points": [
+                            [
+                                4.0,
+                                4.0
+                            ]
+                        ],
+                        "perfect_sliding_segments": []
+                    }
+                ]
+            },
+            "expected": {
+                "candidate_count": 1,
+                "ordered_translations": [
+                    [
+                        4.0,
+                        4.0
+                    ]
+                ],
+                "ordered_inside_hole": [
+                    false
+                ],
+                "ordered_hole_indices": [
+                    -1
+                ],
+                "best_translation": [
+                    4.0,
+                    4.0
+                ],
+                "best_score": 4.0,
+                "best_inside_hole": false,
+                "best_hole_index": -1,
+                "cache_size_after_first": 1
+            },
+            "notes": "A hole-source duplicate must not erase a valid non-hole placement at the same translation when part-in-part placement is disabled."
+        },
+        {
+            "id": "placement_query_bin_ifp_candidates_are_cached",
+            "kind": "placement_query",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "policy": "bottom_left",
+                "repeat_same_query": true,
+                "request": {
+                    "bin_id": 1,
+                    "piece_id": 7,
+                    "piece": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                2.0
+                            ],
+                            [
+                                0.0,
+                                2.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "bin": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                10.0,
+                                0.0
+                            ],
+                            [
+                                10.0,
+                                10.0
+                            ],
+                            [
+                                0.0,
+                                10.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "merged_region": {
+                        "outer": [],
+                        "holes": []
+                    },
+                    "holes": [],
+                    "rotation_index": 0,
+                    "merged_region_revision": 11,
+                    "hole_set_revision": 19,
+                    "config": {
+                        "part_clearance": 0.0,
+                        "allowed_rotations": [
+                            0.0
+                        ],
+                        "enable_part_in_part_placement": false,
+                        "explore_concave_candidates": false
+                    }
+                },
+                "bin_ifp": {
+                    "outer_loops": [
+                        [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                8.0,
+                                0.0
+                            ],
+                            [
+                                8.0,
+                                8.0
+                            ],
+                            [
+                                0.0,
+                                8.0
+                            ]
+                        ]
+                    ],
+                    "holes": [],
+                    "perfect_fit_points": [],
+                    "perfect_sliding_segments": []
+                }
+            },
+            "expected": {
+                "candidate_count": 4,
+                "ordered_translations": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        8.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        8.0
+                    ],
+                    [
+                        8.0,
+                        8.0
+                    ]
+                ],
+                "best_translation": [
+                    0.0,
+                    0.0
+                ],
+                "best_score": 0.0,
+                "cache_size_after_first": 1,
+                "cache_size_after_second": 1
+            },
+            "notes": "A feasible bin IFP query produces ranked candidates and the repeated request is served from the placement cache."
+        },
+        {
+            "id": "placement_query_cache_key_respects_piece_geometry_revision",
+            "kind": "placement_query",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "policy": "bottom_left",
+                "request": {
+                    "bin_id": 1,
+                    "piece_id": 7,
+                    "piece": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                2.0
+                            ],
+                            [
+                                0.0,
+                                2.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "bin": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                10.0,
+                                0.0
+                            ],
+                            [
+                                10.0,
+                                10.0
+                            ],
+                            [
+                                0.0,
+                                10.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "merged_region": {
+                        "outer": [],
+                        "holes": []
+                    },
+                    "holes": [],
+                    "rotation_index": 0,
+                    "piece_geometry_revision": 1,
+                    "bin_geometry_revision": 1,
+                    "merged_region_revision": 11,
+                    "hole_set_revision": 19,
+                    "config": {
+                        "part_clearance": 0.0,
+                        "allowed_rotations": [
+                            0.0
+                        ],
+                        "enable_part_in_part_placement": false,
+                        "explore_concave_candidates": false
+                    }
+                },
+                "second_request": {
+                    "bin_id": 1,
+                    "piece_id": 7,
+                    "piece": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                2.0
+                            ],
+                            [
+                                0.0,
+                                2.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "bin": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                10.0,
+                                0.0
+                            ],
+                            [
+                                10.0,
+                                10.0
+                            ],
+                            [
+                                0.0,
+                                10.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "merged_region": {
+                        "outer": [],
+                        "holes": []
+                    },
+                    "holes": [],
+                    "rotation_index": 0,
+                    "piece_geometry_revision": 2,
+                    "bin_geometry_revision": 1,
+                    "merged_region_revision": 11,
+                    "hole_set_revision": 19,
+                    "config": {
+                        "part_clearance": 0.0,
+                        "allowed_rotations": [
+                            0.0
+                        ],
+                        "enable_part_in_part_placement": false,
+                        "explore_concave_candidates": false
+                    }
+                },
+                "bin_ifp": {
+                    "outer_loops": [
+                        [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                8.0,
+                                0.0
+                            ],
+                            [
+                                8.0,
+                                8.0
+                            ],
+                            [
+                                0.0,
+                                8.0
+                            ]
+                        ]
+                    ],
+                    "holes": [],
+                    "perfect_fit_points": [],
+                    "perfect_sliding_segments": []
+                }
+            },
+            "expected": {
+                "candidate_count": 4,
+                "ordered_translations": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        8.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        8.0
+                    ],
+                    [
+                        8.0,
+                        8.0
+                    ]
+                ],
+                "best_translation": [
+                    0.0,
+                    0.0
+                ],
+                "best_score": 0.0,
+                "cache_size_after_first": 1,
+                "second": {
+                    "candidate_count": 4,
+                    "ordered_translations": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            8.0,
+                            0.0
+                        ],
+                        [
+                            0.0,
+                            8.0
+                        ],
+                        [
+                            8.0,
+                            8.0
+                        ]
+                    ],
+                    "best_translation": [
+                        0.0,
+                        0.0
+                    ],
+                    "best_score": 0.0,
+                    "cache_size_after_second": 2
+                }
+            },
+            "notes": "Changing the piece geometry revision must invalidate the placement cache key even when all other request fields stay the same."
+        },
+        {
+            "id": "placement_query_hole_ifp_candidates_blocked_when_part_in_part_disabled",
+            "kind": "placement_query",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "policy": "bottom_left",
+                "request": {
+                    "bin_id": 3,
+                    "piece_id": 9,
+                    "piece": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                2.0
+                            ],
+                            [
+                                0.0,
+                                2.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "bin": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                12.0,
+                                0.0
+                            ],
+                            [
+                                12.0,
+                                12.0
+                            ],
+                            [
+                                0.0,
+                                12.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "merged_region": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                12.0,
+                                0.0
+                            ],
+                            [
+                                12.0,
+                                12.0
+                            ],
+                            [
+                                0.0,
+                                12.0
+                            ]
+                        ],
+                        "holes": [
+                            [
+                                [
+                                    4.0,
+                                    4.0
+                                ],
+                                [
+                                    8.0,
+                                    4.0
+                                ],
+                                [
+                                    8.0,
+                                    8.0
+                                ],
+                                [
+                                    4.0,
+                                    8.0
+                                ]
+                            ]
+                        ]
+                    },
+                    "holes": [
+                        {
+                            "outer": [
+                                [
+                                    4.0,
+                                    4.0
+                                ],
+                                [
+                                    8.0,
+                                    4.0
+                                ],
+                                [
+                                    8.0,
+                                    8.0
+                                ],
+                                [
+                                    4.0,
+                                    8.0
+                                ]
+                            ],
+                            "holes": []
+                        }
+                    ],
+                    "rotation_index": 0,
+                    "merged_region_revision": 20,
+                    "hole_set_revision": 21,
+                    "config": {
+                        "part_clearance": 0.0,
+                        "allowed_rotations": [
+                            0.0
+                        ],
+                        "enable_part_in_part_placement": false,
+                        "explore_concave_candidates": false
+                    }
+                },
+                "hole_ifps": [
+                    {
+                        "outer_loops": [],
+                        "holes": [],
+                        "perfect_fit_points": [
+                            [
+                                4.0,
+                                4.0
+                            ]
+                        ],
+                        "perfect_sliding_segments": []
+                    }
+                ]
+            },
+            "expected": {
+                "candidate_count": 0,
+                "ordered_translations": [],
+                "cache_size_after_first": 1
+            },
+            "notes": "Hole placements are rejected when part-in-part placement is disabled even if a hole IFP yields an exact fit point."
+        },
+        {
+            "id": "placement_query_rejects_grain_incompatible_rotation",
+            "kind": "placement_query",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "policy": "bottom_left",
+                "request": {
+                    "bin_id": 4,
+                    "piece_id": 10,
+                    "piece": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                4.0
+                            ],
+                            [
+                                0.0,
+                                4.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "bin": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                8.0,
+                                0.0
+                            ],
+                            [
+                                8.0,
+                                8.0
+                            ],
+                            [
+                                0.0,
+                                8.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "merged_region": {
+                        "outer": [],
+                        "holes": []
+                    },
+                    "holes": [],
+                    "rotation_index": 0,
+                    "part_grain_compatibility": "parallel_to_bed",
+                    "merged_region_revision": 30,
+                    "hole_set_revision": 31,
+                    "config": {
+                        "part_clearance": 0.0,
+                        "allowed_rotations": [
+                            90.0
+                        ],
+                        "bed_grain_direction": "along_x",
+                        "enable_part_in_part_placement": false,
+                        "explore_concave_candidates": false
+                    }
+                },
+                "bin_ifp": {
+                    "outer_loops": [
+                        [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                6.0,
+                                0.0
+                            ],
+                            [
+                                6.0,
+                                4.0
+                            ],
+                            [
+                                0.0,
+                                4.0
+                            ]
+                        ]
+                    ],
+                    "holes": [],
+                    "perfect_fit_points": [],
+                    "perfect_sliding_segments": []
+                }
+            },
+            "expected": {
+                "candidate_count": 0
+            },
+            "notes": "Placement queries discard candidates whose resolved rotation violates the requested part-to-bed grain relationship even when the discrete rotation index itself is valid."
+        },
+        {
+            "id": "placement_query_filters_candidates_that_overlap_keep_outs",
+            "kind": "placement_query",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "policy": "bottom_left",
+                "request": {
+                    "bin_id": 5,
+                    "piece_id": 11,
+                    "piece": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                2.0
+                            ],
+                            [
+                                0.0,
+                                2.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "bin": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                6.0,
+                                0.0
+                            ],
+                            [
+                                6.0,
+                                6.0
+                            ],
+                            [
+                                0.0,
+                                6.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "merged_region": {
+                        "outer": [],
+                        "holes": []
+                    },
+                    "holes": [],
+                    "rotation_index": 0,
+                    "merged_region_revision": 40,
+                    "hole_set_revision": 41,
+                    "config": {
+                        "part_clearance": 0.0,
+                        "allowed_rotations": [
+                            0.0
+                        ],
+                        "enable_part_in_part_placement": false,
+                        "explore_concave_candidates": false,
+                        "exclusion_zones": [
+                            {
+                                "zone_id": 11,
+                                "region": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        3.0,
+                                        0.0
+                                    ],
+                                    [
+                                        3.0,
+                                        3.0
+                                    ],
+                                    [
+                                        0.0,
+                                        3.0
+                                    ]
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "bin_ifp": {
+                    "outer_loops": [
+                        [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                4.0,
+                                0.0
+                            ],
+                            [
+                                4.0,
+                                4.0
+                            ],
+                            [
+                                0.0,
+                                4.0
+                            ]
+                        ]
+                    ],
+                    "holes": [],
+                    "perfect_fit_points": [],
+                    "perfect_sliding_segments": []
+                }
+            },
+            "expected": {
+                "candidate_count": 3,
+                "best_translation": [
+                    4.0,
+                    0.0
+                ]
+            },
+            "notes": "Explicit keep-outs remove otherwise feasible IFP candidates while leaving non-overlapping placements available for ranking."
+        },
+        {
+            "id": "placement_query_hole_ifp_candidates_allowed_when_part_in_part_enabled",
+            "kind": "placement_query",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "policy": "bottom_left",
+                "request": {
+                    "bin_id": 3,
+                    "piece_id": 9,
+                    "piece": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                2.0
+                            ],
+                            [
+                                0.0,
+                                2.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "bin": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                12.0,
+                                0.0
+                            ],
+                            [
+                                12.0,
+                                12.0
+                            ],
+                            [
+                                0.0,
+                                12.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "merged_region": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                12.0,
+                                0.0
+                            ],
+                            [
+                                12.0,
+                                12.0
+                            ],
+                            [
+                                0.0,
+                                12.0
+                            ]
+                        ],
+                        "holes": [
+                            [
+                                [
+                                    4.0,
+                                    4.0
+                                ],
+                                [
+                                    8.0,
+                                    4.0
+                                ],
+                                [
+                                    8.0,
+                                    8.0
+                                ],
+                                [
+                                    4.0,
+                                    8.0
+                                ]
+                            ]
+                        ]
+                    },
+                    "holes": [
+                        {
+                            "outer": [
+                                [
+                                    4.0,
+                                    4.0
+                                ],
+                                [
+                                    8.0,
+                                    4.0
+                                ],
+                                [
+                                    8.0,
+                                    8.0
+                                ],
+                                [
+                                    4.0,
+                                    8.0
+                                ]
+                            ],
+                            "holes": []
+                        }
+                    ],
+                    "rotation_index": 0,
+                    "merged_region_revision": 22,
+                    "hole_set_revision": 21,
+                    "config": {
+                        "part_clearance": 0.0,
+                        "allowed_rotations": [
+                            0.0
+                        ],
+                        "enable_part_in_part_placement": true,
+                        "explore_concave_candidates": false
+                    }
+                },
+                "hole_ifps": [
+                    {
+                        "outer_loops": [],
+                        "holes": [],
+                        "perfect_fit_points": [
+                            [
+                                4.0,
+                                4.0
+                            ]
+                        ],
+                        "perfect_sliding_segments": []
+                    }
+                ]
+            },
+            "expected": {
+                "candidate_count": 1,
+                "ordered_translations": [
+                    [
+                        4.0,
+                        4.0
+                    ]
+                ],
+                "best_translation": [
+                    4.0,
+                    4.0
+                ],
+                "best_score": 4.0,
+                "best_inside_hole": true,
+                "best_hole_index": 0,
+                "cache_size_after_first": 1
+            },
+            "notes": "Enabling part-in-part placement allows hole IFP candidates to survive filtering and rank like any other placement."
+        },
+        {
+            "id": "placement_query_bottom_left_prefers_lowest_then_leftmost_candidate",
+            "kind": "placement_query",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "policy": "bottom_left",
+                "request": {
+                    "bin_id": 5,
+                    "piece_id": 12,
+                    "piece": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                2.0
+                            ],
+                            [
+                                0.0,
+                                2.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "bin": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                20.0,
+                                0.0
+                            ],
+                            [
+                                20.0,
+                                20.0
+                            ],
+                            [
+                                0.0,
+                                20.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "merged_region": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                4.0,
+                                0.0
+                            ],
+                            [
+                                4.0,
+                                2.0
+                            ],
+                            [
+                                0.0,
+                                2.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "holes": [],
+                    "rotation_index": 0,
+                    "merged_region_revision": 30,
+                    "hole_set_revision": 31,
+                    "config": {
+                        "part_clearance": 0.0,
+                        "allowed_rotations": [
+                            0.0
+                        ],
+                        "enable_part_in_part_placement": false,
+                        "explore_concave_candidates": false
+                    }
+                },
+                "occupied_region_nfp": {
+                    "outer_loops": [],
+                    "holes": [],
+                    "perfect_fit_points": [
+                        [
+                            4.0,
+                            0.0
+                        ],
+                        [
+                            0.0,
+                            2.0
+                        ]
+                    ],
+                    "perfect_sliding_segments": []
+                }
+            },
+            "expected": {
+                "candidate_count": 2,
+                "ordered_translations": [
+                    [
+                        4.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        2.0
+                    ]
+                ],
+                "best_translation": [
+                    4.0,
+                    0.0
+                ],
+                "best_score": 0.0,
+                "cache_size_after_first": 1
+            },
+            "notes": "Bottom-left scoring ranks by the smallest y and then smallest x among feasible candidates."
+        },
+        {
+            "id": "placement_query_minimum_length_prefers_smallest_merged_width",
+            "kind": "placement_query",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "policy": "minimum_length",
+                "request": {
+                    "bin_id": 5,
+                    "piece_id": 12,
+                    "piece": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                2.0
+                            ],
+                            [
+                                0.0,
+                                2.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "bin": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                20.0,
+                                0.0
+                            ],
+                            [
+                                20.0,
+                                20.0
+                            ],
+                            [
+                                0.0,
+                                20.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "merged_region": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                4.0,
+                                0.0
+                            ],
+                            [
+                                4.0,
+                                2.0
+                            ],
+                            [
+                                0.0,
+                                2.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "holes": [],
+                    "rotation_index": 0,
+                    "merged_region_revision": 32,
+                    "hole_set_revision": 31,
+                    "config": {
+                        "part_clearance": 0.0,
+                        "allowed_rotations": [
+                            0.0
+                        ],
+                        "enable_part_in_part_placement": false,
+                        "explore_concave_candidates": false
+                    }
+                },
+                "occupied_region_nfp": {
+                    "outer_loops": [],
+                    "holes": [],
+                    "perfect_fit_points": [
+                        [
+                            4.0,
+                            0.0
+                        ],
+                        [
+                            0.0,
+                            2.0
+                        ]
+                    ],
+                    "perfect_sliding_segments": []
+                }
+            },
+            "expected": {
+                "candidate_count": 2,
+                "ordered_translations": [
+                    [
+                        0.0,
+                        2.0
+                    ],
+                    [
+                        4.0,
+                        0.0
+                    ]
+                ],
+                "best_translation": [
+                    0.0,
+                    2.0
+                ],
+                "best_score": 4.0,
+                "cache_size_after_first": 1
+            },
+            "notes": "Minimum-length scoring minimizes the resulting occupied width after placing the piece."
+        },
+        {
+            "id": "placement_query_maximum_utilization_prefers_tightest_convex_hull",
+            "kind": "placement_query",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "policy": "maximum_utilization",
+                "request": {
+                    "bin_id": 5,
+                    "piece_id": 12,
+                    "piece": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                2.0
+                            ],
+                            [
+                                0.0,
+                                2.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "bin": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                20.0,
+                                0.0
+                            ],
+                            [
+                                20.0,
+                                20.0
+                            ],
+                            [
+                                0.0,
+                                20.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "merged_region": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                6.0,
+                                0.0
+                            ],
+                            [
+                                6.0,
+                                2.0
+                            ],
+                            [
+                                0.0,
+                                2.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "holes": [],
+                    "rotation_index": 0,
+                    "merged_region_revision": 33,
+                    "hole_set_revision": 31,
+                    "config": {
+                        "part_clearance": 0.0,
+                        "allowed_rotations": [
+                            0.0
+                        ],
+                        "enable_part_in_part_placement": false,
+                        "explore_concave_candidates": false
+                    }
+                },
+                "occupied_region_nfp": {
+                    "outer_loops": [],
+                    "holes": [],
+                    "perfect_fit_points": [
+                        [
+                            6.0,
+                            0.0
+                        ],
+                        [
+                            0.0,
+                            2.0
+                        ]
+                    ],
+                    "perfect_sliding_segments": []
+                }
+            },
+            "expected": {
+                "candidate_count": 2,
+                "ordered_translations": [
+                    [
+                        6.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        2.0
+                    ]
+                ],
+                "best_translation": [
+                    6.0,
+                    0.0
+                ],
+                "best_score": 1.0,
+                "cache_size_after_first": 1
+            },
+            "notes": "Maximum-utilization scoring chooses the candidate that maximizes occupied area divided by convex hull area."
+        },
+        {
+            "id": "placement_query_without_clearance_keeps_touching_candidates",
+            "kind": "placement_query",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "policy": "bottom_left",
+                "request": {
+                    "bin_id": 8,
+                    "piece_id": 14,
+                    "piece": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                2.0
+                            ],
+                            [
+                                0.0,
+                                2.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "bin": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                20.0,
+                                0.0
+                            ],
+                            [
+                                20.0,
+                                20.0
+                            ],
+                            [
+                                0.0,
+                                20.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "merged_region": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                4.0,
+                                0.0
+                            ],
+                            [
+                                4.0,
+                                2.0
+                            ],
+                            [
+                                0.0,
+                                2.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "holes": [],
+                    "rotation_index": 0,
+                    "merged_region_revision": 44,
+                    "hole_set_revision": 45,
+                    "config": {
+                        "part_clearance": 0.0,
+                        "allowed_rotations": [
+                            0.0
+                        ],
+                        "enable_part_in_part_placement": false,
+                        "explore_concave_candidates": false
+                    }
+                },
+                "occupied_region_nfp": {
+                    "outer_loops": [],
+                    "holes": [],
+                    "perfect_fit_points": [
+                        [
+                            4.0,
+                            0.0
+                        ],
+                        [
+                            6.0,
+                            0.0
+                        ]
+                    ],
+                    "perfect_sliding_segments": []
+                }
+            },
+            "expected": {
+                "candidate_count": 2,
+                "ordered_translations": [
+                    [
+                        4.0,
+                        0.0
+                    ],
+                    [
+                        6.0,
+                        0.0
+                    ]
+                ],
+                "best_translation": [
+                    4.0,
+                    0.0
+                ],
+                "best_score": 0.0,
+                "cache_size_after_first": 1
+            },
+            "notes": "With zero clearance, exact-touch placements remain feasible."
+        },
+        {
+            "id": "placement_query_clearance_filters_too_close_candidates",
+            "kind": "placement_query",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "policy": "bottom_left",
+                "request": {
+                    "bin_id": 8,
+                    "piece_id": 14,
+                    "piece": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                0.0
+                            ],
+                            [
+                                2.0,
+                                2.0
+                            ],
+                            [
+                                0.0,
+                                2.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "bin": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                20.0,
+                                0.0
+                            ],
+                            [
+                                20.0,
+                                20.0
+                            ],
+                            [
+                                0.0,
+                                20.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "merged_region": {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                4.0,
+                                0.0
+                            ],
+                            [
+                                4.0,
+                                2.0
+                            ],
+                            [
+                                0.0,
+                                2.0
+                            ]
+                        ],
+                        "holes": []
+                    },
+                    "holes": [],
+                    "rotation_index": 0,
+                    "merged_region_revision": 46,
+                    "hole_set_revision": 45,
+                    "config": {
+                        "part_clearance": 1.5,
+                        "allowed_rotations": [
+                            0.0
+                        ],
+                        "enable_part_in_part_placement": false,
+                        "explore_concave_candidates": false
+                    }
+                },
+                "occupied_region_nfp": {
+                    "outer_loops": [],
+                    "holes": [],
+                    "perfect_fit_points": [
+                        [
+                            4.0,
+                            0.0
+                        ],
+                        [
+                            6.0,
+                            0.0
+                        ]
+                    ],
+                    "perfect_sliding_segments": []
+                }
+            },
+            "expected": {
+                "candidate_count": 1,
+                "ordered_translations": [
+                    [
+                        6.0,
+                        0.0
+                    ]
+                ],
+                "best_translation": [
+                    6.0,
+                    0.0
+                ],
+                "best_score": 0.0,
+                "cache_size_after_first": 1
+            },
+            "notes": "Positive part clearance removes candidates that would sit too close to an occupied boundary."
+        }
+    ]
+}

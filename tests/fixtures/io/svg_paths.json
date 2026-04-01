@@ -1,0 +1,61 @@
+{
+    "fixtures": [
+        {
+            "id": "svg_path_rectangle_lines",
+            "path": "M 0 0 L 4 0 L 4 2 L 0 2 Z",
+            "expected": {
+                "hole_count": 0,
+                "min_vertex_count": 4,
+                "first_vertex": [
+                    0.0,
+                    0.0
+                ],
+                "polygon": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            4.0,
+                            0.0
+                        ],
+                        [
+                            4.0,
+                            2.0
+                        ],
+                        [
+                            0.0,
+                            2.0
+                        ]
+                    ],
+                    "holes": []
+                }
+            }
+        },
+        {
+            "id": "svg_path_quadratic_curve",
+            "path": "M 0 0 Q 2 2 4 0 L 4 4 L 0 4 Z",
+            "expected": {
+                "hole_count": 0,
+                "min_vertex_count": 5,
+                "first_vertex": [
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "id": "svg_path_relative_cubic_curve",
+            "path": "m 0 0 c 1 2 3 2 4 0 l 0 4 l -4 0 z",
+            "expected": {
+                "hole_count": 0,
+                "min_vertex_count": 5,
+                "first_vertex": [
+                    0.0,
+                    0.0
+                ]
+            }
+        }
+    ]
+}

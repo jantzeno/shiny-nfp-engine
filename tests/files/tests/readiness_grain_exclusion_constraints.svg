@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+    viewBox="0 0 1100 700"
+    version="1.1"
+    xmlns="http://www.w3.org/2000/svg">
+
+    <polygon
+        id="bed"
+        fill="none"
+        stroke="#000000"
+        stroke-width="4"
+        points="10,10 510,10 510,610 10,610" />
+
+    <polygon
+        id="piece_a_wide"
+        fill="#FFD166"
+        stroke="#000000"
+        stroke-width="3"
+        points="600,10 1000,10 1000,210 600,210" />
+
+    <polygon
+        id="piece_b_square"
+        fill="#06D6A0"
+        stroke="#000000"
+        stroke-width="3"
+        points="600,260 800,260 800,460 600,460" />
+
+    <polygon
+        id="piece_c_square"
+        fill="#118AB2"
+        stroke="#000000"
+        stroke-width="3"
+        points="830,260 1030,260 1030,460 830,460" />
+
+</svg>

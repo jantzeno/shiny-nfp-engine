@@ -1,0 +1,89 @@
+{
+    "kind": "convex_nfp_perfect_sliding",
+    "algorithm": "convex_nfp",
+    "fixtures": [
+        {
+            "id": "convex_nfp_triangle_rectangle_bounded_sliding",
+            "kind": "convex_nfp_perfect_sliding",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "piece_a_id": 11,
+                "piece_b_id": 12,
+                "convex_a": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        1.0
+                    ],
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ],
+                "convex_b": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        2.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ],
+                "rotation_a": 0,
+                "rotation_b": 0
+            },
+            "expected": {
+                "perfect_fit_points": [
+                    [
+                        -2.0,
+                        1.0
+                    ],
+                    [
+                        4.0,
+                        -1.0
+                    ],
+                    [
+                        4.0,
+                        1.0
+                    ]
+                ],
+                "perfect_sliding_segments": [
+                    {
+                        "start": [
+                            -2.0,
+                            1.0
+                        ],
+                        "end": [
+                            4.0,
+                            1.0
+                        ]
+                    },
+                    {
+                        "start": [
+                            4.0,
+                            -1.0
+                        ],
+                        "end": [
+                            4.0,
+                            1.0
+                        ]
+                    }
+                ]
+            },
+            "notes": "A right triangle against a rectangle exposes bounded horizontal and vertical sliding spans."
+        }
+    ]
+}

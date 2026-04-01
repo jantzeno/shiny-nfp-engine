@@ -1,0 +1,232 @@
+{
+    "kind": "polygon_union",
+    "fixtures": [
+        {
+            "id": "polygon_union_overlapping_rectangles",
+            "kind": "polygon_union",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "lhs": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            4.0,
+                            0.0
+                        ],
+                        [
+                            4.0,
+                            3.0
+                        ],
+                        [
+                            0.0,
+                            3.0
+                        ]
+                    ],
+                    "holes": []
+                },
+                "rhs": {
+                    "outer": [
+                        [
+                            2.0,
+                            1.0
+                        ],
+                        [
+                            6.0,
+                            1.0
+                        ],
+                        [
+                            6.0,
+                            4.0
+                        ],
+                        [
+                            2.0,
+                            4.0
+                        ]
+                    ],
+                    "holes": []
+                }
+            },
+            "expected": {
+                "regions": [
+                    {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                4.0,
+                                0.0
+                            ],
+                            [
+                                4.0,
+                                1.0
+                            ],
+                            [
+                                6.0,
+                                1.0
+                            ],
+                            [
+                                6.0,
+                                4.0
+                            ],
+                            [
+                                2.0,
+                                4.0
+                            ],
+                            [
+                                2.0,
+                                3.0
+                            ],
+                            [
+                                0.0,
+                                3.0
+                            ]
+                        ],
+                        "holes": []
+                    }
+                ]
+            },
+            "notes": "Union of overlapping rectangles produces one deterministic outer loop."
+        },
+        {
+            "id": "polygon_union_preserves_frame_hole_with_disjoint_island",
+            "kind": "polygon_union",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "lhs": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            8.0,
+                            0.0
+                        ],
+                        [
+                            8.0,
+                            8.0
+                        ],
+                        [
+                            0.0,
+                            8.0
+                        ]
+                    ],
+                    "holes": [
+                        [
+                            [
+                                2.0,
+                                2.0
+                            ],
+                            [
+                                2.0,
+                                6.0
+                            ],
+                            [
+                                6.0,
+                                6.0
+                            ],
+                            [
+                                6.0,
+                                2.0
+                            ]
+                        ]
+                    ]
+                },
+                "rhs": {
+                    "outer": [
+                        [
+                            3.0,
+                            3.0
+                        ],
+                        [
+                            5.0,
+                            3.0
+                        ],
+                        [
+                            5.0,
+                            5.0
+                        ],
+                        [
+                            3.0,
+                            5.0
+                        ]
+                    ],
+                    "holes": []
+                }
+            },
+            "expected": {
+                "regions": [
+                    {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                8.0,
+                                0.0
+                            ],
+                            [
+                                8.0,
+                                8.0
+                            ],
+                            [
+                                0.0,
+                                8.0
+                            ]
+                        ],
+                        "holes": [
+                            [
+                                [
+                                    2.0,
+                                    2.0
+                                ],
+                                [
+                                    2.0,
+                                    6.0
+                                ],
+                                [
+                                    6.0,
+                                    6.0
+                                ],
+                                [
+                                    6.0,
+                                    2.0
+                                ]
+                            ]
+                        ]
+                    },
+                    {
+                        "outer": [
+                            [
+                                3.0,
+                                3.0
+                            ],
+                            [
+                                5.0,
+                                3.0
+                            ],
+                            [
+                                5.0,
+                                5.0
+                            ],
+                            [
+                                3.0,
+                                5.0
+                            ]
+                        ],
+                        "holes": []
+                    }
+                ]
+            },
+            "notes": "A polygon placed inside an existing hole remains a separate region and does not erase the outer hole."
+        }
+    ]
+}

@@ -1,0 +1,115 @@
+{
+    "kind": "packing_config",
+    "fixtures": [
+        {
+            "id": "packing_config_default_surface_valid",
+            "kind": "packing_config",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "config": {
+                    "placement": {
+                        "part_clearance": 0.0,
+                        "allowed_rotations": [
+                            0.0,
+                            90.0,
+                            180.0,
+                            270.0
+                        ],
+                        "enable_part_in_part_placement": false,
+                        "explore_concave_candidates": false
+                    },
+                    "enable_hole_first_placement": true,
+                    "laser_cut_optimization": {
+                        "mode": "off",
+                        "require_exact_collinearity": true,
+                        "preserve_visible_notches": true
+                    }
+                }
+            },
+            "expected": {
+                "valid": true
+            },
+            "notes": "The default Milestone 8 packing surface remains valid when placement and laser optimization settings stay at their conservative defaults."
+        },
+        {
+            "id": "packing_config_invalid_when_placement_surface_is_invalid",
+            "kind": "packing_config",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "config": {
+                    "placement": {
+                        "part_clearance": 0.0,
+                        "allowed_rotations": [],
+                        "enable_part_in_part_placement": false,
+                        "explore_concave_candidates": false
+                    },
+                    "enable_hole_first_placement": true,
+                    "laser_cut_optimization": {
+                        "mode": "remove_fully_covered_coincident_segments",
+                        "require_exact_collinearity": true,
+                        "preserve_visible_notches": true
+                    }
+                }
+            },
+            "expected": {
+                "valid": false
+            },
+            "notes": "Packing config validity fails when the embedded placement config violates the discrete rotation contract."
+        },
+        {
+            "id": "packing_config_accepts_grain_and_keep_out_surface",
+            "kind": "packing_config",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "config": {
+                    "placement": {
+                        "part_clearance": 0.0,
+                        "allowed_rotations": [
+                            0.0,
+                            90.0
+                        ],
+                        "bed_grain_direction": "along_y",
+                        "enable_part_in_part_placement": false,
+                        "explore_concave_candidates": false,
+                        "exclusion_zones": [
+                            {
+                                "zone_id": 8,
+                                "region": [
+                                    [
+                                        5.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        2.0
+                                    ],
+                                    [
+                                        5.0,
+                                        2.0
+                                    ]
+                                ]
+                            }
+                        ]
+                    },
+                    "enable_hole_first_placement": false,
+                    "laser_cut_optimization": {
+                        "mode": "off",
+                        "require_exact_collinearity": true,
+                        "preserve_visible_notches": true
+                    }
+                }
+            },
+            "expected": {
+                "valid": true
+            },
+            "notes": "Packing config accepts the explicit manufacturing-constraint surface when the embedded placement keep-outs and bed grain values are structurally valid."
+        }
+    ]
+}

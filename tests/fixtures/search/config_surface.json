@@ -1,0 +1,237 @@
+{
+    "kind": "search_config",
+    "fixtures": [
+        {
+            "id": "search_config_default_values_are_valid",
+            "kind": "search_config",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "local_search": {
+                    "max_iterations": 250,
+                    "deterministic_seed": 1,
+                    "plateau_budget": 3
+                },
+                "genetic_search": {
+                    "max_generations": 40,
+                    "population_size": 30,
+                    "deterministic_seed": 1,
+                    "mutation_rate_percent": 10,
+                    "elite_count": 2,
+                    "tournament_size": 3,
+                    "plateau_generations": 6,
+                    "enable_local_search_polish": true,
+                    "enabled": false
+                }
+            },
+            "expected": {
+                "local_valid": true,
+                "genetic_valid": true
+            },
+            "notes": "The ADR defaults should validate without additional tuning."
+        },
+        {
+            "id": "search_config_allows_zero_iteration_probe_runs",
+            "kind": "search_config",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "local_search": {
+                    "max_iterations": 0,
+                    "deterministic_seed": 99,
+                    "plateau_budget": 3
+                },
+                "genetic_search": {
+                    "max_generations": 40,
+                    "population_size": 64,
+                    "deterministic_seed": 99,
+                    "mutation_rate_percent": 25,
+                    "elite_count": 2,
+                    "tournament_size": 3,
+                    "plateau_generations": 6,
+                    "enable_local_search_polish": true,
+                    "enabled": false
+                }
+            },
+            "expected": {
+                "local_valid": true,
+                "genetic_valid": true
+            },
+            "notes": "Zero iterations should still be a valid deterministic baseline-only run."
+        },
+        {
+            "id": "search_config_rejects_local_budget_above_cap",
+            "kind": "search_config",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "local_search": {
+                    "max_iterations": 1000001,
+                    "deterministic_seed": 1,
+                    "plateau_budget": 3
+                },
+                "genetic_search": {
+                    "max_generations": 40,
+                    "population_size": 30,
+                    "deterministic_seed": 1,
+                    "mutation_rate_percent": 10,
+                    "elite_count": 2,
+                    "tournament_size": 3,
+                    "plateau_generations": 6,
+                    "enable_local_search_polish": true,
+                    "enabled": false
+                }
+            },
+            "expected": {
+                "local_valid": false,
+                "genetic_valid": true
+            },
+            "notes": "The local-search iteration budget is capped at one million by ADR 0006."
+        },
+        {
+            "id": "search_config_rejects_genetic_population_under_minimum",
+            "kind": "search_config",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "local_search": {
+                    "max_iterations": 250,
+                    "deterministic_seed": 1,
+                    "plateau_budget": 3
+                },
+                "genetic_search": {
+                    "max_generations": 40,
+                    "population_size": 1,
+                    "deterministic_seed": 1,
+                    "mutation_rate_percent": 10,
+                    "elite_count": 2,
+                    "tournament_size": 3,
+                    "plateau_generations": 6,
+                    "enable_local_search_polish": true,
+                    "enabled": false
+                }
+            },
+            "expected": {
+                "local_valid": true,
+                "genetic_valid": false
+            },
+            "notes": "The reserved GA config should still enforce its documented lower bound."
+        },
+        {
+            "id": "search_config_rejects_genetic_mutation_above_cap",
+            "kind": "search_config",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "local_search": {
+                    "max_iterations": 250,
+                    "deterministic_seed": 1,
+                    "plateau_budget": 3
+                },
+                "genetic_search": {
+                    "max_generations": 40,
+                    "population_size": 30,
+                    "deterministic_seed": 1,
+                    "mutation_rate_percent": 51,
+                    "elite_count": 2,
+                    "tournament_size": 3,
+                    "plateau_generations": 6,
+                    "enable_local_search_polish": true,
+                    "enabled": false
+                }
+            },
+            "expected": {
+                "local_valid": true,
+                "genetic_valid": false
+            },
+            "notes": "The reserved GA mutation rate remains bounded even while the GA path is inactive."
+        },
+        {
+            "id": "search_config_rejects_zero_plateau_budget",
+            "kind": "search_config",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "local_search": {
+                    "max_iterations": 250,
+                    "deterministic_seed": 1,
+                    "plateau_budget": 0
+                },
+                "genetic_search": {
+                    "max_generations": 40,
+                    "population_size": 30,
+                    "deterministic_seed": 1,
+                    "mutation_rate_percent": 10,
+                    "elite_count": 2,
+                    "tournament_size": 3,
+                    "plateau_generations": 6,
+                    "enable_local_search_polish": true,
+                    "enabled": false
+                }
+            },
+            "expected": {
+                "local_valid": false,
+                "genetic_valid": true
+            },
+            "notes": "Plateau traversal must allow at least one consecutive non-improving iteration."
+        },
+        {
+            "id": "search_config_rejects_genetic_elite_above_population",
+            "kind": "search_config",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "local_search": {
+                    "max_iterations": 250,
+                    "deterministic_seed": 1,
+                    "plateau_budget": 3
+                },
+                "genetic_search": {
+                    "max_generations": 40,
+                    "population_size": 4,
+                    "deterministic_seed": 1,
+                    "mutation_rate_percent": 10,
+                    "elite_count": 5,
+                    "tournament_size": 3,
+                    "plateau_generations": 6,
+                    "enable_local_search_polish": true,
+                    "enabled": true
+                }
+            },
+            "expected": {
+                "local_valid": true,
+                "genetic_valid": false
+            },
+            "notes": "Elitism cannot retain more members than exist in the population."
+        },
+        {
+            "id": "search_config_rejects_genetic_tournament_under_minimum",
+            "kind": "search_config",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "local_search": {
+                    "max_iterations": 250,
+                    "deterministic_seed": 1,
+                    "plateau_budget": 3
+                },
+                "genetic_search": {
+                    "max_generations": 40,
+                    "population_size": 8,
+                    "deterministic_seed": 1,
+                    "mutation_rate_percent": 10,
+                    "elite_count": 2,
+                    "tournament_size": 1,
+                    "plateau_generations": 6,
+                    "enable_local_search_polish": true,
+                    "enabled": true
+                }
+            },
+            "expected": {
+                "local_valid": true,
+                "genetic_valid": false
+            },
+            "notes": "Tournament selection must compare at least two population members."
+        }
+    ]
+}

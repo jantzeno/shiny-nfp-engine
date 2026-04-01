@@ -1,0 +1,308 @@
+{
+    "kind": "polygon_union_topology",
+    "fixtures": [
+        {
+            "id": "polygon_union_shared_edge_coalesces_boundary",
+            "kind": "polygon_union_topology",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "lhs": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            2.0,
+                            0.0
+                        ],
+                        [
+                            2.0,
+                            2.0
+                        ],
+                        [
+                            0.0,
+                            2.0
+                        ]
+                    ],
+                    "holes": []
+                },
+                "rhs": {
+                    "outer": [
+                        [
+                            2.0,
+                            0.0
+                        ],
+                        [
+                            4.0,
+                            0.0
+                        ],
+                        [
+                            4.0,
+                            2.0
+                        ],
+                        [
+                            2.0,
+                            2.0
+                        ]
+                    ],
+                    "holes": []
+                }
+            },
+            "expected": {
+                "regions": [
+                    {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                4.0,
+                                0.0
+                            ],
+                            [
+                                4.0,
+                                2.0
+                            ],
+                            [
+                                0.0,
+                                2.0
+                            ]
+                        ],
+                        "holes": []
+                    }
+                ]
+            },
+            "notes": "A full shared edge must collapse into one rectangle without duplicate boundary vertices."
+        },
+        {
+            "id": "polygon_union_hole_plug_removes_hole",
+            "kind": "polygon_union_topology",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "lhs": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            8.0,
+                            0.0
+                        ],
+                        [
+                            8.0,
+                            8.0
+                        ],
+                        [
+                            0.0,
+                            8.0
+                        ]
+                    ],
+                    "holes": [
+                        [
+                            [
+                                2.0,
+                                2.0
+                            ],
+                            [
+                                2.0,
+                                6.0
+                            ],
+                            [
+                                6.0,
+                                6.0
+                            ],
+                            [
+                                6.0,
+                                2.0
+                            ]
+                        ]
+                    ]
+                },
+                "rhs": {
+                    "outer": [
+                        [
+                            2.0,
+                            2.0
+                        ],
+                        [
+                            6.0,
+                            2.0
+                        ],
+                        [
+                            6.0,
+                            6.0
+                        ],
+                        [
+                            2.0,
+                            6.0
+                        ]
+                    ],
+                    "holes": []
+                }
+            },
+            "expected": {
+                "regions": [
+                    {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                8.0,
+                                0.0
+                            ],
+                            [
+                                8.0,
+                                8.0
+                            ],
+                            [
+                                0.0,
+                                8.0
+                            ]
+                        ],
+                        "holes": []
+                    }
+                ]
+            },
+            "notes": "Filling a frame hole exactly must eliminate the hole rather than leave a degenerate inner loop."
+        },
+        {
+            "id": "polygon_union_bridge_splits_hole_topology",
+            "kind": "polygon_union_topology",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "lhs": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            8.0,
+                            0.0
+                        ],
+                        [
+                            8.0,
+                            8.0
+                        ],
+                        [
+                            0.0,
+                            8.0
+                        ]
+                    ],
+                    "holes": [
+                        [
+                            [
+                                2.0,
+                                2.0
+                            ],
+                            [
+                                2.0,
+                                6.0
+                            ],
+                            [
+                                6.0,
+                                6.0
+                            ],
+                            [
+                                6.0,
+                                2.0
+                            ]
+                        ]
+                    ]
+                },
+                "rhs": {
+                    "outer": [
+                        [
+                            3.0,
+                            0.0
+                        ],
+                        [
+                            5.0,
+                            0.0
+                        ],
+                        [
+                            5.0,
+                            8.0
+                        ],
+                        [
+                            3.0,
+                            8.0
+                        ]
+                    ],
+                    "holes": []
+                }
+            },
+            "expected": {
+                "regions": [
+                    {
+                        "outer": [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                8.0,
+                                0.0
+                            ],
+                            [
+                                8.0,
+                                8.0
+                            ],
+                            [
+                                0.0,
+                                8.0
+                            ]
+                        ],
+                        "holes": [
+                            [
+                                [
+                                    2.0,
+                                    2.0
+                                ],
+                                [
+                                    2.0,
+                                    6.0
+                                ],
+                                [
+                                    3.0,
+                                    6.0
+                                ],
+                                [
+                                    3.0,
+                                    2.0
+                                ]
+                            ],
+                            [
+                                [
+                                    5.0,
+                                    2.0
+                                ],
+                                [
+                                    5.0,
+                                    6.0
+                                ],
+                                [
+                                    6.0,
+                                    6.0
+                                ],
+                                [
+                                    6.0,
+                                    2.0
+                                ]
+                            ]
+                        ]
+                    }
+                ]
+            },
+            "notes": "A solid bridge through an existing hole should split one hole into two normalized holes."
+        }
+    ]
+}

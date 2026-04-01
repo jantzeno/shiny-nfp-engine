@@ -1,0 +1,216 @@
+{
+    "kind": "polygon_normalization",
+    "fixtures": [
+        {
+            "id": "polygon_normalization_outer_cleanup_and_orientation",
+            "kind": "polygon_normalization",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "polygon": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            0.0,
+                            2.0
+                        ],
+                        [
+                            2.0,
+                            2.0
+                        ],
+                        [
+                            2.0,
+                            2.0
+                        ],
+                        [
+                            2.0,
+                            0.0
+                        ],
+                        [
+                            0.0,
+                            0.0
+                        ]
+                    ],
+                    "holes": []
+                }
+            },
+            "expected": {
+                "outer": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        2.0,
+                        0.0
+                    ],
+                    [
+                        2.0,
+                        2.0
+                    ],
+                    [
+                        0.0,
+                        2.0
+                    ]
+                ],
+                "holes": []
+            },
+            "notes": "Removes duplicate closing vertex and consecutive duplicates, then enforces CCW outer winding."
+        },
+        {
+            "id": "polygon_normalization_with_hole_cleanup",
+            "kind": "polygon_normalization",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "polygon": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            6.0,
+                            0.0
+                        ],
+                        [
+                            6.0,
+                            6.0
+                        ],
+                        [
+                            0.0,
+                            6.0
+                        ],
+                        [
+                            0.0,
+                            0.0
+                        ]
+                    ],
+                    "holes": [
+                        [
+                            [
+                                1.0,
+                                1.0
+                            ],
+                            [
+                                3.0,
+                                1.0
+                            ],
+                            [
+                                3.0,
+                                3.0
+                            ],
+                            [
+                                3.0,
+                                3.0
+                            ],
+                            [
+                                1.0,
+                                3.0
+                            ],
+                            [
+                                1.0,
+                                1.0
+                            ]
+                        ]
+                    ]
+                }
+            },
+            "expected": {
+                "outer": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        6.0,
+                        0.0
+                    ],
+                    [
+                        6.0,
+                        6.0
+                    ],
+                    [
+                        0.0,
+                        6.0
+                    ]
+                ],
+                "holes": [
+                    [
+                        [
+                            1.0,
+                            1.0
+                        ],
+                        [
+                            1.0,
+                            3.0
+                        ],
+                        [
+                            3.0,
+                            3.0
+                        ],
+                        [
+                            3.0,
+                            1.0
+                        ]
+                    ]
+                ]
+            },
+            "notes": "Hole duplicates are removed and hole winding is enforced clockwise."
+        },
+        {
+            "id": "polygon_normalization_reorders_start_vertex",
+            "kind": "polygon_normalization",
+            "normative": false,
+            "source": "handmade",
+            "inputs": {
+                "polygon": {
+                    "outer": [
+                        [
+                            4.0,
+                            0.0
+                        ],
+                        [
+                            4.0,
+                            4.0
+                        ],
+                        [
+                            0.0,
+                            4.0
+                        ],
+                        [
+                            0.0,
+                            0.0
+                        ]
+                    ],
+                    "holes": []
+                }
+            },
+            "expected": {
+                "outer": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        4.0
+                    ],
+                    [
+                        0.0,
+                        4.0
+                    ]
+                ],
+                "holes": []
+            },
+            "notes": "Uses lexicographic start-vertex normalization for deterministic serialization."
+        }
+    ]
+}

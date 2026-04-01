@@ -1,0 +1,45 @@
+{
+    "kind": "orbital_verifier_pair",
+    "algorithm": "orbital_verifier",
+    "fixtures": [
+        {
+            "id": "orbital_rect_rect_matches_graph",
+            "kind": "orbital_verifier_pair",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "graph_fixture_id": "nonconvex_rect_rect_degenerate_features_r0_r0"
+            },
+            "expected": {
+                "inner_loop_start_count": 0
+            },
+            "notes": "A convex rectangle pair still exercises the diagnostic verifier and should match the graph path exactly."
+        },
+        {
+            "id": "orbital_l_shape_rectangle_matches_graph",
+            "kind": "orbital_verifier_pair",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "graph_fixture_id": "nonconvex_l_shape_rectangle_r0_r0"
+            },
+            "expected": {
+                "inner_loop_start_count": 0
+            },
+            "notes": "Disjoint outer regions should stay identical under the diagnostic verifier."
+        },
+        {
+            "id": "orbital_l_shape_c_shape_matches_graph",
+            "kind": "orbital_verifier_pair",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "graph_fixture_id": "nonconvex_l_shape_c_shape_hole_r0_r0"
+            },
+            "expected": {
+                "inner_loop_start_count": 1
+            },
+            "notes": "The curated hole-producing case should expose one inner-loop start and match graph topology."
+        }
+    ]
+}

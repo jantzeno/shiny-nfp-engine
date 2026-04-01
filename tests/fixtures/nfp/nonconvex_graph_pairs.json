@@ -1,0 +1,561 @@
+{
+    "kind": "nonconvex_graph_pair",
+    "algorithm": "nonconvex_graph_nfp",
+    "fixtures": [
+        {
+            "id": "nonconvex_l_shape_rectangle_r0_r0",
+            "kind": "nonconvex_graph_pair",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "piece_a_id": 101,
+                "piece_b_id": 102,
+                "piece_a": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            4.0,
+                            0.0
+                        ],
+                        [
+                            4.0,
+                            1.0
+                        ],
+                        [
+                            1.0,
+                            1.0
+                        ],
+                        [
+                            1.0,
+                            4.0
+                        ],
+                        [
+                            0.0,
+                            4.0
+                        ]
+                    ]
+                },
+                "piece_b": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            3.0,
+                            0.0
+                        ],
+                        [
+                            3.0,
+                            2.0
+                        ],
+                        [
+                            0.0,
+                            2.0
+                        ]
+                    ]
+                },
+                "rotation_a": 0,
+                "rotation_b": 0,
+                "algorithm_revision": 1
+            },
+            "expected": {
+                "status": "success",
+                "graph_vertex_count": 22,
+                "graph_edge_count": 28,
+                "graph_intersection_vertex_count": 3,
+                "graph_pruned_edge_count": 6,
+                "outer_loops": [
+                    [
+                        [
+                            -3.0,
+                            0.0
+                        ],
+                        [
+                            -2.0,
+                            1.0
+                        ],
+                        [
+                            1.0,
+                            1.0
+                        ],
+                        [
+                            1.0,
+                            4.0
+                        ],
+                        [
+                            -3.0,
+                            4.0
+                        ]
+                    ],
+                    [
+                        [
+                            0.0,
+                            -2.0
+                        ],
+                        [
+                            4.0,
+                            -2.0
+                        ],
+                        [
+                            4.0,
+                            1.0
+                        ],
+                        [
+                            1.0,
+                            1.0
+                        ],
+                        [
+                            1.0,
+                            -1.0
+                        ]
+                    ]
+                ],
+                "holes": [],
+                "perfect_fit_points": [
+                    [
+                        -2.0,
+                        1.0
+                    ],
+                    [
+                        4.0,
+                        -2.0
+                    ],
+                    [
+                        4.0,
+                        1.0
+                    ],
+                    [
+                        -3.0,
+                        4.0
+                    ],
+                    [
+                        1.0,
+                        -1.0
+                    ],
+                    [
+                        1.0,
+                        4.0
+                    ]
+                ],
+                "perfect_sliding_segments": [
+                    {
+                        "start": [
+                            -2.0,
+                            1.0
+                        ],
+                        "end": [
+                            4.0,
+                            1.0
+                        ]
+                    },
+                    {
+                        "start": [
+                            4.0,
+                            -2.0
+                        ],
+                        "end": [
+                            4.0,
+                            1.0
+                        ]
+                    },
+                    {
+                        "start": [
+                            -3.0,
+                            4.0
+                        ],
+                        "end": [
+                            1.0,
+                            4.0
+                        ]
+                    },
+                    {
+                        "start": [
+                            1.0,
+                            -1.0
+                        ],
+                        "end": [
+                            1.0,
+                            4.0
+                        ]
+                    }
+                ]
+            },
+            "notes": "An L-shape against a rectangle yields two disjoint outer-loop placement regions after graph pruning and extraction."
+        },
+        {
+            "id": "nonconvex_rect_rect_degenerate_features_r0_r0",
+            "kind": "nonconvex_graph_pair",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "piece_a_id": 301,
+                "piece_b_id": 302,
+                "piece_a": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            2.0,
+                            0.0
+                        ],
+                        [
+                            2.0,
+                            1.0
+                        ],
+                        [
+                            0.0,
+                            1.0
+                        ]
+                    ]
+                },
+                "piece_b": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            2.0,
+                            0.0
+                        ],
+                        [
+                            2.0,
+                            1.0
+                        ],
+                        [
+                            0.0,
+                            1.0
+                        ]
+                    ]
+                },
+                "rotation_a": 0,
+                "rotation_b": 0,
+                "algorithm_revision": 1
+            },
+            "expected": {
+                "status": "success",
+                "graph_vertex_count": 8,
+                "graph_edge_count": 8,
+                "graph_intersection_vertex_count": 0,
+                "graph_pruned_edge_count": 0,
+                "outer_loops": [
+                    [
+                        [
+                            -2.0,
+                            -1.0
+                        ],
+                        [
+                            2.0,
+                            -1.0
+                        ],
+                        [
+                            2.0,
+                            1.0
+                        ],
+                        [
+                            -2.0,
+                            1.0
+                        ]
+                    ]
+                ],
+                "holes": [],
+                "perfect_fit_points": [
+                    [
+                        -2.0,
+                        -1.0
+                    ],
+                    [
+                        -2.0,
+                        1.0
+                    ],
+                    [
+                        2.0,
+                        -1.0
+                    ],
+                    [
+                        2.0,
+                        1.0
+                    ]
+                ],
+                "perfect_sliding_segments": [
+                    {
+                        "start": [
+                            -2.0,
+                            -1.0
+                        ],
+                        "end": [
+                            -2.0,
+                            1.0
+                        ]
+                    },
+                    {
+                        "start": [
+                            -2.0,
+                            -1.0
+                        ],
+                        "end": [
+                            2.0,
+                            -1.0
+                        ]
+                    },
+                    {
+                        "start": [
+                            -2.0,
+                            1.0
+                        ],
+                        "end": [
+                            2.0,
+                            1.0
+                        ]
+                    },
+                    {
+                        "start": [
+                            2.0,
+                            -1.0
+                        ],
+                        "end": [
+                            2.0,
+                            1.0
+                        ]
+                    }
+                ]
+            },
+            "notes": "A convex rectangle pair still exercises the nonconvex graph path and verifies that perfect-fit points and maximal sliding spans survive extraction."
+        },
+        {
+            "id": "nonconvex_l_shape_c_shape_hole_r0_r0",
+            "kind": "nonconvex_graph_pair",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "piece_a_id": 401,
+                "piece_b_id": 402,
+                "piece_a": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            3.0,
+                            0.0
+                        ],
+                        [
+                            3.0,
+                            1.0
+                        ],
+                        [
+                            1.0,
+                            1.0
+                        ],
+                        [
+                            1.0,
+                            3.0
+                        ],
+                        [
+                            0.0,
+                            3.0
+                        ]
+                    ]
+                },
+                "piece_b": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            5.0,
+                            0.0
+                        ],
+                        [
+                            5.0,
+                            1.0
+                        ],
+                        [
+                            1.0,
+                            1.0
+                        ],
+                        [
+                            1.0,
+                            4.0
+                        ],
+                        [
+                            5.0,
+                            4.0
+                        ],
+                        [
+                            5.0,
+                            5.0
+                        ],
+                        [
+                            0.0,
+                            5.0
+                        ]
+                    ]
+                },
+                "rotation_a": 0,
+                "rotation_b": 0,
+                "algorithm_revision": 1
+            },
+            "expected": {
+                "status": "success",
+                "graph_vertex_count": 66,
+                "graph_edge_count": 116,
+                "graph_intersection_vertex_count": 14,
+                "graph_pruned_edge_count": 64,
+                "outer_loops": [
+                    [
+                        [
+                            -5.0,
+                            -4.0
+                        ],
+                        [
+                            -4.0,
+                            -3.0
+                        ],
+                        [
+                            2.0,
+                            -3.0
+                        ],
+                        [
+                            3.0,
+                            -4.0
+                        ],
+                        [
+                            3.0,
+                            0.0
+                        ],
+                        [
+                            2.0,
+                            -1.0
+                        ],
+                        [
+                            1.0,
+                            -1.0
+                        ],
+                        [
+                            1.0,
+                            1.0
+                        ],
+                        [
+                            -1.0,
+                            1.0
+                        ],
+                        [
+                            -1.0,
+                            -1.0
+                        ],
+                        [
+                            -5.0,
+                            -1.0
+                        ]
+                    ],
+                    [
+                        [
+                            -5.0,
+                            0.0
+                        ],
+                        [
+                            -4.0,
+                            1.0
+                        ],
+                        [
+                            -1.0,
+                            1.0
+                        ],
+                        [
+                            -1.0,
+                            2.0
+                        ],
+                        [
+                            0.0,
+                            3.0
+                        ],
+                        [
+                            -5.0,
+                            3.0
+                        ]
+                    ]
+                ],
+                "holes": [
+                    [
+                        [
+                            0.0,
+                            -1.0
+                        ],
+                        [
+                            1.0,
+                            -1.0
+                        ],
+                        [
+                            1.0,
+                            -2.0
+                        ]
+                    ]
+                ],
+                "perfect_fit_points": [
+                    [
+                        -5.0,
+                        -1.0
+                    ],
+                    [
+                        -4.0,
+                        1.0
+                    ],
+                    [
+                        2.0,
+                        -1.0
+                    ],
+                    [
+                        -1.0,
+                        -1.0
+                    ],
+                    [
+                        1.0,
+                        1.0
+                    ],
+                    [
+                        -4.0,
+                        -3.0
+                    ],
+                    [
+                        2.0,
+                        -3.0
+                    ],
+                    [
+                        -5.0,
+                        3.0
+                    ],
+                    [
+                        -1.0,
+                        2.0
+                    ],
+                    [
+                        0.0,
+                        -1.0
+                    ]
+                ],
+                "perfect_sliding_segments": [
+                    {
+                        "start": [
+                            -4.0,
+                            -3.0
+                        ],
+                        "end": [
+                            2.0,
+                            -3.0
+                        ]
+                    }
+                ]
+            },
+            "notes": "A smaller L-shape against a C-shape now extracts as two simple outer loops plus one clockwise hole after the self-touching walk is split into valid public loops."
+        }
+    ]
+}

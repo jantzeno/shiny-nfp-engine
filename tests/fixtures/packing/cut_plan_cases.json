@@ -1,0 +1,532 @@
+{
+    "kind": "packing_cut_plan",
+    "fixtures": [
+        {
+            "id": "packing_cut_plan_removes_fully_covered_segment",
+            "kind": "packing_cut_plan",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "layout": {
+                    "bins": [
+                        {
+                            "bin_id": 1,
+                            "placements": [
+                                {
+                                    "piece_id": 1,
+                                    "polygon": {
+                                        "outer": [
+                                            [
+                                                0.0,
+                                                0.0
+                                            ],
+                                            [
+                                                4.0,
+                                                0.0
+                                            ],
+                                            [
+                                                4.0,
+                                                4.0
+                                            ],
+                                            [
+                                                0.0,
+                                                4.0
+                                            ]
+                                        ],
+                                        "holes": []
+                                    }
+                                },
+                                {
+                                    "piece_id": 2,
+                                    "polygon": {
+                                        "outer": [
+                                            [
+                                                4.0,
+                                                1.0
+                                            ],
+                                            [
+                                                8.0,
+                                                1.0
+                                            ],
+                                            [
+                                                8.0,
+                                                3.0
+                                            ],
+                                            [
+                                                4.0,
+                                                3.0
+                                            ]
+                                        ],
+                                        "holes": []
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "config": {
+                    "placement": {
+                        "part_clearance": 0.0,
+                        "allowed_rotations": [
+                            0.0
+                        ],
+                        "enable_part_in_part_placement": false,
+                        "explore_concave_candidates": false
+                    },
+                    "enable_hole_first_placement": true,
+                    "laser_cut_optimization": {
+                        "mode": "remove_fully_covered_coincident_segments",
+                        "require_exact_collinearity": true,
+                        "preserve_visible_notches": true
+                    }
+                }
+            },
+            "expected": {
+                "segment_count": 7,
+                "raw_cut_length": 28.0,
+                "total_cut_length": 26.0,
+                "removed_cut_length": 2.0,
+                "present_segments": [
+                    {
+                        "piece_id": 1,
+                        "segment": {
+                            "start": [
+                                4.0,
+                                0.0
+                            ],
+                            "end": [
+                                4.0,
+                                4.0
+                            ]
+                        }
+                    }
+                ],
+                "absent_segments": [
+                    {
+                        "piece_id": 2,
+                        "segment": {
+                            "start": [
+                                4.0,
+                                1.0
+                            ],
+                            "end": [
+                                4.0,
+                                3.0
+                            ]
+                        }
+                    }
+                ]
+            },
+            "notes": "The shorter covered vertical seam is removed while the longer coincident segment remains in the optimized cut plan."
+        },
+        {
+            "id": "packing_cut_plan_preserves_notch_boundary",
+            "kind": "packing_cut_plan",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "layout": {
+                    "bins": [
+                        {
+                            "bin_id": 2,
+                            "placements": [
+                                {
+                                    "piece_id": 10,
+                                    "polygon": {
+                                        "outer": [
+                                            [
+                                                0.0,
+                                                0.0
+                                            ],
+                                            [
+                                                4.0,
+                                                0.0
+                                            ],
+                                            [
+                                                4.0,
+                                                6.0
+                                            ],
+                                            [
+                                                0.0,
+                                                6.0
+                                            ]
+                                        ],
+                                        "holes": []
+                                    }
+                                },
+                                {
+                                    "piece_id": 11,
+                                    "polygon": {
+                                        "outer": [
+                                            [
+                                                4.0,
+                                                0.0
+                                            ],
+                                            [
+                                                8.0,
+                                                0.0
+                                            ],
+                                            [
+                                                8.0,
+                                                2.0
+                                            ],
+                                            [
+                                                4.0,
+                                                2.0
+                                            ]
+                                        ],
+                                        "holes": []
+                                    }
+                                },
+                                {
+                                    "piece_id": 12,
+                                    "polygon": {
+                                        "outer": [
+                                            [
+                                                4.0,
+                                                4.0
+                                            ],
+                                            [
+                                                8.0,
+                                                4.0
+                                            ],
+                                            [
+                                                8.0,
+                                                6.0
+                                            ],
+                                            [
+                                                4.0,
+                                                6.0
+                                            ]
+                                        ],
+                                        "holes": []
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "config": {
+                    "placement": {
+                        "part_clearance": 0.0,
+                        "allowed_rotations": [
+                            0.0
+                        ],
+                        "enable_part_in_part_placement": false,
+                        "explore_concave_candidates": false
+                    },
+                    "enable_hole_first_placement": true,
+                    "laser_cut_optimization": {
+                        "mode": "remove_fully_covered_coincident_segments",
+                        "require_exact_collinearity": true,
+                        "preserve_visible_notches": true
+                    }
+                }
+            },
+            "expected": {
+                "segment_count": 10,
+                "raw_cut_length": 44.0,
+                "total_cut_length": 40.0,
+                "removed_cut_length": 4.0,
+                "present_segments": [
+                    {
+                        "piece_id": 10,
+                        "segment": {
+                            "start": [
+                                4.0,
+                                0.0
+                            ],
+                            "end": [
+                                4.0,
+                                6.0
+                            ]
+                        }
+                    }
+                ],
+                "absent_segments": [
+                    {
+                        "piece_id": 11,
+                        "segment": {
+                            "start": [
+                                4.0,
+                                0.0
+                            ],
+                            "end": [
+                                4.0,
+                                2.0
+                            ]
+                        }
+                    },
+                    {
+                        "piece_id": 12,
+                        "segment": {
+                            "start": [
+                                4.0,
+                                4.0
+                            ],
+                            "end": [
+                                4.0,
+                                6.0
+                            ]
+                        }
+                    }
+                ]
+            },
+            "notes": "Covered side bars are removed, but the central exposed portion of the long segment stays because it remains part of the visible notch boundary."
+        },
+        {
+            "id": "packing_cut_plan_exact_collinearity_keeps_split_cover_chain",
+            "kind": "packing_cut_plan",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "layout": {
+                    "bins": [
+                        {
+                            "bin_id": 3,
+                            "placements": [
+                                {
+                                    "piece_id": 20,
+                                    "polygon": {
+                                        "outer": [
+                                            [
+                                                0.0,
+                                                0.0
+                                            ],
+                                            [
+                                                4.0,
+                                                0.0
+                                            ],
+                                            [
+                                                4.0,
+                                                2.0
+                                            ],
+                                            [
+                                                0.0,
+                                                2.0
+                                            ]
+                                        ],
+                                        "holes": []
+                                    }
+                                },
+                                {
+                                    "piece_id": 21,
+                                    "polygon": {
+                                        "outer": [
+                                            [
+                                                0.0,
+                                                2.0
+                                            ],
+                                            [
+                                                4.0,
+                                                2.0
+                                            ],
+                                            [
+                                                4.0,
+                                                4.0
+                                            ],
+                                            [
+                                                0.0,
+                                                4.0
+                                            ]
+                                        ],
+                                        "holes": []
+                                    }
+                                },
+                                {
+                                    "piece_id": 22,
+                                    "polygon": {
+                                        "outer": [
+                                            [
+                                                4.0,
+                                                0.0
+                                            ],
+                                            [
+                                                8.0,
+                                                0.0
+                                            ],
+                                            [
+                                                8.0,
+                                                4.0
+                                            ],
+                                            [
+                                                4.0,
+                                                4.0
+                                            ]
+                                        ],
+                                        "holes": []
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "config": {
+                    "placement": {
+                        "part_clearance": 0.0,
+                        "allowed_rotations": [
+                            0.0
+                        ],
+                        "enable_part_in_part_placement": false,
+                        "explore_concave_candidates": false
+                    },
+                    "enable_hole_first_placement": true,
+                    "laser_cut_optimization": {
+                        "mode": "remove_fully_covered_coincident_segments",
+                        "require_exact_collinearity": true,
+                        "preserve_visible_notches": true
+                    }
+                }
+            },
+            "expected": {
+                "segment_count": 9,
+                "raw_cut_length": 40.0,
+                "total_cut_length": 32.0,
+                "removed_cut_length": 8.0,
+                "present_segments": [
+                    {
+                        "piece_id": 22,
+                        "segment": {
+                            "start": [
+                                4.0,
+                                0.0
+                            ],
+                            "end": [
+                                4.0,
+                                4.0
+                            ]
+                        }
+                    }
+                ]
+            },
+            "notes": "Exact mode keeps the long seam when it is only coverable by two shorter collinear segments rather than one exact covering segment."
+        },
+        {
+            "id": "packing_cut_plan_relaxed_collinearity_removes_split_cover_chain",
+            "kind": "packing_cut_plan",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "layout": {
+                    "bins": [
+                        {
+                            "bin_id": 4,
+                            "placements": [
+                                {
+                                    "piece_id": 30,
+                                    "polygon": {
+                                        "outer": [
+                                            [
+                                                0.0,
+                                                0.0
+                                            ],
+                                            [
+                                                4.0,
+                                                0.0
+                                            ],
+                                            [
+                                                4.0,
+                                                2.0
+                                            ],
+                                            [
+                                                0.0,
+                                                2.0
+                                            ]
+                                        ],
+                                        "holes": []
+                                    }
+                                },
+                                {
+                                    "piece_id": 31,
+                                    "polygon": {
+                                        "outer": [
+                                            [
+                                                0.0,
+                                                2.0
+                                            ],
+                                            [
+                                                4.0,
+                                                2.0
+                                            ],
+                                            [
+                                                4.0,
+                                                4.0
+                                            ],
+                                            [
+                                                0.0,
+                                                4.0
+                                            ]
+                                        ],
+                                        "holes": []
+                                    }
+                                },
+                                {
+                                    "piece_id": 32,
+                                    "polygon": {
+                                        "outer": [
+                                            [
+                                                4.0,
+                                                0.0
+                                            ],
+                                            [
+                                                8.0,
+                                                0.0
+                                            ],
+                                            [
+                                                8.0,
+                                                4.0
+                                            ],
+                                            [
+                                                4.0,
+                                                4.0
+                                            ]
+                                        ],
+                                        "holes": []
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "config": {
+                    "placement": {
+                        "part_clearance": 0.0,
+                        "allowed_rotations": [
+                            0.0
+                        ],
+                        "enable_part_in_part_placement": false,
+                        "explore_concave_candidates": false
+                    },
+                    "enable_hole_first_placement": true,
+                    "laser_cut_optimization": {
+                        "mode": "remove_fully_covered_coincident_segments",
+                        "require_exact_collinearity": false,
+                        "preserve_visible_notches": true
+                    }
+                }
+            },
+            "expected": {
+                "segment_count": 7,
+                "raw_cut_length": 40.0,
+                "total_cut_length": 24.0,
+                "removed_cut_length": 16.0,
+                "absent_segments": [
+                    {
+                        "piece_id": 32,
+                        "segment": {
+                            "start": [
+                                4.0,
+                                0.0
+                            ],
+                            "end": [
+                                4.0,
+                                4.0
+                            ]
+                        }
+                    }
+                ]
+            },
+            "notes": "Relaxed mode removes the long seam once two shorter collinear segments cover its full span."
+        }
+    ]
+}

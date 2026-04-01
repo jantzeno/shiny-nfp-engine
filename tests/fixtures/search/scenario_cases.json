@@ -1,0 +1,3064 @@
+{
+    "kind": "search_scenario",
+    "algorithm": "jostle_search",
+    "fixtures": [
+        {
+            "id": "search_jostle_reorders_tall_piece_forward",
+            "kind": "search_scenario",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "request": {
+                    "local_search": {
+                        "max_iterations": 8,
+                        "deterministic_seed": 7,
+                        "plateau_budget": 3
+                    },
+                    "decoder_request": {
+                        "policy": "bottom_left",
+                        "max_bin_count": 1,
+                        "bin": {
+                            "base_bin_id": 5,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        4.0
+                                    ],
+                                    [
+                                        0.0,
+                                        4.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 100
+                        },
+                        "pieces": [
+                            {
+                                "piece_id": 1,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 1
+                            },
+                            {
+                                "piece_id": 2,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 2
+                            },
+                            {
+                                "piece_id": 3,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            4.0
+                                        ],
+                                        [
+                                            0.0,
+                                            4.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 3
+                            }
+                        ],
+                        "config": {
+                            "placement": {
+                                "allowed_rotations": [
+                                    0.0
+                                ]
+                            },
+                            "enable_hole_first_placement": false
+                        }
+                    }
+                }
+            },
+            "expected": {
+                "improved": true,
+                "baseline_unplaced_piece_count": 1,
+                "baseline_bin_count": 1,
+                "best_unplaced_piece_count": 0,
+                "best_bin_count": 1,
+                "best_piece_order": [
+                    1,
+                    3,
+                    2
+                ],
+                "best_total_utilization": 0.8333333333333334,
+                "iterations_completed": 4,
+                "progress_count": 5,
+                "progress": [
+                    {
+                        "iteration": 0,
+                        "move_kind": "none",
+                        "improved": false,
+                        "best_piece_order": [
+                            1,
+                            2,
+                            3
+                        ]
+                    },
+                    {
+                        "iteration": 1,
+                        "move_kind": "jostle_oscillation",
+                        "improved": true,
+                        "best_piece_order": [
+                            1,
+                            3,
+                            2
+                        ]
+                    },
+                    {
+                        "iteration": 2,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            1,
+                            3,
+                            2
+                        ]
+                    },
+                    {
+                        "iteration": 3,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            1,
+                            3,
+                            2
+                        ]
+                    },
+                    {
+                        "iteration": 4,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            1,
+                            3,
+                            2
+                        ]
+                    }
+                ]
+            },
+            "notes": "The constructive decoder strands the tall piece in the baseline order, but a single adjacent swap produces a full one-bin layout."
+        },
+        {
+            "id": "search_preserves_full_layout_when_no_better_neighbor_exists",
+            "kind": "search_scenario",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "request": {
+                    "local_search": {
+                        "max_iterations": 4,
+                        "deterministic_seed": 3,
+                        "plateau_budget": 3
+                    },
+                    "decoder_request": {
+                        "policy": "bottom_left",
+                        "max_bin_count": 0,
+                        "bin": {
+                            "base_bin_id": 5,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        4.0
+                                    ],
+                                    [
+                                        0.0,
+                                        4.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 100
+                        },
+                        "pieces": [
+                            {
+                                "piece_id": 1,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 1
+                            },
+                            {
+                                "piece_id": 2,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 2
+                            },
+                            {
+                                "piece_id": 3,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 3
+                            },
+                            {
+                                "piece_id": 4,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 4
+                            }
+                        ],
+                        "config": {
+                            "placement": {
+                                "allowed_rotations": [
+                                    0.0
+                                ]
+                            },
+                            "enable_hole_first_placement": false
+                        }
+                    }
+                }
+            },
+            "expected": {
+                "improved": false,
+                "baseline_unplaced_piece_count": 0,
+                "baseline_bin_count": 1,
+                "best_unplaced_piece_count": 0,
+                "best_bin_count": 1,
+                "best_piece_order": [
+                    1,
+                    2,
+                    3,
+                    4
+                ],
+                "best_total_utilization": 1.0,
+                "iterations_completed": 3,
+                "progress_count": 4,
+                "progress": [
+                    {
+                        "iteration": 0,
+                        "move_kind": "none",
+                        "improved": false,
+                        "best_piece_order": [
+                            1,
+                            2,
+                            3,
+                            4
+                        ]
+                    },
+                    {
+                        "iteration": 1,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            1,
+                            2,
+                            3,
+                            4
+                        ]
+                    },
+                    {
+                        "iteration": 2,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            1,
+                            2,
+                            3,
+                            4
+                        ]
+                    },
+                    {
+                        "iteration": 3,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            1,
+                            2,
+                            3,
+                            4
+                        ]
+                    }
+                ]
+            },
+            "notes": "When the baseline decode already fills the bin exactly, search should preserve it and exit after the first non-improving insert-kick pass."
+        },
+        {
+            "id": "search_improves_constrained_layout_with_insert_neighbor",
+            "kind": "search_scenario",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "request": {
+                    "local_search": {
+                        "max_iterations": 8,
+                        "deterministic_seed": 7,
+                        "plateau_budget": 3
+                    },
+                    "decoder_request": {
+                        "policy": "bottom_left",
+                        "max_bin_count": 1,
+                        "bin": {
+                            "base_bin_id": 5,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        4.0
+                                    ],
+                                    [
+                                        0.0,
+                                        4.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 100
+                        },
+                        "pieces": [
+                            {
+                                "piece_id": 1,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 1,
+                                "grain_compatibility": "parallel_to_bed"
+                            },
+                            {
+                                "piece_id": 2,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 2
+                            },
+                            {
+                                "piece_id": 3,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            4.0
+                                        ],
+                                        [
+                                            0.0,
+                                            4.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 3
+                            }
+                        ],
+                        "config": {
+                            "placement": {
+                                "allowed_rotations": [
+                                    0.0
+                                ],
+                                "bed_grain_direction": "along_x",
+                                "exclusion_zones": [
+                                    {
+                                        "zone_id": 17,
+                                        "region": [
+                                            [
+                                                5.0,
+                                                3.0
+                                            ],
+                                            [
+                                                6.0,
+                                                3.0
+                                            ],
+                                            [
+                                                6.0,
+                                                4.0
+                                            ],
+                                            [
+                                                5.0,
+                                                4.0
+                                            ]
+                                        ]
+                                    }
+                                ]
+                            },
+                            "enable_hole_first_placement": false
+                        }
+                    }
+                }
+            },
+            "expected": {
+                "improved": true,
+                "baseline_unplaced_piece_count": 1,
+                "baseline_bin_count": 1,
+                "best_unplaced_piece_count": 0,
+                "best_bin_count": 1,
+                "best_piece_order": [
+                    3,
+                    1,
+                    2
+                ],
+                "best_total_utilization": 0.8333333333333334,
+                "iterations_completed": 4,
+                "progress_count": 5
+            },
+            "notes": "With one grain-constrained part and one explicit clamp keep-out, the baseline order strands a piece but the first insert-neighbor pass still finds the one-bin layout."
+        },
+        {
+            "id": "search_insert_kick_moves_tall_piece_ahead_of_small_fillers",
+            "kind": "search_scenario",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "request": {
+                    "local_search": {
+                        "max_iterations": 8,
+                        "deterministic_seed": 5,
+                        "plateau_budget": 3
+                    },
+                    "decoder_request": {
+                        "policy": "bottom_left",
+                        "max_bin_count": 1,
+                        "bin": {
+                            "base_bin_id": 7,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        4.0
+                                    ],
+                                    [
+                                        0.0,
+                                        4.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 200
+                        },
+                        "pieces": [
+                            {
+                                "piece_id": 1,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 11
+                            },
+                            {
+                                "piece_id": 2,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            1.0
+                                        ],
+                                        [
+                                            0.0,
+                                            1.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 12
+                            },
+                            {
+                                "piece_id": 3,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            1.0
+                                        ],
+                                        [
+                                            0.0,
+                                            1.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 13
+                            },
+                            {
+                                "piece_id": 4,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            4.0
+                                        ],
+                                        [
+                                            0.0,
+                                            4.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 14
+                            }
+                        ],
+                        "config": {
+                            "placement": {
+                                "allowed_rotations": [
+                                    0.0
+                                ]
+                            },
+                            "enable_hole_first_placement": false
+                        }
+                    }
+                }
+            },
+            "expected": {
+                "improved": true,
+                "baseline_unplaced_piece_count": 1,
+                "baseline_bin_count": 1,
+                "best_unplaced_piece_count": 0,
+                "best_bin_count": 1,
+                "best_piece_order": [
+                    1,
+                    4,
+                    2,
+                    3
+                ],
+                "best_total_utilization": 0.8333333333333334,
+                "iterations_completed": 4,
+                "progress_count": 5,
+                "progress": [
+                    {
+                        "iteration": 0,
+                        "move_kind": "none",
+                        "improved": false,
+                        "best_piece_order": [
+                            1,
+                            2,
+                            3,
+                            4
+                        ]
+                    },
+                    {
+                        "iteration": 1,
+                        "move_kind": "one_piece_insert",
+                        "improved": true,
+                        "best_piece_order": [
+                            1,
+                            4,
+                            2,
+                            3
+                        ]
+                    },
+                    {
+                        "iteration": 2,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            1,
+                            4,
+                            2,
+                            3
+                        ]
+                    },
+                    {
+                        "iteration": 3,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            1,
+                            4,
+                            2,
+                            3
+                        ]
+                    },
+                    {
+                        "iteration": 4,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            1,
+                            4,
+                            2,
+                            3
+                        ]
+                    }
+                ]
+            },
+            "notes": "The baseline and all adjacent swaps strand the tall strip, but an insert kick that moves it ahead of the small fillers recovers the full one-bin layout."
+        },
+        {
+            "id": "search_insert_kick_reduces_two_bin_baseline_to_one_bin",
+            "kind": "search_scenario",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "request": {
+                    "local_search": {
+                        "max_iterations": 8,
+                        "deterministic_seed": 5,
+                        "plateau_budget": 3
+                    },
+                    "decoder_request": {
+                        "policy": "bottom_left",
+                        "max_bin_count": 0,
+                        "bin": {
+                            "base_bin_id": 9,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        4.0
+                                    ],
+                                    [
+                                        0.0,
+                                        4.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 300
+                        },
+                        "pieces": [
+                            {
+                                "piece_id": 1,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 21
+                            },
+                            {
+                                "piece_id": 2,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            1.0
+                                        ],
+                                        [
+                                            0.0,
+                                            1.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 22
+                            },
+                            {
+                                "piece_id": 3,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            1.0
+                                        ],
+                                        [
+                                            0.0,
+                                            1.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 23
+                            },
+                            {
+                                "piece_id": 4,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            4.0
+                                        ],
+                                        [
+                                            0.0,
+                                            4.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 24
+                            }
+                        ],
+                        "config": {
+                            "placement": {
+                                "allowed_rotations": [
+                                    0.0
+                                ]
+                            },
+                            "enable_hole_first_placement": false
+                        }
+                    }
+                }
+            },
+            "expected": {
+                "improved": true,
+                "baseline_unplaced_piece_count": 0,
+                "baseline_bin_count": 2,
+                "best_unplaced_piece_count": 0,
+                "best_bin_count": 1,
+                "best_piece_order": [
+                    1,
+                    4,
+                    2,
+                    3
+                ],
+                "best_total_utilization": 0.8333333333333334,
+                "iterations_completed": 4,
+                "progress_count": 5,
+                "progress": [
+                    {
+                        "iteration": 0,
+                        "move_kind": "none",
+                        "improved": false,
+                        "best_piece_order": [
+                            1,
+                            2,
+                            3,
+                            4
+                        ]
+                    },
+                    {
+                        "iteration": 1,
+                        "move_kind": "one_piece_insert",
+                        "improved": true,
+                        "best_piece_order": [
+                            1,
+                            4,
+                            2,
+                            3
+                        ]
+                    },
+                    {
+                        "iteration": 2,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            1,
+                            4,
+                            2,
+                            3
+                        ]
+                    },
+                    {
+                        "iteration": 3,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            1,
+                            4,
+                            2,
+                            3
+                        ]
+                    },
+                    {
+                        "iteration": 4,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            1,
+                            4,
+                            2,
+                            3
+                        ]
+                    }
+                ]
+            },
+            "notes": "With unlimited bins the baseline decode opens a second bin for the tall strip, and an insert kick collapses the same piece set back to a one-bin layout."
+        },
+        {
+            "id": "search_insert_kick_recovers_full_strip_layout_with_six_pieces",
+            "kind": "search_scenario",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "request": {
+                    "local_search": {
+                        "max_iterations": 10,
+                        "deterministic_seed": 5,
+                        "plateau_budget": 3
+                    },
+                    "decoder_request": {
+                        "policy": "bottom_left",
+                        "max_bin_count": 1,
+                        "bin": {
+                            "base_bin_id": 11,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        4.0
+                                    ],
+                                    [
+                                        0.0,
+                                        4.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 400
+                        },
+                        "pieces": [
+                            {
+                                "piece_id": 1,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 31
+                            },
+                            {
+                                "piece_id": 2,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            1.0
+                                        ],
+                                        [
+                                            0.0,
+                                            1.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 32
+                            },
+                            {
+                                "piece_id": 3,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            1.0
+                                        ],
+                                        [
+                                            0.0,
+                                            1.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 33
+                            },
+                            {
+                                "piece_id": 4,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            1.0
+                                        ],
+                                        [
+                                            0.0,
+                                            1.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 34
+                            },
+                            {
+                                "piece_id": 5,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            1.0
+                                        ],
+                                        [
+                                            0.0,
+                                            1.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 35
+                            },
+                            {
+                                "piece_id": 6,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            4.0
+                                        ],
+                                        [
+                                            0.0,
+                                            4.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 36
+                            }
+                        ],
+                        "config": {
+                            "placement": {
+                                "allowed_rotations": [
+                                    0.0
+                                ]
+                            },
+                            "enable_hole_first_placement": false
+                        }
+                    }
+                }
+            },
+            "expected": {
+                "improved": true,
+                "baseline_unplaced_piece_count": 1,
+                "baseline_bin_count": 1,
+                "best_unplaced_piece_count": 0,
+                "best_bin_count": 1,
+                "best_piece_order": [
+                    6,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                ],
+                "best_total_utilization": 1.0,
+                "iterations_completed": 4,
+                "progress_count": 5,
+                "progress": [
+                    {
+                        "iteration": 0,
+                        "move_kind": "none",
+                        "improved": false,
+                        "best_piece_order": [
+                            1,
+                            2,
+                            3,
+                            4,
+                            5,
+                            6
+                        ]
+                    },
+                    {
+                        "iteration": 1,
+                        "move_kind": "one_piece_insert",
+                        "improved": true,
+                        "best_piece_order": [
+                            6,
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                        ]
+                    },
+                    {
+                        "iteration": 2,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            6,
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                        ]
+                    },
+                    {
+                        "iteration": 3,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            6,
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                        ]
+                    },
+                    {
+                        "iteration": 4,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            6,
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                        ]
+                    }
+                ]
+            },
+            "notes": "This strip-layout case scales up the earlier insert example with four filler rectangles; only moving the full-height strip ahead of the fillers recovers the exact one-bin pack."
+        },
+        {
+            "id": "search_insert_kick_collapses_two_bin_strip_baseline_with_six_pieces",
+            "kind": "search_scenario",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "request": {
+                    "local_search": {
+                        "max_iterations": 10,
+                        "deterministic_seed": 5,
+                        "plateau_budget": 3
+                    },
+                    "decoder_request": {
+                        "policy": "bottom_left",
+                        "max_bin_count": 0,
+                        "bin": {
+                            "base_bin_id": 12,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        4.0
+                                    ],
+                                    [
+                                        0.0,
+                                        4.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 401
+                        },
+                        "pieces": [
+                            {
+                                "piece_id": 1,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 41
+                            },
+                            {
+                                "piece_id": 2,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            1.0
+                                        ],
+                                        [
+                                            0.0,
+                                            1.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 42
+                            },
+                            {
+                                "piece_id": 3,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            1.0
+                                        ],
+                                        [
+                                            0.0,
+                                            1.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 43
+                            },
+                            {
+                                "piece_id": 4,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            1.0
+                                        ],
+                                        [
+                                            0.0,
+                                            1.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 44
+                            },
+                            {
+                                "piece_id": 5,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            1.0
+                                        ],
+                                        [
+                                            0.0,
+                                            1.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 45
+                            },
+                            {
+                                "piece_id": 6,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            4.0
+                                        ],
+                                        [
+                                            0.0,
+                                            4.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 46
+                            }
+                        ],
+                        "config": {
+                            "placement": {
+                                "allowed_rotations": [
+                                    0.0
+                                ]
+                            },
+                            "enable_hole_first_placement": false
+                        }
+                    }
+                }
+            },
+            "expected": {
+                "improved": true,
+                "baseline_unplaced_piece_count": 0,
+                "baseline_bin_count": 2,
+                "best_unplaced_piece_count": 0,
+                "best_bin_count": 1,
+                "best_piece_order": [
+                    6,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                ],
+                "best_total_utilization": 1.0,
+                "iterations_completed": 4,
+                "progress_count": 5,
+                "progress": [
+                    {
+                        "iteration": 0,
+                        "move_kind": "none",
+                        "improved": false,
+                        "best_piece_order": [
+                            1,
+                            2,
+                            3,
+                            4,
+                            5,
+                            6
+                        ]
+                    },
+                    {
+                        "iteration": 1,
+                        "move_kind": "one_piece_insert",
+                        "improved": true,
+                        "best_piece_order": [
+                            6,
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                        ]
+                    },
+                    {
+                        "iteration": 2,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            6,
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                        ]
+                    },
+                    {
+                        "iteration": 3,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            6,
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                        ]
+                    },
+                    {
+                        "iteration": 4,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            6,
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                        ]
+                    }
+                ]
+            },
+            "notes": "This larger strip-layout variant mirrors a small constructive benchmark: the baseline opens a second bin for the full-height strip, and an insert kick collapses the same six-piece set back to one bin."
+        },
+        {
+            "id": "search_hole_host_reordered_first_collapses_two_bin_baseline",
+            "kind": "search_scenario",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "request": {
+                    "local_search": {
+                        "max_iterations": 10,
+                        "deterministic_seed": 5,
+                        "plateau_budget": 3
+                    },
+                    "decoder_request": {
+                        "policy": "bottom_left",
+                        "max_bin_count": 0,
+                        "bin": {
+                            "base_bin_id": 20,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        12.0,
+                                        0.0
+                                    ],
+                                    [
+                                        12.0,
+                                        8.0
+                                    ],
+                                    [
+                                        0.0,
+                                        8.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 500
+                        },
+                        "pieces": [
+                            {
+                                "piece_id": 201,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 51
+                            },
+                            {
+                                "piece_id": 202,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 52
+                            },
+                            {
+                                "piece_id": 203,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            8.0
+                                        ],
+                                        [
+                                            0.0,
+                                            8.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 53
+                            },
+                            {
+                                "piece_id": 204,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            8.0,
+                                            0.0
+                                        ],
+                                        [
+                                            8.0,
+                                            8.0
+                                        ],
+                                        [
+                                            0.0,
+                                            8.0
+                                        ]
+                                    ],
+                                    "holes": [
+                                        [
+                                            [
+                                                2.0,
+                                                2.0
+                                            ],
+                                            [
+                                                2.0,
+                                                6.0
+                                            ],
+                                            [
+                                                6.0,
+                                                6.0
+                                            ],
+                                            [
+                                                6.0,
+                                                2.0
+                                            ]
+                                        ]
+                                    ]
+                                },
+                                "geometry_revision": 54
+                            }
+                        ],
+                        "config": {
+                            "placement": {
+                                "allowed_rotations": [
+                                    0.0
+                                ],
+                                "enable_part_in_part_placement": true
+                            },
+                            "enable_hole_first_placement": true
+                        }
+                    }
+                }
+            },
+            "expected": {
+                "improved": true,
+                "baseline_unplaced_piece_count": 0,
+                "baseline_bin_count": 2,
+                "best_unplaced_piece_count": 0,
+                "best_bin_count": 1,
+                "best_piece_order": [
+                    204,
+                    201,
+                    203,
+                    202
+                ],
+                "best_total_utilization": 0.9166666666666666,
+                "iterations_completed": 5,
+                "progress_count": 6,
+                "progress": [
+                    {
+                        "iteration": 0,
+                        "move_kind": "none",
+                        "improved": false,
+                        "best_piece_order": [
+                            201,
+                            202,
+                            203,
+                            204
+                        ]
+                    },
+                    {
+                        "iteration": 1,
+                        "move_kind": "jostle_oscillation",
+                        "improved": true,
+                        "best_piece_order": [
+                            201,
+                            203,
+                            202,
+                            204
+                        ]
+                    },
+                    {
+                        "iteration": 2,
+                        "move_kind": "one_piece_insert",
+                        "improved": true,
+                        "best_piece_order": [
+                            204,
+                            201,
+                            203,
+                            202
+                        ]
+                    },
+                    {
+                        "iteration": 3,
+                        "move_kind": "one_piece_insert",
+                        "improved": false,
+                        "best_piece_order": [
+                            204,
+                            201,
+                            203,
+                            202
+                        ]
+                    },
+                    {
+                        "iteration": 4,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            204,
+                            201,
+                            203,
+                            202
+                        ]
+                    },
+                    {
+                        "iteration": 5,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            204,
+                            201,
+                            203,
+                            202
+                        ]
+                    }
+                ]
+            },
+            "notes": "This hole-aware scenario mirrors a small benchmark-style nesting pattern: if the host piece with the internal cavity is delayed until the end, the constructive baseline opens a second bin, but reordering it first lets the side strip fill the right edge and the small squares drop into the hole."
+        },
+        {
+            "id": "search_l_shape_host_inserted_ahead_of_rectangles",
+            "kind": "search_scenario",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "request": {
+                    "local_search": {
+                        "max_iterations": 8,
+                        "deterministic_seed": 5,
+                        "plateau_budget": 3
+                    },
+                    "decoder_request": {
+                        "policy": "bottom_left",
+                        "max_bin_count": 0,
+                        "bin": {
+                            "base_bin_id": 30,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        4.0,
+                                        0.0
+                                    ],
+                                    [
+                                        4.0,
+                                        4.0
+                                    ],
+                                    [
+                                        0.0,
+                                        4.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 600
+                        },
+                        "pieces": [
+                            {
+                                "piece_id": 301,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            1.0,
+                                            0.0
+                                        ],
+                                        [
+                                            1.0,
+                                            1.0
+                                        ],
+                                        [
+                                            0.0,
+                                            1.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 61
+                            },
+                            {
+                                "piece_id": 302,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 62
+                            },
+                            {
+                                "piece_id": 303,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            1.0
+                                        ],
+                                        [
+                                            1.0,
+                                            1.0
+                                        ],
+                                        [
+                                            1.0,
+                                            4.0
+                                        ],
+                                        [
+                                            0.0,
+                                            4.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 63
+                            }
+                        ],
+                        "config": {
+                            "placement": {
+                                "allowed_rotations": [
+                                    0.0
+                                ]
+                            },
+                            "enable_hole_first_placement": false
+                        }
+                    }
+                }
+            },
+            "expected": {
+                "improved": true,
+                "baseline_unplaced_piece_count": 0,
+                "baseline_bin_count": 2,
+                "best_unplaced_piece_count": 0,
+                "best_bin_count": 1,
+                "best_piece_order": [
+                    303,
+                    301,
+                    302
+                ],
+                "best_total_utilization": 0.875,
+                "iterations_completed": 4,
+                "progress_count": 5,
+                "progress": [
+                    {
+                        "iteration": 0,
+                        "move_kind": "none",
+                        "improved": false,
+                        "best_piece_order": [
+                            301,
+                            302,
+                            303
+                        ]
+                    },
+                    {
+                        "iteration": 1,
+                        "move_kind": "one_piece_insert",
+                        "improved": true,
+                        "best_piece_order": [
+                            303,
+                            301,
+                            302
+                        ]
+                    },
+                    {
+                        "iteration": 2,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            303,
+                            301,
+                            302
+                        ]
+                    },
+                    {
+                        "iteration": 3,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            303,
+                            301,
+                            302
+                        ]
+                    },
+                    {
+                        "iteration": 4,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            303,
+                            301,
+                            302
+                        ]
+                    }
+                ]
+            },
+            "notes": "The 4x4 L-shape must be placed first so the 3x2 rectangle can occupy the interior notch and leave one final 1x1 slot; delaying the host shape forces a second bin."
+        },
+        {
+            "id": "search_triangle_jostle_reorders_convex_mixed_shape_pack",
+            "kind": "search_scenario",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "request": {
+                    "local_search": {
+                        "max_iterations": 8,
+                        "deterministic_seed": 5,
+                        "plateau_budget": 3
+                    },
+                    "decoder_request": {
+                        "policy": "bottom_left",
+                        "max_bin_count": 0,
+                        "bin": {
+                            "base_bin_id": 40,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        4.0
+                                    ],
+                                    [
+                                        0.0,
+                                        4.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 700
+                        },
+                        "pieces": [
+                            {
+                                "piece_id": 401,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 71
+                            },
+                            {
+                                "piece_id": 402,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 72
+                            },
+                            {
+                                "piece_id": 403,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 73
+                            },
+                            {
+                                "piece_id": 404,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            0.0,
+                                            4.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 74
+                            }
+                        ],
+                        "config": {
+                            "placement": {
+                                "allowed_rotations": [
+                                    0.0
+                                ]
+                            },
+                            "enable_hole_first_placement": false
+                        }
+                    }
+                }
+            },
+            "expected": {
+                "improved": true,
+                "baseline_unplaced_piece_count": 0,
+                "baseline_bin_count": 2,
+                "best_unplaced_piece_count": 0,
+                "best_bin_count": 1,
+                "best_piece_order": [
+                    404,
+                    401,
+                    402,
+                    403
+                ],
+                "best_total_utilization": 0.8333333333333334,
+                "iterations_completed": 4,
+                "progress_count": 5,
+                "progress": [
+                    {
+                        "iteration": 0,
+                        "move_kind": "none",
+                        "improved": false,
+                        "best_piece_order": [
+                            401,
+                            402,
+                            403,
+                            404
+                        ]
+                    },
+                    {
+                        "iteration": 1,
+                        "move_kind": "one_piece_insert",
+                        "improved": true,
+                        "best_piece_order": [
+                            404,
+                            401,
+                            402,
+                            403
+                        ]
+                    },
+                    {
+                        "iteration": 2,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            404,
+                            401,
+                            402,
+                            403
+                        ]
+                    },
+                    {
+                        "iteration": 3,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            404,
+                            401,
+                            402,
+                            403
+                        ]
+                    },
+                    {
+                        "iteration": 4,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            404,
+                            401,
+                            402,
+                            403
+                        ]
+                    }
+                ]
+            },
+            "notes": "This convex mixed-shape case uses a tall right triangle plus rectangles; a local jostle should move the triangle ahead of the trailing square so the entire set fits in one bin."
+        },
+        {
+            "id": "search_preserves_hexagon_rectangle_square_pack",
+            "kind": "search_scenario",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "request": {
+                    "local_search": {
+                        "max_iterations": 6,
+                        "deterministic_seed": 9,
+                        "plateau_budget": 3
+                    },
+                    "decoder_request": {
+                        "policy": "bottom_left",
+                        "max_bin_count": 0,
+                        "bin": {
+                            "base_bin_id": 41,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        4.0
+                                    ],
+                                    [
+                                        0.0,
+                                        4.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 701
+                        },
+                        "pieces": [
+                            {
+                                "piece_id": 501,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 81
+                            },
+                            {
+                                "piece_id": 502,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 82
+                            },
+                            {
+                                "piece_id": 503,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            1.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            1.0
+                                        ],
+                                        [
+                                            3.0,
+                                            2.0
+                                        ],
+                                        [
+                                            1.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            1.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 83
+                            },
+                            {
+                                "piece_id": 504,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 84
+                            }
+                        ],
+                        "config": {
+                            "placement": {
+                                "allowed_rotations": [
+                                    0.0
+                                ]
+                            },
+                            "enable_hole_first_placement": false
+                        }
+                    }
+                }
+            },
+            "expected": {
+                "improved": false,
+                "baseline_unplaced_piece_count": 0,
+                "baseline_bin_count": 1,
+                "best_unplaced_piece_count": 0,
+                "best_bin_count": 1,
+                "best_piece_order": [
+                    501,
+                    502,
+                    503,
+                    504
+                ],
+                "best_total_utilization": 0.9166666666666666,
+                "iterations_completed": 3,
+                "progress_count": 4,
+                "progress": [
+                    {
+                        "iteration": 0,
+                        "move_kind": "none",
+                        "improved": false,
+                        "best_piece_order": [
+                            501,
+                            502,
+                            503,
+                            504
+                        ]
+                    },
+                    {
+                        "iteration": 1,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            501,
+                            502,
+                            503,
+                            504
+                        ]
+                    },
+                    {
+                        "iteration": 2,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            501,
+                            502,
+                            503,
+                            504
+                        ]
+                    },
+                    {
+                        "iteration": 3,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            501,
+                            502,
+                            503,
+                            504
+                        ]
+                    }
+                ]
+            },
+            "notes": "This mixed convex layout reuses the rectangle-hexagon geometry from the NFP corpus and should already be optimal in one bin, so search must preserve the constructive baseline."
+        },
+        {
+            "id": "search_preserves_triangle_family_mixed_convex_pack",
+            "kind": "search_scenario",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "request": {
+                    "local_search": {
+                        "max_iterations": 6,
+                        "deterministic_seed": 11,
+                        "plateau_budget": 3
+                    },
+                    "decoder_request": {
+                        "policy": "bottom_left",
+                        "max_bin_count": 0,
+                        "bin": {
+                            "base_bin_id": 42,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        4.0
+                                    ],
+                                    [
+                                        0.0,
+                                        4.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 702
+                        },
+                        "pieces": [
+                            {
+                                "piece_id": 601,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 91
+                            },
+                            {
+                                "piece_id": 602,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            0.0
+                                        ],
+                                        [
+                                            1.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 92
+                            },
+                            {
+                                "piece_id": 603,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            0.0,
+                                            1.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 93
+                            },
+                            {
+                                "piece_id": 604,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 94
+                            }
+                        ],
+                        "config": {
+                            "placement": {
+                                "allowed_rotations": [
+                                    0.0
+                                ]
+                            },
+                            "enable_hole_first_placement": false
+                        }
+                    }
+                }
+            },
+            "expected": {
+                "improved": false,
+                "baseline_unplaced_piece_count": 0,
+                "baseline_bin_count": 1,
+                "best_unplaced_piece_count": 0,
+                "best_bin_count": 1,
+                "best_piece_order": [
+                    601,
+                    602,
+                    603,
+                    604
+                ],
+                "best_total_utilization": 0.5833333333333334,
+                "iterations_completed": 3,
+                "progress_count": 4,
+                "progress": [
+                    {
+                        "iteration": 0,
+                        "move_kind": "none",
+                        "improved": false,
+                        "best_piece_order": [
+                            601,
+                            602,
+                            603,
+                            604
+                        ]
+                    },
+                    {
+                        "iteration": 1,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            601,
+                            602,
+                            603,
+                            604
+                        ]
+                    },
+                    {
+                        "iteration": 2,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            601,
+                            602,
+                            603,
+                            604
+                        ]
+                    },
+                    {
+                        "iteration": 3,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            601,
+                            602,
+                            603,
+                            604
+                        ]
+                    }
+                ]
+            },
+            "notes": "This mixed convex preserve case uses both exact triangles from the convex triangle-triangle NFP fixture plus a rectangle and square; search should leave the already-valid one-bin baseline unchanged."
+        },
+        {
+            "id": "search_plateau_then_improve_strip_layout",
+            "kind": "search_scenario",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "request": {
+                    "local_search": {
+                        "max_iterations": 10,
+                        "deterministic_seed": 1,
+                        "plateau_budget": 3
+                    },
+                    "decoder_request": {
+                        "policy": "bottom_left",
+                        "max_bin_count": 1,
+                        "bin": {
+                            "base_bin_id": 51,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        4.0
+                                    ],
+                                    [
+                                        0.0,
+                                        4.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 901
+                        },
+                        "pieces": [
+                            {
+                                "piece_id": 2,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            1.0
+                                        ],
+                                        [
+                                            0.0,
+                                            1.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 102
+                            },
+                            {
+                                "piece_id": 3,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            1.0
+                                        ],
+                                        [
+                                            0.0,
+                                            1.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 103
+                            },
+                            {
+                                "piece_id": 1,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 101
+                            },
+                            {
+                                "piece_id": 6,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            4.0
+                                        ],
+                                        [
+                                            0.0,
+                                            4.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 106
+                            },
+                            {
+                                "piece_id": 4,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            1.0
+                                        ],
+                                        [
+                                            0.0,
+                                            1.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 104
+                            },
+                            {
+                                "piece_id": 5,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            1.0
+                                        ],
+                                        [
+                                            0.0,
+                                            1.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 105
+                            }
+                        ],
+                        "config": {
+                            "placement": {
+                                "allowed_rotations": [
+                                    0.0
+                                ]
+                            },
+                            "enable_hole_first_placement": false
+                        }
+                    }
+                }
+            },
+            "expected": {
+                "improved": true,
+                "baseline_unplaced_piece_count": 1,
+                "baseline_bin_count": 1,
+                "best_unplaced_piece_count": 0,
+                "best_bin_count": 1,
+                "best_piece_order": [
+                    6,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                ],
+                "best_total_utilization": 1.0,
+                "iterations_completed": 6,
+                "progress_count": 7,
+                "progress": [
+                    {
+                        "iteration": 0,
+                        "move_kind": "none",
+                        "improved": false,
+                        "best_piece_order": [
+                            2,
+                            3,
+                            1,
+                            6,
+                            4,
+                            5
+                        ]
+                    },
+                    {
+                        "iteration": 1,
+                        "move_kind": "one_piece_insert",
+                        "improved": true,
+                        "best_piece_order": [
+                            2,
+                            6,
+                            3,
+                            1,
+                            4,
+                            5
+                        ]
+                    },
+                    {
+                        "iteration": 2,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            2,
+                            6,
+                            3,
+                            1,
+                            4,
+                            5
+                        ]
+                    },
+                    {
+                        "iteration": 3,
+                        "move_kind": "one_piece_insert",
+                        "improved": true,
+                        "best_piece_order": [
+                            6,
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                        ]
+                    },
+                    {
+                        "iteration": 4,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            6,
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                        ]
+                    },
+                    {
+                        "iteration": 5,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            6,
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                        ]
+                    },
+                    {
+                        "iteration": 6,
+                        "move_kind": "jostle_oscillation",
+                        "improved": false,
+                        "best_piece_order": [
+                            6,
+                            1,
+                            2,
+                            3,
+                            4,
+                            5
+                        ]
+                    }
+                ]
+            },
+            "notes": "This strip-layout case records a real plateau-then-improve sequence from the current engine: search first finds a partial insert improvement, then spends one non-improving plateau iteration, and only after that later insert step reaches the full one-bin packing."
+        }
+    ]
+}

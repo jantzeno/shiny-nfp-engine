@@ -1,0 +1,204 @@
+{
+    "kind": "point_in_ring",
+    "fixtures": [
+        {
+            "id": "point_in_ring_square_interior",
+            "kind": "point_in_ring",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "point": [
+                    2.0,
+                    2.0
+                ],
+                "ring": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        10.0,
+                        0.0
+                    ],
+                    [
+                        10.0,
+                        10.0
+                    ],
+                    [
+                        0.0,
+                        10.0
+                    ]
+                ]
+            },
+            "expected": {
+                "location": "interior",
+                "edge_index": -1,
+                "vertex_index": -1
+            },
+            "notes": "Strict interior point in CCW square."
+        },
+        {
+            "id": "point_in_ring_square_exterior",
+            "kind": "point_in_ring",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "point": [
+                    12.0,
+                    2.0
+                ],
+                "ring": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        10.0,
+                        0.0
+                    ],
+                    [
+                        10.0,
+                        10.0
+                    ],
+                    [
+                        0.0,
+                        10.0
+                    ]
+                ]
+            },
+            "expected": {
+                "location": "exterior",
+                "edge_index": -1,
+                "vertex_index": -1
+            },
+            "notes": "Strict exterior point."
+        },
+        {
+            "id": "point_in_ring_square_edge_boundary",
+            "kind": "point_in_ring",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "point": [
+                    2.0,
+                    0.0
+                ],
+                "ring": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        10.0,
+                        0.0
+                    ],
+                    [
+                        10.0,
+                        10.0
+                    ],
+                    [
+                        0.0,
+                        10.0
+                    ]
+                ]
+            },
+            "expected": {
+                "location": "boundary",
+                "edge_index": 0,
+                "vertex_index": -1
+            },
+            "notes": "Point lies on edge interior."
+        },
+        {
+            "id": "point_in_ring_square_vertex_boundary",
+            "kind": "point_in_ring",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "point": [
+                    0.0,
+                    0.0
+                ],
+                "ring": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        10.0,
+                        0.0
+                    ],
+                    [
+                        10.0,
+                        10.0
+                    ],
+                    [
+                        0.0,
+                        10.0
+                    ]
+                ]
+            },
+            "expected": {
+                "location": "boundary",
+                "edge_index": 0,
+                "vertex_index": 0
+            },
+            "notes": "Point lies exactly on a vertex."
+        },
+        {
+            "id": "point_in_ring_clockwise_square_interior",
+            "kind": "point_in_ring",
+            "normative": false,
+            "source": "handmade",
+            "inputs": {
+                "point": [
+                    2.0,
+                    2.0
+                ],
+                "ring": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        10.0
+                    ],
+                    [
+                        10.0,
+                        10.0
+                    ],
+                    [
+                        10.0,
+                        0.0
+                    ]
+                ]
+            },
+            "expected": {
+                "location": "interior",
+                "edge_index": -1,
+                "vertex_index": -1
+            },
+            "notes": "Interior classification should not depend on winding."
+        },
+        {
+            "id": "point_in_ring_empty_ring_exterior",
+            "kind": "point_in_ring",
+            "normative": false,
+            "source": "handmade",
+            "inputs": {
+                "point": [
+                    0.0,
+                    0.0
+                ],
+                "ring": []
+            },
+            "expected": {
+                "location": "exterior",
+                "edge_index": -1,
+                "vertex_index": -1
+            },
+            "notes": "Empty ring remains exterior."
+        }
+    ]
+}

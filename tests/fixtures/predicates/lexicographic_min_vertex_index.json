@@ -1,0 +1,35 @@
+{
+    "kind": "lexicographic_min_vertex_index",
+    "fixtures": [
+        {
+            "id": "lexicographic_min_vertex_index_simple_ring",
+            "kind": "lexicographic_min_vertex_index",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "ring": [
+                    [
+                        2.0,
+                        2.0
+                    ],
+                    [
+                        0.0,
+                        1.0
+                    ],
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        1.0,
+                        0.0
+                    ]
+                ]
+            },
+            "expected": {
+                "min_vertex_index": 2
+            },
+            "notes": "Lexicographically minimum vertex should be chosen deterministically."
+        }
+    ]
+}

@@ -1,0 +1,170 @@
+{
+    "kind": "nonconvex_graph_extract",
+    "algorithm": "nonconvex_graph_nfp",
+    "fixtures": [
+        {
+            "id": "nonconvex_nested_loops_hole_classification",
+            "kind": "nonconvex_graph_extract",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "graph": {
+                    "vertices": [
+                        {
+                            "id": 0,
+                            "point": [
+                                0.0,
+                                0.0
+                            ],
+                            "kind": "original_vertex"
+                        },
+                        {
+                            "id": 1,
+                            "point": [
+                                5.0,
+                                0.0
+                            ],
+                            "kind": "original_vertex"
+                        },
+                        {
+                            "id": 2,
+                            "point": [
+                                5.0,
+                                5.0
+                            ],
+                            "kind": "original_vertex"
+                        },
+                        {
+                            "id": 3,
+                            "point": [
+                                0.0,
+                                5.0
+                            ],
+                            "kind": "original_vertex"
+                        },
+                        {
+                            "id": 4,
+                            "point": [
+                                1.0,
+                                1.0
+                            ],
+                            "kind": "original_vertex"
+                        },
+                        {
+                            "id": 5,
+                            "point": [
+                                4.0,
+                                1.0
+                            ],
+                            "kind": "original_vertex"
+                        },
+                        {
+                            "id": 6,
+                            "point": [
+                                4.0,
+                                4.0
+                            ],
+                            "kind": "original_vertex"
+                        },
+                        {
+                            "id": 7,
+                            "point": [
+                                1.0,
+                                4.0
+                            ],
+                            "kind": "original_vertex"
+                        }
+                    ],
+                    "edges": [
+                        {
+                            "from": 0,
+                            "to": 1,
+                            "kind": "boundary_edge"
+                        },
+                        {
+                            "from": 1,
+                            "to": 2,
+                            "kind": "boundary_edge"
+                        },
+                        {
+                            "from": 2,
+                            "to": 3,
+                            "kind": "boundary_edge"
+                        },
+                        {
+                            "from": 3,
+                            "to": 0,
+                            "kind": "boundary_edge"
+                        },
+                        {
+                            "from": 4,
+                            "to": 5,
+                            "kind": "boundary_edge"
+                        },
+                        {
+                            "from": 5,
+                            "to": 6,
+                            "kind": "boundary_edge"
+                        },
+                        {
+                            "from": 6,
+                            "to": 7,
+                            "kind": "boundary_edge"
+                        },
+                        {
+                            "from": 7,
+                            "to": 4,
+                            "kind": "boundary_edge"
+                        }
+                    ],
+                    "pruned": false
+                }
+            },
+            "expected": {
+                "outer_loops": [
+                    [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            5.0,
+                            0.0
+                        ],
+                        [
+                            5.0,
+                            5.0
+                        ],
+                        [
+                            0.0,
+                            5.0
+                        ]
+                    ]
+                ],
+                "holes": [
+                    [
+                        [
+                            1.0,
+                            1.0
+                        ],
+                        [
+                            1.0,
+                            4.0
+                        ],
+                        [
+                            4.0,
+                            4.0
+                        ],
+                        [
+                            4.0,
+                            1.0
+                        ]
+                    ]
+                ],
+                "perfect_fit_points": [],
+                "perfect_sliding_segments": []
+            },
+            "notes": "Extraction must classify the nested inner cycle as a hole instead of emitting two outer loops."
+        }
+    ]
+}

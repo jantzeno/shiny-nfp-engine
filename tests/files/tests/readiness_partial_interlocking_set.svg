@@ -1,0 +1,14 @@
+<svg viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg">
+  <polygon fill="#CCCCCC" stroke="#000" stroke-width="2" 
+    points="10,10 10,490 200,490 200,430 300,430 300,490 490,490 490,10 300,10 300,70 200,70 200,10" id="bed">
+    <path d="M 120 120 L 120 380 L 380 380 L 380 120 Z" fill="white" stroke="#000" stroke-width="2"/>
+  </polygon>
+
+  <polygon fill="#FF0000" stroke="#000" points="520,10 650,10 650,100 570,100 570,200 650,200 650,300 520,300" id="interlock_red"/>
+  
+  <polygon fill="#FFFF00" stroke="#000" points="670,10 770,10 770,300 670,300 670,220 740,220 740,160 670,160 670,90 740,90 740,10 670,10" id="interlock_yellow"/>
+  
+  <polygon fill="#00AA00" stroke="#000" points="790,10 900,10 900,300 790,300 790,220 860,220 860,160 790,160 790,90 860,90 860,10 790,10" id="interlock_green"/>
+
+  <polygon fill="#0000FF" stroke="#000" points="920,10 990,10 990,300 920,300 920,220 980,220 980,160 920,160 920,90 980,90 980,10 920,10" id="interlock_blue"/>
+</svg>

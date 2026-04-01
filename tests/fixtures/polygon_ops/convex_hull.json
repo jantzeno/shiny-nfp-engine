@@ -1,0 +1,154 @@
+{
+    "kind": "convex_hull",
+    "fixtures": [
+        {
+            "id": "convex_hull_of_concave_l_shape",
+            "kind": "convex_hull",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "polygon": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            4.0,
+                            0.0
+                        ],
+                        [
+                            4.0,
+                            1.0
+                        ],
+                        [
+                            1.0,
+                            1.0
+                        ],
+                        [
+                            1.0,
+                            4.0
+                        ],
+                        [
+                            0.0,
+                            4.0
+                        ]
+                    ],
+                    "holes": []
+                }
+            },
+            "expected": {
+                "outer": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        1.0
+                    ],
+                    [
+                        1.0,
+                        4.0
+                    ],
+                    [
+                        0.0,
+                        4.0
+                    ]
+                ],
+                "holes": []
+            },
+            "notes": "Concave vertices are excluded from the hull."
+        },
+        {
+            "id": "convex_hull_ignores_hole_topology",
+            "kind": "convex_hull",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "polygon": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            5.0,
+                            0.0
+                        ],
+                        [
+                            5.0,
+                            5.0
+                        ],
+                        [
+                            3.0,
+                            5.0
+                        ],
+                        [
+                            3.0,
+                            2.0
+                        ],
+                        [
+                            2.0,
+                            2.0
+                        ],
+                        [
+                            2.0,
+                            5.0
+                        ],
+                        [
+                            0.0,
+                            5.0
+                        ]
+                    ],
+                    "holes": [
+                        [
+                            [
+                                2.25,
+                                2.25
+                            ],
+                            [
+                                2.25,
+                                3.5
+                            ],
+                            [
+                                3.75,
+                                3.5
+                            ],
+                            [
+                                3.75,
+                                2.25
+                            ]
+                        ]
+                    ]
+                }
+            },
+            "expected": {
+                "outer": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        5.0,
+                        0.0
+                    ],
+                    [
+                        5.0,
+                        5.0
+                    ],
+                    [
+                        0.0,
+                        5.0
+                    ]
+                ],
+                "holes": []
+            },
+            "notes": "Hull is computed from the occupied polygon boundary and remains a simple outer ring."
+        }
+    ]
+}

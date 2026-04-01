@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 6500 1600"
+   version="1.1"
+   id="svg13"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs13" />
+  
+  <polygon
+     fill="#d3d3d3"
+     stroke="#010101"
+     stroke-miterlimit="10"
+     points="800,1250 800,1170 900,1170 900,1250 1600,1250 1600,1170 1700,1170 1700,1250 2200,1250 2200,1170 2300,1170 2300,1250 2500,1250 2500,2 2,2 2,1250 "
+     id="bed"
+     transform="translate(-1.5,-1.5)" />
+
+  <polygon fill="red" stroke="#010101" points="2600 400, 3400 400, 3400 0, 2600 0 " id="polygon2" />
+  <polygon fill="yellow" stroke="#010101" points="3600 200, 4400 200, 4400 0, 3600 0 " id="polygon3" />
+  <polygon fill="green" stroke="#010101" points="4600 100, 5400 100, 5400 0, 4600 0 " id="polygon4" />
+  <polygon fill="blue" stroke="#010101" points="5600 200, 6400 200, 6400 0, 5600 0 " id="polygon5" />
+  
+  <polygon fill="red" stroke="#010101" points="2600 1000, 3400 1000, 3400 600, 2600 600 " id="polygon6" />
+  <polygon fill="yellow" stroke="#010101" points="3600 700, 4400 700, 4400 500, 3600 500 " id="polygon7" />
+  <polygon fill="green" stroke="#010101" points="4600 600, 5400 600, 5400 500, 4600 500 " id="polygon8" />
+  <polygon fill="blue" stroke="#010101" points="5600 700, 6400 700, 6400 500, 5600 500 " id="polygon9" />
+  
+  <polygon fill="red" stroke="#010101" points="2600 1500, 3400 1500, 3400 1100, 2600 1100 " id="polygon10" />
+  <polygon fill="yellow" stroke="#010101" points="3600 1200, 4400 1200, 4400 1000, 3600 1000 " id="polygon11" />
+  <polygon fill="green" stroke="#010101" points="4600 1100, 5400 1100, 5400 1000, 4600 1000 " id="polygon12" />
+  <polygon fill="blue" stroke="#010101" points="5600 1200, 6400 1200, 6400 1000, 5600 1000 " id="polygon13" />
+</svg>

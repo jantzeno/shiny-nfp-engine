@@ -1,0 +1,101 @@
+{
+    "kind": "orientation",
+    "fixtures": [
+        {
+            "id": "orientation_left_turn",
+            "kind": "orientation",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "a": [
+                    0.0,
+                    0.0
+                ],
+                "b": [
+                    3.0,
+                    0.0
+                ],
+                "c": [
+                    1.0,
+                    2.0
+                ]
+            },
+            "expected": {
+                "orientation": "left_turn"
+            },
+            "notes": "Strict left turn."
+        },
+        {
+            "id": "orientation_right_turn",
+            "kind": "orientation",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "a": [
+                    0.0,
+                    0.0
+                ],
+                "b": [
+                    3.0,
+                    0.0
+                ],
+                "c": [
+                    1.0,
+                    -2.0
+                ]
+            },
+            "expected": {
+                "orientation": "right_turn"
+            },
+            "notes": "Strict right turn."
+        },
+        {
+            "id": "orientation_collinear",
+            "kind": "orientation",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "a": [
+                    0.0,
+                    0.0
+                ],
+                "b": [
+                    3.0,
+                    0.0
+                ],
+                "c": [
+                    1.0,
+                    0.0
+                ]
+            },
+            "expected": {
+                "orientation": "collinear"
+            },
+            "notes": "Exact collinearity."
+        },
+        {
+            "id": "orientation_repeated_point_degenerate",
+            "kind": "orientation",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "a": [
+                    2.0,
+                    2.0
+                ],
+                "b": [
+                    2.0,
+                    2.0
+                ],
+                "c": [
+                    5.0,
+                    5.0
+                ]
+            },
+            "expected": {
+                "orientation": "collinear"
+            },
+            "notes": "Repeated endpoint degeneracy."
+        }
+    ]
+}

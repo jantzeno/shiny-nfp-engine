@@ -1,0 +1,314 @@
+{
+    "kind": "convex_nfp",
+    "algorithm": "convex_nfp",
+    "fixtures": [
+        {
+            "id": "convex_nfp_square_square_r0_r0",
+            "kind": "convex_nfp",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "piece_a_id": 1,
+                "piece_b_id": 2,
+                "convex_a": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        2.0,
+                        0.0
+                    ],
+                    [
+                        2.0,
+                        2.0
+                    ],
+                    [
+                        0.0,
+                        2.0
+                    ]
+                ],
+                "convex_b": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        1.0,
+                        0.0
+                    ],
+                    [
+                        1.0,
+                        1.0
+                    ],
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ],
+                "rotation_a": 0,
+                "rotation_b": 0
+            },
+            "expected": {
+                "outer_loops": [
+                    [
+                        [
+                            -1.0,
+                            -1.0
+                        ],
+                        [
+                            2.0,
+                            -1.0
+                        ],
+                        [
+                            2.0,
+                            2.0
+                        ],
+                        [
+                            -1.0,
+                            2.0
+                        ]
+                    ]
+                ]
+            },
+            "notes": "Axis-aligned squares produce an axis-aligned convex NFP square."
+        },
+        {
+            "id": "convex_nfp_square_right_triangle_r0_r0",
+            "kind": "convex_nfp",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "piece_a_id": 3,
+                "piece_b_id": 4,
+                "convex_a": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        2.0,
+                        0.0
+                    ],
+                    [
+                        2.0,
+                        2.0
+                    ],
+                    [
+                        0.0,
+                        2.0
+                    ]
+                ],
+                "convex_b": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        1.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ],
+                "rotation_a": 0,
+                "rotation_b": 0
+            },
+            "expected": {
+                "outer_loops": [
+                    [
+                        [
+                            -1.0,
+                            0.0
+                        ],
+                        [
+                            0.0,
+                            -1.0
+                        ],
+                        [
+                            2.0,
+                            -1.0
+                        ],
+                        [
+                            2.0,
+                            2.0
+                        ],
+                        [
+                            -1.0,
+                            2.0
+                        ]
+                    ]
+                ]
+            },
+            "notes": "The reflected right-triangle edge contributes the leading diagonal edge in the merged convex NFP boundary."
+        },
+        {
+            "id": "convex_nfp_rectangle_hexagon_r0_r0",
+            "kind": "convex_nfp",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "piece_a_id": 5,
+                "piece_b_id": 6,
+                "convex_a": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        2.0
+                    ],
+                    [
+                        0.0,
+                        2.0
+                    ]
+                ],
+                "convex_b": [
+                    [
+                        1.0,
+                        0.0
+                    ],
+                    [
+                        3.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        1.0
+                    ],
+                    [
+                        3.0,
+                        2.0
+                    ],
+                    [
+                        1.0,
+                        2.0
+                    ],
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ],
+                "rotation_a": 0,
+                "rotation_b": 0
+            },
+            "expected": {
+                "outer_loops": [
+                    [
+                        [
+                            -4.0,
+                            -1.0
+                        ],
+                        [
+                            -3.0,
+                            -2.0
+                        ],
+                        [
+                            3.0,
+                            -2.0
+                        ],
+                        [
+                            4.0,
+                            -1.0
+                        ],
+                        [
+                            4.0,
+                            1.0
+                        ],
+                        [
+                            3.0,
+                            2.0
+                        ],
+                        [
+                            -3.0,
+                            2.0
+                        ],
+                        [
+                            -4.0,
+                            1.0
+                        ]
+                    ]
+                ]
+            },
+            "notes": "Rectangle against hexagon expands to an octagonal convex NFP with horizontal sliding spans."
+        },
+        {
+            "id": "convex_nfp_triangle_triangle_r0_r0",
+            "kind": "convex_nfp",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "piece_a_id": 7,
+                "piece_b_id": 8,
+                "convex_a": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        3.0,
+                        0.0
+                    ],
+                    [
+                        1.0,
+                        2.0
+                    ]
+                ],
+                "convex_b": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        2.0,
+                        0.0
+                    ],
+                    [
+                        0.0,
+                        1.0
+                    ]
+                ],
+                "rotation_a": 0,
+                "rotation_b": 0
+            },
+            "expected": {
+                "outer_loops": [
+                    [
+                        [
+                            -2.0,
+                            0.0
+                        ],
+                        [
+                            0.0,
+                            -1.0
+                        ],
+                        [
+                            3.0,
+                            -1.0
+                        ],
+                        [
+                            3.0,
+                            0.0
+                        ],
+                        [
+                            1.0,
+                            2.0
+                        ],
+                        [
+                            -1.0,
+                            2.0
+                        ]
+                    ]
+                ]
+            },
+            "notes": "Triangle-triangle NFP remains convex and normalized with six ordered vertices."
+        }
+    ]
+}

@@ -1,0 +1,59 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Linker files
+*.ilk
+
+# Debugger Files
+*.pdb
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Local build outputs
+.xmake/
+build/
+
+# Clangd
+.cache/
+.vscode/compile_commands.json
+.github/agents/*.agent.md
+.tmp/
+
+# debug information files
+*.dwo
+
+## Generated benchmark summaries
+# benchmarks/results/benchmark-summary-*.jsonl
+# benchmarks/results/latest.jsonl
+
+vendor/
+docs/
+benchmarks/

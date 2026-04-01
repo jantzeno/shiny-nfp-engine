@@ -1,0 +1,342 @@
+{
+    "kind": "search_scenario",
+    "algorithm": "genetic_search",
+    "fixtures": [
+        {
+            "id": "genetic_search_reorders_tall_piece_forward",
+            "kind": "search_scenario",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "request": {
+                    "local_search": {
+                        "max_iterations": 3,
+                        "deterministic_seed": 11,
+                        "plateau_budget": 2
+                    },
+                    "genetic_search": {
+                        "max_generations": 6,
+                        "population_size": 8,
+                        "deterministic_seed": 17,
+                        "mutation_rate_percent": 20,
+                        "elite_count": 2,
+                        "tournament_size": 3,
+                        "plateau_generations": 3,
+                        "enable_local_search_polish": true,
+                        "enabled": true
+                    },
+                    "decoder_request": {
+                        "policy": "bottom_left",
+                        "max_bin_count": 1,
+                        "bin": {
+                            "base_bin_id": 5,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        4.0
+                                    ],
+                                    [
+                                        0.0,
+                                        4.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 100
+                        },
+                        "pieces": [
+                            {
+                                "piece_id": 1,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            0.0
+                                        ],
+                                        [
+                                            4.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 1,
+                                "grain_compatibility": "parallel_to_bed"
+                            },
+                            {
+                                "piece_id": 2,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 2
+                            },
+                            {
+                                "piece_id": 3,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            0.0
+                                        ],
+                                        [
+                                            2.0,
+                                            4.0
+                                        ],
+                                        [
+                                            0.0,
+                                            4.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 3
+                            }
+                        ],
+                        "config": {
+                            "placement": {
+                                "allowed_rotations": [
+                                    0.0
+                                ],
+                                "bed_grain_direction": "along_x"
+                            },
+                            "enable_hole_first_placement": false
+                        }
+                    }
+                }
+            },
+            "expected": {
+                "improved": true,
+                "baseline_unplaced_piece_count": 1,
+                "best_unplaced_piece_count": 0,
+                "best_bin_count": 1,
+                "best_piece_order": [
+                    1,
+                    3,
+                    2
+                ],
+                "best_total_utilization": 0.8333333333333334,
+                "iterations_completed": 4,
+                "progress_count": 5
+            },
+            "notes": "The production GA should discover the one-bin order deterministically on the canonical three-piece sample."
+        },
+        {
+            "id": "genetic_search_preserves_full_layout_when_baseline_is_optimal",
+            "kind": "search_scenario",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "request": {
+                    "local_search": {
+                        "max_iterations": 2,
+                        "deterministic_seed": 5,
+                        "plateau_budget": 1
+                    },
+                    "genetic_search": {
+                        "max_generations": 6,
+                        "population_size": 8,
+                        "deterministic_seed": 9,
+                        "mutation_rate_percent": 20,
+                        "elite_count": 2,
+                        "tournament_size": 3,
+                        "plateau_generations": 3,
+                        "enable_local_search_polish": true,
+                        "enabled": true
+                    },
+                    "decoder_request": {
+                        "policy": "bottom_left",
+                        "max_bin_count": 0,
+                        "bin": {
+                            "base_bin_id": 5,
+                            "polygon": {
+                                "outer": [
+                                    [
+                                        0.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        0.0
+                                    ],
+                                    [
+                                        6.0,
+                                        4.0
+                                    ],
+                                    [
+                                        0.0,
+                                        4.0
+                                    ]
+                                ],
+                                "holes": []
+                            },
+                            "geometry_revision": 100
+                        },
+                        "pieces": [
+                            {
+                                "piece_id": 1,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 1
+                            },
+                            {
+                                "piece_id": 2,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 2
+                            },
+                            {
+                                "piece_id": 3,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 3
+                            },
+                            {
+                                "piece_id": 4,
+                                "polygon": {
+                                    "outer": [
+                                        [
+                                            0.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            0.0
+                                        ],
+                                        [
+                                            3.0,
+                                            2.0
+                                        ],
+                                        [
+                                            0.0,
+                                            2.0
+                                        ]
+                                    ],
+                                    "holes": []
+                                },
+                                "geometry_revision": 4
+                            }
+                        ],
+                        "config": {
+                            "placement": {
+                                "allowed_rotations": [
+                                    0.0
+                                ]
+                            },
+                            "enable_hole_first_placement": false
+                        }
+                    }
+                }
+            },
+            "expected": {
+                "improved": false,
+                "baseline_unplaced_piece_count": 0,
+                "best_unplaced_piece_count": 0,
+                "best_bin_count": 1,
+                "best_piece_order": [
+                    1,
+                    2,
+                    3,
+                    4
+                ],
+                "best_total_utilization": 1.0
+            },
+            "notes": "The GA should preserve the exact one-bin baseline on the symmetric rectangle pack."
+        }
+    ]
+}

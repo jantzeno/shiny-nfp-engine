@@ -1,0 +1,714 @@
+{
+    "kind": "decomposition",
+    "fixtures": [
+        {
+            "id": "decomposition_convex_rectangle_r0",
+            "kind": "decomposition",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "piece_id": 41,
+                "rotation_degrees": 0.0,
+                "algorithm": "cgal_optimal_convex_partition",
+                "polygon": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            5.0,
+                            0.0
+                        ],
+                        [
+                            5.0,
+                            2.0
+                        ],
+                        [
+                            0.0,
+                            2.0
+                        ]
+                    ],
+                    "holes": []
+                }
+            },
+            "expected": {
+                "component_count": 1,
+                "validity": "valid",
+                "signed_area": 10.0,
+                "normalized_components": [
+                    [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            5.0,
+                            0.0
+                        ],
+                        [
+                            5.0,
+                            2.0
+                        ],
+                        [
+                            0.0,
+                            2.0
+                        ]
+                    ]
+                ]
+            },
+            "notes": "Already-convex input should return one normalized convex component unchanged."
+        },
+        {
+            "id": "decomposition_l_shape_r0",
+            "kind": "decomposition",
+            "normative": true,
+            "source": "handmade",
+            "stability_group": "l_shape_rotation",
+            "inputs": {
+                "piece_id": 42,
+                "rotation_degrees": 0.0,
+                "algorithm": "cgal_optimal_convex_partition",
+                "polygon": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            4.0,
+                            0.0
+                        ],
+                        [
+                            4.0,
+                            1.0
+                        ],
+                        [
+                            1.0,
+                            1.0
+                        ],
+                        [
+                            1.0,
+                            4.0
+                        ],
+                        [
+                            0.0,
+                            4.0
+                        ]
+                    ],
+                    "holes": []
+                }
+            },
+            "expected": {
+                "component_count": 2,
+                "validity": "valid",
+                "signed_area": 7.0
+            },
+            "notes": "A simple L-shape should decompose into two convex components under the optimal partition path."
+        },
+        {
+            "id": "decomposition_l_shape_r90",
+            "kind": "decomposition",
+            "normative": true,
+            "source": "handmade",
+            "stability_group": "l_shape_rotation",
+            "inputs": {
+                "piece_id": 42,
+                "rotation_degrees": 90.0,
+                "algorithm": "cgal_optimal_convex_partition",
+                "polygon": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            0.0,
+                            4.0
+                        ],
+                        [
+                            -1.0,
+                            4.0
+                        ],
+                        [
+                            -1.0,
+                            1.0
+                        ],
+                        [
+                            -4.0,
+                            1.0
+                        ],
+                        [
+                            -4.0,
+                            0.0
+                        ]
+                    ],
+                    "holes": []
+                }
+            },
+            "expected": {
+                "component_count": 2,
+                "validity": "valid",
+                "signed_area": 7.0
+            },
+            "notes": "The L-shape rotated 90 degrees CCW should decompose into the same canonical convex components after inverse rotation."
+        },
+        {
+            "id": "decomposition_l_shape_r180",
+            "kind": "decomposition",
+            "normative": true,
+            "source": "handmade",
+            "stability_group": "l_shape_rotation",
+            "inputs": {
+                "piece_id": 42,
+                "rotation_degrees": 180.0,
+                "algorithm": "cgal_optimal_convex_partition",
+                "polygon": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            -4.0,
+                            0.0
+                        ],
+                        [
+                            -4.0,
+                            -1.0
+                        ],
+                        [
+                            -1.0,
+                            -1.0
+                        ],
+                        [
+                            -1.0,
+                            -4.0
+                        ],
+                        [
+                            0.0,
+                            -4.0
+                        ]
+                    ],
+                    "holes": []
+                }
+            },
+            "expected": {
+                "component_count": 2,
+                "validity": "valid",
+                "signed_area": 7.0
+            },
+            "notes": "The L-shape rotated 180 degrees should preserve the canonical decomposition signature after inverse rotation."
+        },
+        {
+            "id": "decomposition_l_shape_r270",
+            "kind": "decomposition",
+            "normative": true,
+            "source": "handmade",
+            "stability_group": "l_shape_rotation",
+            "inputs": {
+                "piece_id": 42,
+                "rotation_degrees": 270.0,
+                "algorithm": "cgal_optimal_convex_partition",
+                "polygon": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            0.0,
+                            -4.0
+                        ],
+                        [
+                            1.0,
+                            -4.0
+                        ],
+                        [
+                            1.0,
+                            -1.0
+                        ],
+                        [
+                            4.0,
+                            -1.0
+                        ],
+                        [
+                            4.0,
+                            0.0
+                        ]
+                    ],
+                    "holes": []
+                }
+            },
+            "expected": {
+                "component_count": 2,
+                "validity": "valid",
+                "signed_area": 7.0
+            },
+            "notes": "The L-shape rotated 270 degrees should preserve the canonical decomposition signature after inverse rotation."
+        },
+        {
+            "id": "decomposition_square_with_rectangular_hole_r0",
+            "kind": "decomposition",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "piece_id": 51,
+                "rotation_degrees": 0.0,
+                "algorithm": "cgal_optimal_convex_partition",
+                "polygon": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            6.0,
+                            0.0
+                        ],
+                        [
+                            6.0,
+                            6.0
+                        ],
+                        [
+                            0.0,
+                            6.0
+                        ]
+                    ],
+                    "holes": [
+                        [
+                            [
+                                2.0,
+                                2.0
+                            ],
+                            [
+                                2.0,
+                                4.0
+                            ],
+                            [
+                                4.0,
+                                4.0
+                            ],
+                            [
+                                4.0,
+                                2.0
+                            ]
+                        ]
+                    ]
+                }
+            },
+            "expected": {
+                "component_count": 8,
+                "validity": "valid",
+                "signed_area": 32.0
+            },
+            "notes": "Hole-aware decomposition uses the constrained triangulation path and should cover the annular region with normalized convex triangles."
+        },
+        {
+            "id": "decomposition_irregular_outer_with_hole_r0",
+            "kind": "decomposition",
+            "normative": true,
+            "source": "handmade",
+            "stability_group": "irregular_outer_hole_rotation",
+            "inputs": {
+                "piece_id": 71,
+                "rotation_degrees": 0.0,
+                "algorithm": "cgal_optimal_convex_partition",
+                "polygon": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            10.0,
+                            0.0
+                        ],
+                        [
+                            11.0,
+                            4.0
+                        ],
+                        [
+                            7.0,
+                            9.0
+                        ],
+                        [
+                            0.0,
+                            6.0
+                        ]
+                    ],
+                    "holes": [
+                        [
+                            [
+                                2.0,
+                                2.0
+                            ],
+                            [
+                                3.0,
+                                5.0
+                            ],
+                            [
+                                6.0,
+                                4.0
+                            ],
+                            [
+                                5.0,
+                                1.0
+                            ]
+                        ]
+                    ]
+                }
+            },
+            "expected": {
+                "component_count": 9,
+                "validity": "valid",
+                "signed_area": 66.5,
+                "normalized_components": [
+                    [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            2.0,
+                            2.0
+                        ],
+                        [
+                            0.0,
+                            6.0
+                        ]
+                    ],
+                    [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            5.0,
+                            1.0
+                        ],
+                        [
+                            2.0,
+                            2.0
+                        ]
+                    ],
+                    [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            10.0,
+                            0.0
+                        ],
+                        [
+                            5.0,
+                            1.0
+                        ]
+                    ],
+                    [
+                        [
+                            0.0,
+                            6.0
+                        ],
+                        [
+                            2.0,
+                            2.0
+                        ],
+                        [
+                            3.0,
+                            5.0
+                        ]
+                    ],
+                    [
+                        [
+                            0.0,
+                            6.0
+                        ],
+                        [
+                            3.0,
+                            5.0
+                        ],
+                        [
+                            7.0,
+                            9.0
+                        ]
+                    ],
+                    [
+                        [
+                            3.0,
+                            5.0
+                        ],
+                        [
+                            6.0,
+                            4.0
+                        ],
+                        [
+                            7.0,
+                            9.0
+                        ]
+                    ],
+                    [
+                        [
+                            5.0,
+                            1.0
+                        ],
+                        [
+                            10.0,
+                            0.0
+                        ],
+                        [
+                            6.0,
+                            4.0
+                        ]
+                    ],
+                    [
+                        [
+                            6.0,
+                            4.0
+                        ],
+                        [
+                            10.0,
+                            0.0
+                        ],
+                        [
+                            11.0,
+                            4.0
+                        ]
+                    ],
+                    [
+                        [
+                            6.0,
+                            4.0
+                        ],
+                        [
+                            11.0,
+                            4.0
+                        ],
+                        [
+                            7.0,
+                            9.0
+                        ]
+                    ]
+                ]
+            },
+            "notes": "An irregular convex outer boundary with a skewed quadrilateral hole exercises the hole-aware triangulation path without the symmetric tie cases of rectilinear geometry."
+        },
+        {
+            "id": "decomposition_irregular_outer_with_hole_r90",
+            "kind": "decomposition",
+            "normative": true,
+            "source": "handmade",
+            "stability_group": "irregular_outer_hole_rotation",
+            "inputs": {
+                "piece_id": 71,
+                "rotation_degrees": 90.0,
+                "algorithm": "cgal_optimal_convex_partition",
+                "polygon": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            0.0,
+                            10.0
+                        ],
+                        [
+                            -4.0,
+                            11.0
+                        ],
+                        [
+                            -9.0,
+                            7.0
+                        ],
+                        [
+                            -6.0,
+                            0.0
+                        ]
+                    ],
+                    "holes": [
+                        [
+                            [
+                                -2.0,
+                                2.0
+                            ],
+                            [
+                                -5.0,
+                                3.0
+                            ],
+                            [
+                                -4.0,
+                                6.0
+                            ],
+                            [
+                                -1.0,
+                                5.0
+                            ]
+                        ]
+                    ]
+                }
+            },
+            "expected": {
+                "component_count": 9,
+                "validity": "valid",
+                "signed_area": 66.5
+            },
+            "notes": "The 90-degree variant should map back to the same canonical triangulated component set as the base irregular holed polygon."
+        },
+        {
+            "id": "decomposition_irregular_outer_with_hole_r180",
+            "kind": "decomposition",
+            "normative": true,
+            "source": "handmade",
+            "stability_group": "irregular_outer_hole_rotation",
+            "inputs": {
+                "piece_id": 71,
+                "rotation_degrees": 180.0,
+                "algorithm": "cgal_optimal_convex_partition",
+                "polygon": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            -10.0,
+                            0.0
+                        ],
+                        [
+                            -11.0,
+                            -4.0
+                        ],
+                        [
+                            -7.0,
+                            -9.0
+                        ],
+                        [
+                            0.0,
+                            -6.0
+                        ]
+                    ],
+                    "holes": [
+                        [
+                            [
+                                -2.0,
+                                -2.0
+                            ],
+                            [
+                                -3.0,
+                                -5.0
+                            ],
+                            [
+                                -6.0,
+                                -4.0
+                            ],
+                            [
+                                -5.0,
+                                -1.0
+                            ]
+                        ]
+                    ]
+                }
+            },
+            "expected": {
+                "component_count": 9,
+                "validity": "valid",
+                "signed_area": 66.5
+            },
+            "notes": "The 180-degree variant should preserve the canonical decomposition signature of the irregular holed polygon."
+        },
+        {
+            "id": "decomposition_irregular_outer_with_hole_r270",
+            "kind": "decomposition",
+            "normative": true,
+            "source": "handmade",
+            "stability_group": "irregular_outer_hole_rotation",
+            "inputs": {
+                "piece_id": 71,
+                "rotation_degrees": 270.0,
+                "algorithm": "cgal_optimal_convex_partition",
+                "polygon": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            0.0,
+                            -10.0
+                        ],
+                        [
+                            4.0,
+                            -11.0
+                        ],
+                        [
+                            9.0,
+                            -7.0
+                        ],
+                        [
+                            6.0,
+                            0.0
+                        ]
+                    ],
+                    "holes": [
+                        [
+                            [
+                                2.0,
+                                -2.0
+                            ],
+                            [
+                                5.0,
+                                -3.0
+                            ],
+                            [
+                                4.0,
+                                -6.0
+                            ],
+                            [
+                                1.0,
+                                -5.0
+                            ]
+                        ]
+                    ]
+                }
+            },
+            "expected": {
+                "component_count": 9,
+                "validity": "valid",
+                "signed_area": 66.5
+            },
+            "notes": "The 270-degree variant should preserve the canonical decomposition signature of the irregular holed polygon."
+        },
+        {
+            "id": "decomposition_invalid_two_point_outer",
+            "kind": "decomposition",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "piece_id": 52,
+                "rotation_degrees": 0.0,
+                "algorithm": "cgal_optimal_convex_partition",
+                "polygon": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            1.0,
+                            0.0
+                        ]
+                    ],
+                    "holes": []
+                }
+            },
+            "expected": {
+                "component_count": 0,
+                "validity": "invalid_topology",
+                "signed_area": 0.0
+            },
+            "notes": "Invalid input should be rejected before any backend decomposition work."
+        }
+    ]
+}

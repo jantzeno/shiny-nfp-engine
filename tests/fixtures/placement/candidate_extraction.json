@@ -1,0 +1,211 @@
+{
+    "kind": "placement_candidate_extraction",
+    "fixtures": [
+        {
+            "id": "placement_extract_boundary_fit_and_sliding_features",
+            "kind": "placement_candidate_extraction",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "rotation_index": 0,
+                "config": {
+                    "part_clearance": 0.0,
+                    "allowed_rotations": [
+                        0.0,
+                        90.0,
+                        180.0,
+                        270.0
+                    ],
+                    "enable_part_in_part_placement": false,
+                    "explore_concave_candidates": false
+                },
+                "result": {
+                    "outer_loops": [
+                        [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                4.0,
+                                0.0
+                            ],
+                            [
+                                4.0,
+                                4.0
+                            ],
+                            [
+                                0.0,
+                                4.0
+                            ]
+                        ]
+                    ],
+                    "holes": [],
+                    "perfect_fit_points": [
+                        [
+                            2.0,
+                            2.0
+                        ]
+                    ],
+                    "perfect_sliding_segments": [
+                        {
+                            "start": [
+                                0.0,
+                                1.0
+                            ],
+                            "end": [
+                                0.0,
+                                3.0
+                            ]
+                        }
+                    ]
+                }
+            },
+            "expected": {
+                "candidate_count": 7,
+                "ordered_translations": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        4.0
+                    ],
+                    [
+                        0.0,
+                        4.0
+                    ],
+                    [
+                        2.0,
+                        2.0
+                    ],
+                    [
+                        0.0,
+                        1.0
+                    ],
+                    [
+                        0.0,
+                        3.0
+                    ]
+                ]
+            },
+            "notes": "Boundary vertices, perfect-fit points, and sliding endpoints all become placement candidates in deterministic insertion order."
+        },
+        {
+            "id": "placement_extract_concave_exploration_adds_midpoints",
+            "kind": "placement_candidate_extraction",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "rotation_index": 0,
+                "config": {
+                    "part_clearance": 0.0,
+                    "allowed_rotations": [
+                        0.0,
+                        90.0,
+                        180.0,
+                        270.0
+                    ],
+                    "enable_part_in_part_placement": false,
+                    "explore_concave_candidates": true
+                },
+                "result": {
+                    "outer_loops": [
+                        [
+                            [
+                                0.0,
+                                0.0
+                            ],
+                            [
+                                4.0,
+                                0.0
+                            ],
+                            [
+                                4.0,
+                                4.0
+                            ],
+                            [
+                                0.0,
+                                4.0
+                            ]
+                        ]
+                    ],
+                    "holes": [],
+                    "perfect_fit_points": [
+                        [
+                            2.0,
+                            2.0
+                        ]
+                    ],
+                    "perfect_sliding_segments": [
+                        {
+                            "start": [
+                                0.0,
+                                1.0
+                            ],
+                            "end": [
+                                0.0,
+                                3.0
+                            ]
+                        }
+                    ]
+                }
+            },
+            "expected": {
+                "candidate_count": 11,
+                "ordered_translations": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        4.0
+                    ],
+                    [
+                        0.0,
+                        4.0
+                    ],
+                    [
+                        2.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        2.0
+                    ],
+                    [
+                        2.0,
+                        4.0
+                    ],
+                    [
+                        0.0,
+                        2.0
+                    ],
+                    [
+                        2.0,
+                        2.0
+                    ],
+                    [
+                        0.0,
+                        1.0
+                    ],
+                    [
+                        0.0,
+                        3.0
+                    ]
+                ]
+            },
+            "notes": "When concave exploration is enabled, midpoint candidates are added without duplicating already discovered translations."
+        }
+    ]
+}

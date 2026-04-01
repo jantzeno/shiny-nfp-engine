@@ -1,0 +1,181 @@
+{
+    "kind": "collinear_simplification",
+    "fixtures": [
+        {
+            "id": "collinear_simplification_outer_and_hole_cleanup",
+            "kind": "collinear_simplification",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "polygon": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            2.0,
+                            0.0
+                        ],
+                        [
+                            4.0,
+                            0.0
+                        ],
+                        [
+                            4.0,
+                            3.0
+                        ],
+                        [
+                            2.0,
+                            3.0
+                        ],
+                        [
+                            0.0,
+                            3.0
+                        ]
+                    ],
+                    "holes": [
+                        [
+                            [
+                                1.0,
+                                1.0
+                            ],
+                            [
+                                1.0,
+                                2.0
+                            ],
+                            [
+                                2.0,
+                                2.0
+                            ],
+                            [
+                                3.0,
+                                2.0
+                            ],
+                            [
+                                3.0,
+                                1.0
+                            ],
+                            [
+                                2.0,
+                                1.0
+                            ]
+                        ]
+                    ]
+                }
+            },
+            "expected": {
+                "outer": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        3.0
+                    ],
+                    [
+                        0.0,
+                        3.0
+                    ]
+                ],
+                "holes": [
+                    [
+                        [
+                            1.0,
+                            1.0
+                        ],
+                        [
+                            1.0,
+                            2.0
+                        ],
+                        [
+                            3.0,
+                            2.0
+                        ],
+                        [
+                            3.0,
+                            1.0
+                        ]
+                    ]
+                ]
+            },
+            "notes": "Removes redundant consecutive collinear vertices from both outer and hole rings."
+        },
+        {
+            "id": "collinear_simplification_preserves_concave_shape",
+            "kind": "collinear_simplification",
+            "normative": true,
+            "source": "handmade",
+            "inputs": {
+                "polygon": {
+                    "outer": [
+                        [
+                            0.0,
+                            0.0
+                        ],
+                        [
+                            2.0,
+                            0.0
+                        ],
+                        [
+                            4.0,
+                            0.0
+                        ],
+                        [
+                            4.0,
+                            1.0
+                        ],
+                        [
+                            2.0,
+                            1.0
+                        ],
+                        [
+                            2.0,
+                            3.0
+                        ],
+                        [
+                            0.0,
+                            3.0
+                        ]
+                    ],
+                    "holes": []
+                }
+            },
+            "expected": {
+                "outer": [
+                    [
+                        0.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        0.0
+                    ],
+                    [
+                        4.0,
+                        1.0
+                    ],
+                    [
+                        2.0,
+                        1.0
+                    ],
+                    [
+                        2.0,
+                        3.0
+                    ],
+                    [
+                        0.0,
+                        3.0
+                    ]
+                ],
+                "holes": []
+            },
+            "notes": "Leaves the reflex notch intact while removing only edge-interior collinear points."
+        }
+    ]
+}

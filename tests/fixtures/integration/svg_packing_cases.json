@@ -1,0 +1,316 @@
+{
+    "cases": [
+        {
+            "id": "stress_tabbed_bed_axis_aligned_rectangles",
+            "kind": "svg_packing_case",
+            "description": "Tabbed bed with axis-aligned rectangles and no rotation freedom. Serves as the baseline stress corpus for importer ranking and partial-result legality.",
+            "source": "handmade",
+            "acceptance_lane": "stress",
+            "coverage_features": [
+                "svg_import",
+                "candidate_group_ranking",
+                "axis_aligned_only",
+                "partial_result_legality"
+            ],
+            "algorithm_applicability": [
+                "constructive_decoder",
+                "jostle_search",
+                "genetic_search",
+                "masonry_builder"
+            ],
+            "input": "tests/stress_tabbed_bed_axis_aligned_rectangles.svg",
+            "normative": false,
+            "require_observable_success_before_interrupt": true,
+            "require_explicit_bed_id": false,
+            "max_candidate_groups": 32,
+            "max_piece_count": 12,
+            "min_piece_area": 1000.0,
+            "allowed_rotations_degrees": [
+                0.0
+            ],
+            "max_bin_count": 1,
+            "min_placed_piece_count": 8,
+            "require_full_placement": false,
+            "search_iterations": 2,
+            "search_plateau_budget": 2,
+            "execution_time_budget_ms": 2000
+        },
+        {
+            "id": "stress_four_rotation_furniture_panels",
+            "kind": "svg_packing_case",
+            "description": "Furniture-style panel artwork with four-way rotation enabled. Exercises grouped-contour import and non-trivial rotation legality.",
+            "source": "customer_artwork",
+            "acceptance_lane": "stress",
+            "coverage_features": [
+                "svg_import",
+                "grouped_contours",
+                "four_rotation",
+                "partial_result_legality"
+            ],
+            "algorithm_applicability": [
+                "jostle_search"
+            ],
+            "input": "tests/stress_four_rotation_furniture_panels.svg",
+            "normative": false,
+            "require_observable_success_before_interrupt": true,
+            "require_explicit_bed_id": false,
+            "max_candidate_groups": 16,
+            "max_piece_count": 6,
+            "min_piece_area": 5000.0,
+            "allowed_rotations_degrees": [
+                0.0,
+                90.0,
+                180.0,
+                270.0
+            ],
+            "max_bin_count": 1,
+            "min_placed_piece_count": 1,
+            "require_full_placement": false,
+            "search_iterations": 4,
+            "search_plateau_budget": 2,
+            "execution_time_budget_ms": 2000
+        },
+        {
+            "id": "stress_svgnest_reference_complex",
+            "kind": "svg_packing_case",
+            "description": "Complex SVGNest-derived reference geometry used to pressure importer robustness and long-run partial-result behavior.",
+            "source": "svgnest_reference",
+            "acceptance_lane": "stress",
+            "coverage_features": [
+                "svg_import",
+                "nonconvex_artwork",
+                "long_run_progress",
+                "partial_result_legality"
+            ],
+            "algorithm_applicability": [
+                "jostle_search"
+            ],
+            "input": "tests/stress_svgnest_reference_complex.svg",
+            "normative": false,
+            "slow_exploratory": true,
+            "require_observable_success_before_interrupt": true,
+            "require_explicit_bed_id": true,
+            "max_candidate_groups": 32,
+            "max_piece_count": 8,
+            "min_piece_area": 25.0,
+            "allowed_rotations_degrees": [
+                0.0,
+                90.0,
+                180.0,
+                270.0
+            ],
+            "max_bin_count": 1,
+            "min_placed_piece_count": 1,
+            "require_full_placement": false,
+            "search_iterations": 4,
+            "search_plateau_budget": 2,
+            "execution_time_budget_ms": 2000
+        },
+        {
+            "id": "stress_svgnest_artwork_sheet",
+            "kind": "svg_packing_case",
+            "description": "Artwork sheet exported from a nesting workflow. Used as a heavier stress corpus for candidate filtering and imported contour grouping.",
+            "source": "nesting_artwork_export",
+            "acceptance_lane": "stress",
+            "coverage_features": [
+                "svg_import",
+                "artwork_groups",
+                "candidate_group_ranking",
+                "long_run_progress"
+            ],
+            "algorithm_applicability": [
+                "constructive_decoder",
+                "jostle_search",
+                "genetic_search"
+            ],
+            "input": "tests/stress_svgnest_artwork_sheet.svg",
+            "normative": false,
+            "slow_exploratory": true,
+            "require_observable_success_before_interrupt": true,
+            "require_explicit_bed_id": true,
+            "max_candidate_groups": 64,
+            "max_piece_count": 8,
+            "min_piece_area": 250.0,
+            "allowed_rotations_degrees": [
+                0.0,
+                90.0,
+                180.0,
+                270.0
+            ],
+            "max_bin_count": 1,
+            "min_placed_piece_count": 1,
+            "require_full_placement": false,
+            "search_iterations": 4,
+            "search_plateau_budget": 2,
+            "execution_time_budget_ms": 2000
+        },
+        {
+            "id": "stress_pantry_label_artwork",
+            "kind": "svg_packing_case",
+            "description": "Real pantry-label artwork corpus retained as a long-run stress case for imported nested artwork and sustained progress visibility.",
+            "source": "pantry_label_artwork",
+            "acceptance_lane": "stress",
+            "coverage_features": [
+                "svg_import",
+                "artwork_groups",
+                "real_world_geometry",
+                "long_run_progress"
+            ],
+            "algorithm_applicability": [
+                "constructive_decoder",
+                "jostle_search",
+                "genetic_search"
+            ],
+            "input": "tests/stress_pantry_label_artwork.svg",
+            "normative": false,
+            "slow_exploratory": true,
+            "require_observable_success_before_interrupt": true,
+            "require_explicit_bed_id": true,
+            "max_candidate_groups": 64,
+            "max_piece_count": 8,
+            "min_piece_area": 250.0,
+            "allowed_rotations_degrees": [
+                0.0,
+                90.0,
+                180.0,
+                270.0
+            ],
+            "max_bin_count": 1,
+            "min_placed_piece_count": 1,
+            "require_full_placement": false,
+            "search_iterations": 4,
+            "search_plateau_budget": 2,
+            "execution_time_budget_ms": 2000
+        },
+        {
+            "id": "readiness_partial_interlocking_set",
+            "kind": "svg_packing_case",
+            "description": "Bounded readiness corpus with explicit bed id and interlocking concave pieces. Requires deterministic completion with at least a strong partial pack.",
+            "source": "handmade",
+            "acceptance_lane": "readiness",
+            "coverage_features": [
+                "svg_import",
+                "deterministic_completion",
+                "concave_pieces",
+                "bounded_readiness"
+            ],
+            "algorithm_applicability": [
+                "jostle_search"
+            ],
+            "input": "tests/readiness_partial_interlocking_set.svg",
+            "normative": true,
+            "require_explicit_bed_id": true,
+            "max_candidate_groups": 16,
+            "max_piece_count": 4,
+            "min_piece_area": 1000.0,
+            "allowed_rotations_degrees": [
+                0.0,
+                90.0,
+                180.0,
+                270.0
+            ],
+            "max_bin_count": 1,
+            "min_placed_piece_count": 3,
+            "require_full_placement": false,
+            "search_iterations": 6,
+            "search_plateau_budget": 2
+        },
+        {
+            "id": "readiness_full_irregular_set",
+            "kind": "svg_packing_case",
+            "description": "Bounded readiness corpus that must deterministically place all pieces in one bin.",
+            "source": "handmade",
+            "acceptance_lane": "readiness",
+            "coverage_features": [
+                "svg_import",
+                "deterministic_completion",
+                "full_placement",
+                "bounded_readiness"
+            ],
+            "algorithm_applicability": [
+                "constructive_decoder",
+                "jostle_search",
+                "genetic_search"
+            ],
+            "input": "tests/readiness_full_irregular_set.svg",
+            "normative": true,
+            "require_explicit_bed_id": true,
+            "max_candidate_groups": 16,
+            "max_piece_count": 4,
+            "min_piece_area": 1000.0,
+            "allowed_rotations_degrees": [
+                0.0,
+                90.0,
+                180.0,
+                270.0
+            ],
+            "max_bin_count": 1,
+            "min_placed_piece_count": 4,
+            "require_full_placement": true,
+            "search_iterations": 6,
+            "search_plateau_budget": 2
+        },
+        {
+            "id": "readiness_grain_exclusion_constraints",
+            "kind": "svg_packing_case",
+            "description": "Bounded readiness corpus for manufacturing constraints, including bed grain direction, part compatibility, and keep-out exclusion zones.",
+            "source": "handmade",
+            "acceptance_lane": "readiness",
+            "coverage_features": [
+                "svg_import",
+                "grain_direction",
+                "part_grain_compatibility",
+                "exclusion_zones",
+                "bounded_readiness"
+            ],
+            "algorithm_applicability": [
+                "constructive_decoder",
+                "jostle_search",
+                "genetic_search",
+                "masonry_builder"
+            ],
+            "input": "tests/readiness_grain_exclusion_constraints.svg",
+            "normative": true,
+            "require_explicit_bed_id": true,
+            "max_candidate_groups": 8,
+            "max_piece_count": 3,
+            "min_piece_area": 1000.0,
+            "allowed_rotations_degrees": [
+                0.0,
+                90.0
+            ],
+            "bed_grain_direction": "along_x",
+            "piece_grain_compatibility": {
+                "piece_a_wide": "perpendicular_to_bed"
+            },
+            "exclusion_zones": [
+                {
+                    "zone_id": 1,
+                    "region": [
+                        [
+                            200.0,
+                            200.0
+                        ],
+                        [
+                            300.0,
+                            200.0
+                        ],
+                        [
+                            300.0,
+                            300.0
+                        ],
+                        [
+                            200.0,
+                            300.0
+                        ]
+                    ]
+                }
+            ],
+            "max_bin_count": 1,
+            "min_placed_piece_count": 3,
+            "require_full_placement": true,
+            "search_iterations": 4,
+            "search_plateau_budget": 2
+        }
+    ]
+}
