@@ -54,6 +54,8 @@ option_end()
 
 local boost_root = "vendor/boost"
 local cgal_root = "vendor/cgal"
+local spdlog_include_dir = "vendor/spdlog-1.17.0/include"
+local nanosvg_dir = "vendor/nanosvg/src"
 local fixture_root = path.translate(path.join(os.projectdir(), "tests", "fixtures"))
 
 local function collect_component_include_roots(root)
@@ -150,7 +152,7 @@ add_requires("catch2")
 target("vendor_spdlog")
     set_kind("headeronly")
     set_default(false)
-    add_includedirs("vendor/spdlog-1.17.0/include", {public = true})
+    add_includedirs(spdlog_include_dir, {public = true})
 
 target("shiny_logging")
     set_kind("static")
@@ -183,7 +185,7 @@ target("shiny_nfp_engine_tests")
     add_defines('SHINY_NFP_ENGINE_TEST_FIXTURE_ROOT="' .. fixture_root .. '"')
     add_sysincludedirs(boost_root)
     add_includedirs("tests")
-    add_includedirs("vendor/nanosvg/src")
+    add_includedirs(nanosvg_dir)
     add_files("tests/**/*.cpp")
     add_deps("shiny_logging")
     add_vendor_warning_suppression_flags()
