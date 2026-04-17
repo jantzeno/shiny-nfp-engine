@@ -121,10 +121,8 @@ compute_rotation_assignment_hash(const pack::DecoderRequest &request)
 [[nodiscard]] auto compute_bin_policy_hash(const pack::DecoderRequest &request)
     -> std::uint64_t {
   auto seed = shiny::nfp::detail::fnv_hash_values(
-      {static_cast<std::uint64_t>(request.bin.base_bin_id),
-       request.bin.geometry_revision,
+      {static_cast<std::uint64_t>(request.bins.size()),
        static_cast<std::uint64_t>(request.policy),
-       static_cast<std::uint64_t>(request.max_bin_count),
        std::hash<double>{}(request.config.placement.part_clearance),
        static_cast<std::uint64_t>(request.config.enable_hole_first_placement),
        static_cast<std::uint64_t>(
@@ -140,6 +138,12 @@ compute_rotation_assignment_hash(const pack::DecoderRequest &request)
   for (const auto &zone : request.config.placement.exclusion_zones) {
     seed = shiny::nfp::detail::fnv_hash_mix(
         seed, std::hash<std::uint32_t>{}(zone.zone_id));
+    seed = shiny::nfp::detail::fnv_hash_mix(
+        seed, std::hash<bool>{}(zone.bin_id.has_value()));
+    if (zone.bin_id.has_value()) {
+      seed = shiny::nfp::detail::fnv_hash_mix(
+          seed, std::hash<std::uint32_t>{}(*zone.bin_id));
+    }
     for (const auto &point : zone.region.outer) {
       seed =
           shiny::nfp::detail::fnv_hash_mix(seed, std::hash<double>{}(point.x));
@@ -148,16 +152,25 @@ compute_rotation_assignment_hash(const pack::DecoderRequest &request)
     }
   }
 
-  for (const auto &point : request.bin.polygon.outer) {
-    seed = shiny::nfp::detail::fnv_hash_mix(seed, std::hash<double>{}(point.x));
-    seed = shiny::nfp::detail::fnv_hash_mix(seed, std::hash<double>{}(point.y));
-  }
-  for (const auto &hole : request.bin.polygon.holes) {
-    for (const auto &point : hole) {
+  for (const auto &bin : request.bins) {
+    seed = shiny::nfp::detail::fnv_hash_mix(
+        seed, std::hash<std::uint32_t>{}(bin.bin_id));
+    seed = shiny::nfp::detail::fnv_hash_mix(seed, bin.geometry_revision);
+    seed = shiny::nfp::detail::fnv_hash_mix(
+        seed, static_cast<std::uint64_t>(bin.start_corner));
+    for (const auto &point : bin.polygon.outer) {
       seed =
           shiny::nfp::detail::fnv_hash_mix(seed, std::hash<double>{}(point.x));
       seed =
           shiny::nfp::detail::fnv_hash_mix(seed, std::hash<double>{}(point.y));
+    }
+    for (const auto &hole : bin.polygon.holes) {
+      for (const auto &point : hole) {
+        seed = shiny::nfp::detail::fnv_hash_mix(seed,
+                                                std::hash<double>{}(point.x));
+        seed = shiny::nfp::detail::fnv_hash_mix(seed,
+                                                std::hash<double>{}(point.y));
+      }
     }
   }
 
@@ -177,6 +190,12 @@ compute_piece_order_hash(const std::vector<pack::PieceInput> &pieces,
     seed = shiny::nfp::detail::fnv_hash_mix(seed, piece.geometry_revision);
     seed = shiny::nfp::detail::fnv_hash_mix(
         seed, static_cast<std::uint64_t>(piece.grain_compatibility));
+    seed = shiny::nfp::detail::fnv_hash_mix(
+        seed, static_cast<std::uint64_t>(piece.allowed_bin_ids.size()));
+    for (const auto bin_id : piece.allowed_bin_ids) {
+      seed = shiny::nfp::detail::fnv_hash_mix(
+          seed, std::hash<std::uint32_t>{}(bin_id));
+    }
   }
   return seed;
 }

@@ -64,7 +64,7 @@ void require_exploratory_cases(
 } // namespace
 
 TEST_CASE("normative svg cases pack deterministically into valid layouts",
-          "[integration][svg][packing][readiness]") {
+          "[.][integration][svg][packing][readiness]") {
   const auto specs = select_svg_case_specs(true, "jostle_search");
   REQUIRE_FALSE(specs.empty());
 
@@ -103,7 +103,7 @@ TEST_CASE("normative svg cases pack deterministically into valid layouts",
 }
 
 TEST_CASE("svg readiness manifest keeps normative cases bounded",
-          "[integration][svg][packing][readiness]") {
+          "[.][integration][svg][packing][readiness]") {
   constexpr std::size_t normative_candidate_group_limit = 16U;
   constexpr std::size_t normative_piece_limit = 4U;
   constexpr std::uint32_t normative_iteration_limit = 6U;
@@ -234,7 +234,8 @@ TEST_CASE(
                result.status == SearchRunStatus::timed_out));
       require_valid_search_result(spec, request, result);
       if (result.status == SearchRunStatus::timed_out) {
-        REQUIRE(result.iterations_completed > 0U);
+        REQUIRE_FALSE(result.progress.empty());
+        REQUIRE(result.progress.front().iteration == 0U);
         REQUIRE(result.best.placed_piece_count >= spec.min_placed_piece_count);
       }
     }

@@ -559,8 +559,12 @@ overlaps_occupied_region(const geom::PolygonWithHoles &piece,
 
 [[nodiscard]] auto overlaps_any_exclusion_zone(
     const geom::PolygonWithHoles &piece,
-    std::span<const place::BedExclusionZone> exclusion_zones) -> bool {
+    std::span<const place::BedExclusionZone> exclusion_zones,
+    const std::uint32_t bin_id) -> bool {
   for (const auto &zone : exclusion_zones) {
+    if (!place::exclusion_zone_applies_to_bin(zone, bin_id)) {
+      continue;
+    }
     if (overlaps_occupied_region(piece, as_polygon_with_holes(zone))) {
       return true;
     }
@@ -582,14 +586,56 @@ overlaps_occupied_region(const geom::PolygonWithHoles &piece,
   return minimum_distance;
 }
 
-[[nodiscard]] auto bottom_left_tiebreak(const place::PlacementCandidate &lhs,
-                                        const place::PlacementCandidate &rhs)
-    -> bool {
-  if (lhs.translation.y != rhs.translation.y) {
-    return lhs.translation.y < rhs.translation.y;
+[[nodiscard]] auto
+start_corner_on_right(const place::PlacementStartCorner start_corner) -> bool {
+  return start_corner == place::PlacementStartCorner::bottom_right ||
+         start_corner == place::PlacementStartCorner::top_right;
+}
+
+[[nodiscard]] auto
+start_corner_on_top(const place::PlacementStartCorner start_corner) -> bool {
+  return start_corner == place::PlacementStartCorner::top_left ||
+         start_corner == place::PlacementStartCorner::top_right;
+}
+
+[[nodiscard]] auto primary_edge_distance(
+    const BoundingBox &container_bounds, const BoundingBox &piece_bounds,
+    const place::PlacementStartCorner start_corner) -> double {
+  if (start_corner_on_top(start_corner)) {
+    return container_bounds.max_y - piece_bounds.max_y;
   }
-  if (lhs.translation.x != rhs.translation.x) {
-    return lhs.translation.x < rhs.translation.x;
+  return piece_bounds.min_y - container_bounds.min_y;
+}
+
+[[nodiscard]] auto secondary_edge_distance(
+    const BoundingBox &container_bounds, const BoundingBox &piece_bounds,
+    const place::PlacementStartCorner start_corner) -> double {
+  if (start_corner_on_right(start_corner)) {
+    return container_bounds.max_x - piece_bounds.max_x;
+  }
+  return piece_bounds.min_x - container_bounds.min_x;
+}
+
+[[nodiscard]] auto
+corner_tiebreak(const BoundingBox &container_bounds,
+                const BoundingBox &lhs_bounds, const BoundingBox &rhs_bounds,
+                const place::PlacementCandidate &lhs,
+                const place::PlacementCandidate &rhs,
+                const place::PlacementStartCorner start_corner) -> bool {
+  const double lhs_primary =
+      primary_edge_distance(container_bounds, lhs_bounds, start_corner);
+  const double rhs_primary =
+      primary_edge_distance(container_bounds, rhs_bounds, start_corner);
+  if (lhs_primary != rhs_primary) {
+    return lhs_primary < rhs_primary;
+  }
+
+  const double lhs_secondary =
+      secondary_edge_distance(container_bounds, lhs_bounds, start_corner);
+  const double rhs_secondary =
+      secondary_edge_distance(container_bounds, rhs_bounds, start_corner);
+  if (lhs_secondary != rhs_secondary) {
+    return lhs_secondary < rhs_secondary;
   }
   if (lhs.rotation_index != rhs.rotation_index) {
     return lhs.rotation_index < rhs.rotation_index;
@@ -662,8 +708,8 @@ filter_candidates(const BinState &state,
       continue;
     }
 
-    if (overlaps_any_exclusion_zone(translated_piece,
-                                    config.placement.exclusion_zones)) {
+    if (overlaps_any_exclusion_zone(
+            translated_piece, config.placement.exclusion_zones, state.bin_id)) {
       continue;
     }
 
@@ -697,15 +743,21 @@ auto refresh_bin_state(BinState &state) -> void {
   state.utilization = summarize_bin(state);
 }
 
-[[nodiscard]] auto make_empty_bin(const DecoderRequest &request,
-                                  std::size_t bin_index) -> BinState {
+[[nodiscard]] auto make_empty_bin(const BinInput &bin) -> BinState {
   BinState state{};
-  state.bin_id =
-      request.bin.base_bin_id + static_cast<std::uint32_t>(bin_index);
-  state.container = geom::normalize_polygon(request.bin.polygon);
-  state.container_geometry_revision = request.bin.geometry_revision;
+  state.bin_id = bin.bin_id;
+  state.container = geom::normalize_polygon(bin.polygon);
+  state.container_geometry_revision = bin.geometry_revision;
+  state.start_corner = bin.start_corner;
   state.utilization = summarize_bin(state);
   return state;
+}
+
+[[nodiscard]] auto piece_allows_bin(const PieceInput &piece,
+                                    const std::uint32_t bin_id) -> bool {
+  return piece.allowed_bin_ids.empty() ||
+         std::find(piece.allowed_bin_ids.begin(), piece.allowed_bin_ids.end(),
+                   bin_id) != piece.allowed_bin_ids.end();
 }
 
 void apply_selection(BinState &state, const PieceInput &piece,
@@ -850,33 +902,30 @@ classify_shelf(const BinState &state,
 
 [[nodiscard]] auto shelf_choice_better(const ShelfChoice &lhs,
                                        const ShelfChoice &rhs,
+                                       const BinState &state,
                                        const MasonryConfig &config) -> bool {
-  if (config.fill_existing_shelves_first &&
-      lhs.started_new_shelf != rhs.started_new_shelf) {
-    return !lhs.started_new_shelf;
+  const auto container_bounds = compute_bounds(state.container);
+  const double lhs_primary =
+      primary_edge_distance(container_bounds, lhs.bounds, state.start_corner);
+  const double rhs_primary =
+      primary_edge_distance(container_bounds, rhs.bounds, state.start_corner);
+  if (!almost_equal(lhs_primary, rhs_primary,
+                    config.shelf_alignment_tolerance)) {
+    return lhs_primary < rhs_primary;
   }
 
-  if (!almost_equal(lhs.bounds.min_y, rhs.bounds.min_y,
+  const double lhs_secondary =
+      secondary_edge_distance(container_bounds, lhs.bounds, state.start_corner);
+  const double rhs_secondary =
+      secondary_edge_distance(container_bounds, rhs.bounds, state.start_corner);
+  if (!almost_equal(lhs_secondary, rhs_secondary,
                     config.shelf_alignment_tolerance)) {
-    return lhs.bounds.min_y < rhs.bounds.min_y;
-  }
-  if (lhs.shelf_index != rhs.shelf_index) {
-    return lhs.shelf_index < rhs.shelf_index;
-  }
-  if (!almost_equal(lhs.bounds.min_x, rhs.bounds.min_x,
-                    config.shelf_alignment_tolerance)) {
-    return lhs.bounds.min_x < rhs.bounds.min_x;
-  }
-  if (!almost_equal(lhs.bounds.max_y, rhs.bounds.max_y,
-                    config.shelf_alignment_tolerance)) {
-    return lhs.bounds.max_y < rhs.bounds.max_y;
-  }
-  if (!almost_equal(lhs.bounds.max_x, rhs.bounds.max_x,
-                    config.shelf_alignment_tolerance)) {
-    return lhs.bounds.max_x < rhs.bounds.max_x;
+    return lhs_secondary < rhs_secondary;
   }
 
-  return bottom_left_tiebreak(lhs.selection.candidate, rhs.selection.candidate);
+  return corner_tiebreak(container_bounds, lhs.bounds, rhs.bounds,
+                         lhs.selection.candidate, rhs.selection.candidate,
+                         state.start_corner);
 }
 
 [[nodiscard]] auto rank_candidate_set(
@@ -892,7 +941,8 @@ classify_shelf(const BinState &state,
     const auto bounds = compute_bounds(translated_piece);
     const auto [shelf_index, started_new_shelf] =
         classify_shelf(state, translated_piece, masonry);
-    candidate.score = bounds.min_y;
+    candidate.score = primary_edge_distance(compute_bounds(state.container),
+                                            bounds, state.start_corner);
 
     ShelfChoice choice{
         .selection = {.candidate = candidate,
@@ -903,7 +953,8 @@ classify_shelf(const BinState &state,
         .started_new_shelf = started_new_shelf,
     };
 
-    if (!best.has_value() || shelf_choice_better(choice, *best, masonry)) {
+    if (!best.has_value() ||
+        shelf_choice_better(choice, *best, state, masonry)) {
       best = std::move(choice);
     }
   }
@@ -1012,7 +1063,7 @@ find_best_for_bin(NfpEngine &nfp_engine, const BinState &state,
         request.decoder_request.config, request.masonry);
     if (candidate.has_value() &&
         (!best.has_value() ||
-         shelf_choice_better(*candidate, *best, request.masonry))) {
+         shelf_choice_better(*candidate, *best, state, request.masonry))) {
       best = candidate;
     }
   }
@@ -1036,17 +1087,22 @@ auto MasonryBuilder::build(const MasonryRequest &request) -> MasonryResult {
 
   if (!request.masonry.is_valid() ||
       !request.decoder_request.config.is_valid() ||
-      request.decoder_request.bin.polygon.outer.empty()) {
+      request.decoder_request.bins.empty()) {
     for (const auto &piece : request.decoder_request.pieces) {
       result.layout.unplaced_piece_ids.push_back(piece.piece_id);
     }
     return result;
   }
 
+  std::vector<bool> opened_bins(request.decoder_request.bins.size(), false);
   for (const auto &piece : request.decoder_request.pieces) {
     bool placed = false;
 
     for (auto &bin : result.bins) {
+      if (!piece_allows_bin(piece, bin.bin_id)) {
+        continue;
+      }
+
       if (const auto selection = find_best_for_bin(
               nfp_engine_, bin, build_generation, piece, request);
           selection.has_value()) {
@@ -1076,34 +1132,46 @@ auto MasonryBuilder::build(const MasonryRequest &request) -> MasonryResult {
       continue;
     }
 
-    if (request.decoder_request.max_bin_count != 0 &&
-        result.bins.size() >= request.decoder_request.max_bin_count) {
-      result.layout.unplaced_piece_ids.push_back(piece.piece_id);
-      record_progress(result, request, piece.piece_id);
-      continue;
+    for (std::size_t request_bin_index = 0;
+         request_bin_index < request.decoder_request.bins.size();
+         ++request_bin_index) {
+      if (opened_bins[request_bin_index]) {
+        continue;
+      }
+      const BinInput &bin_input =
+          request.decoder_request.bins[request_bin_index];
+      if (!piece_allows_bin(piece, bin_input.bin_id)) {
+        continue;
+      }
+
+      auto new_bin = make_empty_bin(bin_input);
+      if (const auto selection = find_best_for_bin(
+              nfp_engine_, new_bin, build_generation, piece, request);
+          selection.has_value()) {
+        apply_selection(new_bin, piece, selection->selection,
+                        result.layout.placement_trace, true);
+        result.trace.push_back({
+            .piece_id = piece.piece_id,
+            .bin_id = new_bin.bin_id,
+            .shelf_index = selection->shelf_index,
+            .rotation_index = selection->selection.candidate.rotation_index,
+            .resolved_rotation = selection->selection.resolved_rotation,
+            .translation = selection->selection.candidate.translation,
+            .source = selection->selection.candidate.source,
+            .opened_new_bin = true,
+            .started_new_shelf = true,
+            .inside_hole = selection->selection.candidate.inside_hole,
+            .hole_index = selection->selection.candidate.hole_index,
+            .score = selection->selection.candidate.score,
+        });
+        opened_bins[request_bin_index] = true;
+        result.bins.push_back(std::move(new_bin));
+        placed = true;
+        break;
+      }
     }
 
-    auto new_bin = make_empty_bin(request.decoder_request, result.bins.size());
-    if (const auto selection = find_best_for_bin(
-            nfp_engine_, new_bin, build_generation, piece, request);
-        selection.has_value()) {
-      apply_selection(new_bin, piece, selection->selection,
-                      result.layout.placement_trace, true);
-      result.trace.push_back({
-          .piece_id = piece.piece_id,
-          .bin_id = new_bin.bin_id,
-          .shelf_index = selection->shelf_index,
-          .rotation_index = selection->selection.candidate.rotation_index,
-          .resolved_rotation = selection->selection.resolved_rotation,
-          .translation = selection->selection.candidate.translation,
-          .source = selection->selection.candidate.source,
-          .opened_new_bin = true,
-          .started_new_shelf = true,
-          .inside_hole = selection->selection.candidate.inside_hole,
-          .hole_index = selection->selection.candidate.hole_index,
-          .score = selection->selection.candidate.score,
-      });
-      result.bins.push_back(std::move(new_bin));
+    if (placed) {
       record_progress(result, request, piece.piece_id);
       continue;
     }

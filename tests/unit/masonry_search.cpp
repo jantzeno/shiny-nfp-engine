@@ -55,18 +55,19 @@ TEST_CASE("masonry runner emits canonical observer events",
   request.masonry_request = MasonryRequest{
       .decoder_request =
           {
-              .bin = {.base_bin_id = 60,
-                      .polygon = make_rectangle(0.0, 0.0, 10.0, 10.0),
-                      .geometry_revision = 600},
+              .bins = {{
+                  .bin_id = 60,
+                  .polygon = make_rectangle(0.0, 0.0, 10.0, 10.0),
+                  .geometry_revision = 600,
+              }},
               .pieces =
                   {
                       make_piece(1, make_rectangle(0.0, 0.0, 6.0, 4.0), 1),
                       make_piece(2, make_rectangle(0.0, 0.0, 4.0, 4.0), 2),
                       make_piece(3, make_rectangle(0.0, 0.0, 5.0, 3.0), 3),
-                  },
+              },
               .policy = PlacementPolicy::bottom_left,
               .config = PackingConfig{},
-              .max_bin_count = 1,
           },
   };
   request.execution.control.capture_timestamps = false;

@@ -22,12 +22,14 @@ TEST_CASE("masonry observer events stay aligned with retained progress",
   MasonryRunner runner;
   MasonryRunRequest request{};
   request.masonry_request.decoder_request = {
-      .bin = {.base_bin_id = 70,
-              .polygon = {.outer = {{0.0, 0.0},
-                                    {10.0, 0.0},
-                                    {10.0, 10.0},
-                                    {0.0, 10.0}}},
-              .geometry_revision = 700},
+      .bins = {{
+          .bin_id = 70,
+          .polygon = {.outer = {{0.0, 0.0},
+                                {10.0, 0.0},
+                                {10.0, 10.0},
+                                {0.0, 10.0}}},
+          .geometry_revision = 700,
+      }},
       .pieces =
           {
               {.piece_id = 1,
@@ -46,8 +48,7 @@ TEST_CASE("masonry observer events stay aligned with retained progress",
       .policy = shiny::nfp::place::PlacementPolicy::bottom_left,
       .config = {.placement =
                      {.allowed_rotations = {.angles_degrees = {0.0, 90.0, 180.0,
-                                                               270.0}}}},
-      .max_bin_count = 1,
+                                                                270.0}}}},
   };
   request.execution.control.capture_timestamps = false;
 

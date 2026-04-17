@@ -58,6 +58,7 @@ struct PlacementRequest {
   geom::RotationIndex rotation_index{};
   PartGrainCompatibility part_grain_compatibility{
       PartGrainCompatibility::unrestricted};
+  PlacementStartCorner start_corner{PlacementStartCorner::bottom_left};
   std::uint64_t piece_geometry_revision{0};
   std::uint64_t bin_geometry_revision{0};
   std::uint64_t merged_region_revision{0};

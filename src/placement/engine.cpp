@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "cache/key_hash.hpp"
+#include "logging/shiny_log.hpp"
 #include "polygon_ops/boolean_ops.hpp"
 #include "polygon_ops/convex_hull.hpp"
 #include "predicates/segment_intersection.hpp"
@@ -284,9 +285,12 @@ overlaps_occupied_region(const geom::PolygonWithHoles &piece,
 
 [[nodiscard]] auto
 overlaps_any_exclusion_zone(const geom::PolygonWithHoles &piece,
-                            std::span<const BedExclusionZone> exclusion_zones)
-    -> bool {
+                            std::span<const BedExclusionZone> exclusion_zones,
+                            const std::uint32_t bin_id) -> bool {
   for (const auto &zone : exclusion_zones) {
+    if (!exclusion_zone_applies_to_bin(zone, bin_id)) {
+      continue;
+    }
     if (overlaps_occupied_region(piece, as_polygon_with_holes(zone))) {
       return true;
     }
@@ -294,13 +298,84 @@ overlaps_any_exclusion_zone(const geom::PolygonWithHoles &piece,
   return false;
 }
 
-[[nodiscard]] auto bottom_left_tiebreak(const PlacementCandidate &lhs,
-                                        const PlacementCandidate &rhs) -> bool {
-  if (lhs.translation.y != rhs.translation.y) {
-    return lhs.translation.y < rhs.translation.y;
+[[nodiscard]] auto compute_bounds(const geom::PolygonWithHoles &polygon)
+    -> geom::Box2 {
+  geom::Box2 bounds{};
+  bool initialized = false;
+
+  const auto include_ring = [&bounds, &initialized](const geom::Ring &ring) {
+    for (const auto &point : ring) {
+      if (!initialized) {
+        bounds.min = point;
+        bounds.max = point;
+        initialized = true;
+        continue;
+      }
+      bounds.min.x = std::min(bounds.min.x, point.x);
+      bounds.min.y = std::min(bounds.min.y, point.y);
+      bounds.max.x = std::max(bounds.max.x, point.x);
+      bounds.max.y = std::max(bounds.max.y, point.y);
+    }
+  };
+
+  include_ring(polygon.outer);
+  for (const auto &hole : polygon.holes) {
+    include_ring(hole);
   }
-  if (lhs.translation.x != rhs.translation.x) {
-    return lhs.translation.x < rhs.translation.x;
+  return bounds;
+}
+
+[[nodiscard]] auto
+start_corner_on_right(const PlacementStartCorner start_corner) -> bool {
+  return start_corner == PlacementStartCorner::bottom_right ||
+         start_corner == PlacementStartCorner::top_right;
+}
+
+[[nodiscard]] auto start_corner_on_top(const PlacementStartCorner start_corner)
+    -> bool {
+  return start_corner == PlacementStartCorner::top_left ||
+         start_corner == PlacementStartCorner::top_right;
+}
+
+[[nodiscard]] auto
+primary_edge_distance(const geom::Box2 &container_bounds,
+                      const geom::Box2 &piece_bounds,
+                      const PlacementStartCorner start_corner) -> double {
+  if (start_corner_on_top(start_corner)) {
+    return container_bounds.max.y - piece_bounds.max.y;
+  }
+  return piece_bounds.min.y - container_bounds.min.y;
+}
+
+[[nodiscard]] auto
+secondary_edge_distance(const geom::Box2 &container_bounds,
+                        const geom::Box2 &piece_bounds,
+                        const PlacementStartCorner start_corner) -> double {
+  if (start_corner_on_right(start_corner)) {
+    return container_bounds.max.x - piece_bounds.max.x;
+  }
+  return piece_bounds.min.x - container_bounds.min.x;
+}
+
+[[nodiscard]] auto
+corner_tiebreak(const geom::Box2 &container_bounds,
+                const geom::Box2 &lhs_bounds, const geom::Box2 &rhs_bounds,
+                const PlacementCandidate &lhs, const PlacementCandidate &rhs,
+                const PlacementStartCorner start_corner) -> bool {
+  const double lhs_primary =
+      primary_edge_distance(container_bounds, lhs_bounds, start_corner);
+  const double rhs_primary =
+      primary_edge_distance(container_bounds, rhs_bounds, start_corner);
+  if (lhs_primary != rhs_primary) {
+    return lhs_primary < rhs_primary;
+  }
+
+  const double lhs_secondary =
+      secondary_edge_distance(container_bounds, lhs_bounds, start_corner);
+  const double rhs_secondary =
+      secondary_edge_distance(container_bounds, rhs_bounds, start_corner);
+  if (lhs_secondary != rhs_secondary) {
+    return lhs_secondary < rhs_secondary;
   }
   if (lhs.rotation_index != rhs.rotation_index) {
     return lhs.rotation_index < rhs.rotation_index;
@@ -366,7 +441,9 @@ overlaps_any_exclusion_zone(const geom::PolygonWithHoles &piece,
 
 [[nodiscard]] auto make_policy_id(const PlacementConfig &config,
                                   PartGrainCompatibility grain_compatibility,
-                                  PlacementPolicy policy) -> std::uint32_t {
+                                  PlacementPolicy policy,
+                                  PlacementStartCorner start_corner)
+    -> std::uint32_t {
   std::size_t seed =
       std::hash<std::uint32_t>{}(static_cast<std::uint32_t>(policy));
   cache::hash::combine(seed, std::hash<double>{}(config.part_clearance));
@@ -379,10 +456,16 @@ overlaps_any_exclusion_zone(const geom::PolygonWithHoles &piece,
                        std::hash<bool>{}(config.enable_part_in_part_placement));
   cache::hash::combine(seed,
                        std::hash<bool>{}(config.explore_concave_candidates));
+  cache::hash::combine(
+      seed, std::hash<std::int8_t>{}(static_cast<std::int8_t>(start_corner)));
   cache::hash::combine(seed, std::hash<std::int8_t>{}(static_cast<std::int8_t>(
                                  grain_compatibility)));
   for (const auto &zone : config.exclusion_zones) {
     cache::hash::combine(seed, std::hash<std::uint32_t>{}(zone.zone_id));
+    cache::hash::combine(seed, std::hash<bool>{}(zone.bin_id.has_value()));
+    if (zone.bin_id.has_value()) {
+      cache::hash::combine(seed, std::hash<std::uint32_t>{}(*zone.bin_id));
+    }
     for (const auto &point : zone.region.outer) {
       cache::hash::combine(seed, std::hash<double>{}(point.x));
       cache::hash::combine(seed, std::hash<double>{}(point.y));
@@ -508,8 +591,8 @@ auto PlacementEngine::filter_candidates(
       continue;
     }
 
-    if (overlaps_any_exclusion_zone(translated_piece,
-                                    request.config.exclusion_zones)) {
+    if (overlaps_any_exclusion_zone(
+            translated_piece, request.config.exclusion_zones, request.bin_id)) {
       continue;
     }
 
@@ -530,16 +613,23 @@ auto PlacementEngine::rank_candidates(
     const PlacementRequest &request,
     std::span<const PlacementCandidate> candidates,
     PlacementPolicy policy) const -> RankedPlacementSet {
+  SHINY_TRACE("PlacementEngine::rank_candidates: bin_id={} piece_id={} "
+              "rotation={} candidate_count={} policy={}",
+              request.bin_id, request.piece_id, request.rotation_index.value,
+              candidates.size(), static_cast<std::uint32_t>(policy));
   RankedPlacementSet ranked{.policy = policy};
   ranked.candidates.assign(candidates.begin(), candidates.end());
+  const auto container_bounds = compute_bounds(request.bin);
 
   for (auto &candidate : ranked.candidates) {
     const auto translated_piece =
         translate_polygon(request.piece, candidate.translation);
+    const auto translated_bounds = compute_bounds(translated_piece);
 
     switch (policy) {
     case PlacementPolicy::bottom_left:
-      candidate.score = candidate.translation.y;
+      candidate.score = primary_edge_distance(
+          container_bounds, translated_bounds, request.start_corner);
       break;
     case PlacementPolicy::minimum_length:
       candidate.score = bounding_width(request, translated_piece);
@@ -550,30 +640,50 @@ auto PlacementEngine::rank_candidates(
     }
   }
 
-  auto better = [policy](const PlacementCandidate &lhs,
-                         const PlacementCandidate &rhs) {
+  auto better = [&](const PlacementCandidate &lhs,
+                    const PlacementCandidate &rhs) {
+    const auto lhs_bounds =
+        compute_bounds(translate_polygon(request.piece, lhs.translation));
+    const auto rhs_bounds =
+        compute_bounds(translate_polygon(request.piece, rhs.translation));
     switch (policy) {
     case PlacementPolicy::bottom_left:
       if (lhs.score != rhs.score) {
         return lhs.score < rhs.score;
       }
-      return bottom_left_tiebreak(lhs, rhs);
+      return corner_tiebreak(container_bounds, lhs_bounds, rhs_bounds, lhs, rhs,
+                             request.start_corner);
     case PlacementPolicy::minimum_length:
       if (lhs.score != rhs.score) {
         return lhs.score < rhs.score;
       }
-      return bottom_left_tiebreak(lhs, rhs);
+      return corner_tiebreak(container_bounds, lhs_bounds, rhs_bounds, lhs, rhs,
+                             request.start_corner);
     case PlacementPolicy::maximum_utilization:
       if (lhs.score != rhs.score) {
         return lhs.score > rhs.score;
       }
-      return bottom_left_tiebreak(lhs, rhs);
+      return corner_tiebreak(container_bounds, lhs_bounds, rhs_bounds, lhs, rhs,
+                             request.start_corner);
     }
 
     return false;
   };
 
   std::sort(ranked.candidates.begin(), ranked.candidates.end(), better);
+  if (!ranked.candidates.empty()) {
+    const auto &best = ranked.candidates.front();
+    SHINY_TRACE("PlacementEngine::rank_candidates: best piece_id={} bin_id={} "
+                "rotation={} score={} translation=({}, {}) inside_hole={} "
+                "hole_index={}",
+                request.piece_id, request.bin_id, best.rotation_index.value,
+                best.score, best.translation.x, best.translation.y,
+                best.inside_hole ? 1 : 0, best.hole_index);
+  } else {
+    SHINY_TRACE("PlacementEngine::rank_candidates: no feasible candidates "
+                "piece_id={} bin_id={}",
+                request.piece_id, request.bin_id);
+  }
   return ranked;
 }
 
@@ -583,8 +693,18 @@ auto PlacementEngine::query_candidates(const PlacementRequest &request,
                                        std::span<const NfpResult> hole_ifps,
                                        PlacementPolicy policy)
     -> RankedPlacementSet {
+  SHINY_DEBUG(
+      "PlacementEngine::query_candidates: bin_id={} piece_id={} rotation={} "
+      "policy={} occupied_nfp={} bin_ifp={} hole_ifp_count={}",
+      request.bin_id, request.piece_id, request.rotation_index.value,
+      static_cast<std::uint32_t>(policy),
+      occupied_region_nfp != nullptr ? 1 : 0, bin_ifp != nullptr ? 1 : 0,
+      hole_ifps.size());
   RankedPlacementSet empty{.policy = policy};
   if (!rotation_is_allowed(request.rotation_index, request.config)) {
+    SHINY_TRACE("PlacementEngine::query_candidates: rotation not allowed "
+                "bin_id={} piece_id={} rotation={}",
+                request.bin_id, request.piece_id, request.rotation_index.value);
     return empty;
   }
 
@@ -596,12 +716,20 @@ auto PlacementEngine::query_candidates(const PlacementRequest &request,
       .bin_geometry_revision = request.bin_geometry_revision,
       .merged_region_revision = request.merged_region_revision,
       .hole_set_revision = request.hole_set_revision,
-      .policy_id = make_policy_id(request.config,
-                                  request.part_grain_compatibility, policy),
+      .policy_id =
+          make_policy_id(request.config, request.part_grain_compatibility,
+                         policy, request.start_corner),
   };
   if (const auto *cached = cache_.get(cache_key); cached != nullptr) {
+    SHINY_TRACE("PlacementEngine::query_candidates: cache hit bin_id={} "
+                "piece_id={} rotation={} candidate_count={}",
+                request.bin_id, request.piece_id, request.rotation_index.value,
+                cached->candidates.size());
     return *cached;
   }
+  SHINY_TRACE("PlacementEngine::query_candidates: cache miss bin_id={} "
+              "piece_id={} rotation={}",
+              request.bin_id, request.piece_id, request.rotation_index.value);
 
   std::vector<PlacementCandidate> extracted;
 
@@ -630,9 +758,18 @@ auto PlacementEngine::query_candidates(const PlacementRequest &request,
                      hole_candidates.end());
   }
 
+  SHINY_TRACE("PlacementEngine::query_candidates: extracted candidate count "
+              "bin_id={} piece_id={} count={}",
+              request.bin_id, request.piece_id, extracted.size());
   const auto filtered = filter_candidates(request, extracted);
+  SHINY_TRACE("PlacementEngine::query_candidates: filtered candidate count "
+              "bin_id={} piece_id={} count={}",
+              request.bin_id, request.piece_id, filtered.size());
   auto ranked = rank_candidates(request, filtered, policy);
   cache_.put(cache_key, ranked);
+  SHINY_TRACE("PlacementEngine::query_candidates: cached ranked candidates "
+              "bin_id={} piece_id={} count={}",
+              request.bin_id, request.piece_id, ranked.candidates.size());
   return ranked;
 }
 

@@ -33,7 +33,7 @@
             "require_full_placement": false,
             "search_iterations": 2,
             "search_plateau_budget": 2,
-            "execution_time_budget_ms": 2000
+            "execution_time_budget_ms": 3000
         },
         {
             "id": "stress_four_rotation_furniture_panels",

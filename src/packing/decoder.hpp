@@ -27,21 +27,25 @@ struct PieceInput {
   std::uint64_t geometry_revision{0};
   place::PartGrainCompatibility grain_compatibility{
       place::PartGrainCompatibility::unrestricted};
+  std::vector<std::uint32_t> allowed_bin_ids{};
 };
 
 /**
- * @brief Prototype geometry for bins opened by the decoder.
+ * @brief Explicit geometry for one bin available to the decoder.
  *
  * @par Invariants
- * - Every bin opened during one decode starts from this prototype geometry.
+ * - `bin_id` must be unique within one request.
  *
  * @par Performance Notes
- * - Stored once in the request and copied into each new bin state.
+ * - The decoder opens bins lazily in request order, but never synthesizes
+ *   geometry beyond what is listed here.
  */
-struct BinPrototype {
-  std::uint32_t base_bin_id{0};
+struct BinInput {
+  std::uint32_t bin_id{0};
   geom::PolygonWithHoles polygon{};
   std::uint64_t geometry_revision{0};
+  place::PlacementStartCorner start_corner{
+      place::PlacementStartCorner::bottom_left};
 };
 
 /**
@@ -54,11 +58,10 @@ struct BinPrototype {
  * - Search reuses this type directly when reevaluating piece orders.
  */
 struct DecoderRequest {
-  BinPrototype bin{};
+  std::vector<BinInput> bins{};
   std::vector<PieceInput> pieces{};
   place::PlacementPolicy policy{place::PlacementPolicy::bottom_left};
   PackingConfig config{};
-  std::size_t max_bin_count{0};
 };
 
 using InterruptionProbe = std::function<bool()>;
@@ -103,10 +106,12 @@ public:
    * - **Strategy**: Greedy constructive decoding over the configured piece
    *   order.
    * - **Steps**:
-   *   1. Open the prototype bin and iterate pieces in request order.
+   *   1. Open bins from the explicit request list as needed while iterating
+   *      pieces in request order.
    *   2. Query feasible placements against current occupancy, holes, and the
    *      bin/container boundaries.
-   *   3. Place the best-ranked candidate or open a new bin when allowed.
+   *   3. Place the best-ranked candidate or open the next requested bin when
+   *      needed.
    *
    * @par Mathematical Basis
    * - Feasible placements are sampled from translational contact boundaries
@@ -129,7 +134,7 @@ public:
    *   disallowed.
    * - Preserves the input order when multiple candidates tie after ranking.
    *
-   * @param request Bin prototype, piece order, and decode policy.
+   * @param request Explicit bin list, piece order, and decode policy.
    * @param interruption_requested Optional run-scoped interruption probe used
    *   to stop at safe decode boundaries.
    * @return Concrete decode result containing bin states and exported layout

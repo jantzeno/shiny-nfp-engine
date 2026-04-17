@@ -13,7 +13,7 @@
 namespace {
 
 using shiny::nfp::AlgorithmKind;
-using shiny::nfp::pack::BinPrototype;
+using shiny::nfp::pack::BinInput;
 using shiny::nfp::pack::PackingConfig;
 using shiny::nfp::pack::PieceInput;
 using shiny::nfp::place::PlacementPolicy;
@@ -112,13 +112,33 @@ auto parse_policy(std::string_view value) -> PlacementPolicy {
   throw std::runtime_error("unknown observer fixture policy");
 }
 
-auto parse_bin_prototype(const shiny::nfp::test::pt::ptree &node)
-    -> BinPrototype {
+auto parse_bin_input(const shiny::nfp::test::pt::ptree &node) -> BinInput {
   return {
-      .base_bin_id = node.get<std::uint32_t>("base_bin_id", 0),
+      .bin_id = node.get<std::uint32_t>("base_bin_id", 0),
       .polygon = parse_polygon(node.get_child("polygon")),
       .geometry_revision = node.get<std::uint64_t>("geometry_revision", 0),
   };
+}
+
+auto resolve_fixture_bin_count(const std::size_t max_bin_count,
+                               const std::size_t piece_count)
+    -> std::size_t {
+  if (max_bin_count != 0U) {
+    return max_bin_count;
+  }
+  return std::max<std::size_t>(piece_count, 1U);
+}
+
+auto expand_bins(BinInput base_bin, const std::size_t count)
+    -> std::vector<BinInput> {
+  std::vector<BinInput> bins;
+  bins.reserve(std::max<std::size_t>(count, 1));
+  for (std::size_t index = 0; index < std::max<std::size_t>(count, 1); ++index) {
+    BinInput bin = base_bin;
+    bin.bin_id = base_bin.bin_id + static_cast<std::uint32_t>(index);
+    bins.push_back(std::move(bin));
+  }
+  return bins;
 }
 
 auto parse_piece_inputs(const shiny::nfp::test::pt::ptree &node)
@@ -133,6 +153,12 @@ auto parse_piece_inputs(const shiny::nfp::test::pt::ptree &node)
         .grain_compatibility =
             parse_part_grain_compatibility(child.second.get<std::string>(
                 "grain_compatibility", "unrestricted")),
+        .allowed_bin_ids = [&]() {
+          if (const auto ids = child.second.get_child_optional("allowed_bin_ids")) {
+            return parse_ids(*ids);
+          }
+          return std::vector<std::uint32_t>{};
+        }(),
     });
   }
   return pieces;
@@ -178,17 +204,16 @@ auto parse_search_request(const shiny::nfp::test::pt::ptree &node)
   }
 
   const auto &decoder_request = node.get_child("decoder_request");
+  const auto max_bins = decoder_request.get<std::size_t>("max_bin_count", 1);
+  const auto pieces = parse_piece_inputs(decoder_request.get_child("pieces"));
   request.decoder_request = {
-      .bin = parse_bin_prototype(decoder_request.get_child("bin")),
-      .pieces = parse_piece_inputs(decoder_request.get_child("pieces")),
+      .bins = expand_bins(parse_bin_input(decoder_request.get_child("bin")),
+                          resolve_fixture_bin_count(max_bins, pieces.size())),
+      .pieces = pieces,
       .policy = parse_policy(
           decoder_request.get<std::string>("policy", "bottom_left")),
   };
 
-  if (const auto max_bins =
-          decoder_request.get_optional<std::size_t>("max_bin_count")) {
-    request.decoder_request.max_bin_count = *max_bins;
-  }
   if (const auto config = decoder_request.get_child_optional("config")) {
     request.decoder_request.config = parse_packing_config(*config);
   }

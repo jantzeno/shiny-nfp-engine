@@ -36,7 +36,7 @@ using geom::Polygon;
 using geom::PolygonWithHoles;
 using geom::Ring;
 using geom::Segment2;
-using pack::BinPrototype;
+using pack::BinInput;
 using pack::DecoderRequest;
 using pack::DecoderResult;
 using pack::Layout;
@@ -984,14 +984,26 @@ auto make_decoder_request(const SvgPackingCaseSpec &spec,
   const auto translated_bed_bounds = bounds_for_ring(translated_bed.outer);
   const auto bed_width = translated_bed_bounds[2] - translated_bed_bounds[0];
   const auto bed_height = translated_bed_bounds[3] - translated_bed_bounds[1];
+  const auto effective_bin_count =
+      spec.max_bin_count == 0U
+          ? std::max<std::size_t>(svg_case.pieces.size(), 1U)
+          : spec.max_bin_count;
+  const auto expand_bins = [&](const BinInput &base_bin)
+      -> std::vector<BinInput> {
+    std::vector<BinInput> bins;
+    bins.reserve(effective_bin_count);
+    for (std::size_t index = 0; index < effective_bin_count; ++index) {
+      BinInput bin = base_bin;
+      bin.bin_id = base_bin.bin_id + static_cast<std::uint32_t>(index);
+      bins.push_back(std::move(bin));
+    }
+    return bins;
+  };
 
   DecoderRequest request{
-      .bin =
-          BinPrototype{
-              .base_bin_id = 1,
-              .polygon = translated_bed,
-              .geometry_revision = 1,
-          },
+      .bins = expand_bins({.bin_id = 1,
+                           .polygon = translated_bed,
+                           .geometry_revision = 1}),
       .policy = PlacementPolicy::bottom_left,
       .config =
           PackingConfig{
@@ -1005,7 +1017,6 @@ auto make_decoder_request(const SvgPackingCaseSpec &spec,
                   },
               .enable_hole_first_placement = false,
           },
-      .max_bin_count = spec.max_bin_count,
   };
 
   std::vector<const ImportedPiece *> fitting_pieces;
@@ -1069,6 +1080,7 @@ auto make_search_request(const SvgPackingCaseSpec &spec,
       .deterministic_seed = kSearchSeed,
       .plateau_budget = spec.search_plateau_budget,
   };
+  request.execution.control.worker_count = 4U;
   request.execution.control.time_budget_ms = spec.execution_time_budget_ms;
   install_live_progress_observer(spec, request);
   return request;
@@ -1153,7 +1165,8 @@ void require_valid_imported_case(const SvgPackingCaseSpec &spec,
 void require_request_matches_imported_case(const SvgPackingCaseSpec &spec,
                                            const ImportedSvgCase &imported,
                                            const DecoderRequest &request) {
-  REQUIRE_FALSE(request.bin.polygon.outer.empty());
+  REQUIRE_FALSE(request.bins.empty());
+  REQUIRE_FALSE(request.bins.front().polygon.outer.empty());
   REQUIRE_FALSE(request.pieces.empty());
   REQUIRE(request.pieces.size() <= imported.pieces.size());
   REQUIRE(request.pieces.size() >= spec.min_placed_piece_count);
@@ -1173,11 +1186,15 @@ void require_request_matches_imported_case(const SvgPackingCaseSpec &spec,
 void require_valid_decoder_result(const SvgPackingCaseSpec &spec,
                                   const DecoderRequest &request,
                                   const DecoderResult &result) {
+  const auto effective_bin_count = spec.max_bin_count == 0U
+                                       ? std::max<std::size_t>(
+                                             request.pieces.size(), 1U)
+                                       : spec.max_bin_count;
   require_layout_consistency(request, result.layout,
                              result.layout.placement_trace.size(),
                              result.layout.unplaced_piece_ids.size());
   REQUIRE(result.layout.bins.size() >= 1U);
-  REQUIRE(result.layout.bins.size() <= spec.max_bin_count);
+  REQUIRE(result.layout.bins.size() <= effective_bin_count);
   REQUIRE(result.layout.placement_trace.size() >= spec.min_placed_piece_count);
   if (spec.require_full_placement) {
     REQUIRE(result.layout.unplaced_piece_ids.empty());
@@ -1187,6 +1204,11 @@ void require_valid_decoder_result(const SvgPackingCaseSpec &spec,
 void require_valid_search_result(const SvgPackingCaseSpec &spec,
                                  const SearchRequest &request,
                                  const SearchResult &result) {
+  const auto effective_bin_count = spec.max_bin_count == 0U
+                                       ? std::max<std::size_t>(
+                                             request.decoder_request.pieces.size(),
+                                             1U)
+                                       : spec.max_bin_count;
   REQUIRE(result.status != SearchRunStatus::invalid_request);
   REQUIRE(result.deterministic_seed == kSearchSeed);
   REQUIRE(result.evaluated_layout_count > 0U);
@@ -1199,7 +1221,7 @@ void require_valid_search_result(const SvgPackingCaseSpec &spec,
                              result.best.unplaced_piece_count);
 
   REQUIRE(result.best.bin_count >= 1U);
-  REQUIRE(result.best.bin_count <= spec.max_bin_count);
+  REQUIRE(result.best.bin_count <= effective_bin_count);
   REQUIRE(result.best.placed_piece_count >= spec.min_placed_piece_count);
   if (spec.require_full_placement) {
     REQUIRE(result.best.unplaced_piece_count == 0U);
@@ -1207,14 +1229,20 @@ void require_valid_search_result(const SvgPackingCaseSpec &spec,
   if (spec.require_observable_success_before_interrupt &&
       (result.status == SearchRunStatus::timed_out ||
        result.status == SearchRunStatus::cancelled)) {
-    REQUIRE(result.iterations_completed > 0U);
     REQUIRE_FALSE(result.progress.empty());
+    REQUIRE(result.progress.front().iteration == 0U);
+    REQUIRE(result.progress.back().iteration >= result.iterations_completed);
   }
 }
 
 void require_valid_masonry_result(const SvgPackingCaseSpec &spec,
                                   const MasonryRequest &request,
                                   const MasonryResult &result) {
+  const auto effective_bin_count = spec.max_bin_count == 0U
+                                       ? std::max<std::size_t>(
+                                             request.decoder_request.pieces.size(),
+                                             1U)
+                                       : spec.max_bin_count;
   REQUIRE(result.algorithm == AlgorithmKind::masonry_builder);
   REQUIRE(result.layout.bins.size() == result.bins.size());
   REQUIRE(result.trace.size() == result.layout.placement_trace.size());
@@ -1225,7 +1253,7 @@ void require_valid_masonry_result(const SvgPackingCaseSpec &spec,
                              result.layout.unplaced_piece_ids.size());
 
   REQUIRE(result.layout.bins.size() >= 1U);
-  REQUIRE(result.layout.bins.size() <= spec.max_bin_count);
+  REQUIRE(result.layout.bins.size() <= effective_bin_count);
   REQUIRE(result.layout.placement_trace.size() >= spec.min_placed_piece_count);
   if (spec.require_full_placement) {
     REQUIRE(result.layout.unplaced_piece_ids.empty());

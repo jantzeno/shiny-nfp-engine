@@ -1,5 +1,11 @@
 #include "logging/shiny_log.hpp"
 
+#include <algorithm>
+#include <cctype>
+#include <cstdlib>
+#include <optional>
+#include <string>
+
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
@@ -9,6 +15,43 @@ namespace {
 constexpr const char *kLoggerName = "shiny";
 
 std::shared_ptr<spdlog::logger> g_logger;
+
+[[nodiscard]] auto ParseLevelFromEnvironment()
+    -> std::optional<spdlog::level::level_enum> {
+  const char *raw_level = std::getenv("SHINY_NFP_LOG_LEVEL");
+  if (raw_level == nullptr || *raw_level == '\0') {
+    return std::nullopt;
+  }
+
+  std::string level(raw_level);
+  std::transform(level.begin(), level.end(), level.begin(),
+                 [](const unsigned char ch) {
+                   return static_cast<char>(std::tolower(ch));
+                 });
+
+  if (level == "trace") {
+    return spdlog::level::trace;
+  }
+  if (level == "debug") {
+    return spdlog::level::debug;
+  }
+  if (level == "info") {
+    return spdlog::level::info;
+  }
+  if (level == "warn" || level == "warning") {
+    return spdlog::level::warn;
+  }
+  if (level == "error") {
+    return spdlog::level::err;
+  }
+  if (level == "critical") {
+    return spdlog::level::critical;
+  }
+  if (level == "off") {
+    return spdlog::level::off;
+  }
+  return std::nullopt;
+}
 
 } // namespace
 
@@ -22,13 +65,21 @@ void InitializeLogger() {
     g_logger = spdlog::stdout_color_mt(kLoggerName);
   }
 
-  g_logger->set_pattern("[%H:%M:%S] [%^%l%$] [" + std::string(kLoggerName) +
-                        "] %v");
+  g_logger->set_pattern("[%H:%M:%S.%e] [%^%l%$] [t%t] [" +
+                        std::string(kLoggerName) + "] %v");
+
+  const std::optional<spdlog::level::level_enum> env_level =
+      ParseLevelFromEnvironment();
+  if (env_level.has_value()) {
+    g_logger->set_level(*env_level);
+  } else {
 #ifdef NDEBUG
-  g_logger->set_level(spdlog::level::info);
+    g_logger->set_level(spdlog::level::info);
 #else
-  g_logger->set_level(spdlog::level::debug);
+    g_logger->set_level(spdlog::level::trace);
 #endif
+  }
+  g_logger->flush_on(spdlog::level::debug);
   spdlog::set_default_logger(g_logger);
 }
 

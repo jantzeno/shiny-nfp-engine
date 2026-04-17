@@ -8,6 +8,7 @@
 #include <string_view>
 #include <vector>
 
+#include "packing/bounding_box_packer.hpp"
 #include "packing/decoder.hpp"
 #include "polygon_ops/merge_region.hpp"
 #include "support/fixture_test_support.hpp"
@@ -15,7 +16,7 @@
 namespace {
 
 using Catch::Approx;
-using shiny::nfp::pack::BinPrototype;
+using shiny::nfp::pack::BinInput;
 using shiny::nfp::pack::ConstructiveDecoder;
 using shiny::nfp::pack::CutPlan;
 using shiny::nfp::pack::DecoderRequest;
@@ -175,39 +176,65 @@ auto parse_piece_inputs(const shiny::nfp::test::pt::ptree &node)
     -> std::vector<PieceInput> {
   std::vector<PieceInput> pieces;
   for (const auto &child : node) {
-    pieces.push_back({
-        .piece_id = child.second.get<std::uint32_t>("piece_id"),
-        .polygon = parse_polygon(child.second.get_child("polygon")),
-        .geometry_revision =
-            child.second.get<std::uint64_t>("geometry_revision", 0),
-        .grain_compatibility =
-            parse_part_grain_compatibility(child.second.get<std::string>(
-                "grain_compatibility", "unrestricted")),
-    });
-  }
+      pieces.push_back({
+          .piece_id = child.second.get<std::uint32_t>("piece_id"),
+          .polygon = parse_polygon(child.second.get_child("polygon")),
+          .geometry_revision =
+              child.second.get<std::uint64_t>("geometry_revision", 0),
+          .grain_compatibility =
+              parse_part_grain_compatibility(child.second.get<std::string>(
+                  "grain_compatibility", "unrestricted")),
+          .allowed_bin_ids = [&]() {
+            if (const auto ids = child.second.get_child_optional("allowed_bin_ids")) {
+              return parse_ids(*ids);
+            }
+            return std::vector<std::uint32_t>{};
+          }(),
+      });
+    }
   return pieces;
 }
 
-auto parse_bin_prototype(const shiny::nfp::test::pt::ptree &node)
-    -> BinPrototype {
+auto parse_bin_input(const shiny::nfp::test::pt::ptree &node) -> BinInput {
   return {
-      .base_bin_id = node.get<std::uint32_t>("base_bin_id", 0),
+      .bin_id = node.get<std::uint32_t>("base_bin_id", 0),
       .polygon = parse_polygon(node.get_child("polygon")),
       .geometry_revision = node.get<std::uint64_t>("geometry_revision", 0),
   };
 }
 
+auto resolve_fixture_bin_count(const std::size_t max_bin_count,
+                               const std::size_t piece_count)
+    -> std::size_t {
+  if (max_bin_count != 0U) {
+    return max_bin_count;
+  }
+  return std::max<std::size_t>(piece_count, 1U);
+}
+
+auto expand_bins(BinInput base_bin, const std::size_t count)
+    -> std::vector<BinInput> {
+  std::vector<BinInput> bins;
+  bins.reserve(std::max<std::size_t>(count, 1));
+  for (std::size_t index = 0; index < std::max<std::size_t>(count, 1); ++index) {
+    BinInput bin = base_bin;
+    bin.bin_id = base_bin.bin_id + static_cast<std::uint32_t>(index);
+    bins.push_back(std::move(bin));
+  }
+  return bins;
+}
+
 auto parse_decoder_request(const shiny::nfp::test::pt::ptree &node)
     -> DecoderRequest {
+  const auto max_bins = node.get<std::size_t>("max_bin_count", 0);
+  const auto pieces = parse_piece_inputs(node.get_child("pieces"));
   DecoderRequest request{
-      .bin = parse_bin_prototype(node.get_child("bin")),
-      .pieces = parse_piece_inputs(node.get_child("pieces")),
+      .bins = expand_bins(parse_bin_input(node.get_child("bin")),
+                          resolve_fixture_bin_count(max_bins, pieces.size())),
+      .pieces = pieces,
       .policy = parse_policy(node.get<std::string>("policy", "bottom_left")),
   };
 
-  if (const auto max_bins = node.get_optional<std::size_t>("max_bin_count")) {
-    request.max_bin_count = *max_bins;
-  }
   if (const auto config = node.get_child_optional("config")) {
     request.config = parse_packing_config(*config);
   }
@@ -455,12 +482,11 @@ TEST_CASE("packing decoder routes convex bins through IFP queries",
           "[packing][decoder][ifp]") {
   ConstructiveDecoder decoder;
   DecoderRequest request{
-      .bin =
-          {
-              .base_bin_id = 0,
-              .polygon = make_rectangle(0.0, 0.0, 10.0, 10.0),
-              .geometry_revision = 1,
-          },
+      .bins = {{
+          .bin_id = 0,
+          .polygon = make_rectangle(0.0, 0.0, 10.0, 10.0),
+          .geometry_revision = 1,
+      }},
       .pieces =
           {
               PieceInput{
@@ -490,12 +516,11 @@ TEST_CASE("packing decoder isolates transient occupied-region cache keys",
   const auto make_request = [](double first_piece_width,
                                std::uint64_t first_piece_revision) {
     return DecoderRequest{
-        .bin =
-            {
-                .base_bin_id = 0,
-                .polygon = make_rectangle(0.0, 0.0, 10.0, 10.0),
-                .geometry_revision = 50,
-            },
+        .bins = {{
+            .bin_id = 0,
+            .polygon = make_rectangle(0.0, 0.0, 10.0, 10.0),
+            .geometry_revision = 50,
+        }},
         .pieces =
             {
                 PieceInput{
@@ -539,12 +564,11 @@ TEST_CASE("packing decoder rejects grain-incompatible piece rotations",
           "[packing][decoder][grain]") {
   ConstructiveDecoder decoder;
   const DecoderRequest request{
-      .bin =
-          {
-              .base_bin_id = 0,
-              .polygon = make_rectangle(0.0, 0.0, 8.0, 8.0),
-              .geometry_revision = 1,
-          },
+      .bins = {{
+          .bin_id = 0,
+          .polygon = make_rectangle(0.0, 0.0, 8.0, 8.0),
+          .geometry_revision = 1,
+      }},
       .pieces =
           {
               PieceInput{
@@ -577,12 +601,11 @@ TEST_CASE("packing decoder treats exclusion zones as keep-outs",
           "[packing][decoder][exclusion]") {
   ConstructiveDecoder decoder;
   const DecoderRequest request{
-      .bin =
-          {
-              .base_bin_id = 0,
-              .polygon = make_rectangle(0.0, 0.0, 6.0, 6.0),
-              .geometry_revision = 1,
-          },
+      .bins = {{
+          .bin_id = 0,
+          .polygon = make_rectangle(0.0, 0.0, 6.0, 6.0),
+          .geometry_revision = 1,
+      }},
       .pieces =
           {
               PieceInput{
@@ -621,12 +644,11 @@ TEST_CASE("packing decoder allows pieces to touch on occupied boundaries",
           "[packing][decoder][boundary]") {
   ConstructiveDecoder decoder;
   const DecoderRequest request{
-      .bin =
-          {
-              .base_bin_id = 0,
-              .polygon = make_rectangle(0.0, 0.0, 6.0, 3.0),
-              .geometry_revision = 1,
-          },
+      .bins = {{
+          .bin_id = 0,
+          .polygon = make_rectangle(0.0, 0.0, 6.0, 3.0),
+          .geometry_revision = 1,
+      }},
       .pieces =
           {
               PieceInput{
@@ -664,12 +686,11 @@ TEST_CASE("packing decoder allows placements tangent to exclusion zones",
           "[packing][decoder][exclusion][boundary]") {
   ConstructiveDecoder decoder;
   const DecoderRequest request{
-      .bin =
-          {
-              .base_bin_id = 0,
-              .polygon = make_rectangle(0.0, 0.0, 6.0, 6.0),
-              .geometry_revision = 1,
-          },
+      .bins = {{
+          .bin_id = 0,
+          .polygon = make_rectangle(0.0, 0.0, 6.0, 6.0),
+          .geometry_revision = 1,
+      }},
       .pieces =
           {
               PieceInput{
@@ -709,12 +730,11 @@ TEST_CASE("packing decoder reports interrupted partial runs",
           "[packing][decoder][interrupt]") {
   ConstructiveDecoder decoder;
   const DecoderRequest request{
-      .bin =
-          {
-              .base_bin_id = 0,
-              .polygon = make_rectangle(0.0, 0.0, 8.0, 8.0),
-              .geometry_revision = 1,
-          },
+      .bins = {{
+          .bin_id = 0,
+          .polygon = make_rectangle(0.0, 0.0, 8.0, 8.0),
+          .geometry_revision = 1,
+      }},
       .pieces =
           {
               PieceInput{
@@ -756,12 +776,11 @@ TEST_CASE("packing decoder preserves placed pieces on later interruption",
           "[packing][decoder][interrupt][partial]") {
   ConstructiveDecoder decoder;
   const DecoderRequest request{
-      .bin =
-          {
-              .base_bin_id = 0,
-              .polygon = make_rectangle(0.0, 0.0, 8.0, 4.0),
-              .geometry_revision = 1,
-          },
+      .bins = {{
+          .bin_id = 0,
+          .polygon = make_rectangle(0.0, 0.0, 8.0, 4.0),
+          .geometry_revision = 1,
+      }},
       .pieces =
           {
               PieceInput{
@@ -796,4 +815,70 @@ TEST_CASE("packing decoder preserves placed pieces on later interruption",
   require_point_equal(result.layout.placement_trace.front().translation,
                       {0.0, 0.0});
   REQUIRE(decoder.nonconvex_cache_size() > 0U);
+}
+
+TEST_CASE("packing decoder honors top-right start corner",
+          "[packing][decoder][start-corner]") {
+  ConstructiveDecoder decoder;
+  const DecoderRequest request{
+      .bins = {{
+          .bin_id = 0,
+          .polygon = make_rectangle(0.0, 0.0, 10.0, 10.0),
+          .geometry_revision = 1,
+          .start_corner = shiny::nfp::place::PlacementStartCorner::top_right,
+      }},
+      .pieces = {{
+          .piece_id = 1,
+          .polygon = make_rectangle(0.0, 0.0, 4.0, 3.0),
+          .geometry_revision = 2,
+      }},
+      .policy = PlacementPolicy::bottom_left,
+      .config =
+          {
+              .placement =
+                  {
+                      .allowed_rotations = {.angles_degrees = {0.0}},
+                  },
+              .enable_hole_first_placement = false,
+          },
+  };
+
+  const auto result = decoder.decode(request);
+
+  REQUIRE(result.layout.placement_trace.size() == 1U);
+  require_point_equal(result.layout.placement_trace.front().translation,
+                      {6.0, 7.0});
+}
+
+TEST_CASE("bounding box packer honors bottom-right start corner",
+          "[packing][bbox][start-corner]") {
+  shiny::nfp::pack::BoundingBoxPacker packer;
+  const DecoderRequest request{
+      .bins = {{
+          .bin_id = 0,
+          .polygon = make_rectangle(0.0, 0.0, 10.0, 10.0),
+          .geometry_revision = 1,
+          .start_corner = shiny::nfp::place::PlacementStartCorner::bottom_right,
+      }},
+      .pieces = {{
+          .piece_id = 1,
+          .polygon = make_rectangle(0.0, 0.0, 4.0, 3.0),
+          .geometry_revision = 2,
+      }},
+      .policy = PlacementPolicy::bottom_left,
+      .config =
+          {
+              .placement =
+                  {
+                      .allowed_rotations = {.angles_degrees = {0.0}},
+                  },
+              .enable_hole_first_placement = false,
+          },
+  };
+
+  const auto result = packer.decode(request);
+
+  REQUIRE(result.layout.placement_trace.size() == 1U);
+  require_point_equal(result.layout.placement_trace.front().translation,
+                      {6.0, 0.0});
 }

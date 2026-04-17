@@ -54,7 +54,7 @@ void require_masonry_cases(const std::vector<SvgPackingCaseSpec> &specs,
 } // namespace
 
 TEST_CASE("applicable normative svg cases build deterministic masonry layouts",
-          "[integration][svg][masonry][readiness]") {
+          "[.][integration][svg][masonry][readiness]") {
   std::vector<SvgPackingCaseSpec> readiness_specs;
   for (const auto &spec : select_svg_case_specs(true, "masonry_builder")) {
     readiness_specs.push_back(spec);

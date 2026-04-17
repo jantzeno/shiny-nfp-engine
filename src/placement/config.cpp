@@ -93,6 +93,11 @@ auto rotation_is_allowed(geom::RotationIndex rotation_index,
   return resolve_rotation(rotation_index, config).has_value();
 }
 
+auto exclusion_zone_applies_to_bin(const BedExclusionZone &zone,
+                                   const std::uint32_t bin_id) -> bool {
+  return !zone.bin_id.has_value() || *zone.bin_id == bin_id;
+}
+
 auto grain_compatibility_allows_rotation(geom::ResolvedRotation rotation,
                                          BedGrainDirection bed_grain_direction,
                                          PartGrainCompatibility compatibility)

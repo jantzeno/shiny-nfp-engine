@@ -49,7 +49,7 @@ auto make_bounded_readiness_genetic_config(
 } // namespace
 
 TEST_CASE("normative svg cases improve deterministically under genetic search",
-          "[integration][svg][genetic][readiness]") {
+          "[.][integration][svg][genetic][readiness]") {
   const auto specs = select_svg_case_specs(true, "genetic_search");
   REQUIRE_FALSE(specs.empty());
 

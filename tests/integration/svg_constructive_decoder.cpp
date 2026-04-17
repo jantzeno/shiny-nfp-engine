@@ -18,7 +18,7 @@ using shiny::nfp::test::svg::select_svg_case_specs;
 using shiny::nfp::test::svg::write_layout_svg;
 
 TEST_CASE("normative svg cases decode deterministically into valid layouts",
-          "[integration][svg][decoder][readiness]") {
+          "[.][integration][svg][decoder][readiness]") {
   const auto specs = select_svg_case_specs(true, "constructive_decoder");
   REQUIRE_FALSE(specs.empty());
 

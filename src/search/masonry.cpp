@@ -129,7 +129,7 @@ auto MasonryRunner::run(const MasonryRunRequest &request) -> MasonryRunResult {
 
   if (!request.masonry_request.masonry.is_valid() ||
       !request.masonry_request.decoder_request.config.is_valid() ||
-      request.masonry_request.decoder_request.bin.polygon.outer.empty() ||
+      request.masonry_request.decoder_request.bins.empty() ||
       !request.execution.control.is_valid()) {
     return result;
   }

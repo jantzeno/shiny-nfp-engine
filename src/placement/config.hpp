@@ -49,6 +49,16 @@ enum class PartGrainCompatibility : std::int8_t {
 };
 
 /**
+ * @brief Selects which bed corner candidate ranking should treat as the start.
+ */
+enum class PlacementStartCorner : std::int8_t {
+  bottom_left = 0,
+  bottom_right = 1,
+  top_left = 2,
+  top_right = 3,
+};
+
+/**
  * @brief One explicit forbidden bed region for clamps or tooling.
  *
  * This type keeps manufacturing keep-outs semantically distinct from ordinary
@@ -64,6 +74,7 @@ enum class PartGrainCompatibility : std::int8_t {
  */
 struct BedExclusionZone {
   std::uint32_t zone_id{0};
+  std::optional<std::uint32_t> bin_id{};
   geom::Polygon region{};
 
   /**
@@ -125,6 +136,9 @@ struct PlacementConfig {
  */
 [[nodiscard]] auto rotation_is_allowed(geom::RotationIndex rotation_index,
                                        const PlacementConfig &config) -> bool;
+
+[[nodiscard]] auto exclusion_zone_applies_to_bin(const BedExclusionZone &zone,
+                                                 std::uint32_t bin_id) -> bool;
 
 /**
  * @brief Reports whether one resolved rotation satisfies a part grain rule.

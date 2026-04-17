@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "geometry/normalize.hpp"
+#include "logging/shiny_log.hpp"
 #include "nfp/revisions.hpp"
 #include "placement/config.hpp"
 #include "polygon_ops/boolean_ops.hpp"
@@ -597,8 +598,12 @@ minimum_boundary_distance(const geom::PolygonWithHoles &piece,
 
 [[nodiscard]] auto overlaps_any_exclusion_zone(
     const geom::PolygonWithHoles &piece, const geom::Box2 &piece_bounds,
-    std::span<const place::BedExclusionZone> exclusion_zones) -> bool {
+    std::span<const place::BedExclusionZone> exclusion_zones,
+    const std::uint32_t bin_id) -> bool {
   for (const auto &zone : exclusion_zones) {
+    if (!place::exclusion_zone_applies_to_bin(zone, bin_id)) {
+      continue;
+    }
     if (overlaps_occupied_region(piece, piece_bounds,
                                  as_polygon_with_holes(zone))) {
       return true;
@@ -630,14 +635,56 @@ auto mark_remaining_unplaced(std::span<const PieceInput> pieces,
   return minimum_distance;
 }
 
-[[nodiscard]] auto bottom_left_tiebreak(const place::PlacementCandidate &lhs,
-                                        const place::PlacementCandidate &rhs)
-    -> bool {
-  if (lhs.translation.y != rhs.translation.y) {
-    return lhs.translation.y < rhs.translation.y;
+[[nodiscard]] auto
+start_corner_on_right(const place::PlacementStartCorner start_corner) -> bool {
+  return start_corner == place::PlacementStartCorner::bottom_right ||
+         start_corner == place::PlacementStartCorner::top_right;
+}
+
+[[nodiscard]] auto
+start_corner_on_top(const place::PlacementStartCorner start_corner) -> bool {
+  return start_corner == place::PlacementStartCorner::top_left ||
+         start_corner == place::PlacementStartCorner::top_right;
+}
+
+[[nodiscard]] auto primary_edge_distance(
+    const geom::Box2 &container_bounds, const geom::Box2 &piece_bounds,
+    const place::PlacementStartCorner start_corner) -> double {
+  if (start_corner_on_top(start_corner)) {
+    return container_bounds.max.y - piece_bounds.max.y;
   }
-  if (lhs.translation.x != rhs.translation.x) {
-    return lhs.translation.x < rhs.translation.x;
+  return piece_bounds.min.y - container_bounds.min.y;
+}
+
+[[nodiscard]] auto secondary_edge_distance(
+    const geom::Box2 &container_bounds, const geom::Box2 &piece_bounds,
+    const place::PlacementStartCorner start_corner) -> double {
+  if (start_corner_on_right(start_corner)) {
+    return container_bounds.max.x - piece_bounds.max.x;
+  }
+  return piece_bounds.min.x - container_bounds.min.x;
+}
+
+[[nodiscard]] auto
+corner_tiebreak(const geom::Box2 &container_bounds,
+                const geom::Box2 &lhs_bounds, const geom::Box2 &rhs_bounds,
+                const place::PlacementCandidate &lhs,
+                const place::PlacementCandidate &rhs,
+                const place::PlacementStartCorner start_corner) -> bool {
+  const double lhs_primary =
+      primary_edge_distance(container_bounds, lhs_bounds, start_corner);
+  const double rhs_primary =
+      primary_edge_distance(container_bounds, rhs_bounds, start_corner);
+  if (lhs_primary != rhs_primary) {
+    return lhs_primary < rhs_primary;
+  }
+
+  const double lhs_secondary =
+      secondary_edge_distance(container_bounds, lhs_bounds, start_corner);
+  const double rhs_secondary =
+      secondary_edge_distance(container_bounds, rhs_bounds, start_corner);
+  if (lhs_secondary != rhs_secondary) {
+    return lhs_secondary < rhs_secondary;
   }
   if (lhs.rotation_index != rhs.rotation_index) {
     return lhs.rotation_index < rhs.rotation_index;
@@ -704,13 +751,16 @@ void score_candidates(const BinState &state,
                       const geom::PolygonWithHoles &rotated_piece,
                       std::vector<place::PlacementCandidate> &candidates,
                       place::PlacementPolicy policy) {
+  const auto container_bounds = compute_bounds(state.container);
   for (auto &candidate : candidates) {
     const auto translated_piece =
         translate_polygon(rotated_piece, candidate.translation);
+    const auto translated_bounds = compute_bounds(translated_piece);
 
     switch (policy) {
     case place::PlacementPolicy::bottom_left:
-      candidate.score = candidate.translation.y;
+      candidate.score = primary_edge_distance(
+          container_bounds, translated_bounds, state.start_corner);
       break;
     case place::PlacementPolicy::minimum_length:
       candidate.score =
@@ -724,22 +774,60 @@ void score_candidates(const BinState &state,
   }
 }
 
-[[nodiscard]] auto candidate_better(place::PlacementPolicy policy,
+[[nodiscard]] auto candidate_better(const BinState &state,
+                                    const geom::PolygonWithHoles &rotated_piece,
+                                    place::PlacementPolicy policy,
                                     const place::PlacementCandidate &lhs,
                                     const place::PlacementCandidate &rhs)
     -> bool {
+  const auto container_bounds = compute_bounds(state.container);
+  const auto lhs_bounds =
+      compute_bounds(translate_polygon(rotated_piece, lhs.translation));
+  const auto rhs_bounds =
+      compute_bounds(translate_polygon(rotated_piece, rhs.translation));
   switch (policy) {
   case place::PlacementPolicy::bottom_left:
   case place::PlacementPolicy::minimum_length:
     if (lhs.score != rhs.score) {
       return lhs.score < rhs.score;
     }
-    return bottom_left_tiebreak(lhs, rhs);
+    return corner_tiebreak(container_bounds, lhs_bounds, rhs_bounds, lhs, rhs,
+                           state.start_corner);
   case place::PlacementPolicy::maximum_utilization:
     if (lhs.score != rhs.score) {
       return lhs.score > rhs.score;
     }
-    return bottom_left_tiebreak(lhs, rhs);
+    return corner_tiebreak(container_bounds, lhs_bounds, rhs_bounds, lhs, rhs,
+                           state.start_corner);
+  }
+
+  return false;
+}
+
+[[nodiscard]] auto selection_better(const BinState &state,
+                                    place::PlacementPolicy policy,
+                                    const CandidateSelection &lhs,
+                                    const CandidateSelection &rhs) -> bool {
+  const auto container_bounds = compute_bounds(state.container);
+  const auto lhs_bounds = compute_bounds(
+      translate_polygon(lhs.rotated_piece, lhs.candidate.translation));
+  const auto rhs_bounds = compute_bounds(
+      translate_polygon(rhs.rotated_piece, rhs.candidate.translation));
+
+  switch (policy) {
+  case place::PlacementPolicy::bottom_left:
+  case place::PlacementPolicy::minimum_length:
+    if (lhs.candidate.score != rhs.candidate.score) {
+      return lhs.candidate.score < rhs.candidate.score;
+    }
+    return corner_tiebreak(container_bounds, lhs_bounds, rhs_bounds,
+                           lhs.candidate, rhs.candidate, state.start_corner);
+  case place::PlacementPolicy::maximum_utilization:
+    if (lhs.candidate.score != rhs.candidate.score) {
+      return lhs.candidate.score > rhs.candidate.score;
+    }
+    return corner_tiebreak(container_bounds, lhs_bounds, rhs_bounds,
+                           lhs.candidate, rhs.candidate, state.start_corner);
   }
 
   return false;
@@ -818,7 +906,8 @@ filter_candidates(const BinState &state,
     }
 
     if (overlaps_any_exclusion_zone(translated_piece, translated_bounds,
-                                    config.placement.exclusion_zones)) {
+                                    config.placement.exclusion_zones,
+                                    state.bin_id)) {
       continue;
     }
 
@@ -852,15 +941,21 @@ auto refresh_bin_state(BinState &state) -> void {
   state.utilization = summarize_bin(state);
 }
 
-[[nodiscard]] auto make_empty_bin(const DecoderRequest &request,
-                                  std::size_t bin_index) -> BinState {
+[[nodiscard]] auto make_empty_bin(const BinInput &bin) -> BinState {
   BinState state{};
-  state.bin_id =
-      request.bin.base_bin_id + static_cast<std::uint32_t>(bin_index);
-  state.container = geom::normalize_polygon(request.bin.polygon);
-  state.container_geometry_revision = request.bin.geometry_revision;
+  state.bin_id = bin.bin_id;
+  state.container = geom::normalize_polygon(bin.polygon);
+  state.container_geometry_revision = bin.geometry_revision;
+  state.start_corner = bin.start_corner;
   state.utilization = summarize_bin(state);
   return state;
+}
+
+[[nodiscard]] auto piece_allows_bin(const PieceInput &piece,
+                                    const std::uint32_t bin_id) -> bool {
+  return piece.allowed_bin_ids.empty() ||
+         std::find(piece.allowed_bin_ids.begin(), piece.allowed_bin_ids.end(),
+                   bin_id) != piece.allowed_bin_ids.end();
 }
 
 void apply_selection(BinState &state, const PieceInput &piece,
@@ -903,7 +998,7 @@ void apply_selection(BinState &state, const PieceInput &piece,
 }
 
 [[nodiscard]] auto
-select_best_candidate(place::PlacementPolicy policy,
+select_best_candidate(const BinState &state, place::PlacementPolicy policy,
                       const std::optional<CandidateSelection> &lhs,
                       const std::optional<CandidateSelection> &rhs)
     -> std::optional<CandidateSelection> {
@@ -914,7 +1009,7 @@ select_best_candidate(place::PlacementPolicy policy,
     return lhs;
   }
 
-  return candidate_better(policy, rhs->candidate, lhs->candidate) ? rhs : lhs;
+  return selection_better(state, policy, *rhs, *lhs) ? rhs : lhs;
 }
 
 [[nodiscard]] auto
@@ -929,11 +1024,11 @@ rank_candidate_set(const BinState &state,
   }
 
   score_candidates(state, rotated_piece, candidates, policy);
-  const auto best =
-      std::min_element(candidates.begin(), candidates.end(),
-                       [policy](const auto &lhs, const auto &rhs) {
-                         return candidate_better(policy, lhs, rhs);
-                       });
+  const auto best = std::min_element(
+      candidates.begin(), candidates.end(),
+      [&](const auto &lhs, const auto &rhs) {
+        return candidate_better(state, rotated_piece, policy, lhs, rhs);
+      });
   if (best == candidates.end()) {
     return std::nullopt;
   }
@@ -960,6 +1055,9 @@ find_best_for_rotation(NfpEngine &nfp_engine, std::uint64_t decode_generation,
   const auto resolved_rotation =
       place::resolve_rotation(rotation_index, config.placement);
   if (!resolved_rotation.has_value()) {
+    SHINY_TRACE("ConstructiveDecoder::find_best_for_rotation: unresolved "
+                "rotation piece_id={} bin_id={} rotation={}",
+                piece.piece_id, state.bin_id, rotation_index.value);
     return std::nullopt;
   }
 
@@ -1044,12 +1142,20 @@ find_best_for_rotation(NfpEngine &nfp_engine, std::uint64_t decode_generation,
       config.placement.enable_part_in_part_placement && !state.holes.empty()) {
     if (auto hole_candidates = collect_hole_candidates();
         !hole_candidates.empty()) {
+      SHINY_TRACE("ConstructiveDecoder::find_best_for_rotation: using hole "
+                  "candidates piece_id={} bin_id={} rotation={} count={}",
+                  piece.piece_id, state.bin_id, rotation_index.value,
+                  hole_candidates.size());
       return rank_candidate_set(state, rotated_piece, policy,
                                 std::move(hole_candidates), *resolved_rotation);
     }
   }
 
   auto regular_candidates = collect_regular_candidates();
+  SHINY_TRACE("ConstructiveDecoder::find_best_for_rotation: regular candidates "
+              "piece_id={} bin_id={} rotation={} count={}",
+              piece.piece_id, state.bin_id, rotation_index.value,
+              regular_candidates.size());
   return rank_candidate_set(state, rotated_piece, policy,
                             std::move(regular_candidates), *resolved_rotation);
 }
@@ -1060,6 +1166,11 @@ find_best_for_bin(NfpEngine &nfp_engine, const BinState &state,
                   const DecoderRequest &request,
                   const InterruptionProbe &interruption_requested)
     -> std::optional<CandidateSelection> {
+  SHINY_DEBUG("ConstructiveDecoder::find_best_for_bin: piece_id={} bin_id={} "
+              "rotations={} occupied_regions={} holes={}",
+              piece.piece_id, state.bin_id,
+              request.config.placement.allowed_rotations.angles_degrees.size(),
+              state.occupied.regions.size(), state.holes.size());
   std::optional<CandidateSelection> best;
   const auto rotation_count =
       request.config.placement.allowed_rotations.angles_degrees.size();
@@ -1072,12 +1183,24 @@ find_best_for_bin(NfpEngine &nfp_engine, const BinState &state,
     const auto rotation_index =
         geom::RotationIndex{.value = static_cast<std::uint16_t>(index)};
     best = select_best_candidate(
-        request.policy, best,
+        state, request.policy, best,
         find_best_for_rotation(nfp_engine, decode_generation, state, piece,
                                rotation_index, request.config, request.policy,
                                interruption_requested));
   }
 
+  if (best.has_value()) {
+    SHINY_DEBUG("ConstructiveDecoder::find_best_for_bin: selected piece_id={} "
+                "bin_id={} rotation={} translation=({}, {}) score={}",
+                piece.piece_id, state.bin_id,
+                best->candidate.rotation_index.value,
+                best->candidate.translation.x, best->candidate.translation.y,
+                best->candidate.score);
+  } else {
+    SHINY_DEBUG("ConstructiveDecoder::find_best_for_bin: no selection "
+                "piece_id={} bin_id={}",
+                piece.piece_id, state.bin_id);
+  }
   return best;
 }
 
@@ -1091,7 +1214,17 @@ auto ConstructiveDecoder::decode(
     const InterruptionProbe &interruption_requested) -> DecoderResult {
   DecoderResult result{};
   const auto decode_generation = ++decode_generation_;
-  if (!request.config.is_valid() || request.bin.polygon.outer.empty()) {
+  SHINY_DEBUG("ConstructiveDecoder::decode: start generation={} pieces={} "
+              "bins={} policy={} rotations={} exclusion_zones={}",
+              decode_generation, request.pieces.size(), request.bins.size(),
+              static_cast<std::uint32_t>(request.policy),
+              request.config.placement.allowed_rotations.angles_degrees.size(),
+              request.config.placement.exclusion_zones.size());
+  if (!request.config.is_valid() || request.bins.empty()) {
+    SHINY_WARN("ConstructiveDecoder::decode: invalid request generation={} "
+               "config_valid={} bin_count={}",
+               decode_generation, request.config.is_valid() ? 1 : 0,
+               request.bins.size());
     for (const auto &piece : request.pieces) {
       result.layout.unplaced_piece_ids.push_back(piece.piece_id);
     }
@@ -1103,6 +1236,7 @@ auto ConstructiveDecoder::decode(
     mark_remaining_unplaced(request.pieces, piece_index,
                             result.layout.unplaced_piece_ids);
   };
+  std::vector<bool> opened_bins(request.bins.size(), false);
 
   for (std::size_t piece_index = 0; piece_index < request.pieces.size();
        ++piece_index) {
@@ -1112,6 +1246,9 @@ auto ConstructiveDecoder::decode(
     }
 
     const auto &piece = request.pieces[piece_index];
+    SHINY_DEBUG("ConstructiveDecoder::decode: placing piece_index={} "
+                "piece_id={} existing_bins={}",
+                piece_index, piece.piece_id, result.bins.size());
     bool placed = false;
 
     for (auto &bin : result.bins) {
@@ -1120,12 +1257,21 @@ auto ConstructiveDecoder::decode(
         break;
       }
 
+      if (!piece_allows_bin(piece, bin.bin_id)) {
+        continue;
+      }
+
       if (const auto selection =
               find_best_for_bin(nfp_engine_, bin, decode_generation, piece,
                                 request, interruption_requested);
           selection.has_value()) {
         apply_selection(bin, piece, *selection, result.layout.placement_trace,
                         false);
+        SHINY_DEBUG("ConstructiveDecoder::decode: placed into existing bin "
+                    "piece_id={} bin_id={} trace_size={} placements_in_bin={}",
+                    piece.piece_id, bin.bin_id,
+                    result.layout.placement_trace.size(),
+                    bin.placements.size());
         placed = true;
         break;
       }
@@ -1139,20 +1285,37 @@ auto ConstructiveDecoder::decode(
       continue;
     }
 
-    if (request.max_bin_count != 0 &&
-        result.bins.size() >= request.max_bin_count) {
-      result.layout.unplaced_piece_ids.push_back(piece.piece_id);
-      continue;
+    for (std::size_t request_bin_index = 0;
+         request_bin_index < request.bins.size(); ++request_bin_index) {
+      if (opened_bins[request_bin_index]) {
+        continue;
+      }
+      const BinInput &bin_input = request.bins[request_bin_index];
+      if (!piece_allows_bin(piece, bin_input.bin_id)) {
+        continue;
+      }
+
+      auto new_bin = make_empty_bin(bin_input);
+      SHINY_DEBUG("ConstructiveDecoder::decode: opened candidate bin "
+                  "piece_id={} new_bin_id={} request_bin_index={}",
+                  piece.piece_id, new_bin.bin_id, request_bin_index);
+      if (const auto selection =
+              find_best_for_bin(nfp_engine_, new_bin, decode_generation, piece,
+                                request, interruption_requested);
+          selection.has_value()) {
+        apply_selection(new_bin, piece, *selection,
+                        result.layout.placement_trace, true);
+        SHINY_DEBUG("ConstructiveDecoder::decode: placed into new bin "
+                    "piece_id={} bin_id={} total_bins={}",
+                    piece.piece_id, new_bin.bin_id, result.bins.size() + 1U);
+        opened_bins[request_bin_index] = true;
+        result.bins.push_back(std::move(new_bin));
+        placed = true;
+        break;
+      }
     }
 
-    auto new_bin = make_empty_bin(request, result.bins.size());
-    if (const auto selection =
-            find_best_for_bin(nfp_engine_, new_bin, decode_generation, piece,
-                              request, interruption_requested);
-        selection.has_value()) {
-      apply_selection(new_bin, piece, *selection, result.layout.placement_trace,
-                      true);
-      result.bins.push_back(std::move(new_bin));
+    if (placed) {
       continue;
     }
 
@@ -1162,6 +1325,9 @@ auto ConstructiveDecoder::decode(
     }
 
     result.layout.unplaced_piece_ids.push_back(piece.piece_id);
+    SHINY_DEBUG("ConstructiveDecoder::decode: piece remained unplaced "
+                "piece_id={} unplaced_count={}",
+                piece.piece_id, result.layout.unplaced_piece_ids.size());
   }
 
   result.layout.bins.reserve(result.bins.size());
@@ -1175,6 +1341,12 @@ auto ConstructiveDecoder::decode(
     });
   }
 
+  SHINY_DEBUG("ConstructiveDecoder::decode: finish generation={} bins={} "
+              "placements={} unplaced={} interrupted={}",
+              decode_generation, result.layout.bins.size(),
+              result.layout.placement_trace.size(),
+              result.layout.unplaced_piece_ids.size(),
+              result.interrupted ? 1 : 0);
   return result;
 }
 

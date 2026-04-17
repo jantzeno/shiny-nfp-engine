@@ -18,6 +18,62 @@ enum class SharedCutOptimizationMode : std::int8_t {
 };
 
 /**
+ * @brief Selects the AABB constructive heuristic used by the bounding-box
+ * packer.
+ *
+ * `shelf` preserves the original row/shelf behavior, `skyline` stacks against
+ * the current step skyline, and `free_rectangle_backfill` places against the
+ * largest remaining free rectangles.
+ */
+enum class BoundingBoxHeuristic : std::int8_t {
+  shelf = 0,
+  skyline = 1,
+  free_rectangle_backfill = 2,
+};
+
+/**
+ * @brief Heuristic settings specific to the bounding-box constructive packer.
+ *
+ * @par Invariants
+ * - `heuristic` must be one of the supported bounded constructive strategies.
+ */
+struct BoundingBoxPackingConfig {
+  BoundingBoxHeuristic heuristic{BoundingBoxHeuristic::shelf};
+
+  /**
+   * @brief Reports whether the selected heuristic is supported.
+   *
+   * @return `true` when the heuristic value maps to one of the implemented
+   * constructive modes.
+   */
+  [[nodiscard]] auto is_valid() const -> bool;
+};
+
+/**
+ * @brief Bounds deterministic reordering attempts for constructive packers.
+ *
+ * Shared by constructive flows that evaluate a fixed set of deterministic
+ * piece-order variants instead of a stochastic search.
+ *
+ * @par Invariants
+ * - `max_attempts` must stay within the supported bounded range.
+ *
+ * @par Performance Notes
+ * - Higher attempt counts scale linearly with constructive decode cost.
+ */
+struct DeterministicAttemptConfig {
+  std::uint32_t max_attempts{1};
+
+  /**
+   * @brief Reports whether the bounded deterministic attempt settings are
+   * internally consistent.
+   *
+   * @return `true` when the attempt budget stays within the supported range.
+   */
+  [[nodiscard]] auto is_valid() const -> bool;
+};
+
+/**
  * @brief Controls cut-plan simplification after layout generation.
  *
  * @par Invariants
@@ -56,6 +112,8 @@ struct LaserCutOptimizationConfig {
 struct PackingConfig {
   place::PlacementConfig placement{};
   bool enable_hole_first_placement{true};
+  BoundingBoxPackingConfig bounding_box{};
+  DeterministicAttemptConfig deterministic_attempts{};
   LaserCutOptimizationConfig laser_cut_optimization{};
 
   /**

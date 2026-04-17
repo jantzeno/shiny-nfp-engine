@@ -6,7 +6,7 @@
 namespace {
 
 using shiny::nfp::geom::PolygonWithHoles;
-using shiny::nfp::pack::BinPrototype;
+using shiny::nfp::pack::BinInput;
 using shiny::nfp::pack::ConstructiveDecoder;
 using shiny::nfp::pack::DecoderRequest;
 using shiny::nfp::pack::PieceInput;
@@ -44,12 +44,11 @@ void print_layout(const shiny::nfp::pack::DecoderResult &result) {
 auto main() -> int {
   ConstructiveDecoder decoder;
   const DecoderRequest request{
-      .bin =
-          BinPrototype{
-              .base_bin_id = 1,
-              .polygon = make_rectangle(10.0, 10.0),
-              .geometry_revision = 100,
-          },
+      .bins = {{
+          .bin_id = 1,
+          .polygon = make_rectangle(10.0, 10.0),
+          .geometry_revision = 100,
+      }},
       .pieces =
           {
               PieceInput{.piece_id = 1,

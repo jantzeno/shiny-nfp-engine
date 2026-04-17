@@ -175,15 +175,13 @@ auto parse_masonry_request(const shiny::nfp::test::pt::ptree &node)
   const auto &decoder = node;
   request.decoder_request.policy =
       parse_policy(decoder.get<std::string>("policy", "bottom_left"));
-  request.decoder_request.max_bin_count =
-      decoder.get<std::size_t>("max_bin_count", 0);
-  request.decoder_request.bin = {
-      .base_bin_id =
-          decoder.get_child("bin").get<std::uint32_t>("base_bin_id", 0),
-      .polygon = parse_polygon(decoder.get_child("bin").get_child("polygon")),
-      .geometry_revision =
-          decoder.get_child("bin").get<std::uint64_t>("geometry_revision", 0),
-  };
+  const auto max_bins = decoder.get<std::size_t>("max_bin_count", 1);
+  const auto base_bin_id =
+      decoder.get_child("bin").get<std::uint32_t>("base_bin_id", 0);
+  const auto base_polygon =
+      parse_polygon(decoder.get_child("bin").get_child("polygon"));
+  const auto base_geometry_revision =
+      decoder.get_child("bin").get<std::uint64_t>("geometry_revision", 0);
 
   for (const auto &child : decoder.get_child("pieces")) {
     request.decoder_request.pieces.push_back({
@@ -194,6 +192,19 @@ auto parse_masonry_request(const shiny::nfp::test::pt::ptree &node)
         .grain_compatibility =
             parse_part_grain_compatibility(child.second.get<std::string>(
                 "grain_compatibility", "unrestricted")),
+    });
+  }
+
+  const auto bin_count =
+      max_bins == 0U
+          ? std::max<std::size_t>(request.decoder_request.pieces.size(), 1U)
+          : max_bins;
+  request.decoder_request.bins.reserve(bin_count);
+  for (std::size_t index = 0; index < bin_count; ++index) {
+    request.decoder_request.bins.push_back({
+        .bin_id = base_bin_id + static_cast<std::uint32_t>(index),
+        .polygon = base_polygon,
+        .geometry_revision = base_geometry_revision,
     });
   }
 
@@ -305,9 +316,11 @@ TEST_CASE("masonry builder fills shelves deterministically",
 
   MasonryRequest request{};
   request.decoder_request = {
-      .bin = {.base_bin_id = 20,
-              .polygon = make_rectangle(0.0, 0.0, 10.0, 10.0),
-              .geometry_revision = 100},
+      .bins = {{
+          .bin_id = 20,
+          .polygon = make_rectangle(0.0, 0.0, 10.0, 10.0),
+          .geometry_revision = 100,
+      }},
       .pieces =
           {
               make_piece(1, make_rectangle(0.0, 0.0, 6.0, 4.0), 1),
@@ -316,7 +329,6 @@ TEST_CASE("masonry builder fills shelves deterministically",
           },
       .policy = PlacementPolicy::bottom_left,
       .config = PackingConfig{},
-      .max_bin_count = 1,
   };
 
   const auto first = builder.build(request);
@@ -365,9 +377,11 @@ TEST_CASE("masonry builder uses hole-aware placement when enabled",
 
   MasonryRequest request{};
   request.decoder_request = {
-      .bin = {.base_bin_id = 30,
-              .polygon = make_rectangle(0.0, 0.0, 10.0, 10.0),
-              .geometry_revision = 200},
+      .bins = {{
+          .bin_id = 30,
+          .polygon = make_rectangle(0.0, 0.0, 10.0, 10.0),
+          .geometry_revision = 200,
+      }},
       .pieces =
           {
               make_piece(10, make_donut(), 10),
@@ -375,7 +389,6 @@ TEST_CASE("masonry builder uses hole-aware placement when enabled",
           },
       .policy = PlacementPolicy::bottom_left,
       .config = config,
-      .max_bin_count = 1,
   };
 
   const auto result = builder.build(request);
@@ -407,9 +420,11 @@ TEST_CASE("masonry builder respects grain and exclusion constraints",
 
   MasonryRequest request{};
   request.decoder_request = {
-      .bin = {.base_bin_id = 40,
-              .polygon = make_rectangle(0.0, 0.0, 10.0, 8.0),
-              .geometry_revision = 300},
+      .bins = {{
+          .bin_id = 40,
+          .polygon = make_rectangle(0.0, 0.0, 10.0, 8.0),
+          .geometry_revision = 300,
+      }},
       .pieces =
           {
               make_piece(21, make_rectangle(0.0, 0.0, 4.0, 2.0), 21,
@@ -417,7 +432,6 @@ TEST_CASE("masonry builder respects grain and exclusion constraints",
           },
       .policy = PlacementPolicy::bottom_left,
       .config = config,
-      .max_bin_count = 1,
   };
 
   const auto result = builder.build(request);
@@ -432,6 +446,39 @@ TEST_CASE("masonry builder respects grain and exclusion constraints",
   const auto [minimum, maximum] = compute_bounds(placed_piece);
   REQUIRE(minimum == Point2{.x = 8.0, .y = 0.0});
   REQUIRE(maximum == Point2{.x = 10.0, .y = 4.0});
+}
+
+TEST_CASE("masonry builder honors top-right start corner",
+          "[packing][masonry][start-corner]") {
+  MasonryBuilder builder;
+
+  MasonryRequest request{};
+  request.decoder_request = {
+      .bins = {{
+          .bin_id = 50,
+          .polygon = make_rectangle(0.0, 0.0, 10.0, 10.0),
+          .geometry_revision = 400,
+          .start_corner = shiny::nfp::place::PlacementStartCorner::top_right,
+      }},
+      .pieces =
+          {
+              make_piece(31, make_rectangle(0.0, 0.0, 6.0, 4.0), 31),
+              make_piece(32, make_rectangle(0.0, 0.0, 4.0, 4.0), 32),
+          },
+      .policy = PlacementPolicy::bottom_left,
+      .config = PackingConfig{},
+  };
+
+  const auto result = builder.build(request);
+
+  REQUIRE(result.layout.unplaced_piece_ids.empty());
+  REQUIRE(result.trace.size() == 2);
+  REQUIRE(result.trace[0].opened_new_bin);
+  REQUIRE(result.trace[0].started_new_shelf);
+  REQUIRE(result.trace[0].translation == Point2{.x = 4.0, .y = 6.0});
+  REQUIRE_FALSE(result.trace[1].opened_new_bin);
+  REQUIRE_FALSE(result.trace[1].started_new_shelf);
+  REQUIRE(result.trace[1].translation == Point2{.x = 0.0, .y = 6.0});
 }
 
 TEST_CASE("masonry fixture cases", "[packing][masonry][fixtures]") {

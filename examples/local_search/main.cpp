@@ -10,7 +10,7 @@
 namespace {
 
 using shiny::nfp::geom::PolygonWithHoles;
-using shiny::nfp::pack::BinPrototype;
+using shiny::nfp::pack::BinInput;
 using shiny::nfp::pack::PackingConfig;
 using shiny::nfp::pack::PieceInput;
 using shiny::nfp::place::PlacementPolicy;
@@ -70,12 +70,11 @@ auto count_grain_constrained_pieces(const SearchRequest &request)
 auto make_request() -> SearchRequest {
   SearchRequest request{};
   request.decoder_request = {
-      .bin =
-          BinPrototype{
-              .base_bin_id = 5,
-              .polygon = make_rectangle(0.0, 0.0, 6.0, 4.0),
-              .geometry_revision = 100,
-          },
+      .bins = {{
+          .bin_id = 5,
+          .polygon = make_rectangle(0.0, 0.0, 6.0, 4.0),
+          .geometry_revision = 100,
+      }},
       .pieces =
           {
               make_piece(
@@ -102,7 +101,6 @@ auto make_request() -> SearchRequest {
                   },
               .enable_hole_first_placement = false,
           },
-      .max_bin_count = 1,
   };
 
   request.local_search = {

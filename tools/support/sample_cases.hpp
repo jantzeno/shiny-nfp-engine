@@ -51,14 +51,24 @@ inline auto make_piece(std::uint32_t piece_id, double width, double height,
   };
 }
 
+inline auto make_bins(pack::BinInput base_bin, const std::size_t count)
+    -> std::vector<pack::BinInput> {
+  std::vector<pack::BinInput> bins;
+  bins.reserve(std::max<std::size_t>(count, 1));
+  for (std::size_t index = 0; index < std::max<std::size_t>(count, 1); ++index) {
+    pack::BinInput bin = base_bin;
+    bin.bin_id = base_bin.bin_id + static_cast<std::uint32_t>(index);
+    bins.push_back(std::move(bin));
+  }
+  return bins;
+}
+
 inline auto make_decoder_request() -> pack::DecoderRequest {
   return {
-      .bin =
-          pack::BinPrototype{
-              .base_bin_id = 5,
-              .polygon = make_rectangle(0.0, 0.0, 6.0, 4.0),
-              .geometry_revision = 100,
-          },
+      .bins = make_bins({.bin_id = 5,
+                         .polygon = make_rectangle(0.0, 0.0, 6.0, 4.0),
+                         .geometry_revision = 100},
+                        1),
       .pieces =
           {
               make_piece(1, 4.0, 2.0, 1,
@@ -83,7 +93,6 @@ inline auto make_decoder_request() -> pack::DecoderRequest {
                   },
               .enable_hole_first_placement = false,
           },
-      .max_bin_count = 1,
   };
 }
 
@@ -101,12 +110,10 @@ inline auto make_search_request() -> search::SearchRequest {
 inline auto make_dense_search_request() -> search::SearchRequest {
   search::SearchRequest request{};
   request.decoder_request = {
-      .bin =
-          pack::BinPrototype{
-              .base_bin_id = 21,
-              .polygon = make_rectangle(0.0, 0.0, 16.0, 10.0),
-              .geometry_revision = 210,
-          },
+      .bins = make_bins({.bin_id = 21,
+                         .polygon = make_rectangle(0.0, 0.0, 16.0, 10.0),
+                         .geometry_revision = 210},
+                        2),
       .pieces =
           {
               make_piece(31, 5.0, 3.0, 31),
@@ -137,7 +144,6 @@ inline auto make_dense_search_request() -> search::SearchRequest {
                   },
               .enable_hole_first_placement = false,
           },
-      .max_bin_count = 2,
   };
   request.local_search = {
       .max_iterations = 10,
@@ -172,16 +178,15 @@ inline auto make_genetic_search_request() -> search::SearchRequest {
 
 inline auto make_masonry_request() -> pack::MasonryRequest {
   return {
-      .decoder_request =
-          {
-              .bin =
-                  pack::BinPrototype{
-                      .base_bin_id = 9,
-                      .polygon = make_rectangle(0.0, 0.0, 10.0, 10.0),
-                      .geometry_revision = 900,
-                  },
-              .pieces =
-                  {
+       .decoder_request =
+           {
+               .bins = make_bins({.bin_id = 9,
+                                  .polygon = make_rectangle(0.0, 0.0, 10.0,
+                                                            10.0),
+                                  .geometry_revision = 900},
+                                 1),
+               .pieces =
+                   {
                       make_piece(11, 6.0, 4.0, 11),
                       make_piece(12, 4.0, 4.0, 12),
                       make_piece(13, 5.0, 3.0, 13),
@@ -195,10 +200,9 @@ inline auto make_masonry_request() -> pack::MasonryRequest {
                               .allowed_rotations = {.angles_degrees = {0.0,
                                                                        90.0}},
                           },
-                      .enable_hole_first_placement = false,
-                  },
-              .max_bin_count = 1,
-          },
+                       .enable_hole_first_placement = false,
+                   },
+           },
       .masonry =
           {
               .fill_existing_shelves_first = true,

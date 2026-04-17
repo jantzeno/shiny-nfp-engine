@@ -28,6 +28,7 @@ enum class AlgorithmKind : std::uint8_t {
   nonconvex_graph_nfp = 6,
   orbital_verifier = 7,
   convex_decomposition = 8,
+  bounding_box = 9,
 };
 
 /**
@@ -64,6 +65,8 @@ enum class AlgorithmKind : std::uint8_t {
     return "orbital_verifier";
   case AlgorithmKind::convex_decomposition:
     return "convex_decomposition";
+  case AlgorithmKind::bounding_box:
+    return "bounding_box";
   }
 
   return "unknown";
@@ -113,6 +116,9 @@ enum class AlgorithmKind : std::uint8_t {
   }
   if (value == "convex_decomposition") {
     return AlgorithmKind::convex_decomposition;
+  }
+  if (value == "bounding_box") {
+    return AlgorithmKind::bounding_box;
   }
 
   return std::nullopt;

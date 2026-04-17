@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include "logging/shiny_log.hpp"
 #include "search/detail/run_event_sink.hpp"
 #include "search/detail/run_interruption_gate.hpp"
 #include "util/detail/fnv_hash.hpp"
@@ -135,10 +136,8 @@ compute_rotation_assignment_hash(const pack::DecoderRequest &request)
 [[nodiscard]] auto compute_bin_policy_hash(const pack::DecoderRequest &request)
     -> std::uint64_t {
   auto seed = shiny::nfp::detail::fnv_hash_values(
-      {static_cast<std::uint64_t>(request.bin.base_bin_id),
-       request.bin.geometry_revision,
+      {static_cast<std::uint64_t>(request.bins.size()),
        static_cast<std::uint64_t>(request.policy),
-       static_cast<std::uint64_t>(request.max_bin_count),
        std::hash<double>{}(request.config.placement.part_clearance),
        static_cast<std::uint64_t>(request.config.enable_hole_first_placement),
        static_cast<std::uint64_t>(
@@ -154,6 +153,12 @@ compute_rotation_assignment_hash(const pack::DecoderRequest &request)
   for (const auto &zone : request.config.placement.exclusion_zones) {
     seed = shiny::nfp::detail::fnv_hash_mix(
         seed, std::hash<std::uint32_t>{}(zone.zone_id));
+    seed = shiny::nfp::detail::fnv_hash_mix(
+        seed, std::hash<bool>{}(zone.bin_id.has_value()));
+    if (zone.bin_id.has_value()) {
+      seed = shiny::nfp::detail::fnv_hash_mix(
+          seed, std::hash<std::uint32_t>{}(*zone.bin_id));
+    }
     for (const auto &point : zone.region.outer) {
       seed =
           shiny::nfp::detail::fnv_hash_mix(seed, std::hash<double>{}(point.x));
@@ -162,16 +167,25 @@ compute_rotation_assignment_hash(const pack::DecoderRequest &request)
     }
   }
 
-  for (const auto &point : request.bin.polygon.outer) {
-    seed = shiny::nfp::detail::fnv_hash_mix(seed, std::hash<double>{}(point.x));
-    seed = shiny::nfp::detail::fnv_hash_mix(seed, std::hash<double>{}(point.y));
-  }
-  for (const auto &hole : request.bin.polygon.holes) {
-    for (const auto &point : hole) {
+  for (const auto &bin : request.bins) {
+    seed = shiny::nfp::detail::fnv_hash_mix(
+        seed, std::hash<std::uint32_t>{}(bin.bin_id));
+    seed = shiny::nfp::detail::fnv_hash_mix(seed, bin.geometry_revision);
+    seed = shiny::nfp::detail::fnv_hash_mix(
+        seed, static_cast<std::uint64_t>(bin.start_corner));
+    for (const auto &point : bin.polygon.outer) {
       seed =
           shiny::nfp::detail::fnv_hash_mix(seed, std::hash<double>{}(point.x));
       seed =
           shiny::nfp::detail::fnv_hash_mix(seed, std::hash<double>{}(point.y));
+    }
+    for (const auto &hole : bin.polygon.holes) {
+      for (const auto &point : hole) {
+        seed = shiny::nfp::detail::fnv_hash_mix(seed,
+                                                std::hash<double>{}(point.x));
+        seed = shiny::nfp::detail::fnv_hash_mix(seed,
+                                                std::hash<double>{}(point.y));
+      }
     }
   }
 
@@ -191,6 +205,12 @@ compute_piece_order_hash(const std::vector<pack::PieceInput> &pieces,
     seed = shiny::nfp::detail::fnv_hash_mix(seed, piece.geometry_revision);
     seed = shiny::nfp::detail::fnv_hash_mix(
         seed, static_cast<std::uint64_t>(piece.grain_compatibility));
+    seed = shiny::nfp::detail::fnv_hash_mix(
+        seed, static_cast<std::uint64_t>(piece.allowed_bin_ids.size()));
+    for (const auto bin_id : piece.allowed_bin_ids) {
+      seed = shiny::nfp::detail::fnv_hash_mix(
+          seed, std::hash<std::uint32_t>{}(bin_id));
+    }
   }
   return seed;
 }
@@ -346,10 +366,17 @@ summarize_evaluation(const std::vector<std::uint32_t> &piece_order,
     -> LayoutEvaluation {
   if (const auto *cached = cache_store.get(key)) {
     ++counters.reevaluation_cache_hits;
+    SHINY_TRACE("GeneticSearch::evaluate_order: cache hit order_size={} "
+                "piece_order_hash={} bin_policy_hash={}",
+                order.size(), key.piece_order_hash, key.bin_policy_hash);
     return *cached;
   }
 
   ++counters.evaluated_layout_count;
+  SHINY_TRACE("GeneticSearch::evaluate_order: cache miss order_size={} "
+              "evaluated_layout_count={} piece_order_hash={}",
+              order.size(), counters.evaluated_layout_count,
+              key.piece_order_hash);
 
   const auto piece_order =
       extract_piece_order_ids(request.decoder_request.pieces, order);
@@ -361,8 +388,17 @@ summarize_evaluation(const std::vector<std::uint32_t> &piece_order,
                         return interruption_gate->poll();
                       });
   auto evaluation = summarize_evaluation(piece_order, std::move(decode));
+  SHINY_DEBUG("GeneticSearch::evaluate_order: evaluated pieces={} bins={} "
+              "placed={} unplaced={} total_utilization={} interrupted={}",
+              evaluation.piece_order.size(), evaluation.bin_count,
+              evaluation.placed_piece_count, evaluation.unplaced_piece_count,
+              evaluation.total_utilization,
+              evaluation.decode.interrupted ? 1 : 0);
   if (!evaluation.decode.interrupted) {
     cache_store.put(key, evaluation);
+    SHINY_TRACE(
+        "GeneticSearch::evaluate_order: cached evaluation piece_order_hash={}",
+        key.piece_order_hash);
   }
   return evaluation;
 }
@@ -392,6 +428,9 @@ summarize_evaluation(const std::vector<std::uint32_t> &piece_order,
 
   const auto worker_count = resolve_worker_count(
       static_cast<std::uint32_t>(1U + extra_workers.size()), tasks.size());
+  SHINY_DEBUG(
+      "GeneticSearch::evaluate_task_batch: task_count={} worker_count={}",
+      tasks.size(), worker_count);
 
   std::vector<std::vector<EvaluationTask>> worker_tasks(worker_count);
   for (const auto &task : tasks) {
@@ -418,6 +457,10 @@ summarize_evaluation(const std::vector<std::uint32_t> &piece_order,
         return;
       }
 
+      SHINY_TRACE("GeneticSearch::evaluate_task_batch: worker={} evaluating "
+                  "task_index={} polish={} order_size={}",
+                  worker_index, task.task_index, task.polish ? 1 : 0,
+                  task.order.size());
       PopulationMember member{
           .order = task.order,
           .evaluation = evaluate_order(
@@ -780,6 +823,10 @@ auto mutate_order(std::vector<std::size_t> &order, std::mt19937 &rng) -> void {
     candidate_orders.push_back(
         candidate_orders[candidate_orders.size() % seen_hashes.size()]);
   }
+  SHINY_DEBUG("GeneticSearch::initialize_population: baseline_size={} "
+              "population_target={} unique_candidates={} shuffle_attempts={}",
+              baseline_order.size(), request.genetic_search.population_size,
+              seen_hashes.size(), shuffle_attempts);
 
   std::vector<EvaluationTask> tasks;
   tasks.reserve(candidate_orders.size());
@@ -805,6 +852,15 @@ auto mutate_order(std::vector<std::size_t> &order, std::mt19937 &rng) -> void {
 
   std::stable_sort(initialization.population.begin(),
                    initialization.population.end(), better_member);
+  if (!initialization.population.empty()) {
+    SHINY_DEBUG(
+        "GeneticSearch::initialize_population: best bins={} placed={} "
+        "unplaced={} total_utilization={}",
+        initialization.population.front().evaluation.bin_count,
+        initialization.population.front().evaluation.placed_piece_count,
+        initialization.population.front().evaluation.unplaced_piece_count,
+        initialization.population.front().evaluation.total_utilization);
+  }
   return initialization;
 }
 
@@ -927,11 +983,29 @@ auto GeneticSearch::improve(const SearchRequest &request) -> SearchResult {
   SearchResult result{};
   result.algorithm = kAlgorithmKind;
   result.deterministic_seed = request.genetic_search.deterministic_seed;
+  SHINY_DEBUG(
+      "GeneticSearch::improve: start enabled={} population={} "
+      "max_generations={} mutation_rate={} worker_count={} pieces={} bins={}",
+      request.genetic_search.enabled ? 1 : 0,
+      request.genetic_search.population_size,
+      request.genetic_search.max_generations,
+      request.genetic_search.mutation_rate_percent,
+      request.execution.control.worker_count,
+      request.decoder_request.pieces.size(),
+      request.decoder_request.bins.size());
 
   if (!request.genetic_search.enabled || !request.genetic_search.is_valid() ||
       !request.local_search.is_valid() ||
       !request.decoder_request.config.is_valid() ||
       !request.execution.control.is_valid()) {
+    SHINY_WARN(
+        "GeneticSearch::improve: invalid request enabled={} genetic_valid={} "
+        "local_valid={} decoder_valid={} execution_valid={}",
+        request.genetic_search.enabled ? 1 : 0,
+        request.genetic_search.is_valid() ? 1 : 0,
+        request.local_search.is_valid() ? 1 : 0,
+        request.decoder_request.config.is_valid() ? 1 : 0,
+        request.execution.control.is_valid() ? 1 : 0);
     return result;
   }
 
@@ -956,6 +1030,11 @@ auto GeneticSearch::improve(const SearchRequest &request) -> SearchResult {
   result.baseline = evaluate_order(request, baseline_order, reevaluation_cache_,
                                    decoder_, counters, &interruption_gate);
   result.best = result.baseline;
+  SHINY_DEBUG("GeneticSearch::improve: baseline bins={} placed={} unplaced={} "
+              "total_utilization={}",
+              result.baseline.bin_count, result.baseline.placed_piece_count,
+              result.baseline.unplaced_piece_count,
+              result.baseline.total_utilization);
 
   result.evaluated_layout_count = counters.evaluated_layout_count;
   result.reevaluation_cache_hits = counters.reevaluation_cache_hits;
@@ -992,6 +1071,8 @@ auto GeneticSearch::improve(const SearchRequest &request) -> SearchResult {
   counters.reevaluation_cache_hits +=
       initialization.counters.reevaluation_cache_hits;
   auto population = std::move(initialization.population);
+  SHINY_DEBUG("GeneticSearch::improve: initialized population size={}",
+              population.size());
 
   std::uint32_t consecutive_plateau_generations = 0U;
   for (std::uint32_t generation = 1U;
@@ -1070,6 +1151,18 @@ auto GeneticSearch::improve(const SearchRequest &request) -> SearchResult {
     } else {
       ++consecutive_plateau_generations;
     }
+    if (!population.empty()) {
+      SHINY_DEBUG("GeneticSearch::improve: generation={} improved={} "
+                  "plateau={} best_bins={} best_placed={} best_unplaced={} "
+                  "best_total_utilization={} cache_hits={} evaluated={}",
+                  generation, improved ? 1 : 0, consecutive_plateau_generations,
+                  population.front().evaluation.bin_count,
+                  population.front().evaluation.placed_piece_count,
+                  population.front().evaluation.unplaced_piece_count,
+                  population.front().evaluation.total_utilization,
+                  counters.reevaluation_cache_hits,
+                  counters.evaluated_layout_count);
+    }
 
     result.evaluated_layout_count = counters.evaluated_layout_count;
     result.reevaluation_cache_hits = counters.reevaluation_cache_hits;
@@ -1095,6 +1188,13 @@ auto GeneticSearch::improve(const SearchRequest &request) -> SearchResult {
     }
   }
 
+  SHINY_DEBUG(
+      "GeneticSearch::improve: finish status={} generations_completed={} "
+      "best_bins={} best_placed={} best_unplaced={} evaluated={} cache_hits={}",
+      static_cast<std::uint32_t>(result.status), result.iterations_completed,
+      result.best.bin_count, result.best.placed_piece_count,
+      result.best.unplaced_piece_count, result.evaluated_layout_count,
+      result.reevaluation_cache_hits);
   emit_terminal_event(event_sink, request, result, timing);
   return result;
 }

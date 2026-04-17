@@ -5,6 +5,7 @@
 
 #include "geometry/types.hpp"
 #include "packing/layout.hpp"
+#include "placement/config.hpp"
 #include "polygon_ops/merge_region.hpp"
 
 namespace shiny::nfp::pack {
@@ -26,6 +27,8 @@ struct BinState {
   std::uint32_t bin_id{0};
   geom::PolygonWithHoles container{};
   std::uint64_t container_geometry_revision{0};
+  place::PlacementStartCorner start_corner{
+      place::PlacementStartCorner::bottom_left};
   poly::MergedRegion occupied{};
   std::uint64_t occupied_region_revision{0};
   std::vector<geom::PolygonWithHoles> holes{};
