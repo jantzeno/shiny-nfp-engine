@@ -14,49 +14,49 @@
 namespace {
 
 using Catch::Approx;
-using shiny::nfp::AlgorithmKind;
-using shiny::nfp::build_convex_edge_sequence;
-using shiny::nfp::compute_convex_ifp;
-using shiny::nfp::compute_convex_nfp;
-using shiny::nfp::ConvexEdgeSequence;
-using shiny::nfp::ConvexIfpRequest;
-using shiny::nfp::ConvexNfpRequest;
-using shiny::nfp::NfpFeatureKind;
-using shiny::nfp::NfpLoop;
-using shiny::nfp::NfpResult;
-using shiny::nfp::order_convex_nfp_vertices;
-using shiny::nfp::pred::PointLocation;
-using shiny::nfp::test::load_fixture_file;
-using shiny::nfp::test::parse_point;
-using shiny::nfp::test::parse_polygon;
-using shiny::nfp::test::parse_ring;
-using shiny::nfp::test::parse_segment;
-using shiny::nfp::test::require_fixture_metadata;
-using shiny::nfp::test::require_point_equal;
-using shiny::nfp::test::require_ring_equal;
+using shiny::nesting::AlgorithmKind;
+using shiny::nesting::build_convex_edge_sequence;
+using shiny::nesting::compute_convex_ifp;
+using shiny::nesting::compute_convex_nfp;
+using shiny::nesting::ConvexEdgeSequence;
+using shiny::nesting::ConvexIfpRequest;
+using shiny::nesting::ConvexNfpRequest;
+using shiny::nesting::NfpFeatureKind;
+using shiny::nesting::NfpLoop;
+using shiny::nesting::NfpResult;
+using shiny::nesting::order_convex_nfp_vertices;
+using shiny::nesting::pred::PointLocation;
+using shiny::nesting::test::load_fixture_file;
+using shiny::nesting::test::parse_point;
+using shiny::nesting::test::parse_polygon;
+using shiny::nesting::test::parse_ring;
+using shiny::nesting::test::parse_segment;
+using shiny::nesting::test::require_fixture_metadata;
+using shiny::nesting::test::require_point_equal;
+using shiny::nesting::test::require_ring_equal;
 
-auto parse_ring_list(const shiny::nfp::test::pt::ptree &node)
-    -> std::vector<shiny::nfp::geom::Ring> {
-  std::vector<shiny::nfp::geom::Ring> rings;
+auto parse_ring_list(const shiny::nesting::test::pt::ptree &node)
+    -> std::vector<shiny::nesting::geom::Ring> {
+  std::vector<shiny::nesting::geom::Ring> rings;
   for (const auto &child : node) {
     rings.push_back(parse_ring(child.second));
   }
   return rings;
 }
 
-auto parse_points(const shiny::nfp::test::pt::ptree &node)
-    -> std::vector<shiny::nfp::geom::Point2> {
-  std::vector<shiny::nfp::geom::Point2> points;
+auto parse_points(const shiny::nesting::test::pt::ptree &node)
+    -> std::vector<shiny::nesting::geom::Point2> {
+  std::vector<shiny::nesting::geom::Point2> points;
   for (const auto &child : node) {
-    points.push_back(shiny::nfp::test::parse_point(child.second));
+    points.push_back(shiny::nesting::test::parse_point(child.second));
   }
   return points;
 }
 
-auto parse_optional_points(const shiny::nfp::test::pt::ptree &node,
+auto parse_optional_points(const shiny::nesting::test::pt::ptree &node,
                            std::string_view key)
-    -> std::vector<shiny::nfp::geom::Point2> {
-  std::vector<shiny::nfp::geom::Point2> points;
+    -> std::vector<shiny::nesting::geom::Point2> {
+  std::vector<shiny::nesting::geom::Point2> points;
   if (const auto child = node.get_child_optional(std::string{key})) {
     points.reserve(child->size());
     for (const auto &entry : *child) {
@@ -68,7 +68,7 @@ auto parse_optional_points(const shiny::nfp::test::pt::ptree &node,
 
 void require_edge_sequence_equal(
     const ConvexEdgeSequence &actual,
-    const std::vector<shiny::nfp::geom::Vector2> &expected_edges,
+    const std::vector<shiny::nesting::geom::Vector2> &expected_edges,
     const std::vector<std::size_t> &expected_indices) {
   REQUIRE(actual.edges.size() == expected_edges.size());
   REQUIRE(actual.source_indices == expected_indices);
@@ -78,9 +78,9 @@ void require_edge_sequence_equal(
   }
 }
 
-auto parse_segments(const shiny::nfp::test::pt::ptree &node)
-    -> std::vector<shiny::nfp::geom::Segment2> {
-  std::vector<shiny::nfp::geom::Segment2> segments;
+auto parse_segments(const shiny::nesting::test::pt::ptree &node)
+    -> std::vector<shiny::nesting::geom::Segment2> {
+  std::vector<shiny::nesting::geom::Segment2> segments;
   for (const auto &child : node) {
     segments.push_back(parse_segment(child.second));
   }
@@ -88,8 +88,8 @@ auto parse_segments(const shiny::nfp::test::pt::ptree &node)
 }
 
 void require_segments_equal(
-    const std::vector<shiny::nfp::geom::Segment2> &actual,
-    const std::vector<shiny::nfp::geom::Segment2> &expected) {
+    const std::vector<shiny::nesting::geom::Segment2> &actual,
+    const std::vector<shiny::nesting::geom::Segment2> &expected) {
   REQUIRE(actual.size() == expected.size());
   for (std::size_t index = 0; index < actual.size(); ++index) {
     require_point_equal(actual[index].start, expected[index].start);
@@ -97,8 +97,8 @@ void require_segments_equal(
   }
 }
 
-void require_ring_approx_equal(const shiny::nfp::geom::Ring &actual,
-                               const shiny::nfp::geom::Ring &expected,
+void require_ring_approx_equal(const shiny::nesting::geom::Ring &actual,
+                               const shiny::nesting::geom::Ring &expected,
                                double margin) {
   REQUIRE(actual.size() == expected.size());
   for (std::size_t index = 0; index < actual.size(); ++index) {
@@ -108,8 +108,8 @@ void require_ring_approx_equal(const shiny::nfp::geom::Ring &actual,
 }
 
 auto build_polygon_from_result(const NfpResult &result)
-    -> shiny::nfp::geom::PolygonWithHoles {
-  shiny::nfp::geom::PolygonWithHoles polygon{};
+    -> shiny::nesting::geom::PolygonWithHoles {
+  shiny::nesting::geom::PolygonWithHoles polygon{};
   for (const auto &loop : result.loops) {
     if (loop.kind == NfpFeatureKind::outer_loop) {
       polygon.outer = loop.vertices;
@@ -120,18 +120,18 @@ auto build_polygon_from_result(const NfpResult &result)
   return polygon;
 }
 
-auto midpoint(const shiny::nfp::geom::Point2 &lhs,
-              const shiny::nfp::geom::Point2 &rhs) -> shiny::nfp::geom::Point2 {
+auto midpoint(const shiny::nesting::geom::Point2 &lhs,
+              const shiny::nesting::geom::Point2 &rhs) -> shiny::nesting::geom::Point2 {
   return {
       .x = (lhs.x + rhs.x) / 2.0,
       .y = (lhs.y + rhs.y) / 2.0,
   };
 }
 
-auto translate_ring(const shiny::nfp::geom::Ring &ring,
-                    const shiny::nfp::geom::Point2 &translation)
-    -> shiny::nfp::geom::Ring {
-  shiny::nfp::geom::Ring translated;
+auto translate_ring(const shiny::nesting::geom::Ring &ring,
+                    const shiny::nesting::geom::Point2 &translation)
+    -> shiny::nesting::geom::Ring {
+  shiny::nesting::geom::Ring translated;
   translated.reserve(ring.size());
   for (const auto &point : ring) {
     translated.push_back({point.x + translation.x, point.y + translation.y});
@@ -139,15 +139,15 @@ auto translate_ring(const shiny::nfp::geom::Ring &ring,
   return translated;
 }
 
-auto squared_distance(const shiny::nfp::geom::Point2 &lhs,
-                      const shiny::nfp::geom::Point2 &rhs) -> double {
+auto squared_distance(const shiny::nesting::geom::Point2 &lhs,
+                      const shiny::nesting::geom::Point2 &rhs) -> double {
   const auto dx = lhs.x - rhs.x;
   const auto dy = lhs.y - rhs.y;
   return dx * dx + dy * dy;
 }
 
-auto distance_to_segment(const shiny::nfp::geom::Point2 &point,
-                         const shiny::nfp::geom::Segment2 &segment) -> double {
+auto distance_to_segment(const shiny::nesting::geom::Point2 &point,
+                         const shiny::nesting::geom::Segment2 &segment) -> double {
   const auto dx = segment.end.x - segment.start.x;
   const auto dy = segment.end.y - segment.start.y;
   const auto length_squared = dx * dx + dy * dy;
@@ -159,17 +159,17 @@ auto distance_to_segment(const shiny::nfp::geom::Point2 &point,
       ((point.x - segment.start.x) * dx + (point.y - segment.start.y) * dy) /
       length_squared;
   const auto clamped = std::clamp(projection, 0.0, 1.0);
-  const shiny::nfp::geom::Point2 closest{
+  const shiny::nesting::geom::Point2 closest{
       .x = segment.start.x + clamped * dx,
       .y = segment.start.y + clamped * dy,
   };
   return std::sqrt(squared_distance(point, closest));
 }
 
-auto is_near_polygon_boundary(const shiny::nfp::geom::Point2 &point,
-                              const shiny::nfp::geom::PolygonWithHoles &polygon,
+auto is_near_polygon_boundary(const shiny::nesting::geom::Point2 &point,
+                              const shiny::nesting::geom::PolygonWithHoles &polygon,
                               double tolerance) -> bool {
-  auto ring_contains_near_edge = [&](const shiny::nfp::geom::Ring &ring) {
+  auto ring_contains_near_edge = [&](const shiny::nesting::geom::Ring &ring) {
     for (std::size_t index = 0; index < ring.size(); ++index) {
       const auto next_index = (index + 1U) % ring.size();
       if (distance_to_segment(point, {ring[index], ring[next_index]}) <=
@@ -193,14 +193,14 @@ auto is_near_polygon_boundary(const shiny::nfp::geom::Point2 &point,
 }
 
 void require_translation_feasible(
-    const shiny::nfp::geom::PolygonWithHoles &container,
-    const shiny::nfp::geom::PolygonWithHoles &piece,
-    const shiny::nfp::geom::Point2 &translation) {
+    const shiny::nesting::geom::PolygonWithHoles &container,
+    const shiny::nesting::geom::PolygonWithHoles &piece,
+    const shiny::nesting::geom::Point2 &translation) {
   const auto translated_piece = translate_ring(piece.outer, translation);
 
   for (const auto &point : translated_piece) {
     const auto location =
-        shiny::nfp::pred::locate_point_in_polygon(point, container);
+        shiny::nesting::pred::locate_point_in_polygon(point, container);
     if (location.inside_hole) {
       REQUIRE((location.location == PointLocation::boundary ||
                is_near_polygon_boundary(point, container, 1e-4)));
@@ -215,7 +215,7 @@ void require_translation_feasible(
     const auto probe =
         midpoint(translated_piece[index], translated_piece[next_index]);
     const auto location =
-        shiny::nfp::pred::locate_point_in_polygon(probe, container);
+        shiny::nesting::pred::locate_point_in_polygon(probe, container);
     if (location.inside_hole) {
       REQUIRE((location.location == PointLocation::boundary ||
                is_near_polygon_boundary(probe, container, 1e-4)));
@@ -230,14 +230,14 @@ void require_translation_feasible(
 
 TEST_CASE("convex edge sequences use deterministic angular traversal",
           "[nfp][convex][ordering]") {
-  const shiny::nfp::geom::Ring rectangle{
+  const shiny::nesting::geom::Ring rectangle{
       {4.0, 2.0}, {0.0, 2.0}, {0.0, 0.0}, {4.0, 0.0}};
   const auto rectangle_sequence = build_convex_edge_sequence(rectangle);
   require_edge_sequence_equal(
       rectangle_sequence, {{4.0, 0.0}, {0.0, 2.0}, {-4.0, 0.0}, {0.0, -2.0}},
       {0U, 1U, 2U, 3U});
 
-  const shiny::nfp::geom::Ring hexagon{{3.0, 2.0}, {1.0, 2.0}, {0.0, 1.0},
+  const shiny::nesting::geom::Ring hexagon{{3.0, 2.0}, {1.0, 2.0}, {0.0, 1.0},
                                        {1.0, 0.0}, {3.0, 0.0}, {4.0, 1.0}};
   const auto hexagon_sequence = build_convex_edge_sequence(hexagon);
   require_edge_sequence_equal(hexagon_sequence,
@@ -264,7 +264,7 @@ TEST_CASE("convex nfp vertex ordering follows outgoing edge angle",
   const auto ordered = order_convex_nfp_vertices(result);
   REQUIRE(ordered.size() == 5U);
 
-  const std::vector<shiny::nfp::geom::Point2> expected_points{
+  const std::vector<shiny::nesting::geom::Point2> expected_points{
       {0.0, -1.0}, {2.0, -1.0}, {2.0, 2.0}, {-1.0, 2.0}, {-1.0, 0.0},
   };
   const std::vector<std::size_t> expected_indices{1U, 2U, 3U, 4U, 0U};
@@ -464,7 +464,7 @@ TEST_CASE("convex ifp fixtures", "[nfp][convex][ifp][fixtures]") {
 
       for (const auto &sample : interior_samples) {
         const auto location =
-            shiny::nfp::pred::locate_point_in_polygon(sample, actual);
+            shiny::nesting::pred::locate_point_in_polygon(sample, actual);
         REQUIRE(location.location == PointLocation::interior);
         REQUIRE_FALSE(location.inside_hole);
         require_translation_feasible(container, piece, sample);
@@ -472,7 +472,7 @@ TEST_CASE("convex ifp fixtures", "[nfp][convex][ifp][fixtures]") {
 
       for (const auto &sample : hole_samples) {
         const auto location =
-            shiny::nfp::pred::locate_point_in_polygon(sample, actual);
+            shiny::nesting::pred::locate_point_in_polygon(sample, actual);
         REQUIRE(location.location == PointLocation::exterior);
         REQUIRE(location.inside_hole);
       }

@@ -7,13 +7,13 @@
 
 namespace {
 
-using shiny::nfp::AlgorithmKind;
-using shiny::nfp::search::MasonryRunner;
-using shiny::nfp::search::MasonryRunRequest;
-using shiny::nfp::search::search_event_algorithm_kind;
-using shiny::nfp::search::search_event_kind;
-using shiny::nfp::search::SearchEvent;
-using shiny::nfp::search::SearchEventKind;
+using shiny::nesting::AlgorithmKind;
+using shiny::nesting::search::MasonryRunner;
+using shiny::nesting::search::MasonryRunRequest;
+using shiny::nesting::search::search_event_algorithm_kind;
+using shiny::nesting::search::search_event_kind;
+using shiny::nesting::search::SearchEvent;
+using shiny::nesting::search::SearchEventKind;
 
 } // namespace
 
@@ -45,7 +45,7 @@ TEST_CASE("masonry observer events stay aligned with retained progress",
                    {.outer = {{0.0, 0.0}, {5.0, 0.0}, {5.0, 3.0}, {0.0, 3.0}}},
                .geometry_revision = 3},
           },
-      .policy = shiny::nfp::place::PlacementPolicy::bottom_left,
+      .policy = shiny::nesting::place::PlacementPolicy::bottom_left,
       .config = {.placement =
                      {.allowed_rotations = {.angles_degrees = {0.0, 90.0, 180.0,
                                                                 270.0}}}},

@@ -13,7 +13,7 @@
 #include "search/result.hpp"
 #include "util/status.hpp"
 
-namespace shiny::nfp::test::svg {
+namespace shiny::nesting::test::svg {
 
 inline constexpr double kMinimumArea = 1e-6;
 inline constexpr std::uint32_t kSearchSeed = 7;
@@ -119,4 +119,4 @@ void require_same_search_result(const search::SearchResult &lhs,
 void require_same_masonry_result(const pack::MasonryResult &lhs,
                                  const pack::MasonryResult &rhs);
 
-} // namespace shiny::nfp::test::svg
+} // namespace shiny::nesting::test::svg

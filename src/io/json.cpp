@@ -12,7 +12,7 @@
 #pragma GCC diagnostic pop
 #endif
 
-namespace shiny::nfp::io {
+namespace shiny::nesting::io {
 namespace {
 
 namespace fs = std::filesystem;
@@ -257,4 +257,4 @@ auto save_cut_plan(const fs::path &path, const pack::CutPlan &cut_plan)
   return write_json_tree(path, root);
 }
 
-} // namespace shiny::nfp::io
+} // namespace shiny::nesting::io

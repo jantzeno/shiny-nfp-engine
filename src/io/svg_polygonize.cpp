@@ -10,7 +10,7 @@
 
 #include "geometry/normalize.hpp"
 
-namespace shiny::nfp::io {
+namespace shiny::nesting::io {
 namespace {
 
 struct Parser {
@@ -302,4 +302,4 @@ auto polygonize_svg_path(std::string_view svg_path_data,
   return polygon;
 }
 
-} // namespace shiny::nfp::io
+} // namespace shiny::nesting::io

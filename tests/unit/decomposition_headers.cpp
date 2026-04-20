@@ -10,16 +10,16 @@
 
 TEST_CASE("decomposition headers expose the planned milestone 4 surface",
           "[decomposition][headers]") {
-  using shiny::nfp::NfpEngine;
-  using shiny::nfp::cache::CacheStore;
-  using shiny::nfp::cache::GeometryRevision;
-  using shiny::nfp::cache::PieceRotationKey;
-  using shiny::nfp::decomp::ConvexComponent;
-  using shiny::nfp::decomp::DecompositionAlgorithm;
-  using shiny::nfp::decomp::DecompositionEngine;
-  using shiny::nfp::decomp::DecompositionRequest;
-  using shiny::nfp::decomp::DecompositionResult;
-  using shiny::nfp::decomp::DecompositionValidity;
+  using shiny::nesting::NfpEngine;
+  using shiny::nesting::cache::CacheStore;
+  using shiny::nesting::cache::GeometryRevision;
+  using shiny::nesting::cache::PieceRotationKey;
+  using shiny::nesting::decomp::ConvexComponent;
+  using shiny::nesting::decomp::DecompositionAlgorithm;
+  using shiny::nesting::decomp::DecompositionEngine;
+  using shiny::nesting::decomp::DecompositionRequest;
+  using shiny::nesting::decomp::DecompositionResult;
+  using shiny::nesting::decomp::DecompositionValidity;
 
   const ConvexComponent component{
       .outer = {{0.0, 0.0}, {4.0, 0.0}, {0.0, 2.0}},
@@ -65,19 +65,19 @@ TEST_CASE("decomposition headers expose the planned milestone 4 surface",
   REQUIRE(nfp_engine.decomposition_cache_size() == 0U);
 
   STATIC_REQUIRE(
-      std::is_same_v<decltype(shiny::nfp::decomp::decompose_polygon(
+      std::is_same_v<decltype(shiny::nesting::decomp::decompose_polygon(
                          std::declval<const DecompositionRequest &>())),
                      DecompositionResult>);
   STATIC_REQUIRE(
-      std::is_same_v<decltype(shiny::nfp::decomp::decompose_polygon(
+      std::is_same_v<decltype(shiny::nesting::decomp::decompose_polygon(
                          std::declval<const DecompositionRequest &>(),
                          std::declval<GeometryRevision>(),
                          std::declval<CacheStore<PieceRotationKey,
                                                  DecompositionResult> &>())),
                      DecompositionResult>);
   STATIC_REQUIRE(std::is_same_v<
-                 decltype(shiny::nfp::decomp::validate_decomposition(
-                     std::declval<const shiny::nfp::geom::PolygonWithHoles &>(),
+                 decltype(shiny::nesting::decomp::validate_decomposition(
+                     std::declval<const shiny::nesting::geom::PolygonWithHoles &>(),
                      std::declval<const DecompositionResult &>())),
                  DecompositionValidity>);
   STATIC_REQUIRE(

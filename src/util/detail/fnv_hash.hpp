@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <initializer_list>
 
-namespace shiny::nfp::detail {
+namespace shiny::nesting::detail {
 
 inline constexpr std::uint64_t kFnvOffsetBasis = 14695981039346656037ULL;
 inline constexpr std::uint64_t kFnvPrime = 1099511628211ULL;
@@ -30,4 +30,4 @@ fnv_hash_values(std::initializer_list<std::uint64_t> values) -> std::uint64_t {
   return seed;
 }
 
-} // namespace shiny::nfp::detail
+} // namespace shiny::nesting::detail

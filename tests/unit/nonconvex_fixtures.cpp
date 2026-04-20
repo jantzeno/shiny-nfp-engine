@@ -11,34 +11,34 @@
 
 namespace {
 
-using shiny::nfp::ArrangementGraph;
-using shiny::nfp::ExtractionStatus;
-using shiny::nfp::GraphEdge;
-using shiny::nfp::GraphEdgeKind;
-using shiny::nfp::GraphVertex;
-using shiny::nfp::GraphVertexKind;
-using shiny::nfp::NfpFeatureKind;
-using shiny::nfp::NfpLoop;
-using shiny::nfp::NonconvexNfpRequest;
-using shiny::nfp::cache::AlgorithmRevision;
-using shiny::nfp::test::load_fixture_file;
-using shiny::nfp::test::parse_point;
-using shiny::nfp::test::parse_polygon;
-using shiny::nfp::test::parse_ring;
-using shiny::nfp::test::parse_segment;
-using shiny::nfp::test::require_fixture_metadata;
-using shiny::nfp::test::require_point_equal;
-using shiny::nfp::test::require_ring_equal;
+using shiny::nesting::ArrangementGraph;
+using shiny::nesting::ExtractionStatus;
+using shiny::nesting::GraphEdge;
+using shiny::nesting::GraphEdgeKind;
+using shiny::nesting::GraphVertex;
+using shiny::nesting::GraphVertexKind;
+using shiny::nesting::NfpFeatureKind;
+using shiny::nesting::NfpLoop;
+using shiny::nesting::NonconvexNfpRequest;
+using shiny::nesting::cache::AlgorithmRevision;
+using shiny::nesting::test::load_fixture_file;
+using shiny::nesting::test::parse_point;
+using shiny::nesting::test::parse_polygon;
+using shiny::nesting::test::parse_ring;
+using shiny::nesting::test::parse_segment;
+using shiny::nesting::test::require_fixture_metadata;
+using shiny::nesting::test::require_point_equal;
+using shiny::nesting::test::require_ring_equal;
 
-auto point_less(const shiny::nfp::geom::Point2 &lhs,
-                const shiny::nfp::geom::Point2 &rhs) -> bool {
+auto point_less(const shiny::nesting::geom::Point2 &lhs,
+                const shiny::nesting::geom::Point2 &rhs) -> bool {
   if (lhs.x != rhs.x) {
     return lhs.x < rhs.x;
   }
   return lhs.y < rhs.y;
 }
 
-auto ring_signed_area(const shiny::nfp::geom::Ring &ring) -> long double {
+auto ring_signed_area(const shiny::nesting::geom::Ring &ring) -> long double {
   long double twice_area = 0.0L;
   for (std::size_t index = 0; index < ring.size(); ++index) {
     const auto next_index = (index + 1U) % ring.size();
@@ -90,27 +90,27 @@ auto parse_edge_kind(std::string_view value) -> GraphEdgeKind {
   throw std::runtime_error("unknown graph edge kind fixture value");
 }
 
-auto parse_rings(const shiny::nfp::test::pt::ptree &node)
-    -> std::vector<shiny::nfp::geom::Ring> {
-  std::vector<shiny::nfp::geom::Ring> rings;
+auto parse_rings(const shiny::nesting::test::pt::ptree &node)
+    -> std::vector<shiny::nesting::geom::Ring> {
+  std::vector<shiny::nesting::geom::Ring> rings;
   for (const auto &child : node) {
     rings.push_back(parse_ring(child.second));
   }
   return rings;
 }
 
-auto parse_points(const shiny::nfp::test::pt::ptree &node)
-    -> std::vector<shiny::nfp::geom::Point2> {
-  std::vector<shiny::nfp::geom::Point2> points;
+auto parse_points(const shiny::nesting::test::pt::ptree &node)
+    -> std::vector<shiny::nesting::geom::Point2> {
+  std::vector<shiny::nesting::geom::Point2> points;
   for (const auto &child : node) {
     points.push_back(parse_point(child.second));
   }
   return points;
 }
 
-auto parse_segments(const shiny::nfp::test::pt::ptree &node)
-    -> std::vector<shiny::nfp::geom::Segment2> {
-  std::vector<shiny::nfp::geom::Segment2> segments;
+auto parse_segments(const shiny::nesting::test::pt::ptree &node)
+    -> std::vector<shiny::nesting::geom::Segment2> {
+  std::vector<shiny::nesting::geom::Segment2> segments;
   for (const auto &child : node) {
     segments.push_back(parse_segment(child.second));
   }
@@ -138,8 +138,8 @@ auto count_pruned_edges(const ArrangementGraph &graph) -> std::size_t {
 }
 
 void require_segments_equal(
-    const std::vector<shiny::nfp::geom::Segment2> &actual,
-    const std::vector<shiny::nfp::geom::Segment2> &expected) {
+    const std::vector<shiny::nesting::geom::Segment2> &actual,
+    const std::vector<shiny::nesting::geom::Segment2> &expected) {
   REQUIRE(actual.size() == expected.size());
   for (std::size_t index = 0; index < actual.size(); ++index) {
     require_point_equal(actual[index].start, expected[index].start);
@@ -148,8 +148,8 @@ void require_segments_equal(
 }
 
 void require_points_equal(
-    const std::vector<shiny::nfp::geom::Point2> &actual,
-    const std::vector<shiny::nfp::geom::Point2> &expected) {
+    const std::vector<shiny::nesting::geom::Point2> &actual,
+    const std::vector<shiny::nesting::geom::Point2> &expected) {
   REQUIRE(actual.size() == expected.size());
   for (std::size_t index = 0; index < actual.size(); ++index) {
     require_point_equal(actual[index], expected[index]);
@@ -157,9 +157,9 @@ void require_points_equal(
 }
 
 void require_loops_equal(const std::vector<NfpLoop> &actual,
-                         const std::vector<shiny::nfp::geom::Ring> &expected,
+                         const std::vector<shiny::nesting::geom::Ring> &expected,
                          NfpFeatureKind kind) {
-  std::vector<shiny::nfp::geom::Ring> filtered_actual;
+  std::vector<shiny::nesting::geom::Ring> filtered_actual;
   for (const auto &loop : actual) {
     if (loop.kind == kind) {
       filtered_actual.push_back(loop.vertices);
@@ -169,7 +169,7 @@ void require_loops_equal(const std::vector<NfpLoop> &actual,
   REQUIRE(filtered_actual.size() == expected.size());
   for (std::size_t index = 0; index < expected.size(); ++index) {
     const auto require_contract_normalized =
-        [kind](const shiny::nfp::geom::Ring &ring) {
+        [kind](const shiny::nesting::geom::Ring &ring) {
           REQUIRE(ring.size() >= 3U);
           for (std::size_t lhs = 0; lhs < ring.size(); ++lhs) {
             for (std::size_t rhs = lhs + 1U; rhs < ring.size(); ++rhs) {
@@ -197,7 +197,7 @@ void require_loops_equal(const std::vector<NfpLoop> &actual,
   }
 }
 
-auto parse_graph(const shiny::nfp::test::pt::ptree &node) -> ArrangementGraph {
+auto parse_graph(const shiny::nesting::test::pt::ptree &node) -> ArrangementGraph {
   ArrangementGraph graph{};
 
   for (const auto &child : node.get_child("vertices")) {
@@ -255,7 +255,7 @@ TEST_CASE("nonconvex pair fixtures", "[nfp][nonconvex][fixtures]") {
               "algorithm_revision")},
       };
 
-      const auto result = shiny::nfp::compute_nonconvex_graph_nfp(request);
+      const auto result = shiny::nesting::compute_nonconvex_graph_nfp(request);
 
       REQUIRE(result.status ==
               parse_status(expected.get<std::string>("status")));
@@ -305,10 +305,10 @@ TEST_CASE("nonconvex extraction fixtures",
       const auto inputs = fixture.get_child("inputs");
       const auto expected = fixture.get_child("expected");
       const auto graph = parse_graph(inputs.get_child("graph"));
-      const auto result = shiny::nfp::extract_nfp_from_graph(graph);
+      const auto result = shiny::nesting::extract_nfp_from_graph(graph);
 
       REQUIRE(result.algorithm ==
-              shiny::nfp::AlgorithmKind::nonconvex_graph_nfp);
+              shiny::nesting::AlgorithmKind::nonconvex_graph_nfp);
       REQUIRE(result.normalized);
       require_loops_equal(result.loops,
                           parse_rings(expected.get_child("outer_loops")),

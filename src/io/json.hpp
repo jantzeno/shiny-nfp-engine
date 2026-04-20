@@ -8,7 +8,7 @@
 #include "packing/layout.hpp"
 #include "util/status.hpp"
 
-namespace shiny::nfp::io {
+namespace shiny::nesting::io {
 
 /**
  * @brief Loads a polygon set from the repo JSON interchange format.
@@ -51,4 +51,4 @@ save_polygon_set(const std::filesystem::path &path,
 [[nodiscard]] auto save_cut_plan(const std::filesystem::path &path,
                                  const pack::CutPlan &cut_plan) -> util::Status;
 
-} // namespace shiny::nfp::io
+} // namespace shiny::nesting::io

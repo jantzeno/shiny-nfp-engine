@@ -4,7 +4,7 @@
 
 #include "placement/config.hpp"
 
-namespace shiny::nfp::pack {
+namespace shiny::nesting::pack {
 
 /**
  * @brief Selects how coincident cut segments are simplified.
@@ -53,7 +53,7 @@ struct BoundingBoxPackingConfig {
  * @brief Bounds deterministic reordering attempts for constructive packers.
  *
  * Shared by constructive flows that evaluate a fixed set of deterministic
- * piece-order variants instead of a stochastic search.
+ * piece-order variants instead of stochastic optimization.
  *
  * @par Invariants
  * - `max_attempts` must stay within the supported bounded range.
@@ -107,7 +107,7 @@ struct LaserCutOptimizationConfig {
  * - The nested placement and cut-optimization configs must both be valid.
  *
  * @par Performance Notes
- * - Shared verbatim across decoder and search requests.
+ * - Shared verbatim across constructive packing requests.
  */
 struct PackingConfig {
   place::PlacementConfig placement{};
@@ -124,4 +124,4 @@ struct PackingConfig {
   [[nodiscard]] auto is_valid() const -> bool;
 };
 
-} // namespace shiny::nfp::pack
+} // namespace shiny::nesting::pack

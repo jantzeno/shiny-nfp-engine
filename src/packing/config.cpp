@@ -1,6 +1,6 @@
 #include "packing/config.hpp"
 
-namespace shiny::nfp::pack {
+namespace shiny::nesting::pack {
 
 auto BoundingBoxPackingConfig::is_valid() const -> bool {
   switch (heuristic) {
@@ -32,4 +32,4 @@ auto PackingConfig::is_valid() const -> bool {
          deterministic_attempts.is_valid() && laser_cut_optimization.is_valid();
 }
 
-} // namespace shiny::nfp::pack
+} // namespace shiny::nesting::pack

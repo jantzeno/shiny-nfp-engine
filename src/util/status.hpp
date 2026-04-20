@@ -3,7 +3,7 @@
 #include <optional>
 #include <utility>
 
-namespace shiny::nfp::util {
+namespace shiny::nesting::util {
 
 /**
  * @brief Minimal status code used by IO and utility helpers.
@@ -82,4 +82,4 @@ private:
   std::optional<T> value_{};
 };
 
-} // namespace shiny::nfp::util
+} // namespace shiny::nesting::util

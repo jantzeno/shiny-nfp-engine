@@ -6,7 +6,7 @@
 #include <iostream>
 #endif
 
-namespace shiny::nfp::util {
+namespace shiny::nesting::util {
 
 /**
  * @brief Logging severity used by the lightweight repo logging macro.
@@ -41,13 +41,13 @@ inline auto log_message(LogLevel level, Args &&...args) -> void {
 
 } // namespace detail
 
-} // namespace shiny::nfp::util
+} // namespace shiny::nesting::util
 
 /**
  * @brief Convenience macro for compile-time gated repo logging.
  */
 #define SHINY_NFP_LOG(level, ...)                                              \
   do {                                                                         \
-    ::shiny::nfp::util::detail::log_message(                                   \
-        ::shiny::nfp::util::LogLevel::level, __VA_ARGS__);                     \
+    ::shiny::nesting::util::detail::log_message(                                   \
+        ::shiny::nesting::util::LogLevel::level, __VA_ARGS__);                     \
   } while (false)

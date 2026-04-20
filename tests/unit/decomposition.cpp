@@ -17,25 +17,25 @@
 
 namespace {
 
-using shiny::nfp::ConvexNfpRequest;
-using shiny::nfp::NfpEngine;
-using shiny::nfp::NonconvexNfpRequest;
-using shiny::nfp::cache::AlgorithmRevision;
-using shiny::nfp::cache::CacheStore;
-using shiny::nfp::cache::GeometryRevision;
-using shiny::nfp::cache::PieceRotationKey;
-using shiny::nfp::decomp::decompose_polygon;
-using shiny::nfp::decomp::DecompositionAlgorithm;
-using shiny::nfp::decomp::DecompositionRequest;
-using shiny::nfp::decomp::DecompositionResult;
-using shiny::nfp::decomp::DecompositionValidity;
-using shiny::nfp::decomp::validate_decomposition;
-using shiny::nfp::geom::normalize_polygon;
-using shiny::nfp::test::load_fixture_file;
-using shiny::nfp::test::parse_polygon;
-using shiny::nfp::test::parse_ring;
-using shiny::nfp::test::require_fixture_metadata;
-using shiny::nfp::test::require_ring_equal;
+using shiny::nesting::ConvexNfpRequest;
+using shiny::nesting::NfpEngine;
+using shiny::nesting::NonconvexNfpRequest;
+using shiny::nesting::cache::AlgorithmRevision;
+using shiny::nesting::cache::CacheStore;
+using shiny::nesting::cache::GeometryRevision;
+using shiny::nesting::cache::PieceRotationKey;
+using shiny::nesting::decomp::decompose_polygon;
+using shiny::nesting::decomp::DecompositionAlgorithm;
+using shiny::nesting::decomp::DecompositionRequest;
+using shiny::nesting::decomp::DecompositionResult;
+using shiny::nesting::decomp::DecompositionValidity;
+using shiny::nesting::decomp::validate_decomposition;
+using shiny::nesting::geom::normalize_polygon;
+using shiny::nesting::test::load_fixture_file;
+using shiny::nesting::test::parse_polygon;
+using shiny::nesting::test::parse_ring;
+using shiny::nesting::test::require_fixture_metadata;
+using shiny::nesting::test::require_ring_equal;
 
 constexpr auto epsilon = 1.0e-9;
 
@@ -73,25 +73,25 @@ auto parse_validity(std::string_view value) -> DecompositionValidity {
   throw std::runtime_error("unknown decomposition validity fixture value");
 }
 
-auto parse_ring_list(const shiny::nfp::test::pt::ptree &node)
-    -> std::vector<shiny::nfp::geom::Ring> {
-  std::vector<shiny::nfp::geom::Ring> rings;
+auto parse_ring_list(const shiny::nesting::test::pt::ptree &node)
+    -> std::vector<shiny::nesting::geom::Ring> {
+  std::vector<shiny::nesting::geom::Ring> rings;
   for (const auto &child : node) {
     rings.push_back(parse_ring(child.second));
   }
   return rings;
 }
 
-auto point_less(const shiny::nfp::geom::Point2 &lhs,
-                const shiny::nfp::geom::Point2 &rhs) -> bool {
+auto point_less(const shiny::nesting::geom::Point2 &lhs,
+                const shiny::nesting::geom::Point2 &rhs) -> bool {
   if (lhs.x != rhs.x) {
     return lhs.x < rhs.x;
   }
   return lhs.y < rhs.y;
 }
 
-auto ring_less(const shiny::nfp::geom::Ring &lhs,
-               const shiny::nfp::geom::Ring &rhs) -> bool {
+auto ring_less(const shiny::nesting::geom::Ring &lhs,
+               const shiny::nesting::geom::Ring &rhs) -> bool {
   if (lhs.empty()) {
     return !rhs.empty();
   }
@@ -121,8 +121,8 @@ auto ring_less(const shiny::nfp::geom::Ring &lhs,
   return false;
 }
 
-auto inverse_rotate_point(const shiny::nfp::geom::Point2 &point,
-                          int rotation_degrees) -> shiny::nfp::geom::Point2 {
+auto inverse_rotate_point(const shiny::nesting::geom::Point2 &point,
+                          int rotation_degrees) -> shiny::nesting::geom::Point2 {
   switch (((rotation_degrees % 360) + 360) % 360) {
   case 0:
     return point;
@@ -140,18 +140,18 @@ auto inverse_rotate_point(const shiny::nfp::geom::Point2 &point,
 
 auto canonicalize_components(const DecompositionResult &result,
                              int rotation_degrees)
-    -> std::vector<shiny::nfp::geom::Ring> {
-  std::vector<shiny::nfp::geom::Ring> canonical_components;
+    -> std::vector<shiny::nesting::geom::Ring> {
+  std::vector<shiny::nesting::geom::Ring> canonical_components;
   canonical_components.reserve(result.components.size());
 
   for (const auto &component : result.components) {
-    shiny::nfp::geom::Ring rotated;
+    shiny::nesting::geom::Ring rotated;
     rotated.reserve(component.outer.size());
     for (const auto &point : component.outer) {
       rotated.push_back(inverse_rotate_point(point, rotation_degrees));
     }
     canonical_components.push_back(
-        normalize_polygon(shiny::nfp::geom::Polygon{.outer = rotated}).outer);
+        normalize_polygon(shiny::nesting::geom::Polygon{.outer = rotated}).outer);
   }
 
   std::sort(canonical_components.begin(), canonical_components.end(),
@@ -234,7 +234,7 @@ TEST_CASE("decomposition rotation variants are stable in canonical space",
           "[decomposition][fixtures][rotation]") {
   const auto root = load_fixture_file("decomposition/decompose.json");
 
-  std::map<std::string, std::vector<shiny::nfp::geom::Ring>> baseline_by_group;
+  std::map<std::string, std::vector<shiny::nesting::geom::Ring>> baseline_by_group;
   std::map<std::string, std::string> baseline_id_by_group;
 
   for (const auto &fixture_node : root.get_child("fixtures")) {
@@ -291,7 +291,7 @@ TEST_CASE("convex decomposition returns a single normalized component",
   REQUIRE(result.components.front().normalized);
   require_ring_equal(
       result.components.front().outer,
-      shiny::nfp::geom::Ring{{0.0, 0.0}, {5.0, 0.0}, {5.0, 2.0}, {0.0, 2.0}});
+      shiny::nesting::geom::Ring{{0.0, 0.0}, {5.0, 0.0}, {5.0, 2.0}, {0.0, 2.0}});
   REQUIRE(validate_decomposition(request.polygon, result) ==
           DecompositionValidity::valid);
 }

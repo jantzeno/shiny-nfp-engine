@@ -7,8 +7,8 @@
 
 TEST_CASE("cache store evicts least recently used entries when bounded",
           "[cache][lru]") {
-  shiny::nfp::cache::CacheStore<int, std::string> cache_store(
-      {.policy = shiny::nfp::cache::CachePolicy::lru_bounded,
+  shiny::nesting::cache::CacheStore<int, std::string> cache_store(
+      {.policy = shiny::nesting::cache::CachePolicy::lru_bounded,
        .max_entries = 2});
 
   cache_store.put(1, "one");
@@ -23,8 +23,8 @@ TEST_CASE("cache store evicts least recently used entries when bounded",
 
 TEST_CASE("cache store promotes accessed entries before eviction",
           "[cache][lru]") {
-  shiny::nfp::cache::CacheStore<int, std::string> cache_store(
-      {.policy = shiny::nfp::cache::CachePolicy::lru_bounded,
+  shiny::nesting::cache::CacheStore<int, std::string> cache_store(
+      {.policy = shiny::nesting::cache::CachePolicy::lru_bounded,
        .max_entries = 2});
 
   cache_store.put(1, "one");
@@ -39,8 +39,8 @@ TEST_CASE("cache store promotes accessed entries before eviction",
 }
 
 TEST_CASE("cache store clear resets storage and lru state", "[cache][lru]") {
-  shiny::nfp::cache::CacheStore<int, std::string> cache_store(
-      {.policy = shiny::nfp::cache::CachePolicy::lru_bounded,
+  shiny::nesting::cache::CacheStore<int, std::string> cache_store(
+      {.policy = shiny::nesting::cache::CachePolicy::lru_bounded,
        .max_entries = 2});
 
   cache_store.put(1, "one");

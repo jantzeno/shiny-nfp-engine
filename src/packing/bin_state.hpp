@@ -8,7 +8,7 @@
 #include "placement/config.hpp"
 #include "polygon_ops/merge_region.hpp"
 
-namespace shiny::nfp::pack {
+namespace shiny::nesting::pack {
 
 /**
  * @brief Mutable per-bin state used during constructive decoding.
@@ -46,4 +46,4 @@ struct BinState {
 [[nodiscard]] auto summarize_bin(const BinState &state)
     -> BinUtilizationSummary;
 
-} // namespace shiny::nfp::pack
+} // namespace shiny::nesting::pack

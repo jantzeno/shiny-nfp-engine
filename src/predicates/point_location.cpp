@@ -6,7 +6,7 @@
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Polygon_2_algorithms.h>
 
-namespace shiny::nfp::pred {
+namespace shiny::nesting::pred {
 namespace {
 
 using Kernel = CGAL::Exact_predicates_inexact_constructions_kernel;
@@ -163,4 +163,4 @@ auto locate_point_in_polygon(const geom::Point2 &point,
   return result;
 }
 
-} // namespace shiny::nfp::pred
+} // namespace shiny::nesting::pred

@@ -11,22 +11,22 @@
 
 namespace {
 
-using shiny::nfp::AlgorithmKind;
-using shiny::nfp::parse_algorithm_kind;
-using shiny::nfp::search::JostleSearch;
-using shiny::nfp::search::SearchRunStatus;
-using shiny::nfp::test::svg::case_supports_algorithm;
-using shiny::nfp::test::svg::import_svg_case;
-using shiny::nfp::test::svg::load_svg_case_specs;
-using shiny::nfp::test::svg::make_search_request;
-using shiny::nfp::test::svg::output_root;
-using shiny::nfp::test::svg::require_request_matches_imported_case;
-using shiny::nfp::test::svg::require_same_search_result;
-using shiny::nfp::test::svg::require_valid_imported_case;
-using shiny::nfp::test::svg::require_valid_search_result;
-using shiny::nfp::test::svg::select_svg_case_specs;
-using shiny::nfp::test::svg::SvgPackingCaseSpec;
-using shiny::nfp::test::svg::write_layout_svg;
+using shiny::nesting::AlgorithmKind;
+using shiny::nesting::parse_algorithm_kind;
+using shiny::nesting::search::JostleSearch;
+using shiny::nesting::search::SearchRunStatus;
+using shiny::nesting::test::svg::case_supports_algorithm;
+using shiny::nesting::test::svg::import_svg_case;
+using shiny::nesting::test::svg::load_svg_case_specs;
+using shiny::nesting::test::svg::make_search_request;
+using shiny::nesting::test::svg::output_root;
+using shiny::nesting::test::svg::require_request_matches_imported_case;
+using shiny::nesting::test::svg::require_same_search_result;
+using shiny::nesting::test::svg::require_valid_imported_case;
+using shiny::nesting::test::svg::require_valid_search_result;
+using shiny::nesting::test::svg::select_svg_case_specs;
+using shiny::nesting::test::svg::SvgPackingCaseSpec;
+using shiny::nesting::test::svg::write_layout_svg;
 
 void require_exploratory_cases(
     const std::vector<SvgPackingCaseSpec> &exploratory_specs) {
@@ -54,7 +54,7 @@ void require_exploratory_cases(
         const auto output_path =
             output_root() / (spec.id + ".exploratory.packed.svg");
         REQUIRE(write_layout_svg(output_path, result.best.decode.layout) ==
-                shiny::nfp::util::Status::ok);
+                shiny::nesting::util::Status::ok);
         REQUIRE(std::filesystem::exists(output_path));
       }
     }
@@ -96,7 +96,7 @@ TEST_CASE("normative svg cases pack deterministically into valid layouts",
 
       const auto output_path = output_root() / (spec.id + ".packed.svg");
       REQUIRE(write_layout_svg(output_path, first_result.best.decode.layout) ==
-              shiny::nfp::util::Status::ok);
+              shiny::nesting::util::Status::ok);
       REQUIRE(std::filesystem::exists(output_path));
     }
   }

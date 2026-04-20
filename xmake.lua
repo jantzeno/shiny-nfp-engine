@@ -1,4 +1,4 @@
-set_project("shiny-nfp-engine")
+set_project("shiny-nesting-engine")
 set_version("0.1.0")
 
 set_languages("cxx20")
@@ -77,7 +77,7 @@ end
 local cgal_include_roots = collect_component_include_roots(cgal_root)
 
 local function selected_sanitizer()
-    local sanitizer = os.getenv("SHINY_NFP_SANITIZER")
+    local sanitizer = os.getenv("SHINY_NESTING_SANITIZER")
     if sanitizer ~= nil and sanitizer ~= "" then
         return sanitizer
     end
@@ -162,7 +162,7 @@ target("shiny_logging")
     add_files("src/logging/*.cpp")
     add_deps("vendor_spdlog")
 
-target("shiny_nfp_engine")
+target("shiny_nesting_engine")
     set_kind("static")
     add_packages("vendored_boost", "vendored_cgal")
     add_defines("CGAL_DO_NOT_USE_BOOST_MP=1", "CGAL_NO_GMP=1", "CGAL_NO_MPFR=1")
@@ -171,22 +171,60 @@ target("shiny_nfp_engine")
     for _, dir in ipairs(cgal_include_roots) do
         add_sysincludedirs(dir)
     end
-    add_headerfiles("src/(**.hpp)")
-    add_files("src/**/*.cpp")
+    add_headerfiles(
+        "src/algorithm_kind.hpp",
+        "src/observer.hpp",
+        "src/request.hpp",
+        "src/result.hpp",
+        "src/solve.hpp",
+        "src/geometry/(**.hpp)",
+        "src/io/(**.hpp)",
+        "src/logging/(**.hpp)",
+        "src/packing/(**.hpp)",
+        "src/placement/(**.hpp)",
+        "src/polygon_ops/(**.hpp)",
+        "src/predicates/(**.hpp)",
+        "src/runtime/(**.hpp)",
+        "src/search/(**.hpp)",
+        "src/util/(**.hpp)")
+    add_files(
+        "src/request.cpp",
+        "src/solve.cpp",
+        "src/geometry/*.cpp",
+        "src/io/*.cpp",
+        "src/packing/bin_state.cpp",
+        "src/packing/bounding_box_packer.cpp",
+        "src/packing/irregular_constructive_packer.cpp",
+        "src/packing/common.cpp",
+        "src/packing/config.cpp",
+        "src/packing/cut_plan.cpp",
+        "src/packing/bounding_box/*.cpp",
+        "src/placement/config.cpp",
+        "src/polygon_ops/*.cpp",
+        "src/predicates/*.cpp",
+        "src/runtime/*.cpp")
+    add_files("src/search/*.cpp")
     add_deps("shiny_logging")
     add_vendor_warning_suppression_flags()
     add_thread_support_flags()
     add_sanitizer_compile_flags()
 
-target("shiny_nfp_engine_tests")
+target("shiny_nesting_engine_tests")
     set_kind("binary")
     add_packages("catch2", "vendored_boost")
-    add_deps("shiny_nfp_engine")
-    add_defines('SHINY_NFP_ENGINE_TEST_FIXTURE_ROOT="' .. fixture_root .. '"')
-    add_sysincludedirs(boost_root)
+    add_deps("shiny_nesting_engine")
+    add_defines('SHINY_NESTING_ENGINE_TEST_FIXTURE_ROOT="' .. fixture_root .. '"')
     add_includedirs("tests")
-    add_includedirs(nanosvg_dir)
-    add_files("tests/**/*.cpp")
+    add_sysincludedirs(boost_root)
+    add_files("tests/unit/bounding_box_packer.cpp")
+    add_files("tests/unit/geometry_normalize.cpp")
+    add_files("tests/unit/geometry_foundation.cpp")
+    add_files("tests/unit/request_normalization.cpp")
+    add_files("tests/unit/execution_runtime.cpp")
+    add_files("tests/unit/import_preprocess.cpp")
+    add_files("tests/unit/or_dataset_json.cpp")
+    add_files("tests/unit/constructive_irregular.cpp")
+    add_files("tests/unit/production_search.cpp")
     add_deps("shiny_logging")
     add_vendor_warning_suppression_flags()
     add_thread_support_flags()
@@ -194,80 +232,10 @@ target("shiny_nfp_engine_tests")
     add_sanitizer_link_flags()
     add_tests("default")
 
-target("shiny_nfp_engine_local_search_example")
+target("shiny_nesting_engine_bounding_box_example")
     set_kind("binary")
-    add_deps("shiny_nfp_engine")
-    add_files("examples/local_search/main.cpp")
-    add_deps("shiny_logging")
-    add_vendor_warning_suppression_flags()
-    add_thread_support_flags()
-    add_sanitizer_compile_flags()
-    add_sanitizer_link_flags()
-
-target("shiny_nfp_engine_genetic_search_example")
-    set_kind("binary")
-    add_deps("shiny_nfp_engine")
-    add_files("examples/genetic_search/main.cpp")
-    add_deps("shiny_logging")
-    add_vendor_warning_suppression_flags()
-    add_thread_support_flags()
-    add_sanitizer_compile_flags()
-    add_sanitizer_link_flags()
-
-target("shiny_nfp_engine_constructive_decoder_example")
-    set_kind("binary")
-    add_deps("shiny_nfp_engine")
-    add_files("examples/constructive_decoder/main.cpp")
-    add_deps("shiny_logging")
-    add_vendor_warning_suppression_flags()
-    add_thread_support_flags()
-    add_sanitizer_compile_flags()
-    add_sanitizer_link_flags()
-
-target("shiny_nfp_engine_masonry_builder_example")
-    set_kind("binary")
-    add_deps("shiny_nfp_engine")
-    add_files("examples/masonry_builder/main.cpp")
-    add_deps("shiny_logging")
-    add_vendor_warning_suppression_flags()
-    add_thread_support_flags()
-    add_sanitizer_compile_flags()
-    add_sanitizer_link_flags()
-
-target("shiny_nfp_engine_pairwise_nfp_example")
-    set_kind("binary")
-    add_deps("shiny_nfp_engine")
-    add_files("examples/pairwise_nfp/main.cpp")
-    add_deps("shiny_logging")
-    add_vendor_warning_suppression_flags()
-    add_thread_support_flags()
-    add_sanitizer_compile_flags()
-    add_sanitizer_link_flags()
-
-target("shiny_nfp_engine_cache_inspect")
-    set_kind("binary")
-    add_deps("shiny_nfp_engine")
-    add_files("tools/cache_inspect/main.cpp")
-    add_deps("shiny_logging")
-    add_vendor_warning_suppression_flags()
-    add_thread_support_flags()
-    add_sanitizer_compile_flags()
-    add_sanitizer_link_flags()
-
-target("shiny_nfp_engine_fixture_gen")
-    set_kind("binary")
-    add_deps("shiny_nfp_engine")
-    add_files("tools/fixture_gen/main.cpp")
-    add_deps("shiny_logging")
-    add_vendor_warning_suppression_flags()
-    add_thread_support_flags()
-    add_sanitizer_compile_flags()
-    add_sanitizer_link_flags()
-
-target("shiny_nfp_engine_profile_decode")
-    set_kind("binary")
-    add_deps("shiny_nfp_engine")
-    add_files("tools/profile_decode/main.cpp")
+    add_deps("shiny_nesting_engine")
+    add_files("examples/bounding_box/main.cpp")
     add_deps("shiny_logging")
     add_vendor_warning_suppression_flags()
     add_thread_support_flags()

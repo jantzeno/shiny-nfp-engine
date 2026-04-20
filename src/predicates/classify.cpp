@@ -2,7 +2,7 @@
 
 #include "geometry/detail/point_compare.hpp"
 
-namespace shiny::nfp::pred {
+namespace shiny::nesting::pred {
 
 auto lexicographic_min_vertex_index(std::span<const geom::Point2> ring)
     -> std::size_t {
@@ -20,4 +20,4 @@ auto lexicographic_min_vertex_index(std::span<const geom::Point2> ring)
   return min_index;
 }
 
-} // namespace shiny::nfp::pred
+} // namespace shiny::nesting::pred

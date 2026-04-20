@@ -12,22 +12,23 @@
 
 namespace {
 
-using shiny::nfp::geom::normalize_polygon;
-using shiny::nfp::geom::Polygon;
-using shiny::nfp::geom::PolygonWithHoles;
-using shiny::nfp::poly::compute_convex_hull;
-using shiny::nfp::poly::make_merged_region;
-using shiny::nfp::poly::merge_polygon_into_region;
-using shiny::nfp::poly::MergedRegion;
-using shiny::nfp::poly::simplify_polygon;
-using shiny::nfp::poly::union_polygons;
-using shiny::nfp::test::load_fixture_file;
-using shiny::nfp::test::parse_polygon;
-using shiny::nfp::test::require_fixture_metadata;
-using shiny::nfp::test::require_polygon_equal;
-using shiny::nfp::test::require_ring_equal;
+using shiny::nesting::geom::normalize_polygon;
+using shiny::nesting::geom::Polygon;
+using shiny::nesting::geom::PolygonWithHoles;
+using shiny::nesting::poly::compute_convex_hull;
+using shiny::nesting::poly::make_merged_region;
+using shiny::nesting::poly::merge_polygon_into_region;
+using shiny::nesting::poly::MergedRegion;
+using shiny::nesting::poly::simplify_polygon;
+using shiny::nesting::poly::simplify_polygon_douglas_peucker;
+using shiny::nesting::poly::union_polygons;
+using shiny::nesting::test::load_fixture_file;
+using shiny::nesting::test::parse_polygon;
+using shiny::nesting::test::require_fixture_metadata;
+using shiny::nesting::test::require_polygon_equal;
+using shiny::nesting::test::require_ring_equal;
 
-auto parse_polygon_list(const shiny::nfp::test::pt::ptree &node)
+auto parse_polygon_list(const shiny::nesting::test::pt::ptree &node)
     -> std::vector<PolygonWithHoles> {
   std::vector<PolygonWithHoles> polygons;
   for (const auto &child : node) {
@@ -44,7 +45,7 @@ void require_polygon_list_equal(const std::vector<PolygonWithHoles> &actual,
   }
 }
 
-auto signed_area(const shiny::nfp::geom::Ring &ring) -> long double {
+auto signed_area(const shiny::nesting::geom::Ring &ring) -> long double {
   if (ring.size() < 3U) {
     return 0.0L;
   }
@@ -127,6 +128,56 @@ TEST_CASE("convex hull fixtures", "[polygon-ops][convex-hull][fixtures]") {
                             PolygonWithHoles{.outer = expected.outer});
     }
   }
+}
+
+TEST_CASE("douglas-peucker simplification removes shallow jogs from polygon",
+          "[polygon-ops][simplify][douglas-peucker]") {
+  const Polygon input{
+      .outer = {{0.0, 0.0},
+                {4.0, 0.0},
+                {4.0, 0.2},
+                {8.0, 0.0},
+                {12.0, 0.0},
+                {12.0, 6.0},
+                {0.0, 6.0}},
+  };
+
+  const Polygon simplified = simplify_polygon_douglas_peucker(input, 0.25);
+
+  require_ring_equal(simplified.outer,
+                     Polygon{.outer = {{0.0, 0.0},
+                                       {12.0, 0.0},
+                                       {12.0, 6.0},
+                                       {0.0, 6.0}}}
+                         .outer);
+}
+
+TEST_CASE("douglas-peucker simplification preserves polygon holes",
+          "[polygon-ops][simplify][douglas-peucker]") {
+  const PolygonWithHoles input{
+      .outer = {{0.0, 0.0},
+                {6.0, 0.0},
+                {6.0, 0.1},
+                {12.0, 0.0},
+                {12.0, 10.0},
+                {0.0, 10.0}},
+      .holes = {{{3.0, 3.0},
+                 {6.0, 3.0},
+                 {6.0, 3.1},
+                 {9.0, 3.0},
+                 {9.0, 7.0},
+                 {3.0, 7.0}}},
+  };
+
+  const PolygonWithHoles simplified =
+      simplify_polygon_douglas_peucker(input, 0.2);
+
+  require_polygon_equal(
+      simplified,
+      PolygonWithHoles{
+          .outer = {{0.0, 0.0}, {12.0, 0.0}, {12.0, 10.0}, {0.0, 10.0}},
+          .holes = {{{3.0, 3.0}, {3.0, 7.0}, {9.0, 7.0}, {9.0, 3.0}}},
+      });
 }
 
 TEST_CASE("polygon union fixtures", "[polygon-ops][boolean][fixtures]") {

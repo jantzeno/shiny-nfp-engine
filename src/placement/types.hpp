@@ -6,7 +6,7 @@
 #include "geometry/types.hpp"
 #include "placement/config.hpp"
 
-namespace shiny::nfp::place {
+namespace shiny::nesting::place {
 
 /**
  * @brief Selects the ranking heuristic used for feasible placement candidates.
@@ -21,11 +21,11 @@ enum class PlacementPolicy : std::uint32_t {
  * @brief Describes where a placement candidate originated.
  */
 enum class PlacementCandidateSource : std::int8_t {
-  nfp_boundary = 0,
-  bin_ifp = 1,
-  hole_ifp = 2,
+  constructive_boundary = 0,
+  bin_boundary = 1,
+  hole_boundary = 2,
   perfect_fit = 3,
-  perfect_sliding = 4,
+  perfect_slide = 4,
   concave_boundary = 5,
 };
 
@@ -73,7 +73,8 @@ struct PlacementCandidate {
   geom::Point2 translation{};
   geom::RotationIndex rotation_index{};
   double score{0.0};
-  PlacementCandidateSource source{PlacementCandidateSource::nfp_boundary};
+  PlacementCandidateSource source{
+      PlacementCandidateSource::constructive_boundary};
   bool inside_hole{false};
   std::int32_t hole_index{-1};
 };
@@ -101,4 +102,4 @@ struct RankedPlacementSet {
   }
 };
 
-} // namespace shiny::nfp::place
+} // namespace shiny::nesting::place

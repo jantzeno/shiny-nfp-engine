@@ -5,7 +5,7 @@
 #include "geometry/normalize.hpp"
 #include "polygon_ops/boolean_ops.hpp"
 
-namespace shiny::nfp::poly {
+namespace shiny::nesting::poly {
 namespace {
 
 [[nodiscard]] auto polygon_less(const geom::PolygonWithHoles &lhs,
@@ -82,4 +82,4 @@ auto merge_polygon_into_region(const MergedRegion &region,
   return {.regions = std::move(pending)};
 }
 
-} // namespace shiny::nfp::poly
+} // namespace shiny::nesting::poly

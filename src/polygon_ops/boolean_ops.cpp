@@ -3,11 +3,12 @@
 #include <algorithm>
 
 #include <boost/geometry.hpp>
+#include <boost/geometry/algorithms/buffer.hpp>
 
 #include "geometry/normalize.hpp"
 #include "polygon_ops/simplify.hpp"
 
-namespace shiny::nfp::poly {
+namespace shiny::nesting::poly {
 namespace {
 
 namespace bg = boost::geometry;
@@ -120,6 +121,18 @@ auto union_polygons(const geom::PolygonWithHoles &lhs,
   return normalize_output(output);
 }
 
+auto intersection_polygons(const geom::PolygonWithHoles &lhs,
+                           const geom::PolygonWithHoles &rhs)
+    -> std::vector<geom::PolygonWithHoles> {
+  if (lhs.outer.empty() || rhs.outer.empty()) {
+    return {};
+  }
+
+  std::vector<BgPolygon> output;
+  bg::intersection(to_bg_polygon(lhs), to_bg_polygon(rhs), output);
+  return normalize_output(output);
+}
+
 auto difference_polygons(const geom::PolygonWithHoles &lhs,
                          const geom::PolygonWithHoles &rhs)
     -> std::vector<geom::PolygonWithHoles> {
@@ -135,4 +148,47 @@ auto difference_polygons(const geom::PolygonWithHoles &lhs,
   return normalize_output(output);
 }
 
-} // namespace shiny::nfp::poly
+auto polygon_distance(const geom::PolygonWithHoles &lhs,
+                      const geom::PolygonWithHoles &rhs) -> double {
+  if (lhs.outer.empty() || rhs.outer.empty()) {
+    return 0.0;
+  }
+
+  return bg::distance(to_bg_polygon(lhs), to_bg_polygon(rhs));
+}
+
+auto buffer_polygon(const geom::PolygonWithHoles &polygon, double distance)
+    -> std::vector<geom::PolygonWithHoles> {
+  if (polygon.outer.empty() || distance == 0.0) {
+    if (polygon.outer.empty()) {
+      return {};
+    }
+    return {geom::normalize_polygon(polygon)};
+  }
+
+  using BgMultiPolygon = bg::model::multi_polygon<BgPolygon>;
+
+  bg::strategy::buffer::distance_symmetric<double> dist_strategy(distance);
+  bg::strategy::buffer::join_miter join_strategy;
+  bg::strategy::buffer::end_flat end_strategy;
+  bg::strategy::buffer::point_square point_strategy;
+  bg::strategy::buffer::side_straight side_strategy;
+
+  BgMultiPolygon buffered;
+  bg::buffer(to_bg_polygon(polygon), buffered, dist_strategy, side_strategy,
+             join_strategy, end_strategy, point_strategy);
+
+  std::vector<geom::PolygonWithHoles> result;
+  result.reserve(buffered.size());
+  for (const auto &poly : buffered) {
+    auto converted = from_bg_polygon(poly);
+    if (!converted.outer.empty()) {
+      result.push_back(std::move(converted));
+    }
+  }
+
+  std::sort(result.begin(), result.end(), polygon_less);
+  return result;
+}
+
+} // namespace shiny::nesting::poly

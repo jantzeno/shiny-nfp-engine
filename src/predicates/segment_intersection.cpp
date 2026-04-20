@@ -10,7 +10,7 @@
 #include "geometry/detail/point_compare.hpp"
 #include "predicates/orientation.hpp"
 
-namespace shiny::nfp::pred {
+namespace shiny::nesting::pred {
 namespace {
 
 using Kernel = CGAL::Exact_predicates_inexact_constructions_kernel;
@@ -119,4 +119,4 @@ auto classify_segment_contact(const geom::Segment2 &lhs,
   return build_contact(SegmentContactKind::disjoint, {}, lhs, rhs);
 }
 
-} // namespace shiny::nfp::pred
+} // namespace shiny::nesting::pred

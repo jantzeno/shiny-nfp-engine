@@ -26,7 +26,7 @@
 #include "search/observer.hpp"
 #include "support/fixture_test_support.hpp"
 
-namespace shiny::nfp::test::svg {
+namespace shiny::nesting::test::svg {
 namespace {
 
 namespace fs = std::filesystem;
@@ -1369,4 +1369,4 @@ void require_same_masonry_result(const MasonryResult &lhs,
   REQUIRE(lhs.progress.size() == rhs.progress.size());
 }
 
-} // namespace shiny::nfp::test::svg
+} // namespace shiny::nesting::test::svg

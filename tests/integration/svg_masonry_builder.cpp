@@ -8,17 +8,17 @@
 
 namespace {
 
-using shiny::nfp::pack::MasonryBuilder;
-using shiny::nfp::test::svg::import_svg_case;
-using shiny::nfp::test::svg::make_masonry_request;
-using shiny::nfp::test::svg::output_root;
-using shiny::nfp::test::svg::require_request_matches_imported_case;
-using shiny::nfp::test::svg::require_same_masonry_result;
-using shiny::nfp::test::svg::require_valid_imported_case;
-using shiny::nfp::test::svg::require_valid_masonry_result;
-using shiny::nfp::test::svg::select_svg_case_specs;
-using shiny::nfp::test::svg::SvgPackingCaseSpec;
-using shiny::nfp::test::svg::write_layout_svg;
+using shiny::nesting::pack::MasonryBuilder;
+using shiny::nesting::test::svg::import_svg_case;
+using shiny::nesting::test::svg::make_masonry_request;
+using shiny::nesting::test::svg::output_root;
+using shiny::nesting::test::svg::require_request_matches_imported_case;
+using shiny::nesting::test::svg::require_same_masonry_result;
+using shiny::nesting::test::svg::require_valid_imported_case;
+using shiny::nesting::test::svg::require_valid_masonry_result;
+using shiny::nesting::test::svg::select_svg_case_specs;
+using shiny::nesting::test::svg::SvgPackingCaseSpec;
+using shiny::nesting::test::svg::write_layout_svg;
 
 void require_masonry_cases(const std::vector<SvgPackingCaseSpec> &specs,
                            std::string_view suffix) {
@@ -45,7 +45,7 @@ void require_masonry_cases(const std::vector<SvgPackingCaseSpec> &specs,
       const auto output_path =
           output_root() / (spec.id + "." + std::string(suffix) + ".svg");
       REQUIRE(write_layout_svg(output_path, first_result.layout) ==
-              shiny::nfp::util::Status::ok);
+              shiny::nesting::util::Status::ok);
       REQUIRE(std::filesystem::exists(output_path));
     }
   }

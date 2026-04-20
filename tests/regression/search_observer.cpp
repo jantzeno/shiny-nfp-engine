@@ -12,20 +12,20 @@
 
 namespace {
 
-using shiny::nfp::AlgorithmKind;
-using shiny::nfp::pack::BinInput;
-using shiny::nfp::pack::PackingConfig;
-using shiny::nfp::pack::PieceInput;
-using shiny::nfp::place::PlacementPolicy;
-using shiny::nfp::search::SearchEvent;
-using shiny::nfp::search::SearchEventKind;
-using shiny::nfp::search::SearchRequest;
-using shiny::nfp::search::SearchRunStatus;
-using shiny::nfp::test::load_fixture_file;
-using shiny::nfp::test::parse_polygon;
-using shiny::nfp::test::require_fixture_metadata;
+using shiny::nesting::AlgorithmKind;
+using shiny::nesting::pack::BinInput;
+using shiny::nesting::pack::PackingConfig;
+using shiny::nesting::pack::PieceInput;
+using shiny::nesting::place::PlacementPolicy;
+using shiny::nesting::search::SearchEvent;
+using shiny::nesting::search::SearchEventKind;
+using shiny::nesting::search::SearchRequest;
+using shiny::nesting::search::SearchRunStatus;
+using shiny::nesting::test::load_fixture_file;
+using shiny::nesting::test::parse_polygon;
+using shiny::nesting::test::require_fixture_metadata;
 
-auto parse_rotations(const shiny::nfp::test::pt::ptree &node)
+auto parse_rotations(const shiny::nesting::test::pt::ptree &node)
     -> std::vector<double> {
   std::vector<double> rotations;
   for (const auto &child : node) {
@@ -35,47 +35,47 @@ auto parse_rotations(const shiny::nfp::test::pt::ptree &node)
 }
 
 auto parse_bed_grain_direction(std::string_view value)
-    -> shiny::nfp::place::BedGrainDirection {
+    -> shiny::nesting::place::BedGrainDirection {
   if (value == "unrestricted") {
-    return shiny::nfp::place::BedGrainDirection::unrestricted;
+    return shiny::nesting::place::BedGrainDirection::unrestricted;
   }
   if (value == "along_x") {
-    return shiny::nfp::place::BedGrainDirection::along_x;
+    return shiny::nesting::place::BedGrainDirection::along_x;
   }
   if (value == "along_y") {
-    return shiny::nfp::place::BedGrainDirection::along_y;
+    return shiny::nesting::place::BedGrainDirection::along_y;
   }
   throw std::runtime_error("unknown observer fixture bed grain direction");
 }
 
 auto parse_part_grain_compatibility(std::string_view value)
-    -> shiny::nfp::place::PartGrainCompatibility {
+    -> shiny::nesting::place::PartGrainCompatibility {
   if (value == "unrestricted") {
-    return shiny::nfp::place::PartGrainCompatibility::unrestricted;
+    return shiny::nesting::place::PartGrainCompatibility::unrestricted;
   }
   if (value == "parallel_to_bed") {
-    return shiny::nfp::place::PartGrainCompatibility::parallel_to_bed;
+    return shiny::nesting::place::PartGrainCompatibility::parallel_to_bed;
   }
   if (value == "perpendicular_to_bed") {
-    return shiny::nfp::place::PartGrainCompatibility::perpendicular_to_bed;
+    return shiny::nesting::place::PartGrainCompatibility::perpendicular_to_bed;
   }
   throw std::runtime_error("unknown observer fixture grain compatibility");
 }
 
-auto parse_exclusion_zones(const shiny::nfp::test::pt::ptree &node)
-    -> std::vector<shiny::nfp::place::BedExclusionZone> {
-  std::vector<shiny::nfp::place::BedExclusionZone> zones;
+auto parse_exclusion_zones(const shiny::nesting::test::pt::ptree &node)
+    -> std::vector<shiny::nesting::place::BedExclusionZone> {
+  std::vector<shiny::nesting::place::BedExclusionZone> zones;
   for (const auto &child : node) {
     zones.push_back({
         .zone_id = child.second.get<std::uint32_t>("zone_id", 0),
-        .region = {.outer = shiny::nfp::test::parse_ring(
+        .region = {.outer = shiny::nesting::test::parse_ring(
                        child.second.get_child("region"))},
     });
   }
   return zones;
 }
 
-auto parse_ids(const shiny::nfp::test::pt::ptree &node)
+auto parse_ids(const shiny::nesting::test::pt::ptree &node)
     -> std::vector<std::uint32_t> {
   std::vector<std::uint32_t> values;
   for (const auto &child : node) {
@@ -84,12 +84,12 @@ auto parse_ids(const shiny::nfp::test::pt::ptree &node)
   return values;
 }
 
-auto parse_event_kinds(const shiny::nfp::test::pt::ptree &node)
+auto parse_event_kinds(const shiny::nesting::test::pt::ptree &node)
     -> std::vector<SearchEventKind> {
   std::vector<SearchEventKind> values;
   values.reserve(node.size());
   for (const auto &child : node) {
-    const auto parsed = shiny::nfp::search::parse_search_event_kind(
+    const auto parsed = shiny::nesting::search::parse_search_event_kind(
         child.second.get_value<std::string>());
     if (!parsed.has_value()) {
       throw std::runtime_error("unknown observer fixture event kind");
@@ -112,7 +112,7 @@ auto parse_policy(std::string_view value) -> PlacementPolicy {
   throw std::runtime_error("unknown observer fixture policy");
 }
 
-auto parse_bin_input(const shiny::nfp::test::pt::ptree &node) -> BinInput {
+auto parse_bin_input(const shiny::nesting::test::pt::ptree &node) -> BinInput {
   return {
       .bin_id = node.get<std::uint32_t>("base_bin_id", 0),
       .polygon = parse_polygon(node.get_child("polygon")),
@@ -141,7 +141,7 @@ auto expand_bins(BinInput base_bin, const std::size_t count)
   return bins;
 }
 
-auto parse_piece_inputs(const shiny::nfp::test::pt::ptree &node)
+auto parse_piece_inputs(const shiny::nesting::test::pt::ptree &node)
     -> std::vector<PieceInput> {
   std::vector<PieceInput> pieces;
   for (const auto &child : node) {
@@ -164,7 +164,7 @@ auto parse_piece_inputs(const shiny::nfp::test::pt::ptree &node)
   return pieces;
 }
 
-auto parse_packing_config(const shiny::nfp::test::pt::ptree &node)
+auto parse_packing_config(const shiny::nesting::test::pt::ptree &node)
     -> PackingConfig {
   PackingConfig config{};
   if (const auto placement = node.get_child_optional("placement")) {
@@ -191,7 +191,7 @@ auto parse_packing_config(const shiny::nfp::test::pt::ptree &node)
   return config;
 }
 
-auto parse_search_request(const shiny::nfp::test::pt::ptree &node)
+auto parse_search_request(const shiny::nesting::test::pt::ptree &node)
     -> SearchRequest {
   SearchRequest request{};
   if (const auto local_search = node.get_child_optional("local_search")) {
@@ -243,7 +243,7 @@ TEST_CASE("search observer regression fixtures",
   REQUIRE(root.get<std::string>("algorithm") == "jostle_search");
 
   const auto parsed_algorithm =
-      shiny::nfp::parse_algorithm_kind(root.get<std::string>("algorithm"));
+      shiny::nesting::parse_algorithm_kind(root.get<std::string>("algorithm"));
   REQUIRE(parsed_algorithm.has_value());
   REQUIRE(*parsed_algorithm == AlgorithmKind::jostle_search);
 
@@ -260,7 +260,7 @@ TEST_CASE("search observer regression fixtures",
       std::size_t progress_count = 0U;
 
       request.execution.observer.on_event = [&](const SearchEvent &event) {
-        if (shiny::nfp::search::search_event_kind(event) ==
+        if (shiny::nesting::search::search_event_kind(event) ==
             SearchEventKind::step_progress) {
           ++progress_count;
         }
@@ -274,7 +274,7 @@ TEST_CASE("search observer regression fixtures",
         };
       }
 
-      shiny::nfp::search::JostleSearch search;
+      shiny::nesting::search::JostleSearch search;
       const auto result = search.improve(request);
       const auto &expected = fixture.get_child("expected");
 
@@ -287,11 +287,11 @@ TEST_CASE("search observer regression fixtures",
           parse_event_kinds(expected.get_child("event_kinds"));
       REQUIRE(live_events.size() == expected_event_kinds.size());
       for (std::size_t index = 0; index < live_events.size(); ++index) {
-        REQUIRE(shiny::nfp::search::search_event_kind(live_events[index]) ==
+        REQUIRE(shiny::nesting::search::search_event_kind(live_events[index]) ==
                 expected_event_kinds[index]);
-        REQUIRE(shiny::nfp::search::search_event_kind(result.events[index]) ==
+        REQUIRE(shiny::nesting::search::search_event_kind(result.events[index]) ==
                 expected_event_kinds[index]);
-        REQUIRE(shiny::nfp::search::search_event_algorithm_kind(
+        REQUIRE(shiny::nesting::search::search_event_algorithm_kind(
                     live_events[index]) == AlgorithmKind::jostle_search);
       }
 
@@ -303,11 +303,11 @@ TEST_CASE("search observer regression fixtures",
               using Payload = std::decay_t<decltype(payload)>;
               if constexpr (std::is_same_v<
                                 Payload,
-                                shiny::nfp::search::SearchStepProgressEvent>) {
+                                shiny::nesting::search::SearchStepProgressEvent>) {
                 progress_iterations.push_back(payload.progress.iteration);
               } else if constexpr (std::is_same_v<
                                        Payload,
-                                       shiny::nfp::search::
+                                       shiny::nesting::search::
                                            SearchImprovementFoundEvent>) {
                 improvement_iterations.push_back(payload.progress.iteration);
               }

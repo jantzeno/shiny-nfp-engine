@@ -8,25 +8,25 @@
 #include "util/status.hpp"
 #include "support/svg_packing_test_support.hpp"
 
-using shiny::nfp::AlgorithmKind;
-using shiny::nfp::search::GeneticSearch;
-using shiny::nfp::search::GeneticSearchConfig;
-using shiny::nfp::search::SearchRunStatus;
-using shiny::nfp::test::svg::import_svg_case;
-using shiny::nfp::test::svg::kSearchSeed;
-using shiny::nfp::test::svg::make_search_request;
-using shiny::nfp::test::svg::output_root;
-using shiny::nfp::test::svg::require_request_matches_imported_case;
-using shiny::nfp::test::svg::require_same_search_result;
-using shiny::nfp::test::svg::require_valid_imported_case;
-using shiny::nfp::test::svg::require_valid_search_result;
-using shiny::nfp::test::svg::select_svg_case_specs;
-using shiny::nfp::test::svg::write_layout_svg;
+using shiny::nesting::AlgorithmKind;
+using shiny::nesting::search::GeneticSearch;
+using shiny::nesting::search::GeneticSearchConfig;
+using shiny::nesting::search::SearchRunStatus;
+using shiny::nesting::test::svg::import_svg_case;
+using shiny::nesting::test::svg::kSearchSeed;
+using shiny::nesting::test::svg::make_search_request;
+using shiny::nesting::test::svg::output_root;
+using shiny::nesting::test::svg::require_request_matches_imported_case;
+using shiny::nesting::test::svg::require_same_search_result;
+using shiny::nesting::test::svg::require_valid_imported_case;
+using shiny::nesting::test::svg::require_valid_search_result;
+using shiny::nesting::test::svg::select_svg_case_specs;
+using shiny::nesting::test::svg::write_layout_svg;
 
 namespace {
 
 auto make_bounded_readiness_genetic_config(
-    const shiny::nfp::search::SearchRequest &request,
+    const shiny::nesting::search::SearchRequest &request,
     std::uint32_t generation_budget, std::uint32_t plateau_budget)
     -> GeneticSearchConfig {
   const auto piece_count =
@@ -83,7 +83,7 @@ TEST_CASE("normative svg cases improve deterministically under genetic search",
       const auto output_path =
           output_root() / (spec.id + ".genetic.packed.svg");
       REQUIRE(write_layout_svg(output_path, first_result.best.decode.layout) ==
-              shiny::nfp::util::Status::ok);
+              shiny::nesting::util::Status::ok);
       REQUIRE(std::filesystem::exists(output_path));
     }
   }

@@ -22,14 +22,14 @@ constexpr double kGrainAngleEpsilon = 1e-9;
   return normalized;
 }
 
-[[nodiscard]] auto point_is_finite(const shiny::nfp::geom::Point2 &point)
+[[nodiscard]] auto point_is_finite(const shiny::nesting::geom::Point2 &point)
     -> bool {
   return std::isfinite(point.x) && std::isfinite(point.y);
 }
 
 } // namespace
 
-namespace shiny::nfp::place {
+namespace shiny::nesting::place {
 
 auto BedExclusionZone::is_valid() const -> bool {
   if (region.outer.size() < 3U) {
@@ -145,4 +145,4 @@ auto grain_compatibility_allows_rotation(geom::ResolvedRotation rotation,
   return false;
 }
 
-} // namespace shiny::nfp::place
+} // namespace shiny::nesting::place

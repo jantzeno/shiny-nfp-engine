@@ -1,23 +1,16 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
+#include <span>
 #include <vector>
 
 #include "types.hpp"
 
-namespace shiny::nfp::geom {
+namespace shiny::nesting::geom {
 
 /**
  * @brief Index into a discrete rotation set.
- *
- * Separates cached rotation identity from the floating-point angle value used
- * to realize that rotation.
- *
- * @par Invariants
- * - `value` is expected to reference a valid entry in the active rotation set.
- *
- * @par Performance Notes
- * - Small wrapper used directly in cache keys and placement records.
  */
 struct RotationIndex {
   std::uint16_t value{};
@@ -27,15 +20,6 @@ struct RotationIndex {
 
 /**
  * @brief Concrete resolved rotation angle in degrees.
- *
- * Stores the floating-point angle selected from a discrete rotation set after
- * configuration resolution.
- *
- * @par Invariants
- * - The value is interpreted in degrees.
- *
- * @par Performance Notes
- * - Kept separate from RotationIndex so caches can stay index-based.
  */
 struct ResolvedRotation {
   double degrees{};
@@ -45,15 +29,6 @@ struct ResolvedRotation {
 
 /**
  * @brief Discrete rigid transform used by placement and packing.
- *
- * Couples one configured rotation with a translation vector.
- *
- * @par Invariants
- * - `rotation_index` and `translation` describe the same transformed pose.
- *
- * @par Performance Notes
- * - Aggregates only index and translation so transformed polygons can be
- *   materialized lazily.
  */
 struct Transform2 {
   RotationIndex rotation_index{};
@@ -62,17 +37,66 @@ struct Transform2 {
 
 /**
  * @brief Configured set of allowed piece rotations.
- *
- * Carries the discrete angle choices used by constructive decoding and search.
- *
- * @par Invariants
- * - `angles_degrees` is interpreted as an ordered discrete domain.
- *
- * @par Performance Notes
- * - Shared directly across placement, decoder, and search requests.
  */
 struct DiscreteRotationSet {
   std::vector<double> angles_degrees{};
 };
 
-} // namespace shiny::nfp::geom
+[[nodiscard]] auto normalize_angle_degrees(double degrees) -> double;
+
+[[nodiscard]] auto translate_point(const Point2 &point, Vector2 translation)
+    -> Point2;
+
+[[nodiscard]] auto translate_ring(std::span<const Point2> ring,
+                                  Vector2 translation) -> Ring;
+
+[[nodiscard]] auto translate_polygon(const Polygon &polygon,
+                                     Vector2 translation) -> Polygon;
+
+[[nodiscard]] auto translate_polygon(const PolygonWithHoles &polygon,
+                                     Vector2 translation) -> PolygonWithHoles;
+
+[[nodiscard]] auto rotate_point(const Point2 &point, ResolvedRotation rotation)
+    -> Point2;
+
+[[nodiscard]] auto rotate_ring(std::span<const Point2> ring,
+                               ResolvedRotation rotation) -> Ring;
+
+[[nodiscard]] auto rotate_polygon(const Polygon &polygon,
+                                  ResolvedRotation rotation) -> Polygon;
+
+[[nodiscard]] auto rotate_polygon(const PolygonWithHoles &polygon,
+                                  ResolvedRotation rotation)
+    -> PolygonWithHoles;
+
+[[nodiscard]] auto apply_transform(const Point2 &point, ResolvedRotation rotation,
+                                   Vector2 translation) -> Point2;
+
+[[nodiscard]] auto apply_transform(const Polygon &polygon,
+                                   ResolvedRotation rotation,
+                                   Vector2 translation) -> Polygon;
+
+[[nodiscard]] auto apply_transform(const PolygonWithHoles &polygon,
+                                   ResolvedRotation rotation,
+                                   Vector2 translation)
+    -> PolygonWithHoles;
+
+[[nodiscard]] auto resolve_rotation(RotationIndex rotation_index,
+                                    const DiscreteRotationSet &rotations)
+    -> std::optional<ResolvedRotation>;
+
+[[nodiscard]] auto apply_transform(const Point2 &point, const Transform2 &transform,
+                                   const DiscreteRotationSet &rotations)
+    -> std::optional<Point2>;
+
+[[nodiscard]] auto apply_transform(const Polygon &polygon,
+                                   const Transform2 &transform,
+                                   const DiscreteRotationSet &rotations)
+    -> std::optional<Polygon>;
+
+[[nodiscard]] auto apply_transform(const PolygonWithHoles &polygon,
+                                   const Transform2 &transform,
+                                   const DiscreteRotationSet &rotations)
+    -> std::optional<PolygonWithHoles>;
+
+} // namespace shiny::nesting::geom

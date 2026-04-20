@@ -26,14 +26,14 @@ auto capture_stdout(Callback &&callback) -> std::string {
 TEST_CASE("profile decode benchmark emits canonical algorithm metric",
           "[benchmark][tooling][algorithm_kind]") {
   const auto output = capture_stdout([] {
-    shiny::nfp::tooling::print_profile_decode_benchmark_result(
+    shiny::nesting::tooling::print_profile_decode_benchmark_result(
         {.decoder_runs = 10,
          .decoder_total_ms = 1.0,
          .decoder_convex_cache_size = 1,
          .decoder_nonconvex_cache_size = 2,
          .decoder_decomposition_cache_size = 3,
          .decoder_unplaced_piece_count = 0,
-         .search_algorithm = shiny::nfp::AlgorithmKind::genetic_search,
+         .search_algorithm = shiny::nesting::AlgorithmKind::genetic_search,
          .search_runs = 5,
          .search_total_ms = 2.0,
          .search_best_bin_count = 1,

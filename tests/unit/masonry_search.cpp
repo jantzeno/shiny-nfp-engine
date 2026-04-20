@@ -9,19 +9,19 @@
 
 namespace {
 
-using shiny::nfp::AlgorithmKind;
-using shiny::nfp::geom::PolygonWithHoles;
-using shiny::nfp::pack::MasonryRequest;
-using shiny::nfp::pack::PackingConfig;
-using shiny::nfp::pack::PieceInput;
-using shiny::nfp::place::PlacementPolicy;
-using shiny::nfp::search::MasonryRunner;
-using shiny::nfp::search::MasonryRunRequest;
-using shiny::nfp::search::search_event_algorithm_kind;
-using shiny::nfp::search::search_event_kind;
-using shiny::nfp::search::SearchEvent;
-using shiny::nfp::search::SearchEventKind;
-using shiny::nfp::search::SearchRunStatus;
+using shiny::nesting::AlgorithmKind;
+using shiny::nesting::geom::PolygonWithHoles;
+using shiny::nesting::pack::MasonryRequest;
+using shiny::nesting::pack::PackingConfig;
+using shiny::nesting::pack::PieceInput;
+using shiny::nesting::place::PlacementPolicy;
+using shiny::nesting::search::MasonryRunner;
+using shiny::nesting::search::MasonryRunRequest;
+using shiny::nesting::search::search_event_algorithm_kind;
+using shiny::nesting::search::search_event_kind;
+using shiny::nesting::search::SearchEvent;
+using shiny::nesting::search::SearchEventKind;
+using shiny::nesting::search::SearchRunStatus;
 
 auto make_rectangle(double min_x, double min_y, double max_x, double max_y)
     -> PolygonWithHoles {

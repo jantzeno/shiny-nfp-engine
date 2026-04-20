@@ -15,28 +15,28 @@
 namespace {
 
 using Catch::Approx;
-using shiny::nfp::NfpFeatureKind;
-using shiny::nfp::NfpLoop;
-using shiny::nfp::NfpResult;
-using shiny::nfp::place::BedGrainDirection;
-using shiny::nfp::place::grain_compatibility_allows_rotation;
-using shiny::nfp::place::PartGrainCompatibility;
-using shiny::nfp::place::PlacementConfig;
-using shiny::nfp::place::PlacementEngine;
-using shiny::nfp::place::PlacementPolicy;
-using shiny::nfp::place::PlacementRequest;
-using shiny::nfp::place::RankedPlacementSet;
-using shiny::nfp::place::rotation_is_allowed;
-using shiny::nfp::test::load_fixture_file;
-using shiny::nfp::test::parse_point;
-using shiny::nfp::test::parse_polygon;
-using shiny::nfp::test::parse_ring;
-using shiny::nfp::test::parse_segment;
-using shiny::nfp::test::require_fixture_metadata;
-using shiny::nfp::test::require_point_equal;
+using shiny::nesting::NfpFeatureKind;
+using shiny::nesting::NfpLoop;
+using shiny::nesting::NfpResult;
+using shiny::nesting::place::BedGrainDirection;
+using shiny::nesting::place::grain_compatibility_allows_rotation;
+using shiny::nesting::place::PartGrainCompatibility;
+using shiny::nesting::place::PlacementConfig;
+using shiny::nesting::place::PlacementEngine;
+using shiny::nesting::place::PlacementPolicy;
+using shiny::nesting::place::PlacementRequest;
+using shiny::nesting::place::RankedPlacementSet;
+using shiny::nesting::place::rotation_is_allowed;
+using shiny::nesting::test::load_fixture_file;
+using shiny::nesting::test::parse_point;
+using shiny::nesting::test::parse_polygon;
+using shiny::nesting::test::parse_ring;
+using shiny::nesting::test::parse_segment;
+using shiny::nesting::test::require_fixture_metadata;
+using shiny::nesting::test::require_point_equal;
 
 auto make_rectangle(double min_x, double min_y, double max_x, double max_y)
-    -> shiny::nfp::geom::PolygonWithHoles {
+    -> shiny::nesting::geom::PolygonWithHoles {
   return {
       .outer =
           {
@@ -48,34 +48,34 @@ auto make_rectangle(double min_x, double min_y, double max_x, double max_y)
   };
 }
 
-auto parse_points(const shiny::nfp::test::pt::ptree &node)
-    -> std::vector<shiny::nfp::geom::Point2> {
-  std::vector<shiny::nfp::geom::Point2> points;
+auto parse_points(const shiny::nesting::test::pt::ptree &node)
+    -> std::vector<shiny::nesting::geom::Point2> {
+  std::vector<shiny::nesting::geom::Point2> points;
   for (const auto &child : node) {
     points.push_back(parse_point(child.second));
   }
   return points;
 }
 
-auto parse_segments(const shiny::nfp::test::pt::ptree &node)
-    -> std::vector<shiny::nfp::geom::Segment2> {
-  std::vector<shiny::nfp::geom::Segment2> segments;
+auto parse_segments(const shiny::nesting::test::pt::ptree &node)
+    -> std::vector<shiny::nesting::geom::Segment2> {
+  std::vector<shiny::nesting::geom::Segment2> segments;
   for (const auto &child : node) {
     segments.push_back(parse_segment(child.second));
   }
   return segments;
 }
 
-auto parse_polygons(const shiny::nfp::test::pt::ptree &node)
-    -> std::vector<shiny::nfp::geom::PolygonWithHoles> {
-  std::vector<shiny::nfp::geom::PolygonWithHoles> polygons;
+auto parse_polygons(const shiny::nesting::test::pt::ptree &node)
+    -> std::vector<shiny::nesting::geom::PolygonWithHoles> {
+  std::vector<shiny::nesting::geom::PolygonWithHoles> polygons;
   for (const auto &child : node) {
     polygons.push_back(parse_polygon(child.second));
   }
   return polygons;
 }
 
-auto parse_rotations(const shiny::nfp::test::pt::ptree &node)
+auto parse_rotations(const shiny::nesting::test::pt::ptree &node)
     -> std::vector<double> {
   std::vector<double> rotations;
   for (const auto &child : node) {
@@ -111,9 +111,9 @@ auto parse_part_grain_compatibility(std::string_view value)
   throw std::runtime_error("unknown placement part grain compatibility");
 }
 
-auto parse_exclusion_zones(const shiny::nfp::test::pt::ptree &node)
-    -> std::vector<shiny::nfp::place::BedExclusionZone> {
-  std::vector<shiny::nfp::place::BedExclusionZone> zones;
+auto parse_exclusion_zones(const shiny::nesting::test::pt::ptree &node)
+    -> std::vector<shiny::nesting::place::BedExclusionZone> {
+  std::vector<shiny::nesting::place::BedExclusionZone> zones;
   for (const auto &child : node) {
     zones.push_back({
         .zone_id = child.second.get<std::uint32_t>("zone_id", 0),
@@ -123,13 +123,13 @@ auto parse_exclusion_zones(const shiny::nfp::test::pt::ptree &node)
   return zones;
 }
 
-auto parse_rotation_index_value(const shiny::nfp::test::pt::ptree &node,
+auto parse_rotation_index_value(const shiny::nesting::test::pt::ptree &node,
                                 std::string_view key)
-    -> shiny::nfp::geom::RotationIndex {
+    -> shiny::nesting::geom::RotationIndex {
   return {.value = node.get<std::uint16_t>(std::string{key})};
 }
 
-auto parse_bools(const shiny::nfp::test::pt::ptree &node) -> std::vector<bool> {
+auto parse_bools(const shiny::nesting::test::pt::ptree &node) -> std::vector<bool> {
   std::vector<bool> values;
   for (const auto &child : node) {
     values.push_back(child.second.get_value<bool>());
@@ -137,7 +137,7 @@ auto parse_bools(const shiny::nfp::test::pt::ptree &node) -> std::vector<bool> {
   return values;
 }
 
-auto parse_indices(const shiny::nfp::test::pt::ptree &node)
+auto parse_indices(const shiny::nesting::test::pt::ptree &node)
     -> std::vector<std::int32_t> {
   std::vector<std::int32_t> values;
   for (const auto &child : node) {
@@ -146,7 +146,7 @@ auto parse_indices(const shiny::nfp::test::pt::ptree &node)
   return values;
 }
 
-auto parse_config(const shiny::nfp::test::pt::ptree &node) -> PlacementConfig {
+auto parse_config(const shiny::nesting::test::pt::ptree &node) -> PlacementConfig {
   PlacementConfig config{};
   if (const auto part_clearance = node.get_optional<double>("part_clearance")) {
     config.part_clearance = *part_clearance;
@@ -172,7 +172,7 @@ auto parse_config(const shiny::nfp::test::pt::ptree &node) -> PlacementConfig {
   return config;
 }
 
-auto parse_nfp_result(const shiny::nfp::test::pt::ptree &node) -> NfpResult {
+auto parse_nfp_result(const shiny::nesting::test::pt::ptree &node) -> NfpResult {
   NfpResult result{};
 
   if (const auto outer_loops = node.get_child_optional("outer_loops")) {
@@ -210,7 +210,7 @@ auto parse_policy(std::string_view value) -> PlacementPolicy {
   throw std::runtime_error("unknown placement policy fixture value");
 }
 
-auto parse_request(const shiny::nfp::test::pt::ptree &node)
+auto parse_request(const shiny::nesting::test::pt::ptree &node)
     -> PlacementRequest {
   PlacementRequest request{
       .bin_id = node.get<std::uint32_t>("bin_id"),
@@ -243,8 +243,8 @@ auto parse_request(const shiny::nfp::test::pt::ptree &node)
 }
 
 void require_ordered_translations(
-    const std::vector<shiny::nfp::place::PlacementCandidate> &actual,
-    const std::vector<shiny::nfp::geom::Point2> &expected) {
+    const std::vector<shiny::nesting::place::PlacementCandidate> &actual,
+    const std::vector<shiny::nesting::geom::Point2> &expected) {
   REQUIRE(actual.size() == expected.size());
   for (std::size_t index = 0; index < expected.size(); ++index) {
     require_point_equal(actual[index].translation, expected[index]);
@@ -253,7 +253,7 @@ void require_ordered_translations(
 
 void require_ranked_result_matches(
     const RankedPlacementSet &result,
-    const shiny::nfp::test::pt::ptree &expected) {
+    const shiny::nesting::test::pt::ptree &expected) {
   REQUIRE(result.candidates.size() ==
           expected.get<std::size_t>("candidate_count"));
   if (const auto ordered_translations =
@@ -488,7 +488,7 @@ TEST_CASE("placement filtering rejects candidates that overlap keep-outs",
           },
   };
 
-  const std::vector<shiny::nfp::place::PlacementCandidate> candidates{
+  const std::vector<shiny::nesting::place::PlacementCandidate> candidates{
       {.translation = {0.0, 0.0}, .rotation_index = {.value = 0}},
       {.translation = {3.0, 0.0}, .rotation_index = {.value = 0}},
   };

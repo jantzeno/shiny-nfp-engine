@@ -6,7 +6,7 @@
 #include "geometry/types.hpp"
 #include "predicates/classify.hpp"
 
-namespace shiny::nfp::pred {
+namespace shiny::nesting::pred {
 
 /**
  * @brief Result of locating a point relative to one segment.
@@ -115,4 +115,4 @@ locate_point_in_polygon(const geom::Point2 &point,
                         const geom::PolygonWithHoles &polygon)
     -> PolygonLocationResult;
 
-} // namespace shiny::nfp::pred
+} // namespace shiny::nesting::pred

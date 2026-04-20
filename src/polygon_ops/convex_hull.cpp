@@ -6,7 +6,7 @@
 
 #include "geometry/normalize.hpp"
 
-namespace shiny::nfp::poly {
+namespace shiny::nesting::poly {
 namespace {
 
 namespace bg = boost::geometry;
@@ -92,4 +92,4 @@ auto compute_convex_hull(const geom::PolygonWithHoles &polygon)
       geom::Polygon{.outer = from_bg_ring(hull.outer())});
 }
 
-} // namespace shiny::nfp::poly
+} // namespace shiny::nesting::poly

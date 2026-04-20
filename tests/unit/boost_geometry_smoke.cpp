@@ -19,7 +19,7 @@ TEST_CASE("boost geometry headers remain available through the test build",
   bg::append(polygon.outer(), Point{0.0, 0.0});
   bg::correct(polygon);
 
-  const shiny::nfp::geom::Point2 anchor{1.0, 1.0};
+  const shiny::nesting::geom::Point2 anchor{1.0, 1.0};
 
   REQUIRE(anchor.x == Catch::Approx(1.0));
   REQUIRE(bg::area(polygon) == Catch::Approx(6.0));

@@ -4,7 +4,7 @@
 
 #include "geometry/types.hpp"
 
-namespace shiny::nfp::detail {
+namespace shiny::nesting::detail {
 
 inline constexpr double kCanonicalCoordinateScale = 1000000000.0;
 
@@ -40,4 +40,4 @@ inline constexpr double kCanonicalCoordinateScale = 1000000000.0;
          canonicalize_coordinate(lhs.y) == canonicalize_coordinate(rhs.y);
 }
 
-} // namespace shiny::nfp::detail
+} // namespace shiny::nesting::detail

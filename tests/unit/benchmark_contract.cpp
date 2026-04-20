@@ -28,12 +28,12 @@ auto capture_stdout(Callback &&callback) -> std::string {
 TEST_CASE("benchmark support emits canonical algorithm metrics",
           "[benchmark][tooling][algorithm_kind]") {
   const auto jostle_output = capture_stdout([] {
-    shiny::nfp::tooling::print_jostle_search_benchmark_result(
-        {.algorithm = shiny::nfp::AlgorithmKind::jostle_search,
+    shiny::nesting::tooling::print_jostle_search_benchmark_result(
+        {.algorithm = shiny::nesting::AlgorithmKind::jostle_search,
          .runs = 5,
          .worker_count = 1,
          .benchmark_case =
-             shiny::nfp::tooling::JostleSearchBenchmarkCase::smoke,
+             shiny::nesting::tooling::JostleSearchBenchmarkCase::smoke,
          .total_ms = 5.0,
          .best_bin_count = 1,
          .best_unplaced_piece_count = 0,
@@ -44,10 +44,10 @@ TEST_CASE("benchmark support emits canonical algorithm metrics",
   REQUIRE(jostle_output.find("search_algorithm=") == std::string::npos);
 
   const auto scaling_output = capture_stdout([] {
-    shiny::nfp::tooling::print_jostle_search_worker_scaling_benchmark_result(
-        {.algorithm = shiny::nfp::AlgorithmKind::jostle_search,
+    shiny::nesting::tooling::print_jostle_search_worker_scaling_benchmark_result(
+        {.algorithm = shiny::nesting::AlgorithmKind::jostle_search,
          .benchmark_case =
-             shiny::nfp::tooling::JostleSearchBenchmarkCase::dense,
+             shiny::nesting::tooling::JostleSearchBenchmarkCase::dense,
          .runs_per_worker = 2,
          .piece_count = 8,
          .serial_avg_ms = 10.0,
@@ -62,8 +62,8 @@ TEST_CASE("benchmark support emits canonical algorithm metrics",
   REQUIRE(scaling_output.find("search_algorithm=") == std::string::npos);
 
   const auto genetic_output = capture_stdout([] {
-    shiny::nfp::tooling::print_genetic_search_benchmark_result(
-        {.algorithm = shiny::nfp::AlgorithmKind::genetic_search,
+    shiny::nesting::tooling::print_genetic_search_benchmark_result(
+        {.algorithm = shiny::nesting::AlgorithmKind::genetic_search,
          .runs = 5,
          .worker_count = 1,
          .total_ms = 5.0,
@@ -76,8 +76,8 @@ TEST_CASE("benchmark support emits canonical algorithm metrics",
   REQUIRE(genetic_output.find("search_algorithm=") == std::string::npos);
 
   const auto masonry_output = capture_stdout([] {
-    shiny::nfp::tooling::print_masonry_benchmark_result(
-        {.algorithm = shiny::nfp::AlgorithmKind::masonry_builder,
+    shiny::nesting::tooling::print_masonry_benchmark_result(
+        {.algorithm = shiny::nesting::AlgorithmKind::masonry_builder,
          .runs = 5,
          .total_ms = 5.0,
          .bin_count = 1,

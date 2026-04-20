@@ -7,19 +7,19 @@
 #include "util/status.hpp"
 
 TEST_CASE("status or carries values and error states", "[util][status]") {
-  shiny::nfp::util::StatusOr<std::vector<int>> value_or(
+  shiny::nesting::util::StatusOr<std::vector<int>> value_or(
       std::vector<int>{1, 2, 3});
 
   REQUIRE(value_or.ok());
   REQUIRE(static_cast<bool>(value_or));
-  REQUIRE(value_or.status() == shiny::nfp::util::Status::ok);
+  REQUIRE(value_or.status() == shiny::nesting::util::Status::ok);
   REQUIRE(value_or.value().size() == 3U);
 
-  shiny::nfp::util::StatusOr<std::string> error_or(
-      shiny::nfp::util::Status::invalid_input);
+  shiny::nesting::util::StatusOr<std::string> error_or(
+      shiny::nesting::util::Status::invalid_input);
   REQUIRE_FALSE(error_or.ok());
   REQUIRE_FALSE(static_cast<bool>(error_or));
-  REQUIRE(error_or.status() == shiny::nfp::util::Status::invalid_input);
+  REQUIRE(error_or.status() == shiny::nesting::util::Status::invalid_input);
 
   SHINY_NFP_LOG(info, "status-or test exercised logging hook");
 }

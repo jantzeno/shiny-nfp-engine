@@ -6,7 +6,7 @@
 
 #include "geometry/types.hpp"
 
-namespace shiny::nfp::pred {
+namespace shiny::nesting::pred {
 
 /**
  * @brief Canonical orientation classification used by the predicate layer.
@@ -56,4 +56,4 @@ enum class BoundaryRelation : std::int8_t {
 lexicographic_min_vertex_index(std::span<const geom::Point2> ring)
     -> std::size_t;
 
-} // namespace shiny::nfp::pred
+} // namespace shiny::nesting::pred

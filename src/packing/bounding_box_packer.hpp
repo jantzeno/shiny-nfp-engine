@@ -2,17 +2,20 @@
 
 #include "packing/decoder.hpp"
 
-namespace shiny::nfp::pack {
+namespace shiny::nesting::pack {
 
 /**
  * @brief Deterministic AABB-based constructive packing engine.
  *
  * Places pieces by rotated axis-aligned bounding boxes using a simple shelf
- * heuristic. This avoids NFP generation while keeping the same request and
- * result contract as `ConstructiveDecoder`.
+ * heuristic while preserving the shared bounding-box request and result
+ * contract.
  */
 class BoundingBoxPacker {
 public:
+  using AttemptObserver =
+      std::function<void(std::size_t attempt_index, const DecoderResult &)>;
+
   /**
    * @brief Packs a bounded set of deterministic piece-order variants.
    *
@@ -26,7 +29,8 @@ public:
    */
   [[nodiscard]] auto
   decode_attempts(const DecoderRequest &request,
-                  const InterruptionProbe &interruption_requested = {})
+                  const InterruptionProbe &interruption_requested = {},
+                  const AttemptObserver &on_attempt_complete = {})
       -> std::vector<DecoderResult>;
 
   /**
@@ -42,4 +46,4 @@ public:
          const InterruptionProbe &interruption_requested = {}) -> DecoderResult;
 };
 
-} // namespace shiny::nfp::pack
+} // namespace shiny::nesting::pack

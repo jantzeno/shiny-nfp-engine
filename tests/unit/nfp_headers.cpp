@@ -13,34 +13,34 @@
 
 TEST_CASE("nfp headers expose the planned milestone 3, 5, and 6 surfaces",
           "[nfp][headers]") {
-  using shiny::nfp::AlgorithmKind;
-  using shiny::nfp::ArrangementGraph;
-  using shiny::nfp::ConvexEdgeSequence;
-  using shiny::nfp::ConvexIfpRequest;
-  using shiny::nfp::ConvexNfpRequest;
-  using shiny::nfp::ConvexOrderingVertex;
-  using shiny::nfp::ExtractionStatus;
-  using shiny::nfp::GraphEdge;
-  using shiny::nfp::GraphEdgeKind;
-  using shiny::nfp::GraphVertex;
-  using shiny::nfp::GraphVertexKind;
-  using shiny::nfp::NfpEngine;
-  using shiny::nfp::NfpFeatureKind;
-  using shiny::nfp::NfpLoop;
-  using shiny::nfp::NfpResult;
-  using shiny::nfp::NonconvexNfpRequest;
-  using shiny::nfp::NonconvexNfpResult;
-  using shiny::nfp::OrbitalFeasibleTranslation;
-  using shiny::nfp::OrbitalLoopTrace;
-  using shiny::nfp::OrbitalToucher;
-  using shiny::nfp::OrbitalTouchKind;
-  using shiny::nfp::OrbitalVerifierResult;
-  using shiny::nfp::OrbitalVerifierStatus;
-  using shiny::nfp::cache::AlgorithmRevision;
-  using shiny::nfp::cache::CacheStore;
-  using shiny::nfp::cache::GeometryRevision;
-  using shiny::nfp::cache::NonconvexNfpCacheKey;
-  using shiny::nfp::cache::PairRotationKey;
+  using shiny::nesting::AlgorithmKind;
+  using shiny::nesting::ArrangementGraph;
+  using shiny::nesting::ConvexEdgeSequence;
+  using shiny::nesting::ConvexIfpRequest;
+  using shiny::nesting::ConvexNfpRequest;
+  using shiny::nesting::ConvexOrderingVertex;
+  using shiny::nesting::ExtractionStatus;
+  using shiny::nesting::GraphEdge;
+  using shiny::nesting::GraphEdgeKind;
+  using shiny::nesting::GraphVertex;
+  using shiny::nesting::GraphVertexKind;
+  using shiny::nesting::NfpEngine;
+  using shiny::nesting::NfpFeatureKind;
+  using shiny::nesting::NfpLoop;
+  using shiny::nesting::NfpResult;
+  using shiny::nesting::NonconvexNfpRequest;
+  using shiny::nesting::NonconvexNfpResult;
+  using shiny::nesting::OrbitalFeasibleTranslation;
+  using shiny::nesting::OrbitalLoopTrace;
+  using shiny::nesting::OrbitalToucher;
+  using shiny::nesting::OrbitalTouchKind;
+  using shiny::nesting::OrbitalVerifierResult;
+  using shiny::nesting::OrbitalVerifierStatus;
+  using shiny::nesting::cache::AlgorithmRevision;
+  using shiny::nesting::cache::CacheStore;
+  using shiny::nesting::cache::GeometryRevision;
+  using shiny::nesting::cache::NonconvexNfpCacheKey;
+  using shiny::nesting::cache::PairRotationKey;
 
   const NfpLoop loop{
       .vertices = {{0.0, 0.0}, {2.0, 0.0}, {1.0, 1.0}},
@@ -219,21 +219,21 @@ TEST_CASE("nfp headers expose the planned milestone 3, 5, and 6 surfaces",
   REQUIRE(engine.nonconvex_cache_size() == 0U);
   REQUIRE(engine.decomposition_cache_size() == 0U);
 
-  STATIC_REQUIRE(std::is_same_v<decltype(shiny::nfp::compute_convex_nfp(
+  STATIC_REQUIRE(std::is_same_v<decltype(shiny::nesting::compute_convex_nfp(
                                     std::declval<const ConvexNfpRequest &>())),
                                 NfpResult>);
   STATIC_REQUIRE(std::is_same_v<
-                 decltype(shiny::nfp::compute_convex_nfp(
+                 decltype(shiny::nesting::compute_convex_nfp(
                      std::declval<const ConvexNfpRequest &>(),
                      std::declval<GeometryRevision>(),
                      std::declval<GeometryRevision>(),
                      std::declval<CacheStore<PairRotationKey, NfpResult> &>())),
                  NfpResult>);
-  STATIC_REQUIRE(std::is_same_v<decltype(shiny::nfp::compute_convex_ifp(
+  STATIC_REQUIRE(std::is_same_v<decltype(shiny::nesting::compute_convex_ifp(
                                     std::declval<const ConvexIfpRequest &>())),
                                 NfpResult>);
   STATIC_REQUIRE(std::is_same_v<
-                 decltype(shiny::nfp::compute_convex_ifp(
+                 decltype(shiny::nesting::compute_convex_ifp(
                      std::declval<const ConvexIfpRequest &>(),
                      std::declval<GeometryRevision>(),
                      std::declval<GeometryRevision>(),
@@ -241,28 +241,28 @@ TEST_CASE("nfp headers expose the planned milestone 3, 5, and 6 surfaces",
                  NfpResult>);
   STATIC_REQUIRE(
       std::is_same_v<
-          decltype(shiny::nfp::build_convex_edge_sequence(
-              std::declval<std::span<const shiny::nfp::geom::Point2>>())),
+          decltype(shiny::nesting::build_convex_edge_sequence(
+              std::declval<std::span<const shiny::nesting::geom::Point2>>())),
           ConvexEdgeSequence>);
-  STATIC_REQUIRE(std::is_same_v<decltype(shiny::nfp::order_convex_nfp_vertices(
+  STATIC_REQUIRE(std::is_same_v<decltype(shiny::nesting::order_convex_nfp_vertices(
                                     std::declval<const NfpResult &>())),
                                 std::vector<ConvexOrderingVertex>>);
   STATIC_REQUIRE(
-      std::is_same_v<decltype(shiny::nfp::build_arrangement_graph(
+      std::is_same_v<decltype(shiny::nesting::build_arrangement_graph(
                          std::declval<const NonconvexNfpRequest &>())),
                      ArrangementGraph>);
-  STATIC_REQUIRE(std::is_same_v<decltype(shiny::nfp::prune_arrangement_graph(
+  STATIC_REQUIRE(std::is_same_v<decltype(shiny::nesting::prune_arrangement_graph(
                                     std::declval<ArrangementGraph>())),
                                 ArrangementGraph>);
-  STATIC_REQUIRE(std::is_same_v<decltype(shiny::nfp::extract_nfp_from_graph(
+  STATIC_REQUIRE(std::is_same_v<decltype(shiny::nesting::extract_nfp_from_graph(
                                     std::declval<const ArrangementGraph &>())),
                                 NfpResult>);
   STATIC_REQUIRE(
-      std::is_same_v<decltype(shiny::nfp::compute_nonconvex_graph_nfp(
+      std::is_same_v<decltype(shiny::nesting::compute_nonconvex_graph_nfp(
                          std::declval<const NonconvexNfpRequest &>())),
                      NonconvexNfpResult>);
   STATIC_REQUIRE(
-      std::is_same_v<decltype(shiny::nfp::compute_orbital_verifier_nfp(
+      std::is_same_v<decltype(shiny::nesting::compute_orbital_verifier_nfp(
                          std::declval<const NonconvexNfpRequest &>())),
                      OrbitalVerifierResult>);
   STATIC_REQUIRE(
@@ -280,7 +280,7 @@ TEST_CASE("nfp headers expose the planned milestone 3, 5, and 6 surfaces",
               std::declval<GeometryRevision>())),
           OrbitalVerifierResult>);
   STATIC_REQUIRE(
-      std::is_same_v<decltype(shiny::nfp::cache::make_nonconvex_nfp_cache_key(
+      std::is_same_v<decltype(shiny::nesting::cache::make_nonconvex_nfp_cache_key(
                          std::declval<const NonconvexNfpRequest &>(),
                          std::declval<GeometryRevision>(),
                          std::declval<GeometryRevision>())),

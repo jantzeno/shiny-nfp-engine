@@ -3,7 +3,7 @@
 #include "geometry/types.hpp"
 #include "predicates/classify.hpp"
 
-namespace shiny::nfp::pred {
+namespace shiny::nesting::pred {
 
 /**
  * @brief Triple of points for orientation testing.
@@ -51,4 +51,4 @@ struct OrientationQuery {
  */
 [[nodiscard]] auto orient(const OrientationQuery &query) -> Orientation;
 
-} // namespace shiny::nfp::pred
+} // namespace shiny::nesting::pred

@@ -7,7 +7,7 @@
 #include "geometry/transform.hpp"
 #include "geometry/types.hpp"
 
-namespace shiny::nfp::place {
+namespace shiny::nesting::place {
 
 /**
  * @brief Describes the bed grain axis for one solve run.
@@ -20,7 +20,7 @@ namespace shiny::nfp::place {
  * - `along_x` and `along_y` describe an undirected bed axis.
  *
  * @par Performance Notes
- * - Copied directly into placement, packing, and search config surfaces.
+ * - Copied directly into placement and packing config surfaces.
  */
 enum class BedGrainDirection : std::int8_t {
   unrestricted = 0,
@@ -98,7 +98,7 @@ struct BedExclusionZone {
  * - Exclusion zones remain explicit keep-outs rather than ordinary cavities.
  *
  * @par Performance Notes
- * - Shared directly by placement, packing, and search requests.
+ * - Shared directly by placement and packing requests.
  */
 struct PlacementConfig {
   double part_clearance{0.0};
@@ -161,4 +161,4 @@ struct PlacementConfig {
     geom::ResolvedRotation rotation, BedGrainDirection bed_grain_direction,
     PartGrainCompatibility compatibility) -> bool;
 
-} // namespace shiny::nfp::place
+} // namespace shiny::nesting::place

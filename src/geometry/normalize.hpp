@@ -2,7 +2,7 @@
 
 #include "geometry/types.hpp"
 
-namespace shiny::nfp::geom {
+namespace shiny::nesting::geom {
 
 /**
  * @brief Canonicalizes a simple polygon ring.
@@ -75,4 +75,4 @@ namespace shiny::nfp::geom {
 [[nodiscard]] auto normalize_polygon(const PolygonWithHoles &polygon)
     -> PolygonWithHoles;
 
-} // namespace shiny::nfp::geom
+} // namespace shiny::nesting::geom

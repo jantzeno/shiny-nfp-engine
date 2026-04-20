@@ -9,7 +9,7 @@
 #include "placement/types.hpp"
 #include "polygon_ops/merge_region.hpp"
 
-namespace shiny::nfp::pack {
+namespace shiny::nesting::pack {
 
 /**
  * @brief Fully realized placed piece within one bin.
@@ -28,7 +28,7 @@ struct PlacedPiece {
   geom::ResolvedRotation resolved_rotation{};
   geom::PolygonWithHoles polygon{};
   place::PlacementCandidateSource source{
-      place::PlacementCandidateSource::nfp_boundary};
+      place::PlacementCandidateSource::constructive_boundary};
   bool inside_hole{false};
   std::int32_t hole_index{-1};
   double score{0.0};
@@ -53,7 +53,7 @@ struct PlacementTraceEntry {
   geom::ResolvedRotation resolved_rotation{};
   geom::Point2 translation{};
   place::PlacementCandidateSource source{
-      place::PlacementCandidateSource::nfp_boundary};
+      place::PlacementCandidateSource::constructive_boundary};
   bool opened_new_bin{false};
   bool inside_hole{false};
   std::int32_t hole_index{-1};
@@ -163,4 +163,4 @@ struct Layout {
                                   const LaserCutOptimizationConfig &config)
     -> CutPlan;
 
-} // namespace shiny::nfp::pack
+} // namespace shiny::nesting::pack

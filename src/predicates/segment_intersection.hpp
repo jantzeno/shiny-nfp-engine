@@ -6,7 +6,7 @@
 #include "geometry/types.hpp"
 #include "predicates/classify.hpp"
 
-namespace shiny::nfp::pred {
+namespace shiny::nesting::pred {
 
 /**
  * @brief Classified contact between two segments.
@@ -63,4 +63,4 @@ struct SegmentContact {
                                             const geom::Segment2 &rhs)
     -> SegmentContact;
 
-} // namespace shiny::nfp::pred
+} // namespace shiny::nesting::pred

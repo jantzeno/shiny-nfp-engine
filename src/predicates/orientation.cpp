@@ -2,7 +2,7 @@
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 
-namespace shiny::nfp::pred {
+namespace shiny::nesting::pred {
 namespace {
 
 using Kernel = CGAL::Exact_predicates_inexact_constructions_kernel;
@@ -29,4 +29,4 @@ auto orient(const OrientationQuery &query) -> Orientation {
   return Orientation::collinear;
 }
 
-} // namespace shiny::nfp::pred
+} // namespace shiny::nesting::pred

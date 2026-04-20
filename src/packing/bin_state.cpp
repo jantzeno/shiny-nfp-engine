@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-namespace shiny::nfp::pack {
+namespace shiny::nesting::pack {
 namespace {
 
 [[nodiscard]] auto signed_area(const geom::Ring &ring) -> long double {
@@ -53,4 +53,4 @@ auto summarize_bin(const BinState &state) -> BinUtilizationSummary {
   };
 }
 
-} // namespace shiny::nfp::pack
+} // namespace shiny::nesting::pack

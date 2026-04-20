@@ -20,12 +20,12 @@
 
 #include "geometry/types.hpp"
 
-namespace shiny::nfp::test {
+namespace shiny::nesting::test {
 
 namespace pt = boost::property_tree;
 
 inline auto fixture_root() -> std::filesystem::path {
-  return std::filesystem::path{SHINY_NFP_ENGINE_TEST_FIXTURE_ROOT};
+  return std::filesystem::path{SHINY_NESTING_ENGINE_TEST_FIXTURE_ROOT};
 }
 
 inline auto load_fixture_file(std::string_view relative_path) -> pt::ptree {
@@ -115,4 +115,4 @@ inline auto parse_expected_points(const pt::ptree &node)
   return points;
 }
 
-} // namespace shiny::nfp::test
+} // namespace shiny::nesting::test

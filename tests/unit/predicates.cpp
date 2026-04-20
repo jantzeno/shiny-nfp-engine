@@ -9,12 +9,12 @@
 
 namespace {
 
-using shiny::nfp::geom::Point2;
-using shiny::nfp::pred::BoundaryRelation;
-using shiny::nfp::pred::Orientation;
-using shiny::nfp::pred::OrientationQuery;
-using shiny::nfp::pred::PointLocation;
-using shiny::nfp::pred::SegmentContactKind;
+using shiny::nesting::geom::Point2;
+using shiny::nesting::pred::BoundaryRelation;
+using shiny::nesting::pred::Orientation;
+using shiny::nesting::pred::OrientationQuery;
+using shiny::nesting::pred::PointLocation;
+using shiny::nesting::pred::SegmentContactKind;
 
 auto parse_orientation(std::string_view value) -> Orientation {
   if (value == "left_turn") {
@@ -78,21 +78,21 @@ auto parse_point_location(std::string_view value) -> PointLocation {
 
 TEST_CASE("orientation fixtures", "[predicates][orientation][fixtures]") {
   const auto root =
-      shiny::nfp::test::load_fixture_file("predicates/orientation.json");
+      shiny::nesting::test::load_fixture_file("predicates/orientation.json");
 
   for (const auto &fixture_node : root.get_child("fixtures")) {
     const auto &fixture = fixture_node.second;
     const auto id = fixture.get<std::string>("id");
 
     DYNAMIC_SECTION(id) {
-      shiny::nfp::test::require_fixture_metadata(fixture, "orientation");
+      shiny::nesting::test::require_fixture_metadata(fixture, "orientation");
 
       const auto inputs = fixture.get_child("inputs");
       const auto expected = fixture.get_child("expected");
-      const auto result = shiny::nfp::pred::orient(OrientationQuery{
-          shiny::nfp::test::parse_point(inputs.get_child("a")),
-          shiny::nfp::test::parse_point(inputs.get_child("b")),
-          shiny::nfp::test::parse_point(inputs.get_child("c")),
+      const auto result = shiny::nesting::pred::orient(OrientationQuery{
+          shiny::nesting::test::parse_point(inputs.get_child("a")),
+          shiny::nesting::test::parse_point(inputs.get_child("b")),
+          shiny::nesting::test::parse_point(inputs.get_child("c")),
       });
 
       REQUIRE(result ==
@@ -104,20 +104,20 @@ TEST_CASE("orientation fixtures", "[predicates][orientation][fixtures]") {
 TEST_CASE("segment contact fixtures",
           "[predicates][segment-contact][fixtures]") {
   const auto root =
-      shiny::nfp::test::load_fixture_file("predicates/segment_contact.json");
+      shiny::nesting::test::load_fixture_file("predicates/segment_contact.json");
 
   for (const auto &fixture_node : root.get_child("fixtures")) {
     const auto &fixture = fixture_node.second;
     const auto id = fixture.get<std::string>("id");
 
     DYNAMIC_SECTION(id) {
-      shiny::nfp::test::require_fixture_metadata(fixture, "segment_contact");
+      shiny::nesting::test::require_fixture_metadata(fixture, "segment_contact");
 
       const auto inputs = fixture.get_child("inputs");
       const auto expected = fixture.get_child("expected");
-      const auto result = shiny::nfp::pred::classify_segment_contact(
-          shiny::nfp::test::parse_segment(inputs.get_child("lhs")),
-          shiny::nfp::test::parse_segment(inputs.get_child("rhs")));
+      const auto result = shiny::nesting::pred::classify_segment_contact(
+          shiny::nesting::test::parse_segment(inputs.get_child("lhs")),
+          shiny::nesting::test::parse_segment(inputs.get_child("rhs")));
 
       REQUIRE(result.kind ==
               parse_segment_contact_kind(expected.get<std::string>("kind")));
@@ -128,14 +128,14 @@ TEST_CASE("segment contact fixtures",
               expected.get<bool>("b_vertex_contact"));
 
       const auto expected_points =
-          shiny::nfp::test::parse_expected_points(expected);
+          shiny::nesting::test::parse_expected_points(expected);
       std::vector<Point2> actual_points;
       for (std::size_t index = 0; index < result.point_count; ++index) {
         actual_points.push_back(result.points[index]);
       }
       REQUIRE(actual_points.size() == expected_points.size());
       for (std::size_t index = 0; index < actual_points.size(); ++index) {
-        shiny::nfp::test::require_point_equal(actual_points[index],
+        shiny::nesting::test::require_point_equal(actual_points[index],
                                               expected_points[index]);
       }
     }
@@ -145,20 +145,20 @@ TEST_CASE("segment contact fixtures",
 TEST_CASE("point-on-segment fixtures",
           "[predicates][point-on-segment][fixtures]") {
   const auto root =
-      shiny::nfp::test::load_fixture_file("predicates/point_on_segment.json");
+      shiny::nesting::test::load_fixture_file("predicates/point_on_segment.json");
 
   for (const auto &fixture_node : root.get_child("fixtures")) {
     const auto &fixture = fixture_node.second;
     const auto id = fixture.get<std::string>("id");
 
     DYNAMIC_SECTION(id) {
-      shiny::nfp::test::require_fixture_metadata(fixture, "point_on_segment");
+      shiny::nesting::test::require_fixture_metadata(fixture, "point_on_segment");
 
       const auto inputs = fixture.get_child("inputs");
       const auto expected = fixture.get_child("expected");
-      const auto result = shiny::nfp::pred::locate_point_on_segment(
-          shiny::nfp::test::parse_point(inputs.get_child("point")),
-          shiny::nfp::test::parse_segment(inputs.get_child("segment")));
+      const auto result = shiny::nesting::pred::locate_point_on_segment(
+          shiny::nesting::test::parse_point(inputs.get_child("point")),
+          shiny::nesting::test::parse_segment(inputs.get_child("segment")));
 
       REQUIRE(result.relation ==
               parse_boundary_relation(expected.get<std::string>("relation")));
@@ -170,20 +170,20 @@ TEST_CASE("point-on-segment fixtures",
 TEST_CASE("point-in-ring fixtures",
           "[predicates][point-location][ring][fixtures]") {
   const auto root =
-      shiny::nfp::test::load_fixture_file("predicates/point_in_ring.json");
+      shiny::nesting::test::load_fixture_file("predicates/point_in_ring.json");
 
   for (const auto &fixture_node : root.get_child("fixtures")) {
     const auto &fixture = fixture_node.second;
     const auto id = fixture.get<std::string>("id");
 
     DYNAMIC_SECTION(id) {
-      shiny::nfp::test::require_fixture_metadata(fixture, "point_in_ring");
+      shiny::nesting::test::require_fixture_metadata(fixture, "point_in_ring");
 
       const auto inputs = fixture.get_child("inputs");
       const auto expected = fixture.get_child("expected");
-      const auto result = shiny::nfp::pred::locate_point_in_ring(
-          shiny::nfp::test::parse_point(inputs.get_child("point")),
-          shiny::nfp::test::parse_ring(inputs.get_child("ring")));
+      const auto result = shiny::nesting::pred::locate_point_in_ring(
+          shiny::nesting::test::parse_point(inputs.get_child("point")),
+          shiny::nesting::test::parse_ring(inputs.get_child("ring")));
 
       REQUIRE(result.location ==
               parse_point_location(expected.get<std::string>("location")));
@@ -198,20 +198,20 @@ TEST_CASE("point-in-ring fixtures",
 TEST_CASE("point-in-polygon fixtures",
           "[predicates][point-location][polygon][fixtures]") {
   const auto root =
-      shiny::nfp::test::load_fixture_file("predicates/point_in_polygon.json");
+      shiny::nesting::test::load_fixture_file("predicates/point_in_polygon.json");
 
   for (const auto &fixture_node : root.get_child("fixtures")) {
     const auto &fixture = fixture_node.second;
     const auto id = fixture.get<std::string>("id");
 
     DYNAMIC_SECTION(id) {
-      shiny::nfp::test::require_fixture_metadata(fixture, "point_in_polygon");
+      shiny::nesting::test::require_fixture_metadata(fixture, "point_in_polygon");
 
       const auto inputs = fixture.get_child("inputs");
       const auto expected = fixture.get_child("expected");
-      const auto result = shiny::nfp::pred::locate_point_in_polygon(
-          shiny::nfp::test::parse_point(inputs.get_child("point")),
-          shiny::nfp::test::parse_polygon(inputs.get_child("polygon")));
+      const auto result = shiny::nesting::pred::locate_point_in_polygon(
+          shiny::nesting::test::parse_point(inputs.get_child("point")),
+          shiny::nesting::test::parse_polygon(inputs.get_child("polygon")));
 
       REQUIRE(result.location ==
               parse_point_location(expected.get<std::string>("location")));
@@ -228,7 +228,7 @@ TEST_CASE("point-in-polygon fixtures",
 
 TEST_CASE("lexicographic start-vertex fixtures",
           "[predicates][normalize][fixtures]") {
-  const auto root = shiny::nfp::test::load_fixture_file(
+  const auto root = shiny::nesting::test::load_fixture_file(
       "predicates/lexicographic_min_vertex_index.json");
 
   for (const auto &fixture_node : root.get_child("fixtures")) {
@@ -236,11 +236,11 @@ TEST_CASE("lexicographic start-vertex fixtures",
     const auto id = fixture.get<std::string>("id");
 
     DYNAMIC_SECTION(id) {
-      shiny::nfp::test::require_fixture_metadata(
+      shiny::nesting::test::require_fixture_metadata(
           fixture, "lexicographic_min_vertex_index");
 
-      const auto result = shiny::nfp::pred::lexicographic_min_vertex_index(
-          shiny::nfp::test::parse_ring(fixture.get_child("inputs.ring")));
+      const auto result = shiny::nesting::pred::lexicographic_min_vertex_index(
+          shiny::nesting::test::parse_ring(fixture.get_child("inputs.ring")));
 
       REQUIRE(result == fixture.get<std::size_t>("expected.min_vertex_index"));
     }

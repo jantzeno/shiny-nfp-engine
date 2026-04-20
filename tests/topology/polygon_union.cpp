@@ -10,15 +10,15 @@
 
 namespace {
 
-using shiny::nfp::geom::Point2;
-using shiny::nfp::geom::PolygonWithHoles;
-using shiny::nfp::poly::union_polygons;
-using shiny::nfp::test::load_fixture_file;
-using shiny::nfp::test::parse_polygon;
-using shiny::nfp::test::require_fixture_metadata;
-using shiny::nfp::test::require_polygon_equal;
+using shiny::nesting::geom::Point2;
+using shiny::nesting::geom::PolygonWithHoles;
+using shiny::nesting::poly::union_polygons;
+using shiny::nesting::test::load_fixture_file;
+using shiny::nesting::test::parse_polygon;
+using shiny::nesting::test::require_fixture_metadata;
+using shiny::nesting::test::require_polygon_equal;
 
-auto parse_polygon_list(const shiny::nfp::test::pt::ptree &node)
+auto parse_polygon_list(const shiny::nesting::test::pt::ptree &node)
     -> std::vector<PolygonWithHoles> {
   std::vector<PolygonWithHoles> polygons;
   for (const auto &child : node) {
@@ -34,8 +34,8 @@ auto point_less(const Point2 &lhs, const Point2 &rhs) -> bool {
   return lhs.y < rhs.y;
 }
 
-auto ring_less(const shiny::nfp::geom::Ring &lhs,
-               const shiny::nfp::geom::Ring &rhs) -> bool {
+auto ring_less(const shiny::nesting::geom::Ring &lhs,
+               const shiny::nesting::geom::Ring &rhs) -> bool {
   if (lhs.empty()) {
     return !rhs.empty();
   }
@@ -57,7 +57,7 @@ auto polygon_less(const PolygonWithHoles &lhs, const PolygonWithHoles &rhs)
 }
 
 auto canonicalize_polygon(const PolygonWithHoles &polygon) -> PolygonWithHoles {
-  auto normalized = shiny::nfp::geom::normalize_polygon(polygon);
+  auto normalized = shiny::nesting::geom::normalize_polygon(polygon);
   std::sort(normalized.holes.begin(), normalized.holes.end(), ring_less);
   return normalized;
 }

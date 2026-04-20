@@ -15,22 +15,22 @@
 
 namespace {
 
-using shiny::nfp::AlgorithmKind;
-using shiny::nfp::geom::Point2;
-using shiny::nfp::geom::PolygonWithHoles;
-using shiny::nfp::pack::MasonryBuilder;
-using shiny::nfp::pack::MasonryRequest;
-using shiny::nfp::pack::PackingConfig;
-using shiny::nfp::pack::PieceInput;
-using shiny::nfp::place::BedExclusionZone;
-using shiny::nfp::place::BedGrainDirection;
-using shiny::nfp::place::PartGrainCompatibility;
-using shiny::nfp::place::PlacementPolicy;
-using shiny::nfp::test::load_fixture_file;
-using shiny::nfp::test::parse_point;
-using shiny::nfp::test::parse_polygon;
-using shiny::nfp::test::parse_ring;
-using shiny::nfp::test::require_fixture_metadata;
+using shiny::nesting::AlgorithmKind;
+using shiny::nesting::geom::Point2;
+using shiny::nesting::geom::PolygonWithHoles;
+using shiny::nesting::pack::MasonryBuilder;
+using shiny::nesting::pack::MasonryRequest;
+using shiny::nesting::pack::PackingConfig;
+using shiny::nesting::pack::PieceInput;
+using shiny::nesting::place::BedExclusionZone;
+using shiny::nesting::place::BedGrainDirection;
+using shiny::nesting::place::PartGrainCompatibility;
+using shiny::nesting::place::PlacementPolicy;
+using shiny::nesting::test::load_fixture_file;
+using shiny::nesting::test::parse_point;
+using shiny::nesting::test::parse_polygon;
+using shiny::nesting::test::parse_ring;
+using shiny::nesting::test::require_fixture_metadata;
 
 auto make_rectangle(double min_x, double min_y, double max_x, double max_y)
     -> PolygonWithHoles {
@@ -99,7 +99,7 @@ auto compute_bounds(const PolygonWithHoles &polygon)
   return {minimum, maximum};
 }
 
-auto parse_rotations(const shiny::nfp::test::pt::ptree &node)
+auto parse_rotations(const shiny::nesting::test::pt::ptree &node)
     -> std::vector<double> {
   std::vector<double> rotations;
   for (const auto &child : node) {
@@ -135,7 +135,7 @@ auto parse_part_grain_compatibility(std::string_view value)
   throw std::runtime_error("unknown masonry part grain compatibility");
 }
 
-auto parse_exclusion_zones(const shiny::nfp::test::pt::ptree &node)
+auto parse_exclusion_zones(const shiny::nesting::test::pt::ptree &node)
     -> std::vector<BedExclusionZone> {
   std::vector<BedExclusionZone> zones;
   for (const auto &child : node) {
@@ -147,7 +147,7 @@ auto parse_exclusion_zones(const shiny::nfp::test::pt::ptree &node)
   return zones;
 }
 
-auto parse_ids(const shiny::nfp::test::pt::ptree &node)
+auto parse_ids(const shiny::nesting::test::pt::ptree &node)
     -> std::vector<std::uint32_t> {
   std::vector<std::uint32_t> ids;
   for (const auto &child : node) {
@@ -169,7 +169,7 @@ auto parse_policy(std::string_view value) -> PlacementPolicy {
   throw std::runtime_error("unknown masonry fixture policy");
 }
 
-auto parse_masonry_request(const shiny::nfp::test::pt::ptree &node)
+auto parse_masonry_request(const shiny::nesting::test::pt::ptree &node)
     -> MasonryRequest {
   MasonryRequest request{};
   const auto &decoder = node;
@@ -247,8 +247,8 @@ auto parse_masonry_request(const shiny::nfp::test::pt::ptree &node)
   return request;
 }
 
-void require_trace_matches(const shiny::nfp::test::pt::ptree &expected_trace,
-                           const shiny::nfp::pack::MasonryResult &result) {
+void require_trace_matches(const shiny::nesting::test::pt::ptree &expected_trace,
+                           const shiny::nesting::pack::MasonryResult &result) {
   REQUIRE(result.trace.size() == expected_trace.size());
   std::size_t index = 0;
   for (const auto &child : expected_trace) {
@@ -270,8 +270,8 @@ void require_trace_matches(const shiny::nfp::test::pt::ptree &expected_trace,
 }
 
 void require_progress_matches(
-    const shiny::nfp::test::pt::ptree &expected_progress,
-    const shiny::nfp::pack::MasonryResult &result) {
+    const shiny::nesting::test::pt::ptree &expected_progress,
+    const shiny::nesting::pack::MasonryResult &result) {
   REQUIRE(result.progress.size() == expected_progress.size());
   std::size_t index = 0;
   for (const auto &child : expected_progress) {
@@ -289,8 +289,8 @@ void require_progress_matches(
   }
 }
 
-void require_same_trace(const shiny::nfp::pack::MasonryResult &lhs,
-                        const shiny::nfp::pack::MasonryResult &rhs) {
+void require_same_trace(const shiny::nesting::pack::MasonryResult &lhs,
+                        const shiny::nesting::pack::MasonryResult &rhs) {
   REQUIRE(lhs.trace.size() == rhs.trace.size());
   for (std::size_t index = 0; index < lhs.trace.size(); ++index) {
     const auto &left = lhs.trace[index];
@@ -458,7 +458,7 @@ TEST_CASE("masonry builder honors top-right start corner",
           .bin_id = 50,
           .polygon = make_rectangle(0.0, 0.0, 10.0, 10.0),
           .geometry_revision = 400,
-          .start_corner = shiny::nfp::place::PlacementStartCorner::top_right,
+          .start_corner = shiny::nesting::place::PlacementStartCorner::top_right,
       }},
       .pieces =
           {

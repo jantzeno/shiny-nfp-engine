@@ -1,53 +1,34 @@
-# Copilot instructions for `shiny-nfp-engine`
+# Copilot instructions for `shiny-nesting-engine`
 
-This repository is the implementation repo for a greenfield C++20 no-fit-polygon packing library. Planning documents are already migrated under `docs/planning/` and `docs/adr/`. Future Copilot sessions should start from those documents before making code or repository-structure decisions, and should treat them as the source of truth for both the current milestone and the intended end-state of the project.
+This repository is the renamed engine library for the irregular nesting rewrite. Treat the checked-in code and active milestone plan as the source of truth; do not rely on missing `docs/` trees or stale ADR references.
 
-## Required reading before making changes
+## Milestone-0 contract
 
-- `docs/planning/01-implementation-roadmap.md`
-- `docs/planning/02-milestone-checklists.md`
-- `docs/planning/03-repository-blueprint.md`
-- `docs/planning/04-api-contract.md`
-- `docs/planning/05-fixture-contract.md`
-- `docs/adr/0001-geometry-model.md`
-- `docs/adr/0004-build-and-dependencies.md`
-- `docs/adr/0005-api-boundaries-and-cache-design.md`
-- `docs/adr/0006-configuration-policy-and-defaults.md`
-- `docs/adr/0007-algorithm-identity-and-observer-model.md`
-- `docs/adr/0008-manufacturing-constraint-model.md`
-- `docs/adr/0009-worker-owned-execution-and-parallel-evaluation.md`
+- repository name: `shiny-nesting-engine`
+- primary static library target: `shiny_nesting_engine`
+- primary C++ namespace: `shiny::nesting`
+- consuming apps link through public headers plus prebuilt sibling artifacts only
+- use MIT-only source ports/adaptations from `u-nesting` and `sparrow`
+- treat `2DNesting` as reference-only unless GPL use is explicitly approved
 
 ## Execution rules
 
 - treat this as a greenfield C++20 library
 - do not preserve provisional APIs with compatibility wrappers
-- bootstrap only the repository skeleton and build/test scaffolding first
-- keep backend types out of public headers
-- do not vendor Boost or CGAL yet unless that step is explicitly requested
-- keep changes minimal, coherent, and aligned with the planning documents
+- prefer `namespace detail` over anonymous namespaces
+- keep code modular; do not create monolithic algorithm classes or giant single-file implementations
+- keep backend-only types out of public headers where practical
+- keep changes minimal, coherent, and aligned with the active milestone
 
-## Project deliverables
+## Build guidance
 
-End-state deliverables for the project:
+- configure with `xmake f -m debug` or `xmake f -m release`
+- build with `xmake`
+- run tests with `xmake run shiny_nesting_engine_tests`
+- use `SHINY_NESTING_SANITIZER` or `xmake f --sanitizer=...` for sanitizer-enabled builds
 
-- a C++20 library aligned with `docs/planning/03-repository-blueprint.md` and the ADR set
-- a public geometry kernel for polygon normalization, topology queries, and convex/nonconvex NFP or IFP generation
-- a packing stack above the geometry layer covering placement, constructive decoding, and lightweight local search
-- an `xmake`-based build, test, and dependency setup aligned with the planning documents
-- fixture-driven tests, topology regressions, and benchmark scaffolding added in milestone order
-- repository structure, public headers, and module boundaries that follow the planned architecture and keep backend types out of public APIs
+## Integration boundary
 
-Immediate deliverables for the current implementation phase:
-
-- create the repository skeleton described for Milestone 0
-- keep the root `xmake.lua` aligned with the active planning set
-- add stub source and test files so the library and test targets build
-- keep `vendor/README.md` aligned with the active planning set
-- add one Catch2 smoke test
-- keep `docs/` as-is unless a link or reference must be updated to match the scaffold
-
-## Acceptance target
-
-- each change should advance the repository toward the planned end-state described in `docs/planning/` and `docs/adr/`, not just satisfy a local patch goal
-- milestone work should satisfy the acceptance criteria defined for that milestone before advancing to the next layer
-- the overall acceptance target is a coherent, buildable, testable C++20 library that matches the planned architecture, module boundaries, and phased deliverables
+- `export_face` consumes this repo through public headers and prebuilt library artifacts
+- do not move engine implementation sources into `export_face`
+- if integration needs new API surface, add it here rather than copying logic downstream

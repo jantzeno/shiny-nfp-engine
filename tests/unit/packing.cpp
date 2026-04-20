@@ -16,24 +16,24 @@
 namespace {
 
 using Catch::Approx;
-using shiny::nfp::pack::BinInput;
-using shiny::nfp::pack::ConstructiveDecoder;
-using shiny::nfp::pack::CutPlan;
-using shiny::nfp::pack::DecoderRequest;
-using shiny::nfp::pack::Layout;
-using shiny::nfp::pack::LayoutBin;
-using shiny::nfp::pack::PackingConfig;
-using shiny::nfp::pack::PieceInput;
-using shiny::nfp::pack::SharedCutOptimizationMode;
-using shiny::nfp::place::PlacementPolicy;
-using shiny::nfp::test::load_fixture_file;
-using shiny::nfp::test::parse_point;
-using shiny::nfp::test::parse_polygon;
-using shiny::nfp::test::parse_segment;
-using shiny::nfp::test::require_fixture_metadata;
-using shiny::nfp::test::require_point_equal;
+using shiny::nesting::pack::BinInput;
+using shiny::nesting::pack::ConstructiveDecoder;
+using shiny::nesting::pack::CutPlan;
+using shiny::nesting::pack::DecoderRequest;
+using shiny::nesting::pack::Layout;
+using shiny::nesting::pack::LayoutBin;
+using shiny::nesting::pack::PackingConfig;
+using shiny::nesting::pack::PieceInput;
+using shiny::nesting::pack::SharedCutOptimizationMode;
+using shiny::nesting::place::PlacementPolicy;
+using shiny::nesting::test::load_fixture_file;
+using shiny::nesting::test::parse_point;
+using shiny::nesting::test::parse_polygon;
+using shiny::nesting::test::parse_segment;
+using shiny::nesting::test::require_fixture_metadata;
+using shiny::nesting::test::require_point_equal;
 
-auto parse_rotations(const shiny::nfp::test::pt::ptree &node)
+auto parse_rotations(const shiny::nesting::test::pt::ptree &node)
     -> std::vector<double> {
   std::vector<double> rotations;
   for (const auto &child : node) {
@@ -43,47 +43,47 @@ auto parse_rotations(const shiny::nfp::test::pt::ptree &node)
 }
 
 auto parse_bed_grain_direction(std::string_view value)
-    -> shiny::nfp::place::BedGrainDirection {
+    -> shiny::nesting::place::BedGrainDirection {
   if (value == "unrestricted") {
-    return shiny::nfp::place::BedGrainDirection::unrestricted;
+    return shiny::nesting::place::BedGrainDirection::unrestricted;
   }
   if (value == "along_x") {
-    return shiny::nfp::place::BedGrainDirection::along_x;
+    return shiny::nesting::place::BedGrainDirection::along_x;
   }
   if (value == "along_y") {
-    return shiny::nfp::place::BedGrainDirection::along_y;
+    return shiny::nesting::place::BedGrainDirection::along_y;
   }
   throw std::runtime_error("unknown packing bed grain direction");
 }
 
 auto parse_part_grain_compatibility(std::string_view value)
-    -> shiny::nfp::place::PartGrainCompatibility {
+    -> shiny::nesting::place::PartGrainCompatibility {
   if (value == "unrestricted") {
-    return shiny::nfp::place::PartGrainCompatibility::unrestricted;
+    return shiny::nesting::place::PartGrainCompatibility::unrestricted;
   }
   if (value == "parallel_to_bed") {
-    return shiny::nfp::place::PartGrainCompatibility::parallel_to_bed;
+    return shiny::nesting::place::PartGrainCompatibility::parallel_to_bed;
   }
   if (value == "perpendicular_to_bed") {
-    return shiny::nfp::place::PartGrainCompatibility::perpendicular_to_bed;
+    return shiny::nesting::place::PartGrainCompatibility::perpendicular_to_bed;
   }
   throw std::runtime_error("unknown packing part grain compatibility");
 }
 
-auto parse_exclusion_zones(const shiny::nfp::test::pt::ptree &node)
-    -> std::vector<shiny::nfp::place::BedExclusionZone> {
-  std::vector<shiny::nfp::place::BedExclusionZone> zones;
+auto parse_exclusion_zones(const shiny::nesting::test::pt::ptree &node)
+    -> std::vector<shiny::nesting::place::BedExclusionZone> {
+  std::vector<shiny::nesting::place::BedExclusionZone> zones;
   for (const auto &child : node) {
     zones.push_back({
         .zone_id = child.second.get<std::uint32_t>("zone_id", 0),
-        .region = {.outer = shiny::nfp::test::parse_ring(
+        .region = {.outer = shiny::nesting::test::parse_ring(
                        child.second.get_child("region"))},
     });
   }
   return zones;
 }
 
-auto parse_ids(const shiny::nfp::test::pt::ptree &node)
+auto parse_ids(const shiny::nesting::test::pt::ptree &node)
     -> std::vector<std::uint32_t> {
   std::vector<std::uint32_t> values;
   for (const auto &child : node) {
@@ -116,7 +116,7 @@ auto parse_shared_cut_mode(std::string_view value)
   throw std::runtime_error("unknown shared cut mode fixture value");
 }
 
-auto parse_packing_config(const shiny::nfp::test::pt::ptree &node)
+auto parse_packing_config(const shiny::nesting::test::pt::ptree &node)
     -> PackingConfig {
   PackingConfig config{};
 
@@ -172,7 +172,7 @@ auto parse_packing_config(const shiny::nfp::test::pt::ptree &node)
   return config;
 }
 
-auto parse_piece_inputs(const shiny::nfp::test::pt::ptree &node)
+auto parse_piece_inputs(const shiny::nesting::test::pt::ptree &node)
     -> std::vector<PieceInput> {
   std::vector<PieceInput> pieces;
   for (const auto &child : node) {
@@ -195,7 +195,7 @@ auto parse_piece_inputs(const shiny::nfp::test::pt::ptree &node)
   return pieces;
 }
 
-auto parse_bin_input(const shiny::nfp::test::pt::ptree &node) -> BinInput {
+auto parse_bin_input(const shiny::nesting::test::pt::ptree &node) -> BinInput {
   return {
       .bin_id = node.get<std::uint32_t>("base_bin_id", 0),
       .polygon = parse_polygon(node.get_child("polygon")),
@@ -224,7 +224,7 @@ auto expand_bins(BinInput base_bin, const std::size_t count)
   return bins;
 }
 
-auto parse_decoder_request(const shiny::nfp::test::pt::ptree &node)
+auto parse_decoder_request(const shiny::nesting::test::pt::ptree &node)
     -> DecoderRequest {
   const auto max_bins = node.get<std::size_t>("max_bin_count", 0);
   const auto pieces = parse_piece_inputs(node.get_child("pieces"));
@@ -241,7 +241,7 @@ auto parse_decoder_request(const shiny::nfp::test::pt::ptree &node)
   return request;
 }
 
-auto parse_layout_bin(const shiny::nfp::test::pt::ptree &node) -> LayoutBin {
+auto parse_layout_bin(const shiny::nesting::test::pt::ptree &node) -> LayoutBin {
   LayoutBin bin{.bin_id = node.get<std::uint32_t>("bin_id")};
   if (const auto placements = node.get_child_optional("placements")) {
     for (const auto &child : *placements) {
@@ -255,9 +255,9 @@ auto parse_layout_bin(const shiny::nfp::test::pt::ptree &node) -> LayoutBin {
 
   for (const auto &piece : bin.placements) {
     if (bin.occupied.regions.empty()) {
-      bin.occupied = shiny::nfp::poly::make_merged_region(piece.polygon);
+      bin.occupied = shiny::nesting::poly::make_merged_region(piece.polygon);
     } else {
-      bin.occupied = shiny::nfp::poly::merge_polygon_into_region(bin.occupied,
+      bin.occupied = shiny::nesting::poly::merge_polygon_into_region(bin.occupied,
                                                                  piece.polygon);
     }
   }
@@ -265,7 +265,7 @@ auto parse_layout_bin(const shiny::nfp::test::pt::ptree &node) -> LayoutBin {
   return bin;
 }
 
-auto parse_layout(const shiny::nfp::test::pt::ptree &node) -> Layout {
+auto parse_layout(const shiny::nesting::test::pt::ptree &node) -> Layout {
   Layout layout{};
   if (const auto bins = node.get_child_optional("bins")) {
     for (const auto &child : *bins) {
@@ -275,7 +275,7 @@ auto parse_layout(const shiny::nfp::test::pt::ptree &node) -> Layout {
   return layout;
 }
 
-void require_trace_matches(const shiny::nfp::test::pt::ptree &expected_trace,
+void require_trace_matches(const shiny::nesting::test::pt::ptree &expected_trace,
                            const Layout &layout) {
   REQUIRE(layout.placement_trace.size() == expected_trace.size());
   std::size_t index = 0;
@@ -293,8 +293,8 @@ void require_trace_matches(const shiny::nfp::test::pt::ptree &expected_trace,
   }
 }
 
-void require_bin_matches(const shiny::nfp::test::pt::ptree &expected_bin,
-                         const shiny::nfp::pack::BinState &actual_bin,
+void require_bin_matches(const shiny::nesting::test::pt::ptree &expected_bin,
+                         const shiny::nesting::pack::BinState &actual_bin,
                          const LayoutBin &layout_bin) {
   REQUIRE(actual_bin.bin_id == expected_bin.get<std::uint32_t>("bin_id"));
   REQUIRE(actual_bin.placements.size() ==
@@ -332,7 +332,7 @@ void require_bin_matches(const shiny::nfp::test::pt::ptree &expected_bin,
 }
 
 auto has_segment(const CutPlan &plan, std::uint32_t piece_id,
-                 const shiny::nfp::geom::Segment2 &expected) -> bool {
+                 const shiny::nesting::geom::Segment2 &expected) -> bool {
   return std::any_of(plan.segments.begin(), plan.segments.end(),
                      [&](const auto &segment) {
                        const auto same_direction =
@@ -351,7 +351,7 @@ auto has_segment(const CutPlan &plan, std::uint32_t piece_id,
 }
 
 auto make_rectangle(double min_x, double min_y, double max_x, double max_y)
-    -> shiny::nfp::geom::PolygonWithHoles {
+    -> shiny::nesting::geom::PolygonWithHoles {
   return {
       .outer =
           {
@@ -441,7 +441,7 @@ TEST_CASE("packing cut plan fixtures", "[packing][cut-plan][fixtures]") {
           parse_layout(fixture.get_child("inputs").get_child("layout"));
       const auto config =
           parse_packing_config(fixture.get_child("inputs").get_child("config"));
-      const auto plan = shiny::nfp::pack::build_cut_plan(
+      const auto plan = shiny::nesting::pack::build_cut_plan(
           layout, config.laser_cut_optimization);
       const auto expected = fixture.get_child("expected");
 
@@ -575,7 +575,7 @@ TEST_CASE("packing decoder rejects grain-incompatible piece rotations",
                   .piece_id = 7,
                   .polygon = make_rectangle(0.0, 0.0, 4.0, 2.0),
                   .geometry_revision = 2,
-                  .grain_compatibility = shiny::nfp::place::
+                  .grain_compatibility = shiny::nesting::place::
                       PartGrainCompatibility::parallel_to_bed,
               },
           },
@@ -586,7 +586,7 @@ TEST_CASE("packing decoder rejects grain-incompatible piece rotations",
                   {
                       .allowed_rotations = {.angles_degrees = {90.0}},
                       .bed_grain_direction =
-                          shiny::nfp::place::BedGrainDirection::along_x,
+                          shiny::nesting::place::BedGrainDirection::along_x,
                   },
               .enable_hole_first_placement = false,
           },
@@ -825,7 +825,7 @@ TEST_CASE("packing decoder honors top-right start corner",
           .bin_id = 0,
           .polygon = make_rectangle(0.0, 0.0, 10.0, 10.0),
           .geometry_revision = 1,
-          .start_corner = shiny::nfp::place::PlacementStartCorner::top_right,
+          .start_corner = shiny::nesting::place::PlacementStartCorner::top_right,
       }},
       .pieces = {{
           .piece_id = 1,
@@ -852,13 +852,13 @@ TEST_CASE("packing decoder honors top-right start corner",
 
 TEST_CASE("bounding box packer honors bottom-right start corner",
           "[packing][bbox][start-corner]") {
-  shiny::nfp::pack::BoundingBoxPacker packer;
+  shiny::nesting::pack::BoundingBoxPacker packer;
   const DecoderRequest request{
       .bins = {{
           .bin_id = 0,
           .polygon = make_rectangle(0.0, 0.0, 10.0, 10.0),
           .geometry_revision = 1,
-          .start_corner = shiny::nfp::place::PlacementStartCorner::bottom_right,
+          .start_corner = shiny::nesting::place::PlacementStartCorner::bottom_right,
       }},
       .pieces = {{
           .piece_id = 1,

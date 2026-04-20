@@ -8,17 +8,17 @@
 
 namespace {
 
-using shiny::nfp::compute_convex_ifp;
-using shiny::nfp::compute_convex_nfp;
-using shiny::nfp::ConvexIfpRequest;
-using shiny::nfp::ConvexNfpRequest;
-using shiny::nfp::NfpResult;
-using shiny::nfp::cache::CacheStore;
-using shiny::nfp::cache::GeometryRevision;
-using shiny::nfp::cache::make_pair_rotation_key;
-using shiny::nfp::cache::PairRotationKey;
-using shiny::nfp::test::require_point_equal;
-using shiny::nfp::test::require_ring_equal;
+using shiny::nesting::compute_convex_ifp;
+using shiny::nesting::compute_convex_nfp;
+using shiny::nesting::ConvexIfpRequest;
+using shiny::nesting::ConvexNfpRequest;
+using shiny::nesting::NfpResult;
+using shiny::nesting::cache::CacheStore;
+using shiny::nesting::cache::GeometryRevision;
+using shiny::nesting::cache::make_pair_rotation_key;
+using shiny::nesting::cache::PairRotationKey;
+using shiny::nesting::test::require_point_equal;
+using shiny::nesting::test::require_ring_equal;
 
 void require_result_equal(const NfpResult &actual, const NfpResult &expected) {
   REQUIRE(actual.algorithm == expected.algorithm);

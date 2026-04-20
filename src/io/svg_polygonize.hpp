@@ -5,7 +5,7 @@
 #include "geometry/types.hpp"
 #include "util/status.hpp"
 
-namespace shiny::nfp::io {
+namespace shiny::nesting::io {
 
 /**
  * @brief Controls SVG path flattening during polygon import.
@@ -28,4 +28,4 @@ struct SvgImportConfig {
                                        const SvgImportConfig &config = {})
     -> util::StatusOr<geom::PolygonWithHoles>;
 
-} // namespace shiny::nfp::io
+} // namespace shiny::nesting::io

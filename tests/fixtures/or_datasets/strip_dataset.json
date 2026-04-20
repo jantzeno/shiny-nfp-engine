@@ -1,0 +1,26 @@
+{
+  "name": "fixture_strip",
+  "items": [
+    {
+      "id": 0,
+      "demand": 2,
+      "dxf": "dxf/item_0.dxf",
+      "allowed_orientations": [0.0, 180.0],
+      "shape": {
+        "type": "simple_polygon",
+        "data": [[0.0, 0.0], [4.0, 0.0], [4.0, 2.0], [0.0, 2.0], [0.0, 0.0]]
+      }
+    },
+    {
+      "id": 1,
+      "demand": 1,
+      "dxf": "dxf/item_1.dxf",
+      "allowed_orientations": [0.0, 90.0, 180.0, 270.0],
+      "shape": {
+        "type": "simple_polygon",
+        "data": [[0.0, 0.0], [2.0, 0.0], [3.0, 1.0], [0.0, 1.0], [0.0, 0.0]]
+      }
+    }
+  ],
+  "strip_height": 10.0
+}

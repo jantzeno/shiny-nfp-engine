@@ -4,7 +4,7 @@
 
 #include "predicates/classify.hpp"
 
-namespace shiny::nfp::geom {
+namespace shiny::nesting::geom {
 namespace {
 
 enum class DesiredWinding {
@@ -112,4 +112,4 @@ auto normalize_polygon(const PolygonWithHoles &polygon) -> PolygonWithHoles {
   return normalized;
 }
 
-} // namespace shiny::nfp::geom
+} // namespace shiny::nesting::geom

@@ -8,7 +8,7 @@
 #include "predicates/orientation.hpp"
 #include "predicates/point_location.hpp"
 
-namespace shiny::nfp::pack {
+namespace shiny::nesting::pack {
 namespace {
 
 constexpr double kLengthEpsilon = 1e-9;
@@ -348,4 +348,4 @@ auto build_cut_plan(const Layout &layout,
   return plan;
 }
 
-} // namespace shiny::nfp::pack
+} // namespace shiny::nesting::pack

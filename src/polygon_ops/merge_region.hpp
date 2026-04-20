@@ -4,7 +4,7 @@
 
 #include "geometry/types.hpp"
 
-namespace shiny::nfp::poly {
+namespace shiny::nesting::poly {
 
 /**
  * @brief Region accumulator used while merging placed-piece footprints.
@@ -37,4 +37,4 @@ merge_polygon_into_region(const MergedRegion &region,
                           const geom::PolygonWithHoles &polygon)
     -> MergedRegion;
 
-} // namespace shiny::nfp::poly
+} // namespace shiny::nesting::poly

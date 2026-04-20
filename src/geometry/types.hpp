@@ -2,7 +2,7 @@
 
 #include <vector>
 
-namespace shiny::nfp::geom {
+namespace shiny::nesting::geom {
 
 /**
  * @brief Cartesian point in model-space coordinates.
@@ -121,4 +121,4 @@ struct PolygonWithHoles {
   std::vector<Ring> holes{};
 };
 
-} // namespace shiny::nfp::geom
+} // namespace shiny::nesting::geom

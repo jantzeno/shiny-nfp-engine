@@ -8,14 +8,14 @@
 
 namespace {
 
-using shiny::nfp::geom::normalize_polygon;
-using shiny::nfp::geom::Polygon;
-using shiny::nfp::geom::PolygonWithHoles;
-using shiny::nfp::test::load_fixture_file;
-using shiny::nfp::test::parse_polygon;
-using shiny::nfp::test::require_fixture_metadata;
-using shiny::nfp::test::require_polygon_equal;
-using shiny::nfp::test::require_ring_equal;
+using shiny::nesting::geom::normalize_polygon;
+using shiny::nesting::geom::Polygon;
+using shiny::nesting::geom::PolygonWithHoles;
+using shiny::nesting::test::load_fixture_file;
+using shiny::nesting::test::parse_polygon;
+using shiny::nesting::test::require_fixture_metadata;
+using shiny::nesting::test::require_polygon_equal;
+using shiny::nesting::test::require_ring_equal;
 
 } // namespace
 

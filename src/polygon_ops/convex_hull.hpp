@@ -4,7 +4,7 @@
 
 #include "geometry/types.hpp"
 
-namespace shiny::nfp::poly {
+namespace shiny::nesting::poly {
 
 /**
  * @brief Computes the convex hull of an arbitrary point set.
@@ -27,4 +27,4 @@ namespace shiny::nfp::poly {
 [[nodiscard]] auto compute_convex_hull(const geom::PolygonWithHoles &polygon)
     -> geom::Polygon;
 
-} // namespace shiny::nfp::poly
+} // namespace shiny::nesting::poly

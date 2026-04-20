@@ -21,34 +21,34 @@
 namespace {
 
 using Catch::Approx;
-using shiny::nfp::AlgorithmKind;
-using shiny::nfp::pack::BinInput;
-using shiny::nfp::pack::PackingConfig;
-using shiny::nfp::pack::PieceInput;
-using shiny::nfp::pack::SharedCutOptimizationMode;
-using shiny::nfp::place::PlacementPolicy;
-using shiny::nfp::runtime::ExecutionControlConfig;
-using shiny::nfp::search::GeneticSearchConfig;
-using shiny::nfp::search::JostleSearch;
-using shiny::nfp::search::LocalSearchConfig;
-using shiny::nfp::search::SearchCancellationAcknowledgedEvent;
-using shiny::nfp::search::SearchEvent;
-using shiny::nfp::search::SearchEventKind;
-using shiny::nfp::search::SearchImprovementFoundEvent;
-using shiny::nfp::search::SearchMoveKind;
-using shiny::nfp::search::SearchProgressEntry;
-using shiny::nfp::search::SearchRequest;
-using shiny::nfp::search::SearchRunCompletedEvent;
-using shiny::nfp::search::SearchRunStartedEvent;
-using shiny::nfp::search::SearchRunStatus;
-using shiny::nfp::search::SearchRunSummary;
-using shiny::nfp::search::SearchStepProgressEvent;
-using shiny::nfp::search::SearchTimeoutReachedEvent;
-using shiny::nfp::test::load_fixture_file;
-using shiny::nfp::test::parse_polygon;
-using shiny::nfp::test::require_fixture_metadata;
+using shiny::nesting::AlgorithmKind;
+using shiny::nesting::pack::BinInput;
+using shiny::nesting::pack::PackingConfig;
+using shiny::nesting::pack::PieceInput;
+using shiny::nesting::pack::SharedCutOptimizationMode;
+using shiny::nesting::place::PlacementPolicy;
+using shiny::nesting::runtime::ExecutionControlConfig;
+using shiny::nesting::search::GeneticSearchConfig;
+using shiny::nesting::search::JostleSearch;
+using shiny::nesting::search::LocalSearchConfig;
+using shiny::nesting::search::SearchCancellationAcknowledgedEvent;
+using shiny::nesting::search::SearchEvent;
+using shiny::nesting::search::SearchEventKind;
+using shiny::nesting::search::SearchImprovementFoundEvent;
+using shiny::nesting::search::SearchMoveKind;
+using shiny::nesting::search::SearchProgressEntry;
+using shiny::nesting::search::SearchRequest;
+using shiny::nesting::search::SearchRunCompletedEvent;
+using shiny::nesting::search::SearchRunStartedEvent;
+using shiny::nesting::search::SearchRunStatus;
+using shiny::nesting::search::SearchRunSummary;
+using shiny::nesting::search::SearchStepProgressEvent;
+using shiny::nesting::search::SearchTimeoutReachedEvent;
+using shiny::nesting::test::load_fixture_file;
+using shiny::nesting::test::parse_polygon;
+using shiny::nesting::test::require_fixture_metadata;
 
-auto parse_rotations(const shiny::nfp::test::pt::ptree &node)
+auto parse_rotations(const shiny::nesting::test::pt::ptree &node)
     -> std::vector<double> {
   std::vector<double> rotations;
   for (const auto &child : node) {
@@ -58,47 +58,47 @@ auto parse_rotations(const shiny::nfp::test::pt::ptree &node)
 }
 
 auto parse_bed_grain_direction(std::string_view value)
-    -> shiny::nfp::place::BedGrainDirection {
+    -> shiny::nesting::place::BedGrainDirection {
   if (value == "unrestricted") {
-    return shiny::nfp::place::BedGrainDirection::unrestricted;
+    return shiny::nesting::place::BedGrainDirection::unrestricted;
   }
   if (value == "along_x") {
-    return shiny::nfp::place::BedGrainDirection::along_x;
+    return shiny::nesting::place::BedGrainDirection::along_x;
   }
   if (value == "along_y") {
-    return shiny::nfp::place::BedGrainDirection::along_y;
+    return shiny::nesting::place::BedGrainDirection::along_y;
   }
   throw std::runtime_error("unknown search fixture bed grain direction");
 }
 
 auto parse_part_grain_compatibility(std::string_view value)
-    -> shiny::nfp::place::PartGrainCompatibility {
+    -> shiny::nesting::place::PartGrainCompatibility {
   if (value == "unrestricted") {
-    return shiny::nfp::place::PartGrainCompatibility::unrestricted;
+    return shiny::nesting::place::PartGrainCompatibility::unrestricted;
   }
   if (value == "parallel_to_bed") {
-    return shiny::nfp::place::PartGrainCompatibility::parallel_to_bed;
+    return shiny::nesting::place::PartGrainCompatibility::parallel_to_bed;
   }
   if (value == "perpendicular_to_bed") {
-    return shiny::nfp::place::PartGrainCompatibility::perpendicular_to_bed;
+    return shiny::nesting::place::PartGrainCompatibility::perpendicular_to_bed;
   }
   throw std::runtime_error("unknown search fixture grain compatibility");
 }
 
-auto parse_exclusion_zones(const shiny::nfp::test::pt::ptree &node)
-    -> std::vector<shiny::nfp::place::BedExclusionZone> {
-  std::vector<shiny::nfp::place::BedExclusionZone> zones;
+auto parse_exclusion_zones(const shiny::nesting::test::pt::ptree &node)
+    -> std::vector<shiny::nesting::place::BedExclusionZone> {
+  std::vector<shiny::nesting::place::BedExclusionZone> zones;
   for (const auto &child : node) {
     zones.push_back({
         .zone_id = child.second.get<std::uint32_t>("zone_id", 0),
-        .region = {.outer = shiny::nfp::test::parse_ring(
+        .region = {.outer = shiny::nesting::test::parse_ring(
                        child.second.get_child("region"))},
     });
   }
   return zones;
 }
 
-auto parse_ids(const shiny::nfp::test::pt::ptree &node)
+auto parse_ids(const shiny::nesting::test::pt::ptree &node)
     -> std::vector<std::uint32_t> {
   std::vector<std::uint32_t> values;
   for (const auto &child : node) {
@@ -147,7 +147,7 @@ auto parse_move_kind(std::string_view value) -> SearchMoveKind {
   throw std::runtime_error("unknown search fixture move kind");
 }
 
-auto parse_local_search_config(const shiny::nfp::test::pt::ptree &node)
+auto parse_local_search_config(const shiny::nesting::test::pt::ptree &node)
     -> LocalSearchConfig {
   LocalSearchConfig config{};
   if (const auto max_iterations =
@@ -165,7 +165,7 @@ auto parse_local_search_config(const shiny::nfp::test::pt::ptree &node)
   return config;
 }
 
-auto parse_genetic_search_config(const shiny::nfp::test::pt::ptree &node)
+auto parse_genetic_search_config(const shiny::nesting::test::pt::ptree &node)
     -> GeneticSearchConfig {
   GeneticSearchConfig config{};
   if (const auto max_generations =
@@ -206,7 +206,7 @@ auto parse_genetic_search_config(const shiny::nfp::test::pt::ptree &node)
   return config;
 }
 
-auto parse_packing_config(const shiny::nfp::test::pt::ptree &node)
+auto parse_packing_config(const shiny::nesting::test::pt::ptree &node)
     -> PackingConfig {
   PackingConfig config{};
 
@@ -262,7 +262,7 @@ auto parse_packing_config(const shiny::nfp::test::pt::ptree &node)
   return config;
 }
 
-auto parse_piece_inputs(const shiny::nfp::test::pt::ptree &node)
+auto parse_piece_inputs(const shiny::nesting::test::pt::ptree &node)
     -> std::vector<PieceInput> {
   std::vector<PieceInput> pieces;
   for (const auto &child : node) {
@@ -285,7 +285,7 @@ auto parse_piece_inputs(const shiny::nfp::test::pt::ptree &node)
   return pieces;
 }
 
-auto parse_bin_input(const shiny::nfp::test::pt::ptree &node) -> BinInput {
+auto parse_bin_input(const shiny::nesting::test::pt::ptree &node) -> BinInput {
   return {
       .bin_id = node.get<std::uint32_t>("base_bin_id", 0),
       .polygon = parse_polygon(node.get_child("polygon")),
@@ -314,7 +314,7 @@ auto expand_bins(BinInput base_bin, const std::size_t count)
   return bins;
 }
 
-auto parse_search_request(const shiny::nfp::test::pt::ptree &node)
+auto parse_search_request(const shiny::nesting::test::pt::ptree &node)
     -> SearchRequest {
   SearchRequest request{};
 
@@ -342,8 +342,8 @@ auto parse_search_request(const shiny::nfp::test::pt::ptree &node)
   return request;
 }
 
-auto find_fixture(const shiny::nfp::test::pt::ptree &root, std::string_view id)
-    -> const shiny::nfp::test::pt::ptree & {
+auto find_fixture(const shiny::nesting::test::pt::ptree &root, std::string_view id)
+    -> const shiny::nesting::test::pt::ptree & {
   for (const auto &fixture_node : root.get_child("fixtures")) {
     const auto &fixture = fixture_node.second;
     if (fixture.get<std::string>("id") == id) {
@@ -354,7 +354,7 @@ auto find_fixture(const shiny::nfp::test::pt::ptree &root, std::string_view id)
 }
 
 void require_progress_matches(const SearchProgressEntry &actual,
-                              const shiny::nfp::test::pt::ptree &expected) {
+                              const shiny::nesting::test::pt::ptree &expected) {
   REQUIRE(actual.iteration == expected.get<std::uint32_t>("iteration"));
   REQUIRE(actual.move_kind ==
           parse_move_kind(expected.get<std::string>("move_kind")));
@@ -405,8 +405,8 @@ void require_same_run_summary(const SearchRunSummary &actual,
 
 void require_same_event(const SearchEvent &actual,
                         const SearchEvent &expected) {
-  REQUIRE(shiny::nfp::search::search_event_kind(actual) ==
-          shiny::nfp::search::search_event_kind(expected));
+  REQUIRE(shiny::nesting::search::search_event_kind(actual) ==
+          shiny::nesting::search::search_event_kind(expected));
 
   std::visit(
       [&](const auto &actual_payload) {
@@ -447,23 +447,23 @@ void require_same_event(const SearchEvent &actual,
 
 TEST_CASE("algorithm kind serialization uses canonical vocabulary",
           "[search][algorithm]") {
-  REQUIRE(shiny::nfp::to_string(AlgorithmKind::constructive_decoder) ==
+  REQUIRE(shiny::nesting::to_string(AlgorithmKind::constructive_decoder) ==
           "constructive_decoder");
-  REQUIRE(shiny::nfp::to_string(AlgorithmKind::jostle_search) ==
+  REQUIRE(shiny::nesting::to_string(AlgorithmKind::jostle_search) ==
           "jostle_search");
-  REQUIRE(shiny::nfp::to_string(AlgorithmKind::genetic_search) ==
+  REQUIRE(shiny::nesting::to_string(AlgorithmKind::genetic_search) ==
           "genetic_search");
-  REQUIRE(shiny::nfp::to_string(AlgorithmKind::masonry_builder) ==
+  REQUIRE(shiny::nesting::to_string(AlgorithmKind::masonry_builder) ==
           "masonry_builder");
 
-  const auto parsed = shiny::nfp::parse_algorithm_kind("jostle_search");
+  const auto parsed = shiny::nesting::parse_algorithm_kind("jostle_search");
   REQUIRE(parsed.has_value());
   REQUIRE(*parsed == AlgorithmKind::jostle_search);
   const auto genetic_parsed =
-      shiny::nfp::parse_algorithm_kind("genetic_search");
+      shiny::nesting::parse_algorithm_kind("genetic_search");
   REQUIRE(genetic_parsed.has_value());
   REQUIRE(*genetic_parsed == AlgorithmKind::genetic_search);
-  REQUIRE_FALSE(shiny::nfp::parse_algorithm_kind("local_search").has_value());
+  REQUIRE_FALSE(shiny::nesting::parse_algorithm_kind("local_search").has_value());
 }
 
 TEST_CASE("search config fixtures", "[search][config][fixtures]") {
@@ -506,7 +506,7 @@ TEST_CASE("execution control validates bounded worker counts",
 
 TEST_CASE("run event sink serializes concurrent observer delivery per run",
           "[search][observer][thread-safety]") {
-  shiny::nfp::search::SearchExecutionConfig execution{};
+  shiny::nesting::search::SearchExecutionConfig execution{};
   execution.control.capture_timestamps = false;
   execution.control.max_retained_events = 64U;
 
@@ -516,7 +516,7 @@ TEST_CASE("run event sink serializes concurrent observer delivery per run",
   };
 
   std::vector<SearchEvent> retained_events;
-  shiny::nfp::search::detail::RunEventSink sink{execution, retained_events};
+  shiny::nesting::search::detail::RunEventSink sink{execution, retained_events};
 
   constexpr std::size_t thread_count = 4U;
   constexpr std::size_t events_per_thread = 16U;
@@ -556,7 +556,7 @@ TEST_CASE("search scenario fixtures", "[search][scenario][fixtures]") {
   REQUIRE(root.get<std::string>("algorithm") == "jostle_search");
 
   const auto parsed_algorithm =
-      shiny::nfp::parse_algorithm_kind(root.get<std::string>("algorithm"));
+      shiny::nesting::parse_algorithm_kind(root.get<std::string>("algorithm"));
   REQUIRE(parsed_algorithm.has_value());
   REQUIRE(*parsed_algorithm == AlgorithmKind::jostle_search);
 
@@ -574,7 +574,7 @@ TEST_CASE("search scenario fixtures", "[search][scenario][fixtures]") {
       const auto expected = fixture.get_child("expected");
 
       REQUIRE(result.algorithm == AlgorithmKind::jostle_search);
-      REQUIRE(shiny::nfp::to_string(result.algorithm) == "jostle_search");
+      REQUIRE(shiny::nesting::to_string(result.algorithm) == "jostle_search");
       REQUIRE(result.status == SearchRunStatus::completed);
       REQUIRE(result.improved() == expected.get<bool>("improved"));
       REQUIRE(result.baseline.unplaced_piece_count ==
@@ -716,9 +716,9 @@ TEST_CASE("search observer replay matches retained history and final progress",
   REQUIRE(result.status == SearchRunStatus::completed);
   REQUIRE_FALSE(result.events.empty());
   REQUIRE(live_events.size() == result.events.size());
-  REQUIRE(shiny::nfp::search::search_event_kind(live_events.front()) ==
+  REQUIRE(shiny::nesting::search::search_event_kind(live_events.front()) ==
           SearchEventKind::run_started);
-  REQUIRE(shiny::nfp::search::search_event_kind(live_events.back()) ==
+  REQUIRE(shiny::nesting::search::search_event_kind(live_events.back()) ==
           SearchEventKind::run_completed);
 
   for (std::size_t index = 0; index < live_events.size(); ++index) {
@@ -765,7 +765,7 @@ TEST_CASE("search acknowledges cancellation at a safe observer boundary",
   std::vector<SearchEvent> live_events;
   std::size_t progress_count = 0U;
   request.execution.observer.on_event = [&](const SearchEvent &event) {
-    if (shiny::nfp::search::search_event_kind(event) ==
+    if (shiny::nesting::search::search_event_kind(event) ==
         SearchEventKind::step_progress) {
       ++progress_count;
     }
@@ -782,11 +782,11 @@ TEST_CASE("search acknowledges cancellation at a safe observer boundary",
   REQUIRE(result.iterations_completed == 0U);
   REQUIRE(result.progress.size() == 1U);
   REQUIRE(live_events.size() == 3U);
-  REQUIRE(shiny::nfp::search::search_event_kind(live_events[0]) ==
+  REQUIRE(shiny::nesting::search::search_event_kind(live_events[0]) ==
           SearchEventKind::run_started);
-  REQUIRE(shiny::nfp::search::search_event_kind(live_events[1]) ==
+  REQUIRE(shiny::nesting::search::search_event_kind(live_events[1]) ==
           SearchEventKind::step_progress);
-  REQUIRE(shiny::nfp::search::search_event_kind(live_events[2]) ==
+  REQUIRE(shiny::nesting::search::search_event_kind(live_events[2]) ==
           SearchEventKind::cancellation_acknowledged);
 }
 
@@ -805,7 +805,7 @@ TEST_CASE("search discards a cancelled in-flight iteration",
   std::vector<SearchEvent> live_events;
   request.execution.observer.on_event = [&](const SearchEvent &event) {
     live_events.push_back(event);
-    if (shiny::nfp::search::search_event_kind(event) ==
+    if (shiny::nesting::search::search_event_kind(event) ==
         SearchEventKind::step_progress) {
       const auto &progress = std::get<SearchStepProgressEvent>(event).progress;
       if (progress.iteration == 0U) {
@@ -830,11 +830,11 @@ TEST_CASE("search discards a cancelled in-flight iteration",
   REQUIRE(result.best.unplaced_piece_count ==
           result.baseline.unplaced_piece_count);
   REQUIRE(live_events.size() == 3U);
-  REQUIRE(shiny::nfp::search::search_event_kind(live_events.front()) ==
+  REQUIRE(shiny::nesting::search::search_event_kind(live_events.front()) ==
           SearchEventKind::run_started);
-  REQUIRE(shiny::nfp::search::search_event_kind(live_events[1]) ==
+  REQUIRE(shiny::nesting::search::search_event_kind(live_events[1]) ==
           SearchEventKind::step_progress);
-  REQUIRE(shiny::nfp::search::search_event_kind(live_events.back()) ==
+  REQUIRE(shiny::nesting::search::search_event_kind(live_events.back()) ==
           SearchEventKind::cancellation_acknowledged);
 }
 
@@ -853,7 +853,7 @@ TEST_CASE("search discards a timed-out in-flight iteration",
   std::vector<SearchEvent> live_events;
   request.execution.observer.on_event = [&](const SearchEvent &event) {
     live_events.push_back(event);
-    if (shiny::nfp::search::search_event_kind(event) ==
+    if (shiny::nesting::search::search_event_kind(event) ==
         SearchEventKind::step_progress) {
       const auto &progress = std::get<SearchStepProgressEvent>(event).progress;
       if (progress.iteration == 0U) {
@@ -879,11 +879,11 @@ TEST_CASE("search discards a timed-out in-flight iteration",
   REQUIRE(result.best.unplaced_piece_count ==
           result.baseline.unplaced_piece_count);
   REQUIRE(live_events.size() == 3U);
-  REQUIRE(shiny::nfp::search::search_event_kind(live_events.front()) ==
+  REQUIRE(shiny::nesting::search::search_event_kind(live_events.front()) ==
           SearchEventKind::run_started);
-  REQUIRE(shiny::nfp::search::search_event_kind(live_events[1]) ==
+  REQUIRE(shiny::nesting::search::search_event_kind(live_events[1]) ==
           SearchEventKind::step_progress);
-  REQUIRE(shiny::nfp::search::search_event_kind(live_events.back()) ==
+  REQUIRE(shiny::nesting::search::search_event_kind(live_events.back()) ==
           SearchEventKind::timeout_reached);
 }
 
@@ -900,7 +900,7 @@ TEST_CASE("search emits timeout when the time budget is exceeded",
   std::vector<SearchEvent> live_events;
   request.execution.observer.on_event = [&](const SearchEvent &event) {
     live_events.push_back(event);
-    if (shiny::nfp::search::search_event_kind(event) ==
+    if (shiny::nesting::search::search_event_kind(event) ==
         SearchEventKind::step_progress) {
       std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
@@ -913,11 +913,11 @@ TEST_CASE("search emits timeout when the time budget is exceeded",
   REQUIRE(result.iterations_completed == 0U);
   REQUIRE(result.progress.size() == 1U);
   REQUIRE(live_events.size() == 3U);
-  REQUIRE(shiny::nfp::search::search_event_kind(live_events[0]) ==
+  REQUIRE(shiny::nesting::search::search_event_kind(live_events[0]) ==
           SearchEventKind::run_started);
-  REQUIRE(shiny::nfp::search::search_event_kind(live_events[1]) ==
+  REQUIRE(shiny::nesting::search::search_event_kind(live_events[1]) ==
           SearchEventKind::step_progress);
-  REQUIRE(shiny::nfp::search::search_event_kind(live_events[2]) ==
+  REQUIRE(shiny::nesting::search::search_event_kind(live_events[2]) ==
           SearchEventKind::timeout_reached);
 }
 
@@ -1010,9 +1010,9 @@ TEST_CASE("search cache identity changes when manufacturing constraints change",
   REQUIRE(repeated.reevaluation_cache_hits > 0U);
 
   request.decoder_request.config.placement.bed_grain_direction =
-      shiny::nfp::place::BedGrainDirection::along_x;
+      shiny::nesting::place::BedGrainDirection::along_x;
   request.decoder_request.pieces.front().grain_compatibility =
-      shiny::nfp::place::PartGrainCompatibility::parallel_to_bed;
+      shiny::nesting::place::PartGrainCompatibility::parallel_to_bed;
   request.decoder_request.config.placement.exclusion_zones = {
       {.zone_id = 41,
        .region = {.outer = {{4.0, 0.0}, {6.0, 0.0}, {6.0, 4.0}, {4.0, 4.0}}}}};

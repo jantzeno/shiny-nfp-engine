@@ -14,7 +14,7 @@
 #include "polygon_ops/boolean_ops.hpp"
 #include "polygon_ops/merge_region.hpp"
 
-namespace shiny::nfp::pack {
+namespace shiny::nesting::pack {
 namespace {
 
 constexpr double kAreaEpsilon = 1e-9;
@@ -1082,7 +1082,7 @@ void apply_selection(BinPackingState &state, const PieceInput &piece,
       .placement = selection.placement,
       .resolved_rotation = selection.resolved_rotation,
       .polygon = translated_piece,
-      .source = place::PlacementCandidateSource::bin_ifp,
+      .source = place::PlacementCandidateSource::bin_boundary,
       .inside_hole = false,
       .hole_index = -1,
       .score = selection.resulting_utilization,
@@ -1133,7 +1133,7 @@ void apply_selection(BinPackingState &state, const PieceInput &piece,
       .rotation_index = selection.placement.rotation_index,
       .resolved_rotation = selection.resolved_rotation,
       .translation = selection.placement.translation,
-      .source = place::PlacementCandidateSource::bin_ifp,
+      .source = place::PlacementCandidateSource::bin_boundary,
       .opened_new_bin = opened_new_bin,
       .inside_hole = false,
       .hole_index = -1,
@@ -1289,20 +1289,25 @@ decode_single(const DecoderRequest &request,
 
 auto BoundingBoxPacker::decode_attempts(
     const DecoderRequest &request,
-    const InterruptionProbe &interruption_requested)
+    const InterruptionProbe &interruption_requested,
+    const AttemptObserver &on_attempt_complete)
     -> std::vector<DecoderResult> {
   std::vector<DecoderResult> results;
   const std::vector<DecoderRequest> attempt_requests =
       build_attempt_requests(request);
   results.reserve(attempt_requests.size());
-  for (const DecoderRequest &attempt_request : attempt_requests) {
+  for (std::size_t attempt_index = 0; attempt_index < attempt_requests.size();
+       ++attempt_index) {
     if (!results.empty() && interrupted(interruption_requested)) {
       break;
     }
     DecoderResult result =
-        decode_single(attempt_request, interruption_requested);
+        decode_single(attempt_requests[attempt_index], interruption_requested);
     const bool was_interrupted = result.interrupted;
     results.push_back(std::move(result));
+    if (on_attempt_complete) {
+      on_attempt_complete(attempt_index, results.back());
+    }
     if (was_interrupted) {
       break;
     }
@@ -1310,6 +1315,9 @@ auto BoundingBoxPacker::decode_attempts(
 
   if (results.empty()) {
     results.push_back(decode_single(request, interruption_requested));
+    if (on_attempt_complete) {
+      on_attempt_complete(0U, results.back());
+    }
   }
   return results;
 }
@@ -1325,4 +1333,4 @@ auto BoundingBoxPacker::decode(const DecoderRequest &request,
   return std::move(results.front());
 }
 
-} // namespace shiny::nfp::pack
+} // namespace shiny::nesting::pack
