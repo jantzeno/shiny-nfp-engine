@@ -1117,7 +1117,13 @@ void apply_selection(BinPackingState &state, const PieceInput &piece,
   ++state.bin_state.hole_set_revision;
   state.occupied_area += polygon_area(translated_piece);
   state.occupied_bounds.push_back(selection.translated_bounds);
-  split_free_rectangles(state.free_rectangles, selection.translated_bounds);
+  const geom::Box2 clearance_bounds{
+      .min = {.x = selection.translated_bounds.min.x - clearance,
+              .y = selection.translated_bounds.min.y - clearance},
+      .max = {.x = selection.translated_bounds.max.x + clearance,
+              .y = selection.translated_bounds.max.y + clearance},
+  };
+  split_free_rectangles(state.free_rectangles, clearance_bounds);
 
   const auto width =
       selection.translated_bounds.max.x - selection.translated_bounds.min.x;

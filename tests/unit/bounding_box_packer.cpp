@@ -210,6 +210,35 @@ TEST_CASE("bounding box packer respects piece spacing",
   REQUIRE(result.bins.front().placements[1].placement.translation.x == 3.0);
 }
 
+TEST_CASE("bounding box free rectangle heuristic respects piece spacing",
+          "[packing][bounding-box][free-rectangle][spacing]") {
+  BoundingBoxPacker packer;
+  auto request = make_request(
+      {
+          .bin_id = 41,
+          .polygon = make_rectangle(0.0, 0.0, 5.0, 2.0),
+          .geometry_revision = 1,
+      },
+      {
+          make_piece(1, make_rectangle(0.0, 0.0, 2.0, 2.0), 1),
+          make_piece(2, make_rectangle(0.0, 0.0, 2.0, 2.0), 2),
+      },
+      1);
+  request.config.bounding_box.heuristic =
+      BoundingBoxHeuristic::free_rectangle_backfill;
+  request.config.placement.part_clearance = 1.0;
+
+  const auto result = packer.decode(request);
+
+  REQUIRE(result.bins.size() == 1);
+  REQUIRE(result.layout.unplaced_piece_ids.empty());
+  REQUIRE(result.bins.front().placements.size() == 2);
+  REQUIRE(result.bins.front().placements[0].placement.translation.x == 0.0);
+  REQUIRE(result.bins.front().placements[0].placement.translation.y == 0.0);
+  REQUIRE(result.bins.front().placements[1].placement.translation.x == 3.0);
+  REQUIRE(result.bins.front().placements[1].placement.translation.y == 0.0);
+}
+
 TEST_CASE("bounding box solve selects the best deterministic attempt and emits progress",
           "[solve][bounding-box][progress]") {
   auto request = make_solve_request(
