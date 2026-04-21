@@ -177,9 +177,12 @@ target("shiny_nesting_engine")
         "src/request.hpp",
         "src/result.hpp",
         "src/solve.hpp",
+        "src/cache/(**.hpp)",
+        "src/decomposition/(**.hpp)",
         "src/geometry/(**.hpp)",
         "src/io/(**.hpp)",
         "src/logging/(**.hpp)",
+        "src/nfp/(**.hpp)",
         "src/packing/(**.hpp)",
         "src/placement/(**.hpp)",
         "src/polygon_ops/(**.hpp)",
@@ -190,20 +193,19 @@ target("shiny_nesting_engine")
     add_files(
         "src/request.cpp",
         "src/solve.cpp",
+        "src/cache/*.cpp",
+        "src/decomposition/*.cpp",
         "src/geometry/*.cpp",
         "src/io/*.cpp",
-        "src/packing/bin_state.cpp",
-        "src/packing/bounding_box_packer.cpp",
-        "src/packing/irregular_constructive_packer.cpp",
-        "src/packing/common.cpp",
-        "src/packing/config.cpp",
-        "src/packing/cut_plan.cpp",
+        "src/nfp/*.cpp",
+        "src/packing/*.cpp",
         "src/packing/bounding_box/*.cpp",
         "src/placement/config.cpp",
         "src/polygon_ops/*.cpp",
         "src/predicates/*.cpp",
         "src/runtime/*.cpp")
     add_files("src/search/*.cpp")
+    add_files("src/search/detail/*.cpp")
     add_deps("shiny_logging")
     add_vendor_warning_suppression_flags()
     add_thread_support_flags()
@@ -217,14 +219,25 @@ target("shiny_nesting_engine_tests")
     add_includedirs("tests")
     add_sysincludedirs(boost_root)
     add_files("tests/unit/bounding_box_packer.cpp")
+    add_files("tests/unit/cache.cpp")
+    add_files("tests/unit/candidate_generation.cpp")
     add_files("tests/unit/geometry_normalize.cpp")
     add_files("tests/unit/geometry_foundation.cpp")
+    add_files("tests/unit/geometry_enhancements.cpp")
     add_files("tests/unit/request_normalization.cpp")
     add_files("tests/unit/execution_runtime.cpp")
     add_files("tests/unit/import_preprocess.cpp")
     add_files("tests/unit/or_dataset_json.cpp")
     add_files("tests/unit/constructive_irregular.cpp")
+    add_files("tests/unit/cutting.cpp")
+    add_files("tests/unit/decomposition_internal.cpp")
+    add_files("tests/unit/nfp_geometry.cpp")
+    add_files("tests/unit/overlap_infrastructure.cpp")
     add_files("tests/unit/production_search.cpp")
+    add_files("tests/unit/metaheuristic_search.cpp")
+    add_files("tests/unit/separator.cpp")
+    add_files("tests/unit/strategy_registry.cpp")
+    add_files("tests/unit/strip_optimizer.cpp")
     add_deps("shiny_logging")
     add_vendor_warning_suppression_flags()
     add_thread_support_flags()

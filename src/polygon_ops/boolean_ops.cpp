@@ -191,4 +191,14 @@ auto buffer_polygon(const geom::PolygonWithHoles &polygon, double distance)
   return result;
 }
 
+auto subtract_region_set(std::vector<geom::PolygonWithHoles> &regions,
+                         const geom::PolygonWithHoles &obstacle) -> void {
+  std::vector<geom::PolygonWithHoles> next_regions;
+  for (const auto &region : regions) {
+    const auto difference = difference_polygons(region, obstacle);
+    next_regions.insert(next_regions.end(), difference.begin(), difference.end());
+  }
+  regions = std::move(next_regions);
+}
+
 } // namespace shiny::nesting::poly

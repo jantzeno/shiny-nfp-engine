@@ -4,26 +4,16 @@
 #include <cmath>
 
 #include "geometry/normalize.hpp"
+#include "runtime/hash.hpp"
 
 namespace shiny::nesting::geom {
 namespace detail {
 
 constexpr double kBoundsEpsilon = 1e-9;
 constexpr double kHashScale = 1'000'000.0;
-constexpr std::uint64_t kFnvOffsetBasis = 14695981039346656037ull;
-constexpr std::uint64_t kFnvPrime = 1099511628211ull;
-
-auto hash_bytes(std::uint64_t &hash, const void *data, const std::size_t size)
-    -> void {
-  const auto *bytes = static_cast<const unsigned char *>(data);
-  for (std::size_t index = 0; index < size; ++index) {
-    hash ^= static_cast<std::uint64_t>(bytes[index]);
-    hash *= kFnvPrime;
-  }
-}
 
 template <typename T> auto hash_value(std::uint64_t &hash, const T &value) -> void {
-  hash_bytes(hash, &value, sizeof(T));
+  runtime::hash::fnv1a_mix_value(hash, value);
 }
 
 [[nodiscard]] auto quantize_coordinate(const double value) -> std::int64_t {
@@ -70,6 +60,24 @@ auto polygon_area(const PolygonWithHoles &polygon) -> double {
   return area;
 }
 
+auto polygon_area_sum(std::span<const PolygonWithHoles> polygons) -> double {
+  double total = 0.0;
+  for (const auto &polygon : polygons) {
+    total += polygon_area(polygon);
+  }
+  return total;
+}
+
+auto point_distance(const Point2 &lhs, const Point2 &rhs) -> double {
+  return std::hypot(lhs.x - rhs.x, lhs.y - rhs.y);
+}
+
+auto squared_distance(const Point2 &lhs, const Point2 &rhs) -> double {
+  const double dx = lhs.x - rhs.x;
+  const double dy = lhs.y - rhs.y;
+  return dx * dx + dy * dy;
+}
+
 auto compute_bounds(std::span<const Point2> ring) -> Box2 {
   Box2 bounds{};
   if (ring.empty()) {
@@ -111,6 +119,30 @@ auto box_width(const Box2 &box) -> double { return box.max.x - box.min.x; }
 
 auto box_height(const Box2 &box) -> double { return box.max.y - box.min.y; }
 
+auto box_to_polygon(const Box2 &box) -> PolygonWithHoles {
+  return {
+      .outer = {
+          {box.min.x, box.min.y},
+          {box.max.x, box.min.y},
+          {box.max.x, box.max.y},
+          {box.min.x, box.max.y},
+      },
+  };
+}
+
+auto box_to_polygon_clamped(const Box2 &box, const double max_width)
+    -> PolygonWithHoles {
+  const auto width = std::max(0.0, std::min(max_width, box_width(box)));
+  return {
+      .outer = {
+          {box.min.x, box.min.y},
+          {box.min.x + width, box.min.y},
+          {box.min.x + width, box.max.y},
+          {box.min.x, box.max.y},
+      },
+  };
+}
+
 auto boxes_overlap(const Box2 &lhs, const Box2 &rhs) -> bool {
   return !(lhs.max.x < rhs.min.x - detail::kBoundsEpsilon ||
            rhs.max.x < lhs.min.x - detail::kBoundsEpsilon ||
@@ -127,14 +159,14 @@ auto box_contains(const Box2 &container, const Box2 &candidate) -> bool {
 
 auto polygon_revision(const Polygon &polygon) -> std::uint64_t {
   const auto normalized = normalize_polygon(polygon);
-  std::uint64_t hash = detail::kFnvOffsetBasis;
+  std::uint64_t hash = runtime::hash::kFnv1aOffsetBasis;
   detail::hash_ring(hash, normalized.outer);
   return hash;
 }
 
 auto polygon_revision(const PolygonWithHoles &polygon) -> std::uint64_t {
   const auto normalized = normalize_polygon(polygon);
-  std::uint64_t hash = detail::kFnvOffsetBasis;
+  std::uint64_t hash = runtime::hash::kFnv1aOffsetBasis;
   detail::hash_ring(hash, normalized.outer);
   const auto hole_count = static_cast<std::uint64_t>(normalized.holes.size());
   detail::hash_value(hash, hole_count);

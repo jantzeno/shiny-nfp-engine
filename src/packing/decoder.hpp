@@ -23,6 +23,7 @@ struct PieceInput {
   std::uint32_t piece_id{0};
   geom::PolygonWithHoles polygon{};
   std::uint64_t geometry_revision{0};
+  bool allow_mirror{false};
   place::PartGrainCompatibility grain_compatibility{
       place::PartGrainCompatibility::unrestricted};
   std::vector<std::uint32_t> allowed_bin_ids{};

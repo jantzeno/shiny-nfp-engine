@@ -5,6 +5,9 @@
 #include <cstdint>
 #include <vector>
 
+#include "packing/common_edge.hpp"
+#include "packing/cutting_sequence.hpp"
+#include "packing/pierce_point.hpp"
 #include "predicates/orientation.hpp"
 #include "predicates/point_location.hpp"
 
@@ -324,27 +327,50 @@ auto build_cut_plan(const Layout &layout,
       plan.segments.push_back(entry.segment);
     }
     plan.total_cut_length = plan.raw_cut_length;
-    return plan;
-  }
+  } else {
+    for (const auto &bin : layout.bins) {
+      const auto boundaries = collect_boundary_segments(bin);
+      std::vector<CutSegmentRecord> bin_segments;
+      for (const auto &entry : raw_segments) {
+        if (entry.segment.bin_id == bin.bin_id) {
+          bin_segments.push_back(entry);
+        }
+      }
 
-  for (const auto &bin : layout.bins) {
-    const auto boundaries = collect_boundary_segments(bin);
-    std::vector<CutSegmentRecord> bin_segments;
-    for (const auto &entry : raw_segments) {
-      if (entry.segment.bin_id == bin.bin_id) {
-        bin_segments.push_back(entry);
+      for (const auto &entry : bin_segments) {
+        if (!removable_segment(entry, bin_segments, boundaries, config)) {
+          plan.segments.push_back(entry.segment);
+          plan.total_cut_length += segment_length(entry.segment.segment);
+        }
       }
     }
-
-    for (const auto &entry : bin_segments) {
-      if (!removable_segment(entry, bin_segments, boundaries, config)) {
-        plan.segments.push_back(entry.segment);
-        plan.total_cut_length += segment_length(entry.segment.segment);
-      }
-    }
   }
 
+  if (config.mode != SharedCutOptimizationMode::off) {
+    plan.segments = detect_common_edges(std::move(plan.segments));
+  }
+  plan.total_cut_length = 0.0;
+  for (const auto &segment : plan.segments) {
+    plan.total_cut_length += segment_length(segment.segment);
+  }
   plan.removed_cut_length = plan.raw_cut_length - plan.total_cut_length;
+
+  const auto sequence = build_cutting_sequence(layout);
+  geom::Point2 previous_exit{};
+  for (std::size_t index = 0; index < sequence.size(); ++index) {
+    const auto pierce_plan = select_pierce_plan(sequence[index], previous_exit);
+    plan.contour_order.push_back({
+        .bin_id = sequence[index].bin_id,
+        .piece_id = sequence[index].piece_id,
+        .from_hole = sequence[index].from_hole,
+        .order_index = index,
+        .pierce_point = pierce_plan.pierce_point,
+        .lead_in = pierce_plan.lead_in,
+        .lead_out = pierce_plan.lead_out,
+    });
+    previous_exit = pierce_plan.exit_point;
+  }
+
   return plan;
 }
 

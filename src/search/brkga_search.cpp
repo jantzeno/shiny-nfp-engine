@@ -4,13 +4,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <format>
-#include <functional>
-#include <limits>
 #include <numeric>
 #include <optional>
 #include <span>
 #include <string>
-#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -18,117 +15,43 @@
 #include "geometry/polygon.hpp"
 #include "logging/shiny_log.hpp"
 #include "packing/irregular_constructive_packer.hpp"
+#include "packing/packer_workspace.hpp"
 #include "runtime/deterministic_rng.hpp"
+#include "runtime/hash.hpp"
 #include "runtime/timing.hpp"
+#include "search/detail/driver_scaffolding.hpp"
+#include "search/detail/neighborhood_ops.hpp"
+#include "search/strategy_registry.hpp"
+#include "search/solution_pool.hpp"
+#include "search/strip_optimizer.hpp"
 
 namespace shiny::nesting::search {
 namespace {
 
-struct CandidateMetrics {
-  std::size_t placed_parts{0};
-  std::size_t bin_count{0};
-  double strip_length{0.0};
-  double utilization{0.0};
-};
+[[nodiscard]] auto run_brkga_strategy(const NormalizedRequest &request,
+                                      const SolveControl &control)
+    -> util::StatusOr<NestingResult> {
+  BrkgaProductionSearch search;
+  return search.solve(request, control);
+}
+
+} // namespace
+
+void register_brkga_strategy() {
+  StrategyRegistry::instance().register_production_strategy({
+      .name = "brkga",
+      .kind = ProductionOptimizerKind::brkga,
+      .run = &run_brkga_strategy,
+  });
+}
+
+namespace {
 
 struct EvaluatedChromosome {
   std::vector<double> genes{};
-  CandidateMetrics metrics{};
+  LayoutMetrics metrics{};
   NestingResult result{};
 };
-
-[[nodiscard]] auto interrupted(const SolveControl &control,
-                               const runtime::TimeBudget &time_budget,
-                               const runtime::Stopwatch &stopwatch) -> bool {
-  return control.cancellation.stop_requested() || time_budget.expired(stopwatch);
-}
-
-[[nodiscard]] auto current_stop_reason(const SolveControl &control,
-                                       const runtime::TimeBudget &time_budget,
-                                       const runtime::Stopwatch &stopwatch,
-                                       const bool hit_iteration_limit)
-    -> StopReason {
-  if (control.cancellation.stop_requested()) {
-    return StopReason::cancelled;
-  }
-  if (time_budget.expired(stopwatch)) {
-    return StopReason::time_limit_reached;
-  }
-  if (hit_iteration_limit) {
-    return StopReason::iteration_limit_reached;
-  }
-  return StopReason::completed;
-}
-
-[[nodiscard]] auto metrics_for_layout(const pack::Layout &layout)
-    -> CandidateMetrics {
-  CandidateMetrics metrics;
-  metrics.placed_parts = layout.placement_trace.size();
-  metrics.bin_count = layout.bins.size();
-
-  double occupied_area = 0.0;
-  double container_area = 0.0;
-  double strip_length = 0.0;
-  for (const auto &bin : layout.bins) {
-    occupied_area += bin.utilization.occupied_area;
-    container_area += bin.utilization.container_area;
-    if (!bin.placements.empty()) {
-      geom::Box2 envelope{};
-      bool initialized = false;
-      for (const auto &placement : bin.placements) {
-        const auto bounds = geom::compute_bounds(placement.polygon);
-        if (!initialized) {
-          envelope = bounds;
-          initialized = true;
-          continue;
-        }
-        envelope.min.x = std::min(envelope.min.x, bounds.min.x);
-        envelope.min.y = std::min(envelope.min.y, bounds.min.y);
-        envelope.max.x = std::max(envelope.max.x, bounds.max.x);
-        envelope.max.y = std::max(envelope.max.y, bounds.max.y);
-      }
-      strip_length += geom::box_width(envelope);
-    }
-  }
-
-  metrics.strip_length = strip_length;
-  metrics.utilization =
-      container_area > 0.0 ? occupied_area / container_area : 0.0;
-  return metrics;
-}
-
-[[nodiscard]] auto better_metrics(const CandidateMetrics &lhs,
-                                  const CandidateMetrics &rhs) -> bool {
-  if (lhs.placed_parts != rhs.placed_parts) {
-    return lhs.placed_parts > rhs.placed_parts;
-  }
-  if (lhs.bin_count != rhs.bin_count) {
-    return lhs.bin_count < rhs.bin_count;
-  }
-  if (lhs.strip_length != rhs.strip_length) {
-    return lhs.strip_length < rhs.strip_length;
-  }
-  if (lhs.utilization != rhs.utilization) {
-    return lhs.utilization > rhs.utilization;
-  }
-  return false;
-}
-
-[[nodiscard]] auto piece_areas_for(const NormalizedRequest &request)
-    -> std::vector<double> {
-  std::unordered_map<std::uint32_t, double> areas_by_source_piece;
-  for (const auto &piece : request.request.pieces) {
-    areas_by_source_piece.emplace(piece.piece_id, geom::polygon_area(piece.polygon));
-  }
-
-  std::vector<double> areas;
-  areas.reserve(request.expanded_pieces.size());
-  for (const auto &expanded_piece : request.expanded_pieces) {
-    const auto it = areas_by_source_piece.find(expanded_piece.source_piece_id);
-    areas.push_back(it == areas_by_source_piece.end() ? 0.0 : it->second);
-  }
-  return areas;
-}
 
 [[nodiscard]] auto order_from_genes(std::span<const double> genes)
     -> std::vector<std::size_t> {
@@ -149,12 +72,7 @@ struct EvaluatedChromosome {
                                    const std::uint64_t base_seed)
     -> std::uint64_t {
   const auto order = order_from_genes(genes);
-  std::uint64_t hash = 14695981039346656037ULL; // FNV offset basis
-  for (const auto index : order) {
-    hash ^= static_cast<std::uint64_t>(index);
-    hash *= 1099511628211ULL; // FNV prime
-  }
-  return hash ^ base_seed;
+  return runtime::hash::fnv1a_of<std::size_t>(order) ^ base_seed;
 }
 
 // Signature for detecting equivalent orderings of identical pieces.
@@ -178,12 +96,7 @@ struct OrderSignatureHash {
   for (const auto idx : order) {
     canonical.push_back(request.expanded_pieces[idx].source_piece_id);
   }
-  std::uint64_t hash = 14695981039346656037ULL;
-  for (const auto id : canonical) {
-    hash ^= static_cast<std::uint64_t>(id);
-    hash *= 1099511628211ULL;
-  }
-  return {.hash = hash};
+  return {.hash = runtime::hash::fnv1a_of<std::uint32_t>(canonical)};
 }
 
 [[nodiscard]] auto genes_from_order(std::span<const std::size_t> order)
@@ -222,6 +135,7 @@ struct OrderSignatureHash {
 [[nodiscard]] auto evaluate_genes(std::span<const double> genes,
                                   const NormalizedRequest &request,
                                   const SolveControl &control,
+                                  pack::PackerWorkspace &workspace,
                                   const runtime::TimeBudget &time_budget,
                                   const runtime::Stopwatch &stopwatch,
                                   ProgressThrottle &outer_throttle,
@@ -235,6 +149,7 @@ struct OrderSignatureHash {
   pack::IrregularConstructivePacker packer;
   SolveControl decode_control{};
   decode_control.cancellation = control.cancellation;
+  decode_control.workspace = &workspace;
   // Derive a unique seed from the chromosome genes so each evaluation
   // produces a genuinely different layout via stochastic tie-breaking.
   decode_control.random_seed = seed_from_genes(genes, control.random_seed);
@@ -291,22 +206,6 @@ struct OrderSignatureHash {
 [[nodiscard]] auto better_candidate(const EvaluatedChromosome &lhs,
                                     const EvaluatedChromosome &rhs) -> bool {
   return better_metrics(lhs.metrics, rhs.metrics);
-}
-
-[[nodiscard]] auto make_budget(const SolveControl &control,
-                               const runtime::TimeBudget &time_budget,
-                               const runtime::Stopwatch &stopwatch,
-                               const std::size_t iterations_completed)
-    -> BudgetState {
-  return {
-      .iteration_limit_enabled = control.iteration_limit > 0U,
-      .iteration_limit = control.iteration_limit,
-      .iterations_completed = iterations_completed,
-      .time_limit_enabled = time_budget.enabled(),
-      .time_limit_milliseconds = time_budget.limit_milliseconds(),
-      .elapsed_milliseconds = stopwatch.elapsed_milliseconds(),
-      .cancellation_requested = control.cancellation.stop_requested(),
-  };
 }
 
 auto emit_best_progress(const SolveControl &control, const std::size_t sequence,
@@ -406,6 +305,7 @@ auto perturb_genes(std::vector<double> &genes, const std::size_t swaps,
 [[nodiscard]] auto polish_best(const EvaluatedChromosome &seed,
                                const NormalizedRequest &request,
                                const SolveControl &control,
+                               pack::PackerWorkspace &workspace,
                                const runtime::TimeBudget &time_budget,
                                const runtime::Stopwatch &stopwatch,
                                const ProductionSearchConfig &config,
@@ -418,7 +318,7 @@ auto perturb_genes(std::vector<double> &genes, const std::size_t swaps,
   for (std::size_t pass = 0; pass < config.polishing_passes; ++pass) {
     bool improved = false;
     for (std::size_t index = 0; index < best_order.size(); ++index) {
-      if (interrupted(control, time_budget, stopwatch)) {
+      if (detail::driver_interrupted(control, time_budget, stopwatch)) {
         return best;
       }
 
@@ -436,6 +336,7 @@ auto perturb_genes(std::vector<double> &genes, const std::size_t swaps,
       std::rotate(neighbor.begin() + index, neighbor.begin() + largest_index,
                   neighbor.begin() + largest_index + 1U);
       auto evaluated = evaluate_genes(genes_from_order(neighbor), request, control,
+                                      workspace,
                                       time_budget, stopwatch, throttle, 0, 0, 0, 0);
       if (better_candidate(evaluated, best)) {
         best = std::move(evaluated);
@@ -445,13 +346,14 @@ auto perturb_genes(std::vector<double> &genes, const std::size_t swaps,
     }
 
     for (std::size_t index = 1; index < best_order.size(); ++index) {
-      if (interrupted(control, time_budget, stopwatch)) {
+      if (detail::driver_interrupted(control, time_budget, stopwatch)) {
         return best;
       }
 
       auto neighbor = best_order;
       std::swap(neighbor[index - 1U], neighbor[index]);
       auto evaluated = evaluate_genes(genes_from_order(neighbor), request, control,
+                                      workspace,
                                       time_budget, stopwatch, throttle, 0, 0, 0, 0);
       if (better_candidate(evaluated, best)) {
         best = std::move(evaluated);
@@ -480,8 +382,10 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
   runtime::DeterministicRng rng(control.random_seed);
   runtime::Stopwatch stopwatch;
   const runtime::TimeBudget time_budget(control.time_limit_milliseconds);
-  const auto &config = request.request.execution.production;
-  const auto piece_areas = piece_areas_for(request);
+  const auto &config = resolve_production_strategy_config(
+      request.request.execution, ProductionOptimizerKind::brkga,
+      request.request.execution.production);
+  const auto piece_areas = detail::piece_areas_for(request);
   const auto generation_limit =
       control.iteration_limit > 0U ? control.iteration_limit : config.max_generations;
 
@@ -491,14 +395,9 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
   };
 
   if (request.expanded_pieces.empty()) {
-    NestingResult result{
-        .strategy = StrategyKind::irregular_production,
-        .total_parts = 0,
-        .budget = make_budget(control, time_budget, stopwatch, 0),
-        .stop_reason = StopReason::completed,
-        .search = replay,
-    };
-    return result;
+    return detail::driver_empty_result(StrategyKind::irregular_production,
+                                       std::move(replay), control, time_budget,
+                                       stopwatch);
   }
 
   std::vector<std::vector<double>> population;
@@ -533,9 +432,12 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
   bool hit_iteration_limit = false;
   ProgressThrottle throttle;
   std::unordered_set<OrderSignature, OrderSignatureHash> seen_signatures;
+  pack::PackerWorkspace local_workspace;
+  pack::PackerWorkspace &workspace =
+      control.workspace != nullptr ? *control.workspace : local_workspace;
 
   for (std::size_t generation = 0; generation < generation_limit; ++generation) {
-    if (interrupted(control, time_budget, stopwatch)) {
+    if (detail::driver_interrupted(control, time_budget, stopwatch)) {
       break;
     }
 
@@ -544,7 +446,7 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
     evaluated_population.reserve(population.size());
     for (std::size_t chromo_idx = 0; chromo_idx < population.size();
          ++chromo_idx) {
-      if (interrupted(control, time_budget, stopwatch)) {
+      if (detail::driver_interrupted(control, time_budget, stopwatch)) {
         break;
       }
 
@@ -559,7 +461,7 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
       seen_signatures.insert(sig);
 
       evaluated_population.push_back(evaluate_genes(
-          population[chromo_idx], request, control, time_budget, stopwatch,
+          population[chromo_idx], request, control, workspace, time_budget, stopwatch,
           throttle, generation + 1U, generation_limit, chromo_idx,
           population.size()));
 
@@ -577,7 +479,7 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
             .placed_parts = best_placed,
             .total_parts = total,
             .layout = best.has_value() ? best->result.layout : pack::Layout{},
-            .budget = make_budget(control, time_budget, stopwatch,
+            .budget = detail::driver_make_budget(control, time_budget, stopwatch,
                                   iterations_completed),
             .stop_reason = StopReason::none,
             .phase = ProgressPhase::brkga_generation,
@@ -602,7 +504,7 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
       plateau_generations = 0;
       ++sequence;
       emit_best_progress(control, sequence, generation + 1U, *best,
-                         make_budget(control, time_budget, stopwatch,
+                         detail::driver_make_budget(control, time_budget, stopwatch,
                                      iterations_completed),
                          replay, ProgressPhase::brkga_generation,
                          std::format("Generation {}/{} (improved)",
@@ -613,7 +515,7 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
           control, throttle, generation + 1U, generation_limit,
           best->metrics.placed_parts, best->result.total_parts,
           best->metrics.utilization,
-          make_budget(control, time_budget, stopwatch, iterations_completed),
+          detail::driver_make_budget(control, time_budget, stopwatch, iterations_completed),
           best->result.layout);
     }
 
@@ -621,7 +523,7 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
       hit_iteration_limit = control.iteration_limit > 0U;
       break;
     }
-    if (interrupted(control, time_budget, stopwatch)) {
+    if (detail::driver_interrupted(control, time_budget, stopwatch)) {
       break;
     }
 
@@ -674,23 +576,24 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
     NestingResult result{
         .strategy = StrategyKind::irregular_production,
         .total_parts = request.expanded_pieces.size(),
-        .budget = make_budget(control, time_budget, stopwatch,
+        .budget = detail::driver_make_budget(control, time_budget, stopwatch,
                               iterations_completed),
         .stop_reason =
-            current_stop_reason(control, time_budget, stopwatch, hit_iteration_limit),
+            detail::driver_stop_reason(control, time_budget, stopwatch, hit_iteration_limit),
         .search = std::move(replay),
     };
     return result;
   }
 
-  if (!interrupted(control, time_budget, stopwatch) && config.polishing_passes > 0U) {
+  if (!detail::driver_interrupted(control, time_budget, stopwatch) && !hit_iteration_limit &&
+      config.polishing_passes > 0U) {
     if (control.on_progress) {
       control.on_progress(ProgressSnapshot{
           .sequence = 0,
           .placed_parts = best->metrics.placed_parts,
           .total_parts = best->result.total_parts,
           .layout = {},
-          .budget = make_budget(control, time_budget, stopwatch, iterations_completed),
+          .budget = detail::driver_make_budget(control, time_budget, stopwatch, iterations_completed),
           .stop_reason = StopReason::none,
           .phase = ProgressPhase::brkga_polishing,
           .phase_detail = "Polishing best solution",
@@ -698,24 +601,47 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
           .improved = false,
       });
     }
-    auto polished = polish_best(*best, request, control, time_budget, stopwatch,
-                                config, piece_areas, throttle);
+      auto polished = polish_best(*best, request, control, workspace, time_budget,
+                                  stopwatch, config, piece_areas, throttle);
     if (better_candidate(polished, *best)) {
       best = std::move(polished);
       ++sequence;
       emit_best_progress(control, sequence, iterations_completed, *best,
-                         make_budget(control, time_budget, stopwatch,
+                         detail::driver_make_budget(control, time_budget, stopwatch,
                                      iterations_completed),
                          replay, ProgressPhase::brkga_polishing,
                          "Polishing improved solution");
+    }
+
+    if (!detail::driver_interrupted(control, time_budget, stopwatch)) {
+      StripOptimizer strip_optimizer;
+      const auto optimized = strip_optimizer.optimize(
+          request, control, time_budget, stopwatch,
+          SolutionPoolEntry{
+              .order = order_from_genes(best->genes),
+              .metrics = best->metrics,
+              .result = best->result,
+          },
+          config);
+      if (better_metrics(optimized.best_solution.metrics, best->metrics)) {
+        best->genes = genes_from_order(optimized.best_solution.order);
+        best->metrics = optimized.best_solution.metrics;
+        best->result = optimized.best_solution.result;
+        ++sequence;
+        emit_best_progress(control, sequence, iterations_completed, *best,
+                           detail::driver_make_budget(control, time_budget, stopwatch,
+                                       iterations_completed),
+                           replay, ProgressPhase::brkga_polishing,
+                           "Strip optimization improved solution");
+      }
     }
   }
 
   NestingResult result = best->result;
   result.strategy = StrategyKind::irregular_production;
-  result.budget = make_budget(control, time_budget, stopwatch, iterations_completed);
+  result.budget = detail::driver_make_budget(control, time_budget, stopwatch, iterations_completed);
   result.stop_reason =
-      current_stop_reason(control, time_budget, stopwatch, hit_iteration_limit);
+      detail::driver_stop_reason(control, time_budget, stopwatch, hit_iteration_limit);
   result.search = std::move(replay);
   return result;
 }

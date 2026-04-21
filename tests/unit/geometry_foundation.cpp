@@ -2,9 +2,9 @@
 
 #include <algorithm>
 
+#include "geometry/concepts.hpp"
 #include "geometry/normalize.hpp"
 #include "geometry/polygon.hpp"
-#include "geometry/spatial_index.hpp"
 #include "geometry/transform.hpp"
 #include "geometry/validity.hpp"
 
@@ -16,8 +16,8 @@ using shiny::nesting::geom::Polygon;
 using shiny::nesting::geom::PolygonValidityIssue;
 using shiny::nesting::geom::PolygonWithHoles;
 using shiny::nesting::geom::ResolvedRotation;
+using shiny::nesting::geom::Ring;
 using shiny::nesting::geom::RotationIndex;
-using shiny::nesting::geom::SpatialIndex;
 using shiny::nesting::geom::Transform2;
 using shiny::nesting::geom::Vector2;
 
@@ -31,6 +31,15 @@ auto rectangle(const double width, const double height) -> PolygonWithHoles {
 }
 
 } // namespace
+
+static_assert(shiny::nesting::geom::PointGeometry<Point2>);
+static_assert(shiny::nesting::geom::RingGeometry<Ring>);
+static_assert(shiny::nesting::geom::PolygonGeometry<Polygon>);
+static_assert(shiny::nesting::geom::PolygonWithHolesGeometry<PolygonWithHoles>);
+static_assert(shiny::nesting::geom::TransformGeometry<Point2>);
+static_assert(shiny::nesting::geom::TransformGeometry<Ring>);
+static_assert(shiny::nesting::geom::TransformGeometry<Polygon>);
+static_assert(shiny::nesting::geom::TransformGeometry<PolygonWithHoles>);
 
 TEST_CASE("geometry foundation handles convex, concave, and holed polygons",
           "[geometry][foundation]") {
@@ -64,7 +73,7 @@ TEST_CASE("geometry foundation handles convex, concave, and holed polygons",
 TEST_CASE("geometry foundation applies deterministic transforms",
           "[geometry][transform]") {
   const auto polygon = rectangle(2.0, 1.0);
-  const auto rotated = shiny::nesting::geom::rotate_polygon(
+  const auto rotated = shiny::nesting::geom::rotate(
       polygon, ResolvedRotation{.degrees = 90.0});
   const auto rotated_bounds = shiny::nesting::geom::compute_bounds(rotated);
 
@@ -113,16 +122,7 @@ TEST_CASE("geometry validity rejects invalid input", "[geometry][validity]") {
 
 TEST_CASE("geometry spatial index queries overlapping boxes",
           "[geometry][spatial-index]") {
-  SpatialIndex index(5.0);
-  index.insert(1, Box2{.min = {.x = 0.0, .y = 0.0},
-                       .max = {.x = 4.0, .y = 4.0}});
-  index.insert(2, Box2{.min = {.x = 7.0, .y = 7.0},
-                       .max = {.x = 9.0, .y = 9.0}});
-  index.insert(3, Box2{.min = {.x = 3.0, .y = 3.0},
-                       .max = {.x = 8.0, .y = 8.0}});
-
-  const auto matches = index.query(
-      Box2{.min = {.x = 2.0, .y = 2.0}, .max = {.x = 6.0, .y = 6.0}});
-
-  REQUIRE(matches == std::vector<std::uint32_t>{1U, 3U});
+  // Removed: bucket-grid `SpatialIndex` was superseded by Boost.Geometry
+  // `RTreeIndex`. See `geometry/rtree_index.hpp` and its dedicated tests.
+  SUCCEED("SpatialIndex deleted in favour of RTreeIndex");
 }

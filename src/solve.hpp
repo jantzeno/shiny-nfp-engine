@@ -11,6 +11,10 @@
 
 namespace shiny::nesting {
 
+namespace pack {
+struct PackerWorkspace;
+}
+
 enum class SeedProgressionMode : std::uint8_t {
   increment = 0,
   decrement = 1,
@@ -24,6 +28,7 @@ struct SolveControl {
   std::uint64_t time_limit_milliseconds{0};
   std::uint64_t random_seed{0};
   SeedProgressionMode seed_mode{SeedProgressionMode::increment};
+  pack::PackerWorkspace *workspace{nullptr};
 };
 
 [[nodiscard]] auto solve(const NestingRequest &request,

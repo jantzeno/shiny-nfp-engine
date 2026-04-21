@@ -13,6 +13,7 @@ enum class Status {
   invalid_input = 1,
   computation_failed = 2,
   cache_miss = 3,
+  not_implemented = 4,
 };
 
 /**

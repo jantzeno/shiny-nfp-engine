@@ -25,6 +25,7 @@ namespace shiny::nesting::pack {
  */
 struct PlacedPiece {
   place::Placement placement{};
+  std::uint64_t piece_geometry_revision{0};
   geom::ResolvedRotation resolved_rotation{};
   geom::PolygonWithHoles polygon{};
   place::PlacementCandidateSource source{
@@ -49,9 +50,11 @@ struct PlacedPiece {
 struct PlacementTraceEntry {
   std::uint32_t piece_id{0};
   std::uint32_t bin_id{0};
+    std::uint64_t piece_geometry_revision{0};
   geom::RotationIndex rotation_index{};
   geom::ResolvedRotation resolved_rotation{};
   geom::Point2 translation{};
+  bool mirrored{false};
   place::PlacementCandidateSource source{
       place::PlacementCandidateSource::constructive_boundary};
   bool opened_new_bin{false};
@@ -107,6 +110,24 @@ struct CutSegment {
   bool from_hole{false};
 };
 
+struct CutContourOrder {
+  struct LeadArc {
+    bool enabled{false};
+    geom::Point2 start{};
+    geom::Point2 end{};
+    geom::Point2 center{};
+    bool clockwise{true};
+  };
+
+  std::uint32_t bin_id{0};
+  std::uint32_t piece_id{0};
+  bool from_hole{false};
+  std::size_t order_index{0};
+  geom::Point2 pierce_point{};
+  LeadArc lead_in{};
+  LeadArc lead_out{};
+};
+
 /**
  * @brief Post-processed cut plan derived from a layout.
  *
@@ -119,6 +140,7 @@ struct CutSegment {
  */
 struct CutPlan {
   std::vector<CutSegment> segments{};
+  std::vector<CutContourOrder> contour_order{};
   double raw_cut_length{0.0};
   double total_cut_length{0.0};
   double removed_cut_length{0.0};

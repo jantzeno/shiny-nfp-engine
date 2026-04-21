@@ -40,6 +40,17 @@ namespace shiny::nesting::poly {
     -> std::vector<geom::PolygonWithHoles>;
 
 /**
+ * @brief Subtracts `obstacle` from every region in `regions`, in place.
+ *
+ * Replaces each region with the components of `region - obstacle`,
+ * concatenating the per-region difference outputs into the destination.
+ * Empty results (when an obstacle fully covers a region) collapse the
+ * region away. Used by both IFP and candidate-domain construction.
+ */
+auto subtract_region_set(std::vector<geom::PolygonWithHoles> &regions,
+                         const geom::PolygonWithHoles &obstacle) -> void;
+
+/**
  * @brief Computes the minimum Euclidean distance between two polygonal regions.
  *
  * @param lhs Left-hand polygonal region.

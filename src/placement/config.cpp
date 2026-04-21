@@ -51,7 +51,12 @@ auto PlacementConfig::is_valid() const -> bool {
     break;
   }
 
-  const auto &angles = allowed_rotations.angles_degrees;
+  if (!allowed_rotations.angles_degrees.empty() &&
+      allowed_rotations.range_degrees.has_value()) {
+    return false;
+  }
+
+  const auto angles = geom::materialize_rotations(allowed_rotations);
   if (angles.empty() || angles.size() > 360U) {
     return false;
   }
@@ -80,7 +85,7 @@ auto resolve_rotation(geom::RotationIndex rotation_index,
     return std::nullopt;
   }
 
-  const auto &angles = config.allowed_rotations.angles_degrees;
+  const auto angles = geom::materialize_rotations(config.allowed_rotations);
   if (rotation_index.value >= angles.size()) {
     return std::nullopt;
   }

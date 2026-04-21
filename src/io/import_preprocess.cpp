@@ -121,7 +121,7 @@ auto append_segment_samples(const ImportedPathSegment &segment,
 
   if (normalize_piece_origins) {
     const auto bounds = geom::compute_bounds(polygon);
-    polygon = geom::translate_polygon(
+    polygon = geom::translate(
         polygon, {.x = -bounds.min.x, .y = -bounds.min.y});
   }
   return geom::normalize_polygon(polygon);

@@ -9,9 +9,15 @@
 
 #include "packing/bounding_box_packer.hpp"
 #include "packing/irregular_constructive_packer.hpp"
+#include "packing/packer_workspace.hpp"
 #include "runtime/deterministic_rng.hpp"
 #include "runtime/timing.hpp"
+#include "search/alns_search.hpp"
 #include "search/brkga_search.hpp"
+#include "search/gdrr_search.hpp"
+#include "search/lahc_search.hpp"
+#include "search/simulated_annealing.hpp"
+#include "search/strategy_registry.hpp"
 
 namespace shiny::nesting {
 namespace {
@@ -142,8 +148,7 @@ auto solve(const NestingRequest &request, const SolveControl &control)
   runtime::Stopwatch stopwatch;
   const runtime::TimeBudget time_budget(control.time_limit_milliseconds);
 
-  switch (request.execution.strategy) {
-  case StrategyKind::bounding_box: {
+  if (request.execution.strategy == StrategyKind::bounding_box) {
     auto decoder_request =
         to_bounding_box_decoder_request(normalized_request.value());
     if (!decoder_request.ok()) {
@@ -222,7 +227,7 @@ auto solve(const NestingRequest &request, const SolveControl &control)
     };
     return result;
   }
-  case StrategyKind::irregular_constructive: {
+  if (request.execution.strategy == StrategyKind::irregular_constructive) {
     // Multi-start constructive: run the packer multiple times with different
     // seeds, keeping the best result.  Activates when the caller provides a
     // non-zero seed and doesn't explicitly cap iterations to 1.  The loop
@@ -238,6 +243,12 @@ auto solve(const NestingRequest &request, const SolveControl &control)
     }
 
     runtime::DeterministicRng meta_rng(control.random_seed);
+    std::optional<pack::PackerWorkspace> local_workspace;
+    pack::PackerWorkspace *workspace = control.workspace;
+    if (workspace == nullptr) {
+      local_workspace.emplace();
+      workspace = &*local_workspace;
+    }
     const std::size_t max_iterations =
         control.iteration_limit > 0 ? control.iteration_limit
                                     : std::numeric_limits<std::size_t>::max();
@@ -263,6 +274,7 @@ auto solve(const NestingRequest &request, const SolveControl &control)
       SolveControl iter_control{};
       iter_control.cancellation = control.cancellation;
       iter_control.random_seed = iter_seed;
+      iter_control.workspace = workspace;
       if (time_budget.enabled()) {
         const auto elapsed = stopwatch.elapsed_milliseconds();
         iter_control.time_limit_milliseconds =
@@ -360,13 +372,23 @@ auto solve(const NestingRequest &request, const SolveControl &control)
     best_result->stop_reason = final_stop_reason;
     return *best_result;
   }
-  case StrategyKind::irregular_production: {
-    search::BrkgaProductionSearch search;
-    return search.solve(normalized_request.value(), control);
-  }
+
+  const auto resolved_strategy =
+      search::StrategyRegistry::instance().resolve(request.execution);
+  if (resolved_strategy.run == nullptr) {
+    // A null `run` means the registry has no descriptor for the requested
+    // (strategy, production_optimizer) pair — typically because a built-in
+    // driver was unlinked or a custom strategy kind was never registered.
+    // Surfacing `invalid_input` here is the user-visible signal that the
+    // requested strategy is unavailable in this build.
+    return util::Status::invalid_input;
   }
 
-  return util::Status::invalid_input;
+  auto result = resolved_strategy.run(normalized_request.value(), control);
+  if (result.ok() && resolved_strategy.result_strategy_override.has_value()) {
+    result.value().strategy = *resolved_strategy.result_strategy_override;
+  }
+  return result;
 }
 
 } // namespace shiny::nesting

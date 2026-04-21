@@ -37,6 +37,7 @@ struct Placement {
   std::uint32_t bin_id{0};
   geom::RotationIndex rotation_index{};
   geom::Point2 translation{};
+  bool mirrored{false};
 };
 
 /**

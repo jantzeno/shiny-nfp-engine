@@ -1,10 +1,12 @@
 #pragma once
 
+#include <concepts>
 #include <cstdint>
 #include <optional>
-#include <span>
+#include <type_traits>
 #include <vector>
 
+#include "geometry/concepts.hpp"
 #include "types.hpp"
 
 namespace shiny::nesting::geom {
@@ -33,6 +35,13 @@ struct ResolvedRotation {
 struct Transform2 {
   RotationIndex rotation_index{};
   Vector2 translation{};
+  bool mirrored{false};
+};
+
+struct RotationRange {
+  double min_degrees{0.0};
+  double max_degrees{0.0};
+  double step_degrees{0.0};
 };
 
 /**
@@ -40,63 +49,121 @@ struct Transform2 {
  */
 struct DiscreteRotationSet {
   std::vector<double> angles_degrees{};
+  std::optional<RotationRange> range_degrees{};
 };
 
 [[nodiscard]] auto normalize_angle_degrees(double degrees) -> double;
 
-[[nodiscard]] auto translate_point(const Point2 &point, Vector2 translation)
+[[nodiscard]] auto materialize_rotations(const DiscreteRotationSet &rotations)
+    -> std::vector<double>;
+
+[[nodiscard]] auto rotation_count(const DiscreteRotationSet &rotations)
+    -> std::size_t;
+
+namespace detail {
+
+[[nodiscard]] auto translate_geometry(const Point2 &point, Vector2 translation)
     -> Point2;
 
-[[nodiscard]] auto translate_ring(std::span<const Point2> ring,
-                                  Vector2 translation) -> Ring;
+[[nodiscard]] auto translate_geometry(const Ring &ring, Vector2 translation)
+    -> Ring;
 
-[[nodiscard]] auto translate_polygon(const Polygon &polygon,
-                                     Vector2 translation) -> Polygon;
+[[nodiscard]] auto translate_geometry(const Polygon &polygon,
+                                      Vector2 translation) -> Polygon;
 
-[[nodiscard]] auto translate_polygon(const PolygonWithHoles &polygon,
-                                     Vector2 translation) -> PolygonWithHoles;
+[[nodiscard]] auto translate_geometry(const PolygonWithHoles &polygon,
+                                      Vector2 translation) -> PolygonWithHoles;
 
-[[nodiscard]] auto rotate_point(const Point2 &point, ResolvedRotation rotation)
+[[nodiscard]] auto mirror_geometry(const Point2 &point) -> Point2;
+
+[[nodiscard]] auto mirror_geometry(const Ring &ring) -> Ring;
+
+[[nodiscard]] auto mirror_geometry(const Polygon &polygon) -> Polygon;
+
+[[nodiscard]] auto mirror_geometry(const PolygonWithHoles &polygon)
+    -> PolygonWithHoles;
+
+[[nodiscard]] auto rotate_geometry(const Point2 &point, ResolvedRotation rotation)
     -> Point2;
 
-[[nodiscard]] auto rotate_ring(std::span<const Point2> ring,
-                               ResolvedRotation rotation) -> Ring;
+[[nodiscard]] auto rotate_geometry(const Ring &ring, ResolvedRotation rotation)
+    -> Ring;
 
-[[nodiscard]] auto rotate_polygon(const Polygon &polygon,
-                                  ResolvedRotation rotation) -> Polygon;
+[[nodiscard]] auto rotate_geometry(const Polygon &polygon,
+                                   ResolvedRotation rotation) -> Polygon;
 
-[[nodiscard]] auto rotate_polygon(const PolygonWithHoles &polygon,
-                                  ResolvedRotation rotation)
+[[nodiscard]] auto rotate_geometry(const PolygonWithHoles &polygon,
+                                   ResolvedRotation rotation)
     -> PolygonWithHoles;
 
-[[nodiscard]] auto apply_transform(const Point2 &point, ResolvedRotation rotation,
-                                   Vector2 translation) -> Point2;
+[[nodiscard]] auto apply_transform_geometry(const Point2 &point,
+                                            ResolvedRotation rotation,
+                                            Vector2 translation) -> Point2;
 
-[[nodiscard]] auto apply_transform(const Polygon &polygon,
-                                   ResolvedRotation rotation,
-                                   Vector2 translation) -> Polygon;
+[[nodiscard]] auto apply_transform_geometry(const Polygon &polygon,
+                                            ResolvedRotation rotation,
+                                            Vector2 translation) -> Polygon;
 
-[[nodiscard]] auto apply_transform(const PolygonWithHoles &polygon,
-                                   ResolvedRotation rotation,
-                                   Vector2 translation)
+[[nodiscard]] auto apply_transform_geometry(const PolygonWithHoles &polygon,
+                                            ResolvedRotation rotation,
+                                            Vector2 translation)
     -> PolygonWithHoles;
+
+[[nodiscard]] auto apply_transform_geometry(const Point2 &point,
+                                            const Transform2 &transform,
+                                            const DiscreteRotationSet &rotations)
+    -> std::optional<Point2>;
+
+[[nodiscard]] auto apply_transform_geometry(const Polygon &polygon,
+                                            const Transform2 &transform,
+                                            const DiscreteRotationSet &rotations)
+    -> std::optional<Polygon>;
+
+[[nodiscard]] auto apply_transform_geometry(
+    const PolygonWithHoles &polygon, const Transform2 &transform,
+    const DiscreteRotationSet &rotations)
+    -> std::optional<PolygonWithHoles>;
+
+} // namespace detail
 
 [[nodiscard]] auto resolve_rotation(RotationIndex rotation_index,
                                     const DiscreteRotationSet &rotations)
     -> std::optional<ResolvedRotation>;
 
-[[nodiscard]] auto apply_transform(const Point2 &point, const Transform2 &transform,
-                                   const DiscreteRotationSet &rotations)
-    -> std::optional<Point2>;
+template <TransformGeometry Geometry>
+[[nodiscard]] inline auto translate(const Geometry &geometry,
+                                    const Vector2 translation)
+    -> std::remove_cvref_t<Geometry> {
+  return detail::translate_geometry(geometry, translation);
+}
 
-[[nodiscard]] auto apply_transform(const Polygon &polygon,
-                                   const Transform2 &transform,
-                                   const DiscreteRotationSet &rotations)
-    -> std::optional<Polygon>;
+template <TransformGeometry Geometry>
+[[nodiscard]] inline auto mirror(const Geometry &geometry)
+    -> std::remove_cvref_t<Geometry> {
+  return detail::mirror_geometry(geometry);
+}
 
-[[nodiscard]] auto apply_transform(const PolygonWithHoles &polygon,
-                                   const Transform2 &transform,
-                                   const DiscreteRotationSet &rotations)
-    -> std::optional<PolygonWithHoles>;
+template <TransformGeometry Geometry>
+[[nodiscard]] inline auto rotate(const Geometry &geometry,
+                                 const ResolvedRotation rotation)
+    -> std::remove_cvref_t<Geometry> {
+  return detail::rotate_geometry(geometry, rotation);
+}
+
+template <PlaceableGeometry Geometry>
+[[nodiscard]] inline auto apply_transform(const Geometry &geometry,
+                                          const ResolvedRotation rotation,
+                                          const Vector2 translation)
+    -> std::remove_cvref_t<Geometry> {
+  return detail::apply_transform_geometry(geometry, rotation, translation);
+}
+
+template <PlaceableGeometry Geometry>
+[[nodiscard]] inline auto apply_transform(const Geometry &geometry,
+                                          const Transform2 &transform,
+                                          const DiscreteRotationSet &rotations)
+    -> std::optional<std::remove_cvref_t<Geometry>> {
+  return detail::apply_transform_geometry(geometry, transform, rotations);
+}
 
 } // namespace shiny::nesting::geom

@@ -7,38 +7,23 @@
 #include <vector>
 
 #include "geometry/normalize.hpp"
+#include "geometry/polygon.hpp"
 #include "geometry/types.hpp"
+#include "geometry/vector_ops.hpp"
 #include "predicates/orientation.hpp"
 #include "predicates/point_location.hpp"
 
 namespace shiny::nesting::poly {
 namespace detail {
 
-[[nodiscard]] auto squared_distance(const geom::Point2 &lhs,
-                                    const geom::Point2 &rhs) -> double {
-  const auto dx = lhs.x - rhs.x;
-  const auto dy = lhs.y - rhs.y;
-  return dx * dx + dy * dy;
-}
-
 [[nodiscard]] auto distance_to_segment(const geom::Point2 &point,
                                        const geom::Segment2 &segment) -> double {
-  const auto dx = segment.end.x - segment.start.x;
-  const auto dy = segment.end.y - segment.start.y;
-  const auto length_squared = dx * dx + dy * dy;
+  const auto edge = geom::vector_between(segment.start, segment.end);
+  const auto length_squared = geom::dot(edge, edge);
   if (length_squared <= std::numeric_limits<double>::epsilon()) {
-    return std::sqrt(squared_distance(point, segment.start));
+    return geom::point_distance(point, segment.start);
   }
-
-  const auto t = std::clamp(((point.x - segment.start.x) * dx +
-                             (point.y - segment.start.y) * dy) /
-                                length_squared,
-                            0.0, 1.0);
-  const geom::Point2 closest{
-      .x = segment.start.x + t * dx,
-      .y = segment.start.y + t * dy,
-  };
-  return std::sqrt(squared_distance(point, closest));
+  return geom::point_to_segment_distance(point, segment);
 }
 
 void simplify_open_chain_douglas_peucker(std::span<const geom::Point2> chain,

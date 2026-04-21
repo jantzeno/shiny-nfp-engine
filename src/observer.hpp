@@ -25,6 +25,7 @@ enum class ProgressPhase : std::uint8_t {
   brkga_generation = 2,
   brkga_polishing = 3,
   completed = 4,
+  metaheuristic_iteration = 5,
 };
 
 struct BudgetState {

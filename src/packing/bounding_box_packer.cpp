@@ -13,9 +13,16 @@
 #include "placement/config.hpp"
 #include "polygon_ops/boolean_ops.hpp"
 #include "polygon_ops/merge_region.hpp"
+#include "runtime/hash.hpp"
 
 namespace shiny::nesting::pack {
 namespace {
+
+[[nodiscard]] auto effective_geometry_revision(const std::uint64_t revision,
+                                               const bool mirrored)
+    -> std::uint64_t {
+  return mirrored ? (revision ^ runtime::hash::kGoldenRatio64) : revision;
+}
 
 constexpr double kAreaEpsilon = 1e-9;
 constexpr double kCoordinateSnap = 1e-10;
@@ -997,12 +1004,13 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
   SHINY_DEBUG("BoundingBoxPacker::find_best_for_bin: piece_id={} bin_id={} "
               "shelves={} rotations={}",
               piece.piece_id, state.bin_state.bin_id, state.shelves.size(),
-              request.config.placement.allowed_rotations.angles_degrees.size());
+              geom::rotation_count(request.config.placement.allowed_rotations));
   std::optional<PlacementCandidate> best;
 
+  const auto rotation_count =
+      geom::rotation_count(request.config.placement.allowed_rotations);
   for (std::size_t rotation_value = 0;
-       rotation_value <
-       request.config.placement.allowed_rotations.angles_degrees.size();
+       rotation_value < rotation_count;
        ++rotation_value) {
     const geom::RotationIndex rotation_index{
         static_cast<std::uint16_t>(rotation_value)};
@@ -1015,42 +1023,50 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
       continue;
     }
 
-    const auto rotated_piece =
-        rotate_polygon(piece.polygon, resolved_rotation->degrees);
-    if (rotated_piece.outer.empty()) {
-      continue;
-    }
+    const auto mirror_count = piece.allow_mirror ? 2U : 1U;
+    for (std::size_t mirror_index = 0; mirror_index < mirror_count; ++mirror_index) {
+      const bool mirrored = mirror_index == 1U;
+      const auto source_polygon =
+          mirrored ? geom::mirror(piece.polygon) : piece.polygon;
+      const auto rotated_piece =
+          rotate_polygon(source_polygon, resolved_rotation->degrees);
+      if (rotated_piece.outer.empty()) {
+        continue;
+      }
 
-    const auto rotated_bounds = compute_bounds(rotated_piece);
-    const auto width = rotated_bounds.max.x - rotated_bounds.min.x;
-    const auto height = rotated_bounds.max.y - rotated_bounds.min.y;
-    if (width < 0.0 || height < 0.0) {
-      continue;
-    }
+      const auto rotated_bounds = compute_bounds(rotated_piece);
+      const auto width = rotated_bounds.max.x - rotated_bounds.min.x;
+      const auto height = rotated_bounds.max.y - rotated_bounds.min.y;
+      if (width < 0.0 || height < 0.0) {
+        continue;
+      }
 
-    std::optional<PlacementCandidate> rotation_best;
-    switch (request.config.bounding_box.heuristic) {
-    case BoundingBoxHeuristic::shelf:
-      rotation_best = find_best_shelf_candidate(
-          state, piece, request, rotated_piece, rotated_bounds,
-          *resolved_rotation, rotation_index);
-      break;
-    case BoundingBoxHeuristic::skyline:
-      rotation_best = find_best_skyline_candidate(
-          state, piece, request, rotated_piece, rotated_bounds,
-          *resolved_rotation, rotation_index);
-      break;
-    case BoundingBoxHeuristic::free_rectangle_backfill:
-      rotation_best = find_best_free_rectangle_candidate(
-          state, piece, request, rotated_piece, rotated_bounds,
-          *resolved_rotation, rotation_index);
-      break;
-    }
+      std::optional<PlacementCandidate> rotation_best;
+      switch (request.config.bounding_box.heuristic) {
+      case BoundingBoxHeuristic::shelf:
+        rotation_best = find_best_shelf_candidate(
+            state, piece, request, rotated_piece, rotated_bounds,
+            *resolved_rotation, rotation_index);
+        break;
+      case BoundingBoxHeuristic::skyline:
+        rotation_best = find_best_skyline_candidate(
+            state, piece, request, rotated_piece, rotated_bounds,
+            *resolved_rotation, rotation_index);
+        break;
+      case BoundingBoxHeuristic::free_rectangle_backfill:
+        rotation_best = find_best_free_rectangle_candidate(
+            state, piece, request, rotated_piece, rotated_bounds,
+            *resolved_rotation, rotation_index);
+        break;
+      }
 
-    if (rotation_best.has_value() &&
-        (!best.has_value() ||
-         better_candidate(state, *rotation_best, *best, request.policy))) {
-      best = std::move(rotation_best);
+      if (rotation_best.has_value()) {
+        rotation_best->placement.mirrored = mirrored;
+        if (!best.has_value() ||
+            better_candidate(state, *rotation_best, *best, request.policy)) {
+          best = std::move(rotation_best);
+        }
+      }
     }
   }
 
@@ -1080,6 +1096,8 @@ void apply_selection(BinPackingState &state, const PieceInput &piece,
 
   state.bin_state.placements.push_back({
       .placement = selection.placement,
+      .piece_geometry_revision =
+          effective_geometry_revision(piece.geometry_revision, selection.placement.mirrored),
       .resolved_rotation = selection.resolved_rotation,
       .polygon = translated_piece,
       .source = place::PlacementCandidateSource::bin_boundary,
@@ -1130,9 +1148,12 @@ void apply_selection(BinPackingState &state, const PieceInput &piece,
   trace.push_back({
       .piece_id = piece.piece_id,
       .bin_id = state.bin_state.bin_id,
+      .piece_geometry_revision =
+          effective_geometry_revision(piece.geometry_revision, selection.placement.mirrored),
       .rotation_index = selection.placement.rotation_index,
       .resolved_rotation = selection.resolved_rotation,
       .translation = selection.placement.translation,
+      .mirrored = selection.placement.mirrored,
       .source = place::PlacementCandidateSource::bin_boundary,
       .opened_new_bin = opened_new_bin,
       .inside_hole = false,
@@ -1151,7 +1172,7 @@ decode_single(const DecoderRequest &request,
       "rotations={} clearance={}",
       request.pieces.size(), request.bins.size(),
       static_cast<std::uint32_t>(request.policy),
-      request.config.placement.allowed_rotations.angles_degrees.size(),
+      geom::rotation_count(request.config.placement.allowed_rotations),
       request.config.placement.part_clearance);
   if (!request.config.is_valid() || request.bins.empty()) {
     SHINY_WARN(

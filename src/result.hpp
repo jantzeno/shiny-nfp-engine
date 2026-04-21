@@ -10,6 +10,10 @@ namespace shiny::nesting {
 enum class OptimizerKind : std::uint8_t {
   none = 0,
   brkga = 1,
+  simulated_annealing = 2,
+  alns = 3,
+  gdrr = 4,
+  lahc = 5,
 };
 
 struct SearchProgressEntry {
