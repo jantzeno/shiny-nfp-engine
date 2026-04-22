@@ -1,6 +1,6 @@
 // MTG nesting matrix — Section B: per-bed start-corner override matrix.
 //
-// For each algorithm in {bounding_box, irregular_constructive} this file
+// For each algorithm in {bounding_box, sequential_backtrack} this file
 // exercises the 4x4 cartesian product of `place::PlacementStartCorner`
 // values for bed1 x bed2 (16 combinations). Each cell asserts full
 // placement. After all 16 combinations have run for an algorithm we also
@@ -40,8 +40,8 @@ void apply_strategy_bounding_box(MtgRequestOptions &options) {
   options.bounding_box_deterministic_attempts = 1;
 }
 
-void apply_strategy_irregular_constructive(MtgRequestOptions &options) {
-  options.strategy = StrategyKind::irregular_constructive;
+void apply_strategy_sequential_backtrack(MtgRequestOptions &options) {
+  options.strategy = StrategyKind::sequential_backtrack;
   options.irregular = {};
 }
 
@@ -86,7 +86,7 @@ void run_corner_matrix(const MtgFixture &fixture,
   }
 
   // Strong diversity check: each of the 4 bed-1 corners should produce a
-  // distinct bed-1 layout. If this trips on the irregular_constructive
+  // distinct bed-1 layout. If this trips on the sequential_backtrack
   // (slow) lane it is a potential engine signal that the per-bed corner
   // override is being ignored — keep the assertion tight so regressions
   // surface.
@@ -110,8 +110,8 @@ TEST_CASE("mtg section B start-corner override matrix (bounding_box)",
   run_corner_matrix(fixture, &apply_strategy_bounding_box);
 }
 
-TEST_CASE("mtg section B start-corner override matrix (irregular_constructive)",
-          "[mtg][nesting-matrix][start-corners][irregular-constructive][.][slow]") {
+TEST_CASE("mtg section B start-corner override matrix (sequential_backtrack)",
+          "[mtg][nesting-matrix][start-corners][sequential-backtrack][.][slow]") {
   const auto fixture = load_mtg_fixture();
-  run_corner_matrix(fixture, &apply_strategy_irregular_constructive);
+  run_corner_matrix(fixture, &apply_strategy_sequential_backtrack);
 }

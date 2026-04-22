@@ -6,7 +6,7 @@
 
 // The free `register_*_strategy` functions declared in
 // `search/strategy_catalog.hpp` and defined alongside each driver
-// (`bounding_box`, `irregular_constructive`, `irregular_production`,
+// (`bounding_box`, `sequential_backtrack`, `metaheuristic_search`,
 // `simulated_annealing`, `alns`, `gdrr`, `lahc`) are wired into the
 // singleton exclusively by `ensure_builtin_strategy_registrations()` (invoked
 // from `StrategyRegistry::resolve`). For static-link builds — where there is
@@ -79,7 +79,7 @@ auto StrategyRegistry::resolve(const ExecutionPolicy &execution) const
     -> ResolvedStrategy {
   ensure_builtin_strategy_registrations();
 
-  if (execution.strategy == StrategyKind::irregular_production) {
+  if (execution.strategy == StrategyKind::metaheuristic_search) {
     const auto *production = find(execution.production_optimizer);
     if (production == nullptr) {
       return {};
@@ -87,7 +87,7 @@ auto StrategyRegistry::resolve(const ExecutionPolicy &execution) const
     return {
         .name = production->name,
         .run = production->run,
-        .result_strategy_override = StrategyKind::irregular_production,
+        .result_strategy_override = StrategyKind::metaheuristic_search,
     };
   }
 

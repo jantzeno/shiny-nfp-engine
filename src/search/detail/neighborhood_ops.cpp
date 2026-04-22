@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "geometry/polygon.hpp"
-#include "packing/irregular_constructive_packer.hpp"
+#include "packing/sequential_backtrack_packer.hpp"
 #include "runtime/hash.hpp"
 #include "search/disruption.hpp"
 
@@ -371,7 +371,7 @@ auto OrderEvaluator::evaluate(std::span<const std::size_t> order,
     evaluated.forced_rotations.assign(evaluated.order.size(), std::nullopt);
   }
 
-  pack::IrregularConstructivePacker packer;
+  pack::SequentialBacktrackPacker packer;
   SolveControl decode_control{};
   decode_control.cancellation = control_.cancellation;
   decode_control.random_seed = seed_from_order(order, evaluated.forced_rotations,
@@ -394,7 +394,7 @@ auto OrderEvaluator::evaluate(std::span<const std::size_t> order,
     return evaluated;
   }
 
-  evaluated.result.strategy = StrategyKind::irregular_constructive;
+  evaluated.result.strategy = StrategyKind::sequential_backtrack;
   evaluated.result.total_parts = request_.expanded_pieces.size();
   evaluated.result.stop_reason = StopReason::invalid_request;
   return evaluated;

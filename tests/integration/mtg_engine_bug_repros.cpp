@@ -1,13 +1,21 @@
-// MTG engine bug reproductions.
+// MTG engine regressions.
 //
-// Each TEST_CASE here pins a single, minimal repro for a real engine bug
-// surfaced by the MTG nesting matrix work. They are hidden from the default
-// lane (`[.]`) and tagged `[broken]` so they can be selected on demand and
-// CI can later mark them as expected-failures. Asserting the EXPECTED
-// behavior means each case currently FAILS — that failure IS the repro.
-// When an engine fix lands, the case will pass; at that point remove the
-// `[broken]` tag (and the `[.]` if appropriate) to bring it into the default
-// lane.
+// Each TEST_CASE here pins a single, minimal regression for an engine bug
+// surfaced by the MTG nesting matrix work. The cases stay hidden from the
+// default lane (`[.]`) so they remain cheap, targeted diagnostics even after
+// the broader matrix absorbs the same contract.
+//
+// Milestone-4 classification:
+// - long-term product contracts live in the fast MTG lane
+//   (bounding_box_engine_surface plus the named algorithm suites and broad
+//   matrix) for rotations, mirror, quantity, priority, progress,
+//   cancellation, and engine-flag toggles
+// - this file keeps one minimal passing regression per formerly broken bug
+// - test/documentation clarifications already locked in elsewhere:
+//   the small-population BRKGA validity rule is current contract,
+//   `CancellationSource::request_stop()` is the real API, and the rectangle MTG
+//   fixture is breadth-first rather than the only rotation-sensitive proof
+//   surface
 
 #include <algorithm>
 #include <cstddef>
@@ -57,8 +65,8 @@ namespace {
 // fixture piece individually fits its source bed, yet bb-shelf ends with
 // 17/18 placed.
 // -----------------------------------------------------------------------------
-TEST_CASE("REPRO: bb-shelf pinned packing leaves one piece unplaced",
-          "[mtg][engine-bug-repro][bb-pinned][.][broken]") {
+TEST_CASE("REGRESSION: bb-shelf pinned packing places every source-pinned piece",
+          "[mtg][engine-bug-repro][bb-pinned][.]") {
   const auto fixture = load_mtg_fixture();
 
   MtgRequestOptions options{};
@@ -85,20 +93,18 @@ TEST_CASE("REPRO: bb-shelf pinned packing leaves one piece unplaced",
                                  << " (unplaced "
                                  << solved.value().layout.unplaced_piece_ids.size()
                                  << ")");
-  INFO("If this passes, the engine bug has been fixed; please remove the "
-       "[broken] tag.");
-  // Expected: 18; observed: 17.
   REQUIRE(placed == static_cast<std::size_t>(kBaselinePieceCount));
 }
 
 // -----------------------------------------------------------------------------
-// Repro 2: allowed_bin_ids violated when selected_bin_ids restricts to the
-// other bed. Per-piece allowed_bin_ids must be honored regardless of the
-// bin-selection filter; the offending piece should land in
-// `unplaced_piece_ids`, not be silently relocated to the selected bed.
+// Regression 2: historical allowed_bin_ids/selected_bin_ids asymmetry. This is the
+// Milestone-2 ownership boundary for request-surface semantics: per-piece
+// allowed_bin_ids must be honored after selected-bin filtering, and an empty
+// effective intersection must leave the piece unplaced rather than silently
+// relocating it to the selected bed.
 // -----------------------------------------------------------------------------
-TEST_CASE("REPRO: allowed_bin_ids violated when selected_bin_ids restricts to other bed",
-          "[mtg][engine-bug-repro][allowed-bin-ids][.][broken]") {
+TEST_CASE("REGRESSION: allowed_bin_ids remains enforced under selected_bin_ids",
+          "[mtg][engine-bug-repro][allowed-bin-ids][.]") {
   const auto fixture = load_mtg_fixture();
 
   SECTION("selected={bed1}, override one bed-2-source piece to allowed={bed2}") {
@@ -201,11 +207,11 @@ TEST_CASE("REPRO: allowed_bin_ids violated when selected_bin_ids restricts to ot
 // -----------------------------------------------------------------------------
 // Repro 3: BB heuristic emits placements that violate the requested spacing.
 //
-// In ~9 of 108 BB-heuristic cells (heuristic × spacing × policy ×
-// deterministic_attempts) two placements on bin 1 are too close — the gap
-// between their AABBs is less than the requested `part_spacing_mm`. This
-// repros the cluster of 9 spacing-violation failures with the canonical
-// tuple identified by enumerating Section C cells:
+// Historical spacing regression: in ~9 of 108 BB-heuristic cells
+// (heuristic × spacing × policy × deterministic_attempts) two placements on
+// bin 1 were too close — the gap between their AABBs was less than the
+// requested `part_spacing_mm`. Keep the canonical tuple below as a hidden
+// passing regression so the skyline clearance model stays pinned:
 //
 //   heuristic = skyline, spacing = 1.0 mm, deterministic_attempts = 1,
 //   placement_policy = bottom_left, all beds, overflow=true, maintain=false,
@@ -221,8 +227,8 @@ TEST_CASE("REPRO: allowed_bin_ids violated when selected_bin_ids restricts to ot
 // not raw-overlapping, but the gap between their AABBs is < spacing. This
 // matches the fixture's `boxes_overlap(a, b, effective_spacing)` check.
 // -----------------------------------------------------------------------------
-TEST_CASE("REPRO: bb heuristic emits overlapping placements",
-          "[mtg][engine-bug-repro][bb-overlap][.][broken]") {
+TEST_CASE("REGRESSION: bb heuristic honors requested spacing",
+          "[mtg][engine-bug-repro][bb-overlap][.]") {
   const auto fixture = load_mtg_fixture();
 
   MtgRequestOptions options{};
@@ -244,19 +250,6 @@ TEST_CASE("REPRO: bb heuristic emits overlapping placements",
   auto solved = solve(request, control);
   REQUIRE(solved.has_value());
 
-  // Spacing-aware overlap: pieces overlap if the gap between their AABBs
-  // is less than `part_spacing_mm`. Mirrors the fixture's `boxes_overlap`
-  // helper. A small slack (1e-3 mm) accounts for floating-point noise.
-  const double effective_spacing = std::max(0.0, options.part_spacing_mm - 1e-3);
-  auto overlap_with_spacing = [effective_spacing](const geom::Box2 &a,
-                                                  const geom::Box2 &b) {
-    const double half = effective_spacing * 0.5;
-    return !(a.max.x + half <= b.min.x - half ||
-             b.max.x + half <= a.min.x - half ||
-             a.max.y + half <= b.min.y - half ||
-             b.max.y + half <= a.min.y - half);
-  };
-
   for (const auto &bin : solved.value().layout.bins) {
     if (bin.bin_id != kBed1Id) {
       continue;
@@ -273,7 +266,8 @@ TEST_CASE("REPRO: bb heuristic emits overlapping placements",
              << box_b.min.x << "," << box_b.min.y << "]-[" << box_b.max.x
              << "," << box_b.max.y << "] (required spacing "
              << options.part_spacing_mm << " mm)");
-        REQUIRE_FALSE(overlap_with_spacing(box_a, box_b));
+        REQUIRE_FALSE(
+            boxes_violate_spacing(box_a, box_b, options.part_spacing_mm, 1e-3));
       }
     }
   }

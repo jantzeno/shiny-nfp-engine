@@ -92,7 +92,7 @@ auto require_same_trace(const shiny::nesting::pack::Layout &lhs,
 TEST_CASE("irregular constructive solver places hole-contained parts and emits progress",
           "[solve][irregular][hole][progress]") {
   NestingRequest request;
-  request.execution.strategy = StrategyKind::irregular_constructive;
+  request.execution.strategy = StrategyKind::sequential_backtrack;
   request.execution.enable_part_in_part_placement = true;
   request.execution.default_rotations = {{0.0}};
 
@@ -146,7 +146,7 @@ TEST_CASE("irregular constructive solver places hole-contained parts and emits p
 TEST_CASE("irregular constructive solver honors exclusion zones and allowed bins",
           "[solve][irregular][exclusion][bins]") {
   NestingRequest request;
-  request.execution.strategy = StrategyKind::irregular_constructive;
+  request.execution.strategy = StrategyKind::sequential_backtrack;
   request.execution.default_rotations = {{0.0}};
 
   request.bins.push_back(BinRequest{
@@ -202,7 +202,7 @@ TEST_CASE("irregular constructive solver honors exclusion zones and allowed bins
 TEST_CASE("irregular constructive solver is deterministic for fixed input",
           "[solve][irregular][deterministic]") {
   NestingRequest request;
-  request.execution.strategy = StrategyKind::irregular_constructive;
+  request.execution.strategy = StrategyKind::sequential_backtrack;
   request.execution.default_rotations = {{0.0, 90.0}};
 
   request.bins.push_back(BinRequest{
@@ -244,7 +244,7 @@ TEST_CASE("irregular constructive solver is deterministic for fixed input",
 TEST_CASE("irregular constructive solver uses NFP perfect candidates when requested",
           "[solve][irregular][nfp][candidates]") {
   NestingRequest request;
-  request.execution.strategy = StrategyKind::irregular_constructive;
+  request.execution.strategy = StrategyKind::sequential_backtrack;
   request.execution.default_rotations = {{0.0}};
   request.execution.irregular.candidate_strategy = CandidateStrategy::nfp_perfect;
   request.execution.irregular.piece_ordering = PieceOrdering::input;
@@ -274,7 +274,7 @@ TEST_CASE("irregular constructive solver uses NFP perfect candidates when reques
 TEST_CASE("irregular constructive solver honors configured piece ordering",
           "[solve][irregular][ordering]") {
   NestingRequest request;
-  request.execution.strategy = StrategyKind::irregular_constructive;
+  request.execution.strategy = StrategyKind::sequential_backtrack;
   request.execution.default_rotations = {{0.0}};
   request.execution.irregular.piece_ordering = PieceOrdering::largest_area_first;
 
@@ -301,7 +301,7 @@ TEST_CASE("irregular constructive solver honors configured piece ordering",
 TEST_CASE("irregular constructive shared workspace preserves repeated results",
           "[solve][irregular][workspace]") {
   NestingRequest request;
-  request.execution.strategy = StrategyKind::irregular_constructive;
+  request.execution.strategy = StrategyKind::sequential_backtrack;
   request.execution.default_rotations = {{0.0, 90.0}};
 
   request.bins.push_back(BinRequest{
@@ -340,7 +340,7 @@ TEST_CASE("irregular constructive shared workspace preserves repeated results",
 TEST_CASE("irregular constructive backtracking can free a hole for a blocked part",
           "[solve][irregular][backtracking]") {
   NestingRequest baseline_request;
-  baseline_request.execution.strategy = StrategyKind::irregular_constructive;
+  baseline_request.execution.strategy = StrategyKind::sequential_backtrack;
   baseline_request.execution.enable_part_in_part_placement = true;
   baseline_request.execution.default_rotations = {{0.0}};
   baseline_request.execution.irregular.piece_ordering = PieceOrdering::input;
@@ -393,7 +393,7 @@ TEST_CASE("irregular constructive backtracking can free a hole for a blocked par
 TEST_CASE("failed irregular constructive backtracking rolls back trial state",
           "[solve][irregular][backtracking][rollback]") {
   NestingRequest baseline_request;
-  baseline_request.execution.strategy = StrategyKind::irregular_constructive;
+  baseline_request.execution.strategy = StrategyKind::sequential_backtrack;
   baseline_request.execution.default_rotations = {{0.0}};
 
   baseline_request.bins.push_back(BinRequest{
@@ -429,7 +429,7 @@ TEST_CASE("failed irregular constructive backtracking rolls back trial state",
 TEST_CASE("irregular constructive compaction and backtracking stay compatible",
           "[solve][irregular][backtracking][compaction]") {
   NestingRequest request;
-  request.execution.strategy = StrategyKind::irregular_constructive;
+  request.execution.strategy = StrategyKind::sequential_backtrack;
   request.execution.enable_part_in_part_placement = true;
   request.execution.default_rotations = {{0.0}};
   request.execution.irregular.enable_backtracking = true;
@@ -486,7 +486,7 @@ TEST_CASE("backtracking trial that shrinks the trace then fails fully restores i
   // appended entries — the path that historically depended on a fragile
   // pre/post size diff instead of an explicit appended counter.
   NestingRequest baseline_request;
-  baseline_request.execution.strategy = StrategyKind::irregular_constructive;
+  baseline_request.execution.strategy = StrategyKind::sequential_backtrack;
   baseline_request.execution.default_rotations = {{0.0}};
 
   baseline_request.bins.push_back(BinRequest{

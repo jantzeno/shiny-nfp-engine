@@ -21,8 +21,10 @@
 #define NANOSVG_IMPLEMENTATION
 #include "nanosvg.h"
 
+#include "geometry/transform.hpp"
 #include "geometry/types.hpp"
 #include "observer.hpp"
+#include "packing/common.hpp"
 #include "packing/config.hpp"
 #include "packing/layout.hpp"
 #include "placement/config.hpp"
@@ -191,28 +193,110 @@ struct ParsedShape {
          inner.max.y <= outer.max.y + kInvariantTolerance;
 }
 
-[[nodiscard]] auto boxes_overlap(const geom::Box2 &a, const geom::Box2 &b,
-                                 double spacing) -> bool {
-  // Treat boxes as overlapping if they intersect when each is inflated
-  // by spacing/2 on every side. Equivalent to checking gap < spacing.
-  const double half = spacing * 0.5;
-  return !(a.max.x + half <= b.min.x - half ||
-           b.max.x + half <= a.min.x - half ||
-           a.max.y + half <= b.min.y - half ||
-           b.max.y + half <= a.min.y - half);
+struct PieceValidationLookups {
+  std::unordered_map<std::uint32_t, const MtgPiece *> fixture_piece_by_id;
+  std::unordered_map<std::uint32_t, const PieceRequest *> request_piece_by_id;
+};
+
+[[nodiscard]] auto make_rect_bed(std::uint32_t bed_id, double width_mm,
+                                 double height_mm) -> MtgBed {
+  MtgBed bed{};
+  bed.bed_id = bed_id;
+  bed.width_mm = width_mm;
+  bed.height_mm = height_mm;
+  bed.polygon = rect_polygon(0.0, 0.0, width_mm, height_mm);
+  return bed;
 }
 
-[[nodiscard]] auto piece_lookup(const MtgFixture &fixture)
-    -> std::unordered_map<std::uint32_t, const MtgPiece *> {
-  std::unordered_map<std::uint32_t, const MtgPiece *> map;
-  map.reserve(fixture.pieces.size());
+[[nodiscard]] auto make_rect_piece(std::uint32_t piece_id, std::string label,
+                                   std::uint32_t source_bed_id, double width_mm,
+                                   double height_mm) -> MtgPiece {
+  MtgPiece piece{};
+  piece.piece_id = piece_id;
+  piece.label = std::move(label);
+  piece.source_bed_id = source_bed_id;
+  piece.width_mm = width_mm;
+  piece.height_mm = height_mm;
+  piece.polygon = rect_polygon(0.0, 0.0, width_mm, height_mm);
+  return piece;
+}
+
+[[nodiscard]] auto effective_rotation_set(
+    const PieceRequest &piece,
+    const ExecutionPolicy &execution) -> const geom::DiscreteRotationSet & {
+  return piece.allowed_rotations.has_value() ? *piece.allowed_rotations
+                                             : execution.default_rotations;
+}
+
+[[nodiscard]] auto resolve_piece_rotation(
+    const PieceRequest &piece, const ExecutionPolicy &execution,
+    const geom::RotationIndex rotation_index) -> std::optional<geom::ResolvedRotation> {
+  return geom::resolve_rotation(rotation_index,
+                                effective_rotation_set(piece, execution));
+}
+
+[[nodiscard]] auto build_piece_validation_lookups(const MtgFixture &fixture,
+                                                  const NestingRequest &request)
+    -> PieceValidationLookups {
+  PieceValidationLookups lookups{};
+
+  std::unordered_map<std::uint32_t, const MtgPiece *> source_fixture_pieces;
+  source_fixture_pieces.reserve(fixture.pieces.size());
   for (const auto &piece : fixture.pieces) {
-    map.emplace(piece.piece_id, &piece);
+    source_fixture_pieces.emplace(piece.piece_id, &piece);
   }
-  return map;
+
+  std::unordered_map<std::uint32_t, const PieceRequest *> source_request_pieces;
+  source_request_pieces.reserve(request.pieces.size());
+  for (const auto &piece : request.pieces) {
+    source_request_pieces.emplace(piece.piece_id, &piece);
+  }
+
+  const auto normalized = normalize_request(request);
+  if (normalized.has_value()) {
+    for (const auto &expanded_piece : normalized.value().expanded_pieces) {
+      const auto fixture_it =
+          source_fixture_pieces.find(expanded_piece.source_piece_id);
+      const auto request_it =
+          source_request_pieces.find(expanded_piece.source_piece_id);
+      if (fixture_it == source_fixture_pieces.end() ||
+          request_it == source_request_pieces.end()) {
+        continue;
+      }
+      lookups.fixture_piece_by_id.emplace(expanded_piece.expanded_piece_id,
+                                          fixture_it->second);
+      lookups.request_piece_by_id.emplace(expanded_piece.expanded_piece_id,
+                                          request_it->second);
+    }
+    return lookups;
+  }
+
+  lookups.fixture_piece_by_id = std::move(source_fixture_pieces);
+  lookups.request_piece_by_id = std::move(source_request_pieces);
+  return lookups;
 }
 
 }  // namespace
+
+auto make_asymmetric_engine_surface_fixture() -> MtgFixture {
+  MtgFixture fixture{};
+  fixture.source_path = std::filesystem::path{
+      "synthetic://asymmetric_engine_surface_fixture"};
+  fixture.bed1 = make_rect_bed(kBed1Id, 16.0, 22.0);
+  fixture.bed2 = make_rect_bed(kBed2Id, 22.0, 12.0);
+  fixture.pieces.push_back(
+      make_rect_piece(1, "rotates-into-bed1", kBed1Id, 20.0, 8.0));
+  fixture.pieces.push_back(make_rect_piece(2, "bed2-square", kBed2Id, 4.0, 4.0));
+  return fixture;
+}
+
+auto boxes_violate_spacing(const geom::Box2 &a, const geom::Box2 &b,
+                           const double spacing_mm, const double tolerance_mm)
+    -> bool {
+  const double effective_spacing =
+      std::max(0.0, spacing_mm - std::max(0.0, tolerance_mm));
+  return pack::boxes_violate_spacing(a, b, effective_spacing);
+}
 
 auto load_mtg_fixture() -> MtgFixture {
   const auto root = resolve_fixture_root();
@@ -419,9 +503,9 @@ void validate_layout(const MtgFixture &fixture, const NestingRequest &request,
                      const MtgRequestOptions &options,
                      const NestingResult &result,
                      const ExpectedOutcome &expected) {
-  const auto pieces = piece_lookup(fixture);
-  const double spacing = options.part_spacing_mm;
-  const double effective_spacing = std::max(0.0, spacing - kInvariantTolerance);
+  const auto pieces = build_piece_validation_lookups(fixture, request);
+  const double spacing_tolerance =
+      std::max(expected.tolerance_mm, kInvariantTolerance);
 
   // Build bin-box lookup from the actual request bins so unknown bin ids
   // surface as a hard failure rather than silently aliasing to bed2.
@@ -480,13 +564,43 @@ void validate_layout(const MtgFixture &fixture, const NestingRequest &request,
                                << placement.placement.piece_id);
       REQUIRE(placement.placement.bin_id == bin.bin_id);
 
-      // Allowed-bin restriction (engine-level model of maintain/overflow).
-      auto it = pieces.find(placement.placement.piece_id);
-      REQUIRE(it != pieces.end());
+      const auto fixture_piece_it =
+          pieces.fixture_piece_by_id.find(placement.placement.piece_id);
+      const auto request_piece_it =
+          pieces.request_piece_by_id.find(placement.placement.piece_id);
+      REQUIRE(fixture_piece_it != pieces.fixture_piece_by_id.end());
+      REQUIRE(request_piece_it != pieces.request_piece_by_id.end());
+
+      const auto *fixture_piece = fixture_piece_it->second;
+      const auto *request_piece = request_piece_it->second;
+
+      if (expected.require_rotation_admissibility) {
+        const auto resolved_rotation = resolve_piece_rotation(
+            *request_piece, request.execution, placement.placement.rotation_index);
+        INFO("Piece " << placement.placement.piece_id << " rotation_index "
+                      << placement.placement.rotation_index.value
+                      << " must resolve within the admissible rotation set");
+        REQUIRE(resolved_rotation.has_value());
+      }
+
+      if (expected.require_allowed_bin_admissibility &&
+          !request_piece->allowed_bin_ids.empty()) {
+        const bool bin_allowed =
+            std::find(request_piece->allowed_bin_ids.begin(),
+                      request_piece->allowed_bin_ids.end(),
+                      placement.placement.bin_id) !=
+            request_piece->allowed_bin_ids.end();
+        INFO("Piece " << placement.placement.piece_id << " placed on bin "
+                      << placement.placement.bin_id
+                      << " outside its allowed_bin_ids contract");
+        REQUIRE(bin_allowed);
+      }
+
+      // Allowed-bin restriction derived from the export_face pinning model.
       const bool pinned = options.maintain_bed_assignment ||
                           !options.allow_part_overflow;
       if (pinned) {
-        REQUIRE(bin.bin_id == it->second->source_bed_id);
+        REQUIRE(bin.bin_id == fixture_piece->source_bed_id);
       }
       piece_to_bin[placement.placement.piece_id] = bin.bin_id;
       ++placed_counts[placement.placement.piece_id];
@@ -498,8 +612,9 @@ void validate_layout(const MtgFixture &fixture, const NestingRequest &request,
                                   << bin.placements[i].placement.piece_id
                                   << " vs "
                                   << bin.placements[j].placement.piece_id);
-        REQUIRE_FALSE(boxes_overlap(placement_boxes[i], placement_boxes[j],
-                                    effective_spacing));
+        REQUIRE_FALSE(boxes_violate_spacing(placement_boxes[i], placement_boxes[j],
+                                            options.part_spacing_mm,
+                                            spacing_tolerance));
       }
     }
 
@@ -513,7 +628,8 @@ void validate_layout(const MtgFixture &fixture, const NestingRequest &request,
       for (std::size_t i = 0; i < placement_boxes.size(); ++i) {
         INFO("Piece " << bin.placements[i].placement.piece_id
                       << " overlaps exclusion zone " << zone.zone_id);
-        REQUIRE_FALSE(boxes_overlap(placement_boxes[i], zone_box, 0.0));
+        REQUIRE_FALSE(
+            boxes_violate_spacing(placement_boxes[i], zone_box, 0.0, 0.0));
       }
     }
   }

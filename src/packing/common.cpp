@@ -188,6 +188,16 @@ auto expand_box(const geom::Box2 &box, double clearance) -> geom::Box2 {
   };
 }
 
+auto spacing_reservation_bounds(const geom::Box2 &box, double spacing)
+    -> geom::Box2 {
+  return expand_box(box, spacing);
+}
+
+auto boxes_violate_spacing(const geom::Box2 &lhs, const geom::Box2 &rhs,
+                           double spacing) -> bool {
+  return boxes_overlap_interior(lhs, spacing_reservation_bounds(rhs, spacing));
+}
+
 auto boxes_overlap(const geom::Box2 &lhs, const geom::Box2 &rhs) -> bool {
   return !(lhs.max.x < rhs.min.x - kCoordinateSnap ||
            rhs.max.x < lhs.min.x - kCoordinateSnap ||
@@ -246,9 +256,16 @@ auto overlaps_any_exclusion_zone(
 }
 
 auto piece_allows_bin(const PieceInput &piece, std::uint32_t bin_id) -> bool {
-  return piece.allowed_bin_ids.empty() ||
-         std::find(piece.allowed_bin_ids.begin(), piece.allowed_bin_ids.end(),
-                   bin_id) != piece.allowed_bin_ids.end();
+  return (!piece.restricted_to_allowed_bins && piece.allowed_bin_ids.empty()) ||
+          std::find(piece.allowed_bin_ids.begin(), piece.allowed_bin_ids.end(),
+                    bin_id) != piece.allowed_bin_ids.end();
+}
+
+auto allowed_rotations_for(const PieceInput &piece,
+                           const place::PlacementConfig &config)
+    -> const geom::DiscreteRotationSet & {
+  return piece.allowed_rotations.has_value() ? *piece.allowed_rotations
+                                             : config.allowed_rotations;
 }
 
 auto mark_remaining_unplaced(std::span<const PieceInput> pieces,

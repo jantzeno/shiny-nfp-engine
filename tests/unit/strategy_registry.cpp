@@ -39,7 +39,7 @@ auto rectangle(double min_x, double min_y, double max_x, double max_y)
 auto trivial_request() -> NestingRequest {
   NestingRequest request;
   // ALNS routes through `StrategyRegistry`, unlike bounding-box and
-  // irregular-constructive which have inline branches in `solve.cpp`.
+  // sequential-backtrack which have inline branches in `solve.cpp`.
   request.execution.strategy = StrategyKind::alns;
   request.execution.default_rotations = {{0.0}};
   request.execution.alns.max_iterations = 1;

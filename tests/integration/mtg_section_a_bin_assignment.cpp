@@ -1,7 +1,7 @@
 // MTG nesting matrix — Section A: bin-assignment matrix.
 //
-// For each algorithm in {bounding_box, irregular_constructive,
-// irregular_production-BRKGA} this file exercises the
+// For each algorithm in {bounding_box, sequential_backtrack,
+// metaheuristic_search-BRKGA} this file exercises the
 // maintain_bed_assignment × allow_part_overflow truth table at two
 // part-spacing values (0 mm, 1 mm) with all beds selected, then a
 // single-bed variant per source bed. Every cell asserts full placement.
@@ -41,13 +41,13 @@ void apply_strategy_bounding_box(MtgRequestOptions &options) {
   options.bounding_box_deterministic_attempts = 1;
 }
 
-void apply_strategy_irregular_constructive(MtgRequestOptions &options) {
-  options.strategy = StrategyKind::irregular_constructive;
+void apply_strategy_sequential_backtrack(MtgRequestOptions &options) {
+  options.strategy = StrategyKind::sequential_backtrack;
   options.irregular = {};
 }
 
-void apply_strategy_irregular_production_brkga(MtgRequestOptions &options) {
-  options.strategy = StrategyKind::irregular_production;
+void apply_strategy_metaheuristic_search_brkga(MtgRequestOptions &options) {
+  options.strategy = StrategyKind::metaheuristic_search;
   options.production_optimizer = ProductionOptimizerKind::brkga;
   options.production.max_generations = 4;
   options.production.population_size = 8;
@@ -135,34 +135,34 @@ TEST_CASE("mtg section A bin-assignment matrix (bounding_box)",
   }
 }
 
-TEST_CASE("mtg section A bin-assignment matrix (irregular_constructive)",
-          "[mtg][nesting-matrix][bin-assignment][irregular-constructive][.][slow]") {
+TEST_CASE("mtg section A bin-assignment matrix (sequential_backtrack)",
+          "[mtg][nesting-matrix][bin-assignment][sequential-backtrack][.][slow]") {
   const auto fixture = load_mtg_fixture();
 
   SECTION("truth table x spacing (all beds)") {
-    run_truth_table(fixture, &apply_strategy_irregular_constructive);
+    run_truth_table(fixture, &apply_strategy_sequential_backtrack);
   }
   SECTION("single bed: bed1 only") {
-    run_single_bed(fixture, &apply_strategy_irregular_constructive, kBed1Id);
+    run_single_bed(fixture, &apply_strategy_sequential_backtrack, kBed1Id);
   }
   SECTION("single bed: bed2 only") {
-    run_single_bed(fixture, &apply_strategy_irregular_constructive, kBed2Id);
+    run_single_bed(fixture, &apply_strategy_sequential_backtrack, kBed2Id);
   }
 }
 
-TEST_CASE("mtg section A bin-assignment matrix (irregular_production BRKGA)",
-          "[mtg][nesting-matrix][bin-assignment][irregular-production][.][slow]") {
+TEST_CASE("mtg section A bin-assignment matrix (metaheuristic_search BRKGA)",
+          "[mtg][nesting-matrix][bin-assignment][metaheuristic-search][.][slow]") {
   const auto fixture = load_mtg_fixture();
 
   SECTION("truth table x spacing (all beds)") {
-    run_truth_table(fixture, &apply_strategy_irregular_production_brkga);
+    run_truth_table(fixture, &apply_strategy_metaheuristic_search_brkga);
   }
   SECTION("single bed: bed1 only") {
-    run_single_bed(fixture, &apply_strategy_irregular_production_brkga,
+    run_single_bed(fixture, &apply_strategy_metaheuristic_search_brkga,
                    kBed1Id);
   }
   SECTION("single bed: bed2 only") {
-    run_single_bed(fixture, &apply_strategy_irregular_production_brkga,
+    run_single_bed(fixture, &apply_strategy_metaheuristic_search_brkga,
                    kBed2Id);
   }
 }

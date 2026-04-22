@@ -70,3 +70,31 @@ TEST_CASE("mtg baseline bounding-box solve places every part",
   expected.expected_stop_reason = StopReason::completed;
   validate_layout(fixture, request, options, result, expected);
 }
+
+TEST_CASE("mtg baseline sequential-backtrack solve places every part",
+          "[mtg][nesting-matrix][sequential-backtrack][baseline]") {
+  const auto fixture = load_mtg_fixture();
+  MtgRequestOptions options{};
+  options.strategy = StrategyKind::sequential_backtrack;
+  options.part_spacing_mm = 0.0;
+  options.maintain_bed_assignment = false;
+  options.allow_part_overflow = true;
+  options.selected_bin_ids = {};
+
+  const auto request = make_request(fixture, options);
+  REQUIRE(request.is_valid());
+
+  SolveControl control{};
+  // Keep this in the fast lane as a single constructive pass. A non-zero seed
+  // on solve() activates the multi-start irregular wrapper instead.
+  control.random_seed = 0;
+
+  auto solved = solve(request, control);
+  REQUIRE(solved.has_value());
+  const auto &result = solved.value();
+
+  ExpectedOutcome expected{};
+  expected.expected_placed_count = kBaselinePieceCount;
+  expected.expected_stop_reason = StopReason::completed;
+  validate_layout(fixture, request, options, result, expected);
+}

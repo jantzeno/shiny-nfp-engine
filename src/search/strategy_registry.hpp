@@ -5,13 +5,13 @@
 // `StrategyRegistry` is a Meyers singleton owning two parallel tables:
 //   * `StrategyDescriptor`           — top-level user-selectable strategies
 //                                      keyed by `StrategyKind` (bounding-box,
-//                                      irregular-constructive, the four
-//                                      metaheuristics, and `irregular_production`
+//                                      sequential-backtrack, the four
+//                                      metaheuristics, and `metaheuristic_search`
 //                                      which delegates to a production optimizer).
 //   * `ProductionStrategyDescriptor` — production-side optimizers keyed by
 //                                      `ProductionOptimizerKind`, only consulted
 //                                      when the resolved strategy is
-//                                      `irregular_production`.
+//                                      `metaheuristic_search`.
 //
 // Thread-safety: the singleton instance and its internal vectors are NOT
 // guarded by a mutex. All registrations are expected to occur during

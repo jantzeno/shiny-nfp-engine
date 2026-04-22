@@ -14,7 +14,7 @@
 
 #include "geometry/polygon.hpp"
 #include "logging/shiny_log.hpp"
-#include "packing/irregular_constructive_packer.hpp"
+#include "packing/sequential_backtrack_packer.hpp"
 #include "packing/packer_workspace.hpp"
 #include "runtime/deterministic_rng.hpp"
 #include "runtime/hash.hpp"
@@ -146,7 +146,7 @@ struct OrderSignatureHash {
     -> EvaluatedChromosome {
   const auto reordered = reordered_request_for(genes, request);
 
-  pack::IrregularConstructivePacker packer;
+  pack::SequentialBacktrackPacker packer;
   SolveControl decode_control{};
   decode_control.cancellation = control.cancellation;
   decode_control.workspace = &workspace;
@@ -197,7 +197,7 @@ struct OrderSignatureHash {
     evaluated.result = result_or.value();
     evaluated.metrics = metrics_for_layout(evaluated.result.layout);
   } else {
-    evaluated.result.strategy = StrategyKind::irregular_constructive;
+    evaluated.result.strategy = StrategyKind::sequential_backtrack;
     evaluated.result.stop_reason = StopReason::invalid_request;
   }
   return evaluated;
@@ -395,7 +395,7 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
   };
 
   if (request.expanded_pieces.empty()) {
-    return detail::driver_empty_result(StrategyKind::irregular_production,
+    return detail::driver_empty_result(StrategyKind::metaheuristic_search,
                                        std::move(replay), control, time_budget,
                                        stopwatch);
   }
@@ -574,7 +574,7 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
 
   if (!best.has_value()) {
     NestingResult result{
-        .strategy = StrategyKind::irregular_production,
+        .strategy = StrategyKind::metaheuristic_search,
         .total_parts = request.expanded_pieces.size(),
         .budget = detail::driver_make_budget(control, time_budget, stopwatch,
                               iterations_completed),
@@ -638,7 +638,7 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
   }
 
   NestingResult result = best->result;
-  result.strategy = StrategyKind::irregular_production;
+  result.strategy = StrategyKind::metaheuristic_search;
   result.budget = detail::driver_make_budget(control, time_budget, stopwatch, iterations_completed);
   result.stop_reason =
       detail::driver_stop_reason(control, time_budget, stopwatch, hit_iteration_limit);

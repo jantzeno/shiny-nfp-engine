@@ -1,4 +1,4 @@
-// MTG Section D — Irregular-constructive option matrix.
+// MTG sequential-backtrack integration coverage.
 //
 // Two TEST_CASEs:
 //   * Slow / full matrix (4 x 4 x 2 x 2 x 2 = 128 sub-cases) hidden behind
@@ -27,8 +27,8 @@ namespace {
 
 }  // namespace
 
-TEST_CASE("mtg irregular-constructive option matrix places every part",
-          "[mtg][nesting-matrix][irregular-constructive][.][slow]") {
+TEST_CASE("mtg sequential-backtrack option matrix places every part",
+          "[mtg][nesting-matrix][sequential-backtrack][.][slow]") {
   const auto fixture = load_mtg_fixture();
 
   const auto candidate_strategy = GENERATE(CandidateStrategy::anchor_vertex,
@@ -44,7 +44,7 @@ TEST_CASE("mtg irregular-constructive option matrix places every part",
   const bool merge_free_regions = GENERATE(false, true);
 
   MtgRequestOptions options{};
-  options.strategy = StrategyKind::irregular_constructive;
+  options.strategy = StrategyKind::sequential_backtrack;
   options.part_spacing_mm = 0.0;
   options.maintain_bed_assignment = false;
   options.allow_part_overflow = true;
@@ -71,8 +71,8 @@ TEST_CASE("mtg irregular-constructive option matrix places every part",
   validate_layout(fixture, request, options, solved.value(), expected);
 }
 
-TEST_CASE("mtg irregular-constructive readiness sweep",
-          "[mtg][nesting-matrix][irregular-constructive][readiness][.][slow]") {
+TEST_CASE("mtg sequential-backtrack readiness sweep",
+          "[mtg][nesting-matrix][sequential-backtrack][readiness][.][slow]") {
   const auto fixture = load_mtg_fixture();
 
   const auto candidate_strategy = CandidateStrategy::anchor_vertex;
@@ -85,7 +85,7 @@ TEST_CASE("mtg irregular-constructive readiness sweep",
   const bool merge_free_regions = GENERATE(false, true);
 
   MtgRequestOptions options{};
-  options.strategy = StrategyKind::irregular_constructive;
+  options.strategy = StrategyKind::sequential_backtrack;
   options.part_spacing_mm = 0.0;
   options.maintain_bed_assignment = false;
   options.allow_part_overflow = true;

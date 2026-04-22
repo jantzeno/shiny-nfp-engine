@@ -6,7 +6,7 @@
 #include <span>
 #include <vector>
 
-#include "packing/irregular_constructive_packer.hpp"
+#include "packing/sequential_backtrack_packer.hpp"
 #include "request.hpp"
 #include "runtime/deterministic_rng.hpp"
 #include "runtime/timing.hpp"
@@ -23,7 +23,7 @@ using shiny::nesting::PieceRequest;
 using shiny::nesting::SolveControl;
 using shiny::nesting::StrategyKind;
 using shiny::nesting::geom::PolygonWithHoles;
-using shiny::nesting::pack::IrregularConstructivePacker;
+using shiny::nesting::pack::SequentialBacktrackPacker;
 using shiny::nesting::runtime::DeterministicRng;
 using shiny::nesting::search::SolutionPool;
 using shiny::nesting::search::SolutionPoolEntry;
@@ -185,7 +185,7 @@ TEST_CASE("strip optimizer improves a constructive seed on a strip-style case",
   auto normalized = shiny::nesting::normalize_request(strip_case_request());
   REQUIRE(normalized.ok());
 
-  IrregularConstructivePacker packer;
+  SequentialBacktrackPacker packer;
   const auto seed = packer.solve(normalized.value(), SolveControl{.random_seed = 3});
   REQUIRE(seed.ok());
   REQUIRE(seed.value().layout.placement_trace.size() == 2U);
@@ -209,11 +209,11 @@ TEST_CASE("strip optimizer improves a constructive seed on a strip-style case",
 TEST_CASE("irregular production preserves or improves the constructive strip seed",
           "[solve][production][strip]") {
   auto constructive_request = strip_case_request();
-  constructive_request.execution.strategy = StrategyKind::irregular_constructive;
+  constructive_request.execution.strategy = StrategyKind::sequential_backtrack;
   const auto constructive = shiny::nesting::solve(constructive_request);
 
   auto production_request = strip_case_request();
-  production_request.execution.strategy = StrategyKind::irregular_production;
+  production_request.execution.strategy = StrategyKind::metaheuristic_search;
   const auto production =
       shiny::nesting::solve(production_request, SolveControl{.random_seed = 7});
 

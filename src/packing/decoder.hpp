@@ -3,10 +3,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <vector>
 
 #include "packing/bin_state.hpp"
 #include "packing/config.hpp"
+#include "geometry/transform.hpp"
 
 namespace shiny::nesting::pack {
 
@@ -24,9 +26,11 @@ struct PieceInput {
   geom::PolygonWithHoles polygon{};
   std::uint64_t geometry_revision{0};
   bool allow_mirror{false};
+  std::optional<geom::DiscreteRotationSet> allowed_rotations{};
   place::PartGrainCompatibility grain_compatibility{
       place::PartGrainCompatibility::unrestricted};
   std::vector<std::uint32_t> allowed_bin_ids{};
+  bool restricted_to_allowed_bins{false};
 };
 
 /**

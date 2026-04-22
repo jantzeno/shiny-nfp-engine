@@ -41,9 +41,9 @@ MtgRequestOptions bbox_all_beds_defaults() {
   return options;
 }
 
-MtgRequestOptions irregular_constructive_bed1_defaults() {
+MtgRequestOptions sequential_backtrack_bed1_defaults() {
   MtgRequestOptions options{};
-  options.strategy = StrategyKind::irregular_constructive;
+  options.strategy = StrategyKind::sequential_backtrack;
   options.allow_part_overflow = true;
   options.maintain_bed_assignment = false;
   options.selected_bin_ids = {kBed1Id};
@@ -52,7 +52,7 @@ MtgRequestOptions irregular_constructive_bed1_defaults() {
 
 MtgRequestOptions production_brkga_bed1_defaults() {
   MtgRequestOptions options{};
-  options.strategy = StrategyKind::irregular_production;
+  options.strategy = StrategyKind::metaheuristic_search;
   options.production_optimizer = ProductionOptimizerKind::brkga;
   options.allow_part_overflow = true;
   options.maintain_bed_assignment = false;
@@ -65,7 +65,7 @@ MtgRequestOptions production_brkga_bed1_defaults() {
 
 MtgRequestOptions production_sa_bed1_defaults() {
   MtgRequestOptions options{};
-  options.strategy = StrategyKind::irregular_production;
+  options.strategy = StrategyKind::metaheuristic_search;
   options.production_optimizer = ProductionOptimizerKind::simulated_annealing;
   options.allow_part_overflow = true;
   options.maintain_bed_assignment = false;
@@ -78,7 +78,7 @@ MtgRequestOptions production_sa_bed1_defaults() {
 
 MtgRequestOptions production_alns_bed1_defaults() {
   MtgRequestOptions options{};
-  options.strategy = StrategyKind::irregular_production;
+  options.strategy = StrategyKind::metaheuristic_search;
   options.production_optimizer = ProductionOptimizerKind::alns;
   options.allow_part_overflow = true;
   options.maintain_bed_assignment = false;
@@ -93,7 +93,7 @@ MtgRequestOptions production_alns_bed1_defaults() {
 
 MtgRequestOptions production_gdrr_bed1_defaults() {
   MtgRequestOptions options{};
-  options.strategy = StrategyKind::irregular_production;
+  options.strategy = StrategyKind::metaheuristic_search;
   options.production_optimizer = ProductionOptimizerKind::gdrr;
   options.allow_part_overflow = true;
   options.maintain_bed_assignment = false;
@@ -106,7 +106,7 @@ MtgRequestOptions production_gdrr_bed1_defaults() {
 
 MtgRequestOptions production_lahc_bed1_defaults() {
   MtgRequestOptions options{};
-  options.strategy = StrategyKind::irregular_production;
+  options.strategy = StrategyKind::metaheuristic_search;
   options.production_optimizer = ProductionOptimizerKind::lahc;
   options.allow_part_overflow = true;
   options.maintain_bed_assignment = false;
@@ -168,22 +168,22 @@ TEST_CASE("mtg slider part_spacing_mm bounding-box (max)",
 }
 
 // ============================================================================
-// part_spacing_mm — irregular_constructive, bed1
+// part_spacing_mm — sequential_backtrack, bed1
 // ============================================================================
 
-TEST_CASE("mtg slider part_spacing_mm irregular-constructive (min/mid)",
+TEST_CASE("mtg slider part_spacing_mm sequential-backtrack (min/mid)",
           "[mtg][nesting-matrix][sliders][part-spacing][.][slow]") {
   const double spacing = GENERATE(0.0, 1.0);
   const auto fixture = load_mtg_fixture();
-  auto options = irregular_constructive_bed1_defaults();
+  auto options = sequential_backtrack_bed1_defaults();
   options.part_spacing_mm = spacing;
   run_and_assert_full_bed1(fixture, options);
 }
 
-TEST_CASE("mtg slider part_spacing_mm irregular-constructive (max)",
+TEST_CASE("mtg slider part_spacing_mm sequential-backtrack (max)",
           "[mtg][nesting-matrix][sliders][part-spacing][.][slow]") {
   const auto fixture = load_mtg_fixture();
-  auto options = irregular_constructive_bed1_defaults();
+  auto options = sequential_backtrack_bed1_defaults();
   options.part_spacing_mm = 5.0;
   run_and_assert_full_bed1(fixture, options);
 }
@@ -196,7 +196,7 @@ TEST_CASE("mtg slider irregular.max_candidate_points (min/mid)",
           "[mtg][nesting-matrix][sliders][max-candidate-points][.][slow]") {
   const std::uint32_t value = GENERATE(std::uint32_t{16}, std::uint32_t{256});
   const auto fixture = load_mtg_fixture();
-  auto options = irregular_constructive_bed1_defaults();
+  auto options = sequential_backtrack_bed1_defaults();
   options.irregular.max_candidate_points = value;
   run_and_assert_full_bed1(fixture, options);
 }
@@ -204,7 +204,7 @@ TEST_CASE("mtg slider irregular.max_candidate_points (min/mid)",
 TEST_CASE("mtg slider irregular.max_candidate_points (max)",
           "[mtg][nesting-matrix][sliders][max-candidate-points][.][slow]") {
   const auto fixture = load_mtg_fixture();
-  auto options = irregular_constructive_bed1_defaults();
+  auto options = sequential_backtrack_bed1_defaults();
   options.irregular.max_candidate_points = 1024;
   run_and_assert_full_bed1(fixture, options);
 }
@@ -217,7 +217,7 @@ TEST_CASE("mtg slider irregular.candidate_gaussian_sigma (min/mid)",
           "[mtg][nesting-matrix][sliders][candidate-gaussian-sigma][.][slow]") {
   const double sigma = GENERATE(0.05, 0.5);
   const auto fixture = load_mtg_fixture();
-  auto options = irregular_constructive_bed1_defaults();
+  auto options = sequential_backtrack_bed1_defaults();
   options.irregular.candidate_gaussian_sigma = sigma;
   run_and_assert_full_bed1(fixture, options);
 }
@@ -225,7 +225,7 @@ TEST_CASE("mtg slider irregular.candidate_gaussian_sigma (min/mid)",
 TEST_CASE("mtg slider irregular.candidate_gaussian_sigma (max)",
           "[mtg][nesting-matrix][sliders][candidate-gaussian-sigma][.][slow]") {
   const auto fixture = load_mtg_fixture();
-  auto options = irregular_constructive_bed1_defaults();
+  auto options = sequential_backtrack_bed1_defaults();
   options.irregular.candidate_gaussian_sigma = 2.0;
   run_and_assert_full_bed1(fixture, options);
 }

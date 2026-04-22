@@ -5,10 +5,13 @@
 #include <format>
 #include <limits>
 #include <optional>
+#include <string>
 #include <utility>
 
+#include "logging/shiny_log.hpp"
+#include "logging/solve_summary.hpp"
 #include "packing/bounding_box_packer.hpp"
-#include "packing/irregular_constructive_packer.hpp"
+#include "packing/sequential_backtrack_packer.hpp"
 #include "packing/packer_workspace.hpp"
 #include "runtime/deterministic_rng.hpp"
 #include "runtime/timing.hpp"
@@ -136,6 +139,33 @@ auto emit_snapshot(const SolveControl &control, const ProgressSnapshot &snapshot
   return base_seed + iteration;
 }
 
+[[nodiscard]] auto placed_parts(const NestingResult &result) -> std::size_t {
+  return result.layout.placement_trace.size();
+}
+
+auto log_solve_finish(const NestingRequest &request, const SolveControl &control,
+                      std::string_view dispatch_name, std::string_view runner_class,
+                      const NestingResult &result) -> void {
+  const auto placed = placed_parts(result);
+  SHINY_DEBUG(
+      "solve: finish strategy={} dispatch={} runner={} stop_reason={} "
+      "placed={}/{} bins={} unplaced={} elapsed_ms={} iterations={}",
+      log::strategy_name(request.execution.strategy), dispatch_name, runner_class,
+      log::stop_reason_name(result.stop_reason), placed, result.total_parts,
+      result.layout.bins.size(), result.layout.unplaced_piece_ids.size(),
+      result.budget.elapsed_milliseconds, result.budget.iterations_completed);
+
+  if (result.stop_reason == StopReason::completed && placed < result.total_parts) {
+    SHINY_WARN(
+        "solve: completed with unplaced parts strategy={} dispatch={} runner={} "
+        "placed={}/{} bins={} request=[{}] control/settings=[{} | {}]",
+        log::strategy_name(request.execution.strategy), dispatch_name, runner_class,
+        placed, result.total_parts, result.layout.bins.size(),
+        log::request_surface_summary(request), log::control_surface_summary(control),
+        log::strategy_settings_summary(request.execution));
+  }
+}
+
 } // namespace
 
 auto solve(const NestingRequest &request, const SolveControl &control)
@@ -162,6 +192,20 @@ auto solve(const NestingRequest &request, const SolveControl &control)
           static_cast<std::uint32_t>(
               std::min<std::size_t>(control.iteration_limit, configured_attempts));
     }
+
+    const auto runner_class =
+        log::effective_runner_class_name(request.execution);
+    SHINY_DEBUG(
+        "solve: start strategy={} dispatch={} runner={} request=[{}] "
+        "control=[{}] settings=[{} effective_attempts={} expanded_pieces={} "
+        "expanded_bins={}]",
+        log::strategy_name(request.execution.strategy),
+        log::strategy_name(request.execution.strategy), runner_class,
+        log::request_surface_summary(request), log::control_surface_summary(control),
+        log::strategy_settings_summary(request.execution),
+        decoder_request.value().config.deterministic_attempts.max_attempts,
+        normalized_request.value().expanded_pieces.size(),
+        normalized_request.value().expanded_bins.size());
 
     pack::BoundingBoxPacker packer;
     const auto interruption_requested = [&]() {
@@ -225,9 +269,12 @@ auto solve(const NestingRequest &request, const SolveControl &control)
             control, time_budget, stopwatch, best_result.interrupted,
             hit_iteration_limit),
     };
+    log_solve_finish(request, control,
+                     log::strategy_name(request.execution.strategy), runner_class,
+                     result);
     return result;
   }
-  if (request.execution.strategy == StrategyKind::irregular_constructive) {
+  if (request.execution.strategy == StrategyKind::sequential_backtrack) {
     // Multi-start constructive: run the packer multiple times with different
     // seeds, keeping the best result.  Activates when the caller provides a
     // non-zero seed and doesn't explicitly cap iterations to 1.  The loop
@@ -237,9 +284,37 @@ auto solve(const NestingRequest &request, const SolveControl &control)
         control.random_seed != 0 &&
         (control.iteration_limit == 0 || control.iteration_limit > 1);
 
+    const auto runner_class =
+        log::effective_runner_class_name(request.execution);
+    SHINY_DEBUG(
+        "solve: start strategy={} dispatch={} runner={} request=[{}] "
+        "control=[{}] settings=[{} multi_start={} expanded_pieces={} "
+        "expanded_bins={}]",
+        log::strategy_name(request.execution.strategy),
+        log::strategy_name(request.execution.strategy), runner_class,
+        log::request_surface_summary(request), log::control_surface_summary(control),
+        log::strategy_settings_summary(request.execution), log::bool_name(multi_start),
+        normalized_request.value().expanded_pieces.size(),
+        normalized_request.value().expanded_bins.size());
+
+    if (multi_start && control.iteration_limit == 0U &&
+        control.time_limit_milliseconds == 0U) {
+      SHINY_WARN(
+          "solve: sequential_backtrack multi-start is unbounded without an "
+          "iteration_limit, time_limit_ms, or external cancellation "
+          "(runner={})",
+          runner_class);
+    }
+
     if (!multi_start) {
-      pack::IrregularConstructivePacker packer;
-      return packer.solve(normalized_request.value(), control);
+      pack::SequentialBacktrackPacker packer;
+      auto result = packer.solve(normalized_request.value(), control);
+      if (result.ok()) {
+        log_solve_finish(request, control,
+                         log::strategy_name(request.execution.strategy),
+                         runner_class, result.value());
+      }
+      return result;
     }
 
     runtime::DeterministicRng meta_rng(control.random_seed);
@@ -306,7 +381,7 @@ auto solve(const NestingRequest &request, const SolveControl &control)
             });
           };
 
-      pack::IrregularConstructivePacker packer;
+      pack::SequentialBacktrackPacker packer;
       auto iter_result = packer.solve(normalized_request.value(), iter_control);
       ++iterations_completed;
 
@@ -370,6 +445,9 @@ auto solve(const NestingRequest &request, const SolveControl &control)
         .cancellation_requested = control.cancellation.stop_requested(),
     };
     best_result->stop_reason = final_stop_reason;
+    log_solve_finish(request, control,
+                     log::strategy_name(request.execution.strategy), runner_class,
+                     *best_result);
     return *best_result;
   }
 
@@ -381,12 +459,31 @@ auto solve(const NestingRequest &request, const SolveControl &control)
     // driver was unlinked or a custom strategy kind was never registered.
     // Surfacing `invalid_input` here is the user-visible signal that the
     // requested strategy is unavailable in this build.
+    SHINY_WARN("solve: unresolved strategy={} optimizer={} request=[{}]",
+               log::strategy_name(request.execution.strategy),
+               log::production_optimizer_name(request.execution.production_optimizer),
+               log::request_surface_summary(request));
     return util::Status::invalid_input;
   }
+
+  const auto runner_class = log::effective_runner_class_name(request.execution);
+  SHINY_DEBUG(
+      "solve: start strategy={} dispatch={} runner={} request=[{}] "
+      "control=[{}] settings=[{} expanded_pieces={} expanded_bins={}]",
+      log::strategy_name(request.execution.strategy), resolved_strategy.name,
+      runner_class, log::request_surface_summary(request),
+      log::control_surface_summary(control),
+      log::strategy_settings_summary(request.execution),
+      normalized_request.value().expanded_pieces.size(),
+      normalized_request.value().expanded_bins.size());
 
   auto result = resolved_strategy.run(normalized_request.value(), control);
   if (result.ok() && resolved_strategy.result_strategy_override.has_value()) {
     result.value().strategy = *resolved_strategy.result_strategy_override;
+  }
+  if (result.ok()) {
+    log_solve_finish(request, control, resolved_strategy.name, runner_class,
+                     result.value());
   }
   return result;
 }

@@ -57,3 +57,4 @@ build/
 vendor/
 docs/
 benchmarks/
+*.log

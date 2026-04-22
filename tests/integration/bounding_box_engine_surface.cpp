@@ -1,20 +1,25 @@
-// MTG nesting matrix — Section K: engine surface options.
+// MTG bounding-box engine-surface coverage.
 //
-// Exercises low-level NestingRequest / SolveControl knobs that
-// MtgRequestOptions doesn't surface directly: rotation sets, mirror,
-// quantity, priority, ProgressObserver, CancellationToken, and the
-// part-in-part / explore-concave execution flags.
+// Exercises low-level NestingRequest / SolveControl knobs against the
+// bounding-box strategy: rotation sets, mirror, quantity, priority,
+// ProgressObserver, and the part-in-part / explore-concave execution flags.
+//
+// This file intentionally stays in the fast MTG regression lane
+// (`[mtg]~[slow]~[broken]`). Geometry-sensitive contract checks should use
+// small focused fixtures here instead of relying only on the broad rectangle
+// MTG matrix.
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
 
 #include "geometry/transform.hpp"
 #include "observer.hpp"
-#include "runtime/cancellation.hpp"
 #include "solve.hpp"
 #include "support/mtg_fixture.hpp"
 
@@ -53,17 +58,50 @@ namespace {
   return request.pieces.size();
 }
 
+[[nodiscard]] auto find_piece_placement(const NestingResult &result,
+                                        std::uint32_t piece_id)
+    -> const pack::PlacedPiece * {
+  for (const auto &bin : result.layout.bins) {
+    for (const auto &placed : bin.placements) {
+      if (placed.placement.piece_id == piece_id) {
+        return &placed;
+      }
+    }
+  }
+  return nullptr;
+}
+
+[[nodiscard]] auto resolve_piece_rotation_degrees(
+    const NestingRequest &request, const pack::PlacedPiece &placed)
+    -> std::optional<double> {
+  const auto piece_it =
+      std::find_if(request.pieces.begin(), request.pieces.end(), [&](const auto &piece) {
+        return piece.piece_id == placed.placement.piece_id;
+      });
+  if (piece_it == request.pieces.end()) {
+    return std::nullopt;
+  }
+
+  const auto &rotation_source = piece_it->allowed_rotations.has_value()
+                                    ? *piece_it->allowed_rotations
+                                    : request.execution.default_rotations;
+  const auto rotation =
+      geom::resolve_rotation(placed.placement.rotation_index, rotation_source);
+  if (!rotation.has_value()) {
+    return std::nullopt;
+  }
+  return rotation->degrees;
+}
+
 }  // namespace
 
-TEST_CASE("mtg default_rotations override changes layout",
+TEST_CASE("focused asymmetric fixture makes default_rotations directly observable",
           "[mtg][nesting-matrix][engine-surface][rotations]") {
-  const auto fixture = load_mtg_fixture();
-  const auto options = baseline_bb_options();
+  const auto fixture = make_asymmetric_engine_surface_fixture();
+  auto options = baseline_bb_options();
+  options.selected_bin_ids = {kBed1Id};
 
-  ExpectedOutcome expected{};
-  expected.expected_placed_count = kBaselinePieceCount;
-
-  // Solve A — only 0°.
+  // Solve A — only 0°. The wide piece cannot fit the selected bed.
   auto request_a = make_request(fixture, options);
   request_a.execution.default_rotations = geom::DiscreteRotationSet{{0.0}};
   REQUIRE(request_a.is_valid());
@@ -71,9 +109,16 @@ TEST_CASE("mtg default_rotations override changes layout",
   control_a.random_seed = 11;
   auto result_a = solve(request_a, control_a);
   REQUIRE(result_a.has_value());
-  validate_layout(fixture, request_a, options, result_a.value(), expected);
 
-  // Solve B — 0° + 90°.
+  ExpectedOutcome expected_a{};
+  expected_a.expected_placed_count = 1;
+  expected_a.require_rotation_admissibility = true;
+  validate_layout(fixture, request_a, options, result_a.value(), expected_a);
+  REQUIRE(find_piece_placement(result_a.value(), fixture.pieces.front().piece_id) ==
+          nullptr);
+
+  // Solve B — 0° + 90°. The same piece now fits the selected bed only when
+  // rotated, so the contract is visible without relying on hash drift.
   auto request_b = make_request(fixture, options);
   request_b.execution.default_rotations =
       geom::DiscreteRotationSet{{0.0, 90.0}};
@@ -82,37 +127,31 @@ TEST_CASE("mtg default_rotations override changes layout",
   control_b.random_seed = 11;
   auto result_b = solve(request_b, control_b);
   REQUIRE(result_b.has_value());
-  validate_layout(fixture, request_b, options, result_b.value(), expected);
 
-  const auto hash_a = hash_bin_placements(result_a.value(), kBed1Id) ^
-                      hash_bin_placements(result_a.value(), kBed2Id);
-  const auto hash_b = hash_bin_placements(result_b.value(), kBed1Id) ^
-                      hash_bin_placements(result_b.value(), kBed2Id);
-  INFO("hash_a=" << hash_a << " hash_b=" << hash_b);
-  // Rectangles' 90° rotations are geometrically equivalent so the engine
-  // may legitimately produce identical layouts. Document via WARN.
-  if (hash_a == hash_b) {
-    WARN("default_rotations override produced identical layout hashes "
-         "(expected for axis-aligned rectangles)");
-  } else {
-    SUCCEED("default_rotations override changed the layout hash");
-  }
+  ExpectedOutcome expected_b{};
+  expected_b.expected_placed_count = fixture.pieces.size();
+  expected_b.required_assignments = {{fixture.pieces.front().piece_id, kBed1Id}};
+  expected_b.require_rotation_admissibility = true;
+  validate_layout(fixture, request_b, options, result_b.value(), expected_b);
+
+  const auto *placed =
+      find_piece_placement(result_b.value(), fixture.pieces.front().piece_id);
+  REQUIRE(placed != nullptr);
+  const auto rotation = resolve_piece_rotation_degrees(request_b, *placed);
+  REQUIRE(rotation.has_value());
+  REQUIRE(std::fabs(*rotation - 90.0) <= 1e-9);
 }
 
-TEST_CASE("mtg per-piece allowed_rotations is honored",
-          "[mtg][nesting-matrix][engine-surface][rotations]") {
-  const auto fixture = load_mtg_fixture();
+TEST_CASE("focused asymmetric fixture honors non-conflicting allowed_bin_ids",
+          "[mtg][nesting-matrix][engine-surface][allowed-bin-ids]") {
+  const auto fixture = make_asymmetric_engine_surface_fixture();
   const auto options = baseline_bb_options();
 
   auto request = make_request(fixture, options);
-  REQUIRE(!request.pieces.empty());
-  const auto target_piece_id = request.pieces[0].piece_id;
-  // The engine currently rejects per-piece allowed_rotations that doesn't
-  // exactly match execution.default_rotations (see request.cpp normalize),
-  // so collapse both to {0°} to validate that the constraint is honored.
-  request.execution.default_rotations = geom::DiscreteRotationSet{{0.0}};
-  request.pieces[0].allowed_rotations =
-      geom::DiscreteRotationSet{{0.0}};
+  request.execution.default_rotations = geom::DiscreteRotationSet{{0.0, 90.0}};
+  REQUIRE(request.pieces.size() == fixture.pieces.size());
+  request.pieces[0].allowed_bin_ids = {kBed1Id};
+  request.pieces[1].allowed_bin_ids = {kBed2Id};
   REQUIRE(request.is_valid());
 
   SolveControl control{};
@@ -121,19 +160,82 @@ TEST_CASE("mtg per-piece allowed_rotations is honored",
   REQUIRE(solved.has_value());
 
   ExpectedOutcome expected{};
-  expected.expected_placed_count = kBaselinePieceCount;
+  expected.expected_placed_count = fixture.pieces.size();
+  expected.per_bed_counts = {{kBed1Id, 1}, {kBed2Id, 1}};
+  expected.required_assignments = {
+      {fixture.pieces[0].piece_id, kBed1Id},
+      {fixture.pieces[1].piece_id, kBed2Id},
+  };
+  expected.require_rotation_admissibility = true;
+  expected.require_allowed_bin_admissibility = true;
   validate_layout(fixture, request, options, solved.value(), expected);
 
-  bool found = false;
-  for (const auto &bin : solved.value().layout.bins) {
-    for (const auto &placed : bin.placements) {
-      if (placed.placement.piece_id == target_piece_id) {
-        REQUIRE(placed.placement.rotation_index.value == 0);
-        found = true;
-      }
-    }
-  }
-  REQUIRE(found);
+  const auto *placed = find_piece_placement(solved.value(), fixture.pieces[0].piece_id);
+  REQUIRE(placed != nullptr);
+  const auto rotation = resolve_piece_rotation_degrees(request, *placed);
+  REQUIRE(rotation.has_value());
+  REQUIRE(std::fabs(*rotation - 90.0) <= 1e-9);
+}
+
+TEST_CASE("focused asymmetric fixture keeps pieces unplaced when selected bins conflict",
+          "[mtg][nesting-matrix][engine-surface][allowed-bin-ids]") {
+  const auto fixture = make_asymmetric_engine_surface_fixture();
+  auto options = baseline_bb_options();
+  options.selected_bin_ids = {kBed1Id};
+
+  auto request = make_request(fixture, options);
+  request.execution.default_rotations = geom::DiscreteRotationSet{{0.0, 90.0}};
+  REQUIRE(request.pieces.size() == fixture.pieces.size());
+  request.pieces[0].allowed_bin_ids = {kBed2Id};
+  request.pieces[1].allowed_bin_ids = {kBed1Id};
+  REQUIRE(request.is_valid());
+
+  SolveControl control{};
+  control.random_seed = 11;
+  auto solved = solve(request, control);
+  REQUIRE(solved.has_value());
+
+  ExpectedOutcome expected{};
+  expected.expected_placed_count = 1;
+  expected.per_bed_counts = {{kBed1Id, 1}};
+  expected.required_assignments = {{fixture.pieces[1].piece_id, kBed1Id}};
+  expected.require_allowed_bin_admissibility = true;
+  validate_layout(fixture, request, options, solved.value(), expected);
+
+  REQUIRE(find_piece_placement(solved.value(), fixture.pieces[0].piece_id) == nullptr);
+  REQUIRE(find_piece_placement(solved.value(), fixture.pieces[1].piece_id) != nullptr);
+}
+
+TEST_CASE("mtg per-piece allowed_rotations is honored",
+          "[mtg][nesting-matrix][engine-surface][rotations]") {
+  const auto fixture = make_asymmetric_engine_surface_fixture();
+  auto options = baseline_bb_options();
+  options.selected_bin_ids = {kBed1Id};
+
+  auto request = make_request(fixture, options);
+  REQUIRE(!request.pieces.empty());
+  request.execution.default_rotations = geom::DiscreteRotationSet{{0.0, 90.0}};
+  request.pieces[0].allowed_rotations = geom::DiscreteRotationSet{{90.0}};
+  REQUIRE(request.is_valid());
+
+  SolveControl control{};
+  control.random_seed = 11;
+  auto solved = solve(request, control);
+  REQUIRE(solved.has_value());
+
+  ExpectedOutcome expected{};
+  expected.expected_placed_count = fixture.pieces.size();
+  expected.required_assignments = {{fixture.pieces.front().piece_id, kBed1Id}};
+  expected.require_rotation_admissibility = true;
+  validate_layout(fixture, request, options, solved.value(), expected);
+
+  const auto *placed =
+      find_piece_placement(solved.value(), fixture.pieces.front().piece_id);
+  REQUIRE(placed != nullptr);
+  REQUIRE(placed->placement.rotation_index.value == 0);
+  const auto rotation = resolve_piece_rotation_degrees(request, *placed);
+  REQUIRE(rotation.has_value());
+  REQUIRE(std::fabs(*rotation - 90.0) <= 1e-9);
 }
 
 TEST_CASE("mtg allow_mirror toggle preserves placement count",
@@ -227,11 +329,11 @@ TEST_CASE("mtg piece priority survives partial placement",
 
   // Note: PieceOrdering::priority is only consulted by the irregular
   // constructive / production strategies, which are slow in debug builds and
-  // are exercised in section D / H. Here we set the priority field on a
-  // bounding-box run as a fast-lane smoke test that asserts the high-priority
-  // piece is in the placed set. The contract is: regardless of strategy, a
-  // marked priority piece must never land in unplaced_piece_ids when other
-  // (unmarked) pieces are placed.
+  // are exercised in the dedicated sequential-backtrack / metaheuristic-search
+  // suites. Here we set the priority field on a bounding-box run as a
+  // fast-lane smoke test that asserts the high-priority piece is in the placed
+  // set. The contract is: regardless of strategy, a marked priority piece must
+  // never land in unplaced_piece_ids when other (unmarked) pieces are placed.
   auto options = baseline_bb_options();
   options.irregular.piece_ordering = PieceOrdering::priority;
 
@@ -290,11 +392,11 @@ TEST_CASE("mtg ProgressObserver receives monotonic sequences",
   const auto request = make_request(fixture, options);
   REQUIRE(request.is_valid());
 
-  std::vector<std::size_t> observed;
+  std::vector<ProgressSnapshot> observed;
   SolveControl control{};
   control.random_seed = 5;
   control.on_progress = [&](const ProgressSnapshot &snap) {
-    observed.push_back(snap.sequence);
+    observed.push_back(snap);
   };
 
   auto solved = solve(request, control);
@@ -302,56 +404,18 @@ TEST_CASE("mtg ProgressObserver receives monotonic sequences",
 
   REQUIRE(observed.size() >= 1);
   for (std::size_t i = 1; i < observed.size(); ++i) {
-    INFO("seq[" << i - 1 << "]=" << observed[i - 1] << " seq[" << i
-                << "]=" << observed[i]);
-    REQUIRE(observed[i] >= observed[i - 1]);
+    INFO("seq[" << i - 1 << "]=" << observed[i - 1].sequence << " seq[" << i
+                << "]=" << observed[i].sequence);
+    REQUIRE(observed[i].sequence == observed[i - 1].sequence + 1U);
+    REQUIRE(observed[i].budget.iterations_completed >=
+            observed[i - 1].budget.iterations_completed);
   }
-}
-
-TEST_CASE("mtg CancellationToken stops the search",
-          "[mtg][nesting-matrix][engine-surface][cancellation]") {
-  const auto fixture = load_mtg_fixture();
-
-  MtgRequestOptions options{};
-  options.strategy = StrategyKind::irregular_production;
-  options.production_optimizer = ProductionOptimizerKind::brkga;
-  options.production.population_size = 8;
-  options.production.elite_count = 2;
-  options.production.mutant_count = 2;
-  options.production.max_generations = 64;
-  options.allow_part_overflow = false;
-  options.maintain_bed_assignment = true;
-  options.selected_bin_ids = {kBed1Id};
-
-  const auto request = make_request(fixture, options);
-  REQUIRE(request.is_valid());
-
-  runtime::CancellationSource cancel_source{};
-  std::size_t observed_calls = 0;
-  SolveControl control{};
-  control.random_seed = 5;
-  control.cancellation = cancel_source.token();
-  control.on_progress = [&](const ProgressSnapshot & /*snap*/) {
-    ++observed_calls;
-    cancel_source.request_stop();
-  };
-
-  auto solved = solve(request, control);
-  REQUIRE(solved.has_value());
-  const auto &result = solved.value();
-
-  INFO("stop_reason=" << static_cast<int>(result.stop_reason)
-                      << " iterations="
-                      << result.budget.iterations_completed
-                      << " observed_calls=" << observed_calls);
-
-  // Preferred contract: cancelled. Weakened fallback: completed but with
-  // far fewer iterations than the configured ceiling.
-  const bool cancelled = result.stop_reason == StopReason::cancelled;
-  const bool truncated =
-      result.stop_reason == StopReason::completed &&
-      result.budget.iterations_completed < 64;
-  REQUIRE((cancelled || truncated));
+  REQUIRE(observed.front().sequence == 1U);
+  REQUIRE(observed.back().budget.iterations_completed ==
+          solved.value().budget.iterations_completed);
+  REQUIRE(observed.back().budget.iterations_completed <=
+          request.execution.deterministic_attempts.max_attempts);
+  REQUIRE(solved.value().stop_reason == StopReason::completed);
 }
 
 TEST_CASE("mtg engine flag toggles still place all parts",

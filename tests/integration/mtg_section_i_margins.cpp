@@ -18,8 +18,8 @@ namespace {
 
 enum class AlgorithmKind {
   bounding_box,
-  irregular_constructive,
-  irregular_production_brkga,
+  sequential_backtrack,
+  metaheuristic_search_brkga,
 };
 
 void apply_algorithm(MtgRequestOptions &options, AlgorithmKind kind) {
@@ -28,11 +28,11 @@ void apply_algorithm(MtgRequestOptions &options, AlgorithmKind kind) {
       options.strategy = StrategyKind::bounding_box;
       options.bounding_box.heuristic = pack::BoundingBoxHeuristic::shelf;
       break;
-    case AlgorithmKind::irregular_constructive:
-      options.strategy = StrategyKind::irregular_constructive;
+    case AlgorithmKind::sequential_backtrack:
+      options.strategy = StrategyKind::sequential_backtrack;
       break;
-    case AlgorithmKind::irregular_production_brkga:
-      options.strategy = StrategyKind::irregular_production;
+    case AlgorithmKind::metaheuristic_search_brkga:
+      options.strategy = StrategyKind::metaheuristic_search;
       options.production_optimizer = ProductionOptimizerKind::brkga;
       options.production.max_generations = 2;
       options.production.population_size = 8;
@@ -47,8 +47,8 @@ TEST_CASE("mtg uniform bed margins still place every part",
   const auto fixture = load_mtg_fixture();
 
   const auto algorithm = GENERATE(AlgorithmKind::bounding_box,
-                                  AlgorithmKind::irregular_constructive,
-                                  AlgorithmKind::irregular_production_brkga);
+                                  AlgorithmKind::sequential_backtrack,
+                                  AlgorithmKind::metaheuristic_search_brkga);
   const double margin_mm = GENERATE(0.0, 5.0, 25.0);
   const double spacing_mm = GENERATE(0.0, 1.0);
 
@@ -113,8 +113,8 @@ TEST_CASE("mtg asymmetric bed margins respect each side",
   const auto fixture = load_mtg_fixture();
 
   const auto algorithm = GENERATE(AlgorithmKind::bounding_box,
-                                  AlgorithmKind::irregular_constructive,
-                                  AlgorithmKind::irregular_production_brkga);
+                                  AlgorithmKind::sequential_backtrack,
+                                  AlgorithmKind::metaheuristic_search_brkga);
 
   MtgRequestOptions options{};
   apply_algorithm(options, algorithm);

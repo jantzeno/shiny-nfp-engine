@@ -45,11 +45,18 @@ auto unique_sorted_values(std::vector<double> values) -> std::vector<double> {
 
 auto overlaps_any_occupied_bounds(std::span<const geom::Box2> occupied_bounds,
                                   const geom::Box2 &candidate_bounds) -> bool {
+  return overlaps_any_occupied_bounds(occupied_bounds, candidate_bounds, 0.0);
+}
+
+auto overlaps_any_occupied_bounds(std::span<const geom::Box2> occupied_bounds,
+                                  const geom::Box2 &candidate_bounds,
+                                  const double spacing) -> bool {
   return std::any_of(occupied_bounds.begin(), occupied_bounds.end(),
-                     [&](const geom::Box2 &occupied_bounds_entry) {
-                       return boxes_overlap_interior(candidate_bounds,
-                                                     occupied_bounds_entry);
-                     });
+                      [&](const geom::Box2 &occupied_bounds_entry) {
+                        return boxes_violate_spacing(candidate_bounds,
+                                                    occupied_bounds_entry,
+                                                    spacing);
+                      });
 }
 
 auto split_free_rectangles(std::vector<geom::Box2> &free_rectangles,

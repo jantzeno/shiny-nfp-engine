@@ -43,7 +43,7 @@ auto find_best_shelf_candidate(const BinPackingState &state,
     };
     if (!contains_box(state.container_bounds, translated_bounds) ||
         overlaps_any_occupied_bounds(state.occupied_bounds,
-                                     translated_bounds)) {
+                                     translated_bounds, clearance)) {
       return;
     }
 

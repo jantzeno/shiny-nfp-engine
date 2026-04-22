@@ -5,7 +5,7 @@
 
 namespace shiny::nesting::pack {
 
-class IrregularConstructivePacker {
+class SequentialBacktrackPacker {
 public:
   [[nodiscard]] auto solve(const NormalizedRequest &request,
                            const SolveControl &control)

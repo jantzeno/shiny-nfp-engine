@@ -120,6 +120,7 @@ auto build_piece_instances(const NormalizedRequest &request)
     PieceInstance instance{
         .expanded = expanded,
         .source = it->second,
+        .restricted_to_allowed_bins = !it->second->allowed_bin_ids.empty(),
         .forced_rotation_index =
             index < request.forced_rotations.size() ? request.forced_rotations[index]
                                                     : std::nullopt,

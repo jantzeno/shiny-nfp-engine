@@ -82,7 +82,8 @@ auto find_best_free_rectangle_candidate(
                              state.bin_state.start_corner);
     if (!contains_box(state.container_bounds, actual_candidate_bounds) ||
         overlaps_any_occupied_bounds(state.occupied_bounds,
-                                     actual_candidate_bounds)) {
+                                     actual_candidate_bounds,
+                                     request.config.placement.part_clearance)) {
       continue;
     }
 

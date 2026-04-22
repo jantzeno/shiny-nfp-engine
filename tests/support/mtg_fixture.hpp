@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "geometry/types.hpp"
+#include "geometry/transform.hpp"
 #include "observer.hpp"
 #include "packing/config.hpp"
 #include "placement/config.hpp"
@@ -49,6 +50,12 @@ struct MtgFixture {
 };
 
 [[nodiscard]] auto load_mtg_fixture() -> MtgFixture;
+
+// Small asymmetric rectangle fixture for fast engine-surface tests. Unlike the
+// broad MTG SVG fixture, this one makes rotation-sensitive behavior directly
+// observable without relying on layout-hash drift across rectangle-equivalent
+// rotations.
+[[nodiscard]] auto make_asymmetric_engine_surface_fixture() -> MtgFixture;
 
 // Per-side margins (mm) applied to a bed by shrinking its polygon. Mirrors
 // `BuildUsablePartbedPolygon` in
@@ -130,17 +137,26 @@ struct ExpectedOutcome {
   std::optional<std::size_t> iteration_cap{};
   // Time cap (ms) to verify against `result.budget.elapsed_milliseconds`.
   std::optional<std::uint64_t> time_cap_ms{};
+  // When true, every placed piece must resolve to an angle admitted by the
+  // piece-local or run-level rotation contract.
+  bool require_rotation_admissibility{false};
+  // When true, every placed piece must land in its explicit allowed_bin_ids set.
+  bool require_allowed_bin_admissibility{false};
   // Tolerance for spacing / overlap checks (mm).
   double tolerance_mm{1e-4};
 };
 
-// Asserts the eight invariants in plan.md against the result. Uses Catch2
-// REQUIRE macros, so it must be called from within a TEST_CASE / SECTION.
-//
-// AABB-validation assumption: overlap, containment, and exclusion-zone
-// checks are AABB-based. They are exact only because every fixture piece
-// is an axis-aligned rectangle; adding non-rectangular fixtures will
-// require polygon-true checks.
+// Canonical AABB clearance model used by the MTG helpers and repro tests.
+// Returns true when the gap between two axis-aligned boxes is less than the
+// requested spacing after subtracting tolerance from the spacing request.
+[[nodiscard]] auto boxes_violate_spacing(const geom::Box2 &a, const geom::Box2 &b,
+                                         double spacing_mm,
+                                         double tolerance_mm = 1e-3) -> bool;
+
+// Asserts the shared MTG layout invariants against the result. This includes
+// request/selection/bin admissibility, rotation admissibility, conservation,
+// containment, and AABB-clearance checks. Uses Catch2 REQUIRE macros, so it
+// must be called from within a TEST_CASE / SECTION.
 void validate_layout(const MtgFixture &fixture, const NestingRequest &request,
                      const MtgRequestOptions &options,
                      const NestingResult &result,

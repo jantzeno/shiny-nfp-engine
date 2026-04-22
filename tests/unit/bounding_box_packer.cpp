@@ -239,6 +239,34 @@ TEST_CASE("bounding box free rectangle heuristic respects piece spacing",
   REQUIRE(result.bins.front().placements[1].placement.translation.y == 0.0);
 }
 
+TEST_CASE("bounding box skyline heuristic respects piece spacing",
+          "[packing][bounding-box][skyline][spacing]") {
+  BoundingBoxPacker packer;
+  auto request = make_request(
+      {
+          .bin_id = 42,
+          .polygon = make_rectangle(0.0, 0.0, 5.0, 2.0),
+          .geometry_revision = 1,
+      },
+      {
+          make_piece(1, make_rectangle(0.0, 0.0, 2.0, 2.0), 1),
+          make_piece(2, make_rectangle(0.0, 0.0, 2.0, 2.0), 2),
+      },
+      1);
+  request.config.bounding_box.heuristic = BoundingBoxHeuristic::skyline;
+  request.config.placement.part_clearance = 1.0;
+
+  const auto result = packer.decode(request);
+
+  REQUIRE(result.bins.size() == 1);
+  REQUIRE(result.layout.unplaced_piece_ids.empty());
+  REQUIRE(result.bins.front().placements.size() == 2);
+  REQUIRE(result.bins.front().placements[0].placement.translation.x == 0.0);
+  REQUIRE(result.bins.front().placements[0].placement.translation.y == 0.0);
+  REQUIRE(result.bins.front().placements[1].placement.translation.x == 3.0);
+  REQUIRE(result.bins.front().placements[1].placement.translation.y == 0.0);
+}
+
 TEST_CASE("bounding box solve selects the best deterministic attempt and emits progress",
           "[solve][bounding-box][progress]") {
   auto request = make_solve_request(
@@ -411,7 +439,6 @@ TEST_CASE("bounding box packer evaluates bounded deterministic attempts",
   REQUIRE(attempts.front().layout.placement_trace.size() == 3);
   REQUIRE(attempts[1].layout.placement_trace.size() == 3);
   REQUIRE(attempts[2].layout.placement_trace.size() == 3);
-  REQUIRE(attempts.front().layout.placement_trace.front().piece_id == 1);
   REQUIRE(attempts[1].layout.placement_trace.front().piece_id !=
           attempts.front().layout.placement_trace.front().piece_id);
 

@@ -259,7 +259,7 @@ TEST_CASE("order evaluator honors forced rotation assignments",
 TEST_CASE("metaheuristic strategies improve the constructive baseline",
           "[solve][metaheuristic]") {
   auto constructive_request = improvement_request();
-  constructive_request.execution.strategy = StrategyKind::irregular_constructive;
+  constructive_request.execution.strategy = StrategyKind::sequential_backtrack;
   const auto constructive = shiny::nesting::solve(constructive_request);
   REQUIRE(constructive.ok());
   REQUIRE(constructive.value().layout.placement_trace.size() == 1U);
@@ -304,7 +304,7 @@ TEST_CASE("metaheuristic strategies preserve or improve benchmark-style cases",
   bool saw_strict_improvement = false;
   for (const auto &[case_id, constructive_seed] : benchmark_cases) {
     auto constructive_request = constructive_seed;
-    constructive_request.execution.strategy = StrategyKind::irregular_constructive;
+    constructive_request.execution.strategy = StrategyKind::sequential_backtrack;
     const auto constructive = shiny::nesting::solve(constructive_request);
     INFO(case_id);
     REQUIRE(constructive.ok());
@@ -350,7 +350,7 @@ TEST_CASE("irregular production dispatch can route to the new optimizers",
 
   for (const auto &[optimizer, expected] : optimizers) {
     auto request = improvement_request();
-    request.execution.strategy = StrategyKind::irregular_production;
+    request.execution.strategy = StrategyKind::metaheuristic_search;
     request.execution.production_optimizer = optimizer;
 
     const auto result =
@@ -358,7 +358,7 @@ TEST_CASE("irregular production dispatch can route to the new optimizers",
                                                     .random_seed = 17});
     INFO(static_cast<int>(optimizer));
     REQUIRE(result.ok());
-    REQUIRE(result.value().strategy == StrategyKind::irregular_production);
+    REQUIRE(result.value().strategy == StrategyKind::metaheuristic_search);
     REQUIRE(result.value().search.optimizer == expected);
     REQUIRE(result.value().layout.placement_trace.size() == 2U);
     const auto stop_reason = result.value().stop_reason;
@@ -386,7 +386,7 @@ TEST_CASE("strategy registry resolves direct and production strategies",
   REQUIRE(direct_config->max_iterations == 19U);
 
   auto production_request = improvement_request();
-  production_request.execution.strategy = StrategyKind::irregular_production;
+  production_request.execution.strategy = StrategyKind::metaheuristic_search;
   production_request.execution.production_optimizer = ProductionOptimizerKind::lahc;
   production_request.execution.lahc.max_iterations = 13;
   const auto production_normalized =
@@ -398,7 +398,7 @@ TEST_CASE("strategy registry resolves direct and production strategies",
           production_normalized.value().request.execution);
   REQUIRE(production_resolved.run != nullptr);
   REQUIRE(production_resolved.result_strategy_override ==
-          StrategyKind::irregular_production);
+          StrategyKind::metaheuristic_search);
   const auto *production_config =
       production_normalized.value().request.execution.production_strategy_config
           .get_if<shiny::nesting::LAHCConfig>(ProductionOptimizerKind::lahc);

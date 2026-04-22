@@ -10,6 +10,7 @@
 
 #include "geometry/normalize.hpp"
 #include "logging/shiny_log.hpp"
+#include "packing/common.hpp"
 #include "placement/config.hpp"
 #include "polygon_ops/boolean_ops.hpp"
 #include "polygon_ops/merge_region.hpp"
@@ -59,18 +60,17 @@ struct PieceOrderingMetrics {
   std::size_t original_index{0};
   double width{0.0};
   double height{0.0};
-  double area{0.0};
+  double polygon_area{0.0};
+  double box_area{0.0};
   double max_dimension{0.0};
+  double min_dimension{0.0};
+  double box_waste_area{0.0};
+  double fill_ratio{0.0};
 };
 
 [[nodiscard]] auto as_polygon_with_holes(const place::BedExclusionZone &zone)
     -> geom::PolygonWithHoles {
   return {.outer = zone.region.outer};
-}
-
-[[nodiscard]] auto interrupted(const InterruptionProbe &interruption_requested)
-    -> bool {
-  return interruption_requested && interruption_requested();
 }
 
 [[nodiscard]] auto snap_coordinate(double value) -> double {
@@ -293,11 +293,13 @@ box_for_start_corner(const geom::Box2 &box, const geom::Box2 &container,
 
 [[nodiscard]] auto
 overlaps_any_occupied_bounds(std::span<const geom::Box2> occupied_bounds,
-                             const geom::Box2 &candidate_bounds) -> bool {
+                             const geom::Box2 &candidate_bounds,
+                             const double clearance = 0.0) -> bool {
   return std::any_of(occupied_bounds.begin(), occupied_bounds.end(),
                      [&](const geom::Box2 &occupied_bounds_entry) {
-                       return boxes_overlap_interior(candidate_bounds,
-                                                     occupied_bounds_entry);
+                       return boxes_violate_spacing(candidate_bounds,
+                                                   occupied_bounds_entry,
+                                                   clearance);
                      });
 }
 
@@ -525,34 +527,33 @@ start_corner_on_top(const place::PlacementStartCorner start_corner) -> bool {
   return state;
 }
 
-[[nodiscard]] auto piece_allows_bin(const PieceInput &piece,
-                                    const std::uint32_t bin_id) -> bool {
-  return piece.allowed_bin_ids.empty() ||
-         std::find(piece.allowed_bin_ids.begin(), piece.allowed_bin_ids.end(),
-                   bin_id) != piece.allowed_bin_ids.end();
-}
-
-void mark_remaining_unplaced(std::span<const PieceInput> pieces,
-                             std::size_t start_index,
-                             std::vector<std::uint32_t> &unplaced_piece_ids) {
-  for (std::size_t index = start_index; index < pieces.size(); ++index) {
-    unplaced_piece_ids.push_back(pieces[index].piece_id);
-  }
-}
-
 [[nodiscard]] auto piece_metrics_for(const PieceInput &piece,
                                      const std::size_t original_index)
     -> PieceOrderingMetrics {
   const geom::Box2 bounds = compute_bounds(piece.polygon);
   const double width = bounds.max.x - bounds.min.x;
   const double height = bounds.max.y - bounds.min.y;
+  const double polygon_piece_area = polygon_area(piece.polygon);
+  const double piece_box_area = width * height;
   return {
       .original_index = original_index,
       .width = width,
       .height = height,
-      .area = polygon_area(piece.polygon),
+      .polygon_area = polygon_piece_area,
+      .box_area = piece_box_area,
       .max_dimension = std::max(width, height),
+      .min_dimension = std::min(width, height),
+      .box_waste_area = std::max(0.0, piece_box_area - polygon_piece_area),
+      .fill_ratio = piece_box_area > kCoordinateSnap
+                        ? polygon_piece_area / piece_box_area
+                        : 0.0,
   };
+}
+
+template <typename Comparator>
+auto sort_order(std::vector<std::size_t> &order, const Comparator &comparator)
+    -> void {
+  std::stable_sort(order.begin(), order.end(), comparator);
 }
 
 template <typename MetricSelector>
@@ -625,17 +626,54 @@ auto append_unique_order(const DecoderRequest &request,
   orders.reserve(request.config.deterministic_attempts.max_attempts);
   order_keys.reserve(request.config.deterministic_attempts.max_attempts);
 
-  append_unique_order(request, orders, order_keys, original_order);
+  std::vector<std::size_t> descending_box_area_then_fill = original_order;
+  sort_order(descending_box_area_then_fill, [&metrics](const std::size_t lhs,
+                                                       const std::size_t rhs) {
+    const PieceOrderingMetrics &lhs_metrics = metrics[lhs];
+    const PieceOrderingMetrics &rhs_metrics = metrics[rhs];
+    if (!almost_equal(lhs_metrics.box_area, rhs_metrics.box_area)) {
+      return lhs_metrics.box_area > rhs_metrics.box_area;
+    }
+    if (!almost_equal(lhs_metrics.fill_ratio, rhs_metrics.fill_ratio)) {
+      return lhs_metrics.fill_ratio < rhs_metrics.fill_ratio;
+    }
+    if (!almost_equal(lhs_metrics.max_dimension, rhs_metrics.max_dimension)) {
+      return lhs_metrics.max_dimension > rhs_metrics.max_dimension;
+    }
+    return lhs_metrics.original_index < rhs_metrics.original_index;
+  });
+  append_unique_order(request, orders, order_keys,
+                      std::move(descending_box_area_then_fill));
+
+  std::vector<std::size_t> descending_dimension_pair = original_order;
+  sort_order(descending_dimension_pair, [&metrics](const std::size_t lhs,
+                                                   const std::size_t rhs) {
+    const PieceOrderingMetrics &lhs_metrics = metrics[lhs];
+    const PieceOrderingMetrics &rhs_metrics = metrics[rhs];
+    if (!almost_equal(lhs_metrics.max_dimension, rhs_metrics.max_dimension)) {
+      return lhs_metrics.max_dimension > rhs_metrics.max_dimension;
+    }
+    if (!almost_equal(lhs_metrics.min_dimension, rhs_metrics.min_dimension)) {
+      return lhs_metrics.min_dimension > rhs_metrics.min_dimension;
+    }
+    if (!almost_equal(lhs_metrics.box_area, rhs_metrics.box_area)) {
+      return lhs_metrics.box_area > rhs_metrics.box_area;
+    }
+    return lhs_metrics.original_index < rhs_metrics.original_index;
+  });
+  append_unique_order(request, orders, order_keys,
+                      std::move(descending_dimension_pair));
 
   std::vector<std::size_t> reversed_order = original_order;
   std::reverse(reversed_order.begin(), reversed_order.end());
   append_unique_order(request, orders, order_keys, std::move(reversed_order));
 
-  std::vector<std::size_t> descending_area = original_order;
+  std::vector<std::size_t> descending_box_area = original_order;
   sort_order_descending(
-      descending_area, metrics,
-      [](const PieceOrderingMetrics &entry) { return entry.area; });
-  append_unique_order(request, orders, order_keys, std::move(descending_area));
+      descending_box_area, metrics,
+      [](const PieceOrderingMetrics &entry) { return entry.box_area; });
+  append_unique_order(request, orders, order_keys,
+                      std::move(descending_box_area));
 
   std::vector<std::size_t> descending_max_dimension = original_order;
   sort_order_descending(
@@ -656,6 +694,29 @@ auto append_unique_order(const DecoderRequest &request,
       [](const PieceOrderingMetrics &entry) { return entry.height; });
   append_unique_order(request, orders, order_keys,
                       std::move(descending_height));
+
+  std::vector<std::size_t> descending_min_dimension = original_order;
+  sort_order_descending(
+      descending_min_dimension, metrics,
+      [](const PieceOrderingMetrics &entry) { return entry.min_dimension; });
+  append_unique_order(request, orders, order_keys,
+                      std::move(descending_min_dimension));
+
+  std::vector<std::size_t> descending_box_waste = original_order;
+  sort_order_descending(
+      descending_box_waste, metrics,
+      [](const PieceOrderingMetrics &entry) { return entry.box_waste_area; });
+  append_unique_order(request, orders, order_keys,
+                      std::move(descending_box_waste));
+
+  std::vector<std::size_t> descending_polygon_area = original_order;
+  sort_order_descending(
+      descending_polygon_area, metrics,
+      [](const PieceOrderingMetrics &entry) { return entry.polygon_area; });
+  append_unique_order(request, orders, order_keys,
+                      std::move(descending_polygon_area));
+
+  append_unique_order(request, orders, order_keys, original_order);
 
   if (orders.size() > request.config.deterministic_attempts.max_attempts) {
     orders.resize(request.config.deterministic_attempts.max_attempts);
@@ -691,7 +752,7 @@ find_best_shelf_candidate(const BinPackingState &state, const PieceInput &piece,
     };
     if (!contains_box(state.container_bounds, translated_bounds) ||
         overlaps_any_occupied_bounds(state.occupied_bounds,
-                                     translated_bounds)) {
+                                     translated_bounds, clearance)) {
       return;
     }
 
@@ -808,7 +869,10 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
   canonical_occupied_bounds.reserve(state.occupied_bounds.size());
   for (const geom::Box2 &occupied_bounds_entry : state.occupied_bounds) {
     canonical_occupied_bounds.push_back(
-        box_for_start_corner(occupied_bounds_entry, state.container_bounds,
+        box_for_start_corner(spacing_reservation_bounds(occupied_bounds_entry,
+                                                       request.config.placement
+                                                           .part_clearance),
+                             state.container_bounds,
                              state.bin_state.start_corner));
   }
 
@@ -846,7 +910,8 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
     };
     const auto translated_piece = translate_polygon(rotated_piece, translation);
     if (overlaps_any_occupied_bounds(state.occupied_bounds,
-                                     actual_candidate_bounds) ||
+                                     actual_candidate_bounds,
+                                     request.config.placement.part_clearance) ||
         overlaps_any_exclusion_zone(translated_piece, actual_candidate_bounds,
                                     request.config.placement.exclusion_zones,
                                     state.bin_state.bin_id)) {
@@ -947,7 +1012,8 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
                              state.bin_state.start_corner);
     if (!contains_box(state.container_bounds, actual_candidate_bounds) ||
         overlaps_any_occupied_bounds(state.occupied_bounds,
-                                     actual_candidate_bounds)) {
+                                     actual_candidate_bounds,
+                                     request.config.placement.part_clearance)) {
       continue;
     }
 
@@ -1001,21 +1067,20 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
                                      const PieceInput &piece,
                                      const DecoderRequest &request)
     -> std::optional<PlacementCandidate> {
+  const auto &rotations = allowed_rotations_for(piece, request.config.placement);
   SHINY_DEBUG("BoundingBoxPacker::find_best_for_bin: piece_id={} bin_id={} "
               "shelves={} rotations={}",
               piece.piece_id, state.bin_state.bin_id, state.shelves.size(),
-              geom::rotation_count(request.config.placement.allowed_rotations));
+              geom::rotation_count(rotations));
   std::optional<PlacementCandidate> best;
 
-  const auto rotation_count =
-      geom::rotation_count(request.config.placement.allowed_rotations);
+  const auto rotation_count = geom::rotation_count(rotations);
   for (std::size_t rotation_value = 0;
        rotation_value < rotation_count;
        ++rotation_value) {
     const geom::RotationIndex rotation_index{
         static_cast<std::uint16_t>(rotation_value)};
-    const auto resolved_rotation =
-        place::resolve_rotation(rotation_index, request.config.placement);
+    const auto resolved_rotation = geom::resolve_rotation(rotation_index, rotations);
     if (!resolved_rotation.has_value() ||
         !place::grain_compatibility_allows_rotation(
             *resolved_rotation, request.config.placement.bed_grain_direction,
@@ -1117,12 +1182,8 @@ void apply_selection(BinPackingState &state, const PieceInput &piece,
   ++state.bin_state.hole_set_revision;
   state.occupied_area += polygon_area(translated_piece);
   state.occupied_bounds.push_back(selection.translated_bounds);
-  const geom::Box2 clearance_bounds{
-      .min = {.x = selection.translated_bounds.min.x - clearance,
-              .y = selection.translated_bounds.min.y - clearance},
-      .max = {.x = selection.translated_bounds.max.x + clearance,
-              .y = selection.translated_bounds.max.y + clearance},
-  };
+  const geom::Box2 clearance_bounds =
+      spacing_reservation_bounds(selection.translated_bounds, clearance);
   split_free_rectangles(state.free_rectangles, clearance_bounds);
 
   const auto width =

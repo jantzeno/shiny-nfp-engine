@@ -67,7 +67,7 @@ TEST_CASE("mtg iteration limit caps the search",
                                    std::size_t{64});
 
   MtgRequestOptions options{};
-  options.strategy = StrategyKind::irregular_production;
+  options.strategy = StrategyKind::metaheuristic_search;
   options.production_optimizer = optimizer;
   options.selected_bin_ids = {kBed1Id};
   options.allow_part_overflow = true;
@@ -112,7 +112,7 @@ TEST_CASE("mtg unlimited iteration limit completes",
                                   ProductionOptimizerKind::lahc);
 
   MtgRequestOptions options{};
-  options.strategy = StrategyKind::irregular_production;
+  options.strategy = StrategyKind::metaheuristic_search;
   options.production_optimizer = optimizer;
   options.selected_bin_ids = {kBed1Id};
   options.allow_part_overflow = true;
@@ -135,7 +135,7 @@ TEST_CASE("mtg BRKGA single-iteration negative control",
   const auto fixture = load_mtg_fixture();
 
   MtgRequestOptions options{};
-  options.strategy = StrategyKind::irregular_production;
+  options.strategy = StrategyKind::metaheuristic_search;
   options.production_optimizer = ProductionOptimizerKind::brkga;
   options.selected_bin_ids = {};
   options.allow_part_overflow = true;
@@ -170,7 +170,7 @@ TEST_CASE("mtg time limit caps the search",
                                         std::uint64_t{2500});
 
   MtgRequestOptions options{};
-  options.strategy = StrategyKind::irregular_production;
+  options.strategy = StrategyKind::metaheuristic_search;
   options.production_optimizer = optimizer;
   options.selected_bin_ids = {kBed1Id};
   options.allow_part_overflow = true;
@@ -208,7 +208,7 @@ TEST_CASE("mtg unlimited time completes",
                                   ProductionOptimizerKind::lahc);
 
   MtgRequestOptions options{};
-  options.strategy = StrategyKind::irregular_production;
+  options.strategy = StrategyKind::metaheuristic_search;
   options.production_optimizer = optimizer;
   options.selected_bin_ids = {kBed1Id};
   options.allow_part_overflow = true;
@@ -248,9 +248,9 @@ TEST_CASE("mtg bb and constructive honor limits",
     REQUIRE(solved.value().budget.iterations_completed <= 1);
   }
 
-  SECTION("irregular_constructive honors iteration_limit=1") {
+  SECTION("sequential_backtrack honors iteration_limit=1") {
     MtgRequestOptions options{};
-    options.strategy = StrategyKind::irregular_constructive;
+    options.strategy = StrategyKind::sequential_backtrack;
     options.selected_bin_ids = {};
     options.allow_part_overflow = true;
 
@@ -284,7 +284,7 @@ TEST_CASE("mtg progress entries diagnostic",
   constexpr std::size_t cap = 8;
 
   MtgRequestOptions options{};
-  options.strategy = StrategyKind::irregular_production;
+  options.strategy = StrategyKind::metaheuristic_search;
   options.production_optimizer = optimizer;
   options.selected_bin_ids = {kBed1Id};
   options.allow_part_overflow = true;

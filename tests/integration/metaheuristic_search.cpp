@@ -1,4 +1,4 @@
-// MTG nesting matrix — Section E: irregular-production optimizers.
+// MTG metaheuristic-search integration coverage.
 //
 // Exercises every ProductionOptimizerKind on the MTG fixture using
 // conservative budgets so the per-cell run-time stays bounded.
@@ -9,6 +9,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include "runtime/cancellation.hpp"
 #include "support/mtg_fixture.hpp"
 
 using namespace shiny::nesting;
@@ -18,7 +19,7 @@ namespace {
 
 MtgRequestOptions make_production_options(ProductionOptimizerKind kind) {
   MtgRequestOptions options{};
-  options.strategy = StrategyKind::irregular_production;
+  options.strategy = StrategyKind::metaheuristic_search;
   options.production_optimizer = kind;
   options.allow_part_overflow = true;
   options.maintain_bed_assignment = false;
@@ -49,8 +50,8 @@ std::size_t bed1_piece_count(const MtgFixture &fixture) {
 
 } // namespace
 
-TEST_CASE("mtg irregular-production places every part for every optimizer",
-          "[mtg][nesting-matrix][irregular-production][.][slow]") {
+TEST_CASE("mtg metaheuristic-search places every part for every optimizer",
+          "[mtg][nesting-matrix][metaheuristic-search][.][slow]") {
   const auto kind = GENERATE(ProductionOptimizerKind::brkga,
                              ProductionOptimizerKind::simulated_annealing,
                              ProductionOptimizerKind::alns,
@@ -82,8 +83,8 @@ TEST_CASE("mtg irregular-production places every part for every optimizer",
           hash_bin_placements(solved_b.value(), kBed1Id));
 }
 
-TEST_CASE("mtg irregular-production all-beds end-to-end",
-          "[mtg][nesting-matrix][irregular-production][.][slow]") {
+TEST_CASE("mtg metaheuristic-search all-beds end-to-end",
+          "[mtg][nesting-matrix][metaheuristic-search][.][slow]") {
   const auto kind = GENERATE(ProductionOptimizerKind::brkga,
                              ProductionOptimizerKind::simulated_annealing,
                              ProductionOptimizerKind::alns,
@@ -106,4 +107,46 @@ TEST_CASE("mtg irregular-production all-beds end-to-end",
   ExpectedOutcome expected{};
   expected.expected_placed_count = kBaselinePieceCount;
   validate_layout(fixture, request, options, solved.value(), expected);
+}
+
+TEST_CASE("mtg metaheuristic-search cancellation stops the search",
+          "[mtg][nesting-matrix][metaheuristic-search][cancellation]") {
+  const auto fixture = load_mtg_fixture();
+
+  MtgRequestOptions options{};
+  options.strategy = StrategyKind::metaheuristic_search;
+  options.production_optimizer = ProductionOptimizerKind::brkga;
+  options.production.population_size = 8;
+  options.production.elite_count = 2;
+  options.production.mutant_count = 2;
+  options.production.max_generations = 64;
+  options.allow_part_overflow = false;
+  options.maintain_bed_assignment = true;
+  options.selected_bin_ids = {kBed1Id};
+
+  const auto request = make_request(fixture, options);
+  REQUIRE(request.is_valid());
+
+  runtime::CancellationSource cancel_source{};
+  std::size_t observed_calls = 0;
+  SolveControl control{};
+  control.random_seed = 5;
+  control.cancellation = cancel_source.token();
+  control.on_progress = [&](const ProgressSnapshot & /*snap*/) {
+    ++observed_calls;
+    cancel_source.request_stop();
+  };
+
+  auto solved = solve(request, control);
+  REQUIRE(solved.has_value());
+  const auto &result = solved.value();
+
+  INFO("stop_reason=" << static_cast<int>(result.stop_reason)
+                      << " iterations="
+                      << result.budget.iterations_completed
+                      << " observed_calls=" << observed_calls);
+
+  REQUIRE(observed_calls >= 1);
+  REQUIRE(result.stop_reason == StopReason::cancelled);
+  REQUIRE(result.budget.cancellation_requested);
 }

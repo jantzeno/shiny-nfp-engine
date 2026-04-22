@@ -80,11 +80,11 @@ auto improvement_request() -> NestingRequest {
 TEST_CASE("production search improves the constructive seed and records replayable progress",
           "[solve][production][brkga]") {
   auto constructive_request = improvement_request();
-  constructive_request.execution.strategy = StrategyKind::irregular_constructive;
+  constructive_request.execution.strategy = StrategyKind::sequential_backtrack;
   const auto constructive = shiny::nesting::solve(constructive_request);
 
   auto production_request = improvement_request();
-  production_request.execution.strategy = StrategyKind::irregular_production;
+  production_request.execution.strategy = StrategyKind::metaheuristic_search;
 
   std::vector<ProgressSnapshot> snapshots;
   const auto production = shiny::nesting::solve(
@@ -113,7 +113,7 @@ TEST_CASE("production search improves the constructive seed and records replayab
 TEST_CASE("production search respects iteration limits and cancellation",
           "[solve][production][budget]") {
   auto request = improvement_request();
-  request.execution.strategy = StrategyKind::irregular_production;
+  request.execution.strategy = StrategyKind::metaheuristic_search;
 
   const auto limited =
       shiny::nesting::solve(request, SolveControl{.iteration_limit = 1, .random_seed = 3});
@@ -132,7 +132,7 @@ TEST_CASE("production search respects iteration limits and cancellation",
 TEST_CASE("production search obeys time budgets under search",
           "[solve][production][time]") {
   NestingRequest request;
-  request.execution.strategy = StrategyKind::irregular_production;
+  request.execution.strategy = StrategyKind::metaheuristic_search;
   request.execution.default_rotations = {{0.0}};
   request.execution.production.population_size = 48;
   request.execution.production.elite_count = 8;
@@ -154,4 +154,21 @@ TEST_CASE("production search obeys time budgets under search",
       shiny::nesting::solve(request, SolveControl{.time_limit_milliseconds = 1});
   REQUIRE(result.ok());
   REQUIRE(result.value().stop_reason == StopReason::time_limit_reached);
+}
+
+TEST_CASE("production search keeps strict small-population BRKGA validation",
+          "[solve][production][config]") {
+  auto request = improvement_request();
+  request.execution.strategy = StrategyKind::metaheuristic_search;
+  request.execution.production.population_size = 4;
+  request.execution.production.elite_count = 1;
+  request.execution.production.mutant_count = 1;
+  REQUIRE(request.execution.production.is_valid());
+  REQUIRE(request.is_valid());
+
+  request.execution.production.elite_count = 2;
+  request.execution.production.mutant_count = 2;
+  REQUIRE_FALSE(request.execution.production.is_valid());
+  REQUIRE_FALSE(request.is_valid());
+  REQUIRE_FALSE(shiny::nesting::solve(request).ok());
 }

@@ -131,7 +131,7 @@ TEST_CASE("request normalization accepts rotation ranges",
 TEST_CASE("constructive solve refines sampled rotation ranges locally",
           "[geometry][rotation-range][refinement][solve]") {
   NestingRequest request;
-  request.execution.strategy = shiny::nesting::StrategyKind::irregular_constructive;
+  request.execution.strategy = shiny::nesting::StrategyKind::sequential_backtrack;
   request.execution.default_rotations = {
       .range_degrees = RotationRange{.min_degrees = 0.0,
                                      .max_degrees = 90.0,
@@ -172,7 +172,7 @@ TEST_CASE("rtree index queries overlapping bounds",
 TEST_CASE("constructive solve can use mirrored placements when enabled",
           "[geometry][mirror][solve]") {
   shiny::nesting::NestingRequest baseline_request;
-  baseline_request.execution.strategy = shiny::nesting::StrategyKind::irregular_constructive;
+  baseline_request.execution.strategy = shiny::nesting::StrategyKind::sequential_backtrack;
   baseline_request.execution.default_rotations = {{0.0}};
   baseline_request.bins.push_back(
       shiny::nesting::BinRequest{.bin_id = 1, .polygon = left_notch()});

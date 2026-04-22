@@ -35,6 +35,7 @@ struct PieceInstance {
   ExpandedPieceInstance expanded{};
   const PieceRequest *source{nullptr};
   std::vector<std::uint32_t> allowed_expanded_bin_ids{};
+  bool restricted_to_allowed_bins{false};
   std::optional<geom::RotationIndex> forced_rotation_index{};
 };
 
@@ -92,7 +93,8 @@ struct TrialStateRecorder {
 
 [[nodiscard]] inline auto piece_allows_bin(const PieceInstance &piece,
                                            const std::uint32_t bin_id) -> bool {
-  return piece.allowed_expanded_bin_ids.empty() ||
+  return (!piece.restricted_to_allowed_bins &&
+          piece.allowed_expanded_bin_ids.empty()) ||
          std::find(piece.allowed_expanded_bin_ids.begin(),
                    piece.allowed_expanded_bin_ids.end(),
                    bin_id) != piece.allowed_expanded_bin_ids.end();
@@ -218,7 +220,7 @@ auto emit_search_progress(const SolveControl &control, std::size_t placed_parts,
                                          const ExecutionPolicy &execution)
     -> std::vector<PieceInstance>;
 
-[[nodiscard]] auto solve_irregular_constructive(const NormalizedRequest &request,
+[[nodiscard]] auto solve_sequential_backtrack(const NormalizedRequest &request,
                                                 const SolveControl &control)
     -> util::StatusOr<NestingResult>;
 

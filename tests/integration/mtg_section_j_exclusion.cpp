@@ -249,15 +249,15 @@ TEST_CASE("mtg exclusion zone on bed1 forces overflow to bed2",
     });
   }
 
-  SECTION("overflow + irregular_constructive, spacing 0mm") {
+  SECTION("overflow + sequential_backtrack, spacing 0mm") {
     run_overflow_case(0.0, [](MtgRequestOptions &o) {
-      o.strategy = StrategyKind::irregular_constructive;
+      o.strategy = StrategyKind::sequential_backtrack;
     });
   }
 
-  SECTION("overflow + irregular_production-brkga, spacing 0mm") {
+  SECTION("overflow + metaheuristic_search-brkga, spacing 0mm") {
     run_overflow_case(0.0, [](MtgRequestOptions &o) {
-      o.strategy = StrategyKind::irregular_production;
+      o.strategy = StrategyKind::metaheuristic_search;
       o.production_optimizer = ProductionOptimizerKind::brkga;
       o.production.max_generations = 2;
       o.production.population_size = 8;

@@ -45,10 +45,17 @@ template <typename T> auto hash_value(std::uint64_t &hash, const T &value) -> vo
   return config.is_valid();
 }
 
-[[nodiscard]] auto rotation_sets_match(const geom::DiscreteRotationSet &lhs,
-                                       const geom::DiscreteRotationSet &rhs)
+[[nodiscard]] auto rotation_set_is_subset(const geom::DiscreteRotationSet &subset,
+                                          const geom::DiscreteRotationSet &superset)
     -> bool {
-  return geom::materialize_rotations(lhs) == geom::materialize_rotations(rhs);
+  const auto subset_angles = geom::materialize_rotations(subset);
+  const auto superset_angles = geom::materialize_rotations(superset);
+  return std::all_of(subset_angles.begin(), subset_angles.end(),
+                     [&](const double angle) {
+                       return std::find(superset_angles.begin(),
+                                        superset_angles.end(),
+                                        angle) != superset_angles.end();
+                     });
 }
 
 [[nodiscard]] auto normalize_piece_polygon(const PieceRequest &piece,
@@ -107,8 +114,8 @@ template <typename T> auto hash_value(std::uint64_t &hash, const T &value) -> vo
 [[nodiscard]] auto strategy_kind_is_valid(const StrategyKind strategy) -> bool {
   switch (strategy) {
   case StrategyKind::bounding_box:
-  case StrategyKind::irregular_constructive:
-  case StrategyKind::irregular_production:
+  case StrategyKind::sequential_backtrack:
+  case StrategyKind::metaheuristic_search:
   case StrategyKind::simulated_annealing:
   case StrategyKind::alns:
   case StrategyKind::gdrr:
@@ -146,8 +153,8 @@ void synchronize_strategy_configs(ExecutionPolicy &execution) {
     }
     break;
   case StrategyKind::bounding_box:
-  case StrategyKind::irregular_constructive:
-  case StrategyKind::irregular_production:
+  case StrategyKind::sequential_backtrack:
+  case StrategyKind::metaheuristic_search:
     break;
   }
 
@@ -212,8 +219,8 @@ void synchronize_strategy_configs(ExecutionPolicy &execution) {
                                            execution.lahc)
         .is_valid();
   case StrategyKind::bounding_box:
-  case StrategyKind::irregular_constructive:
-  case StrategyKind::irregular_production:
+  case StrategyKind::sequential_backtrack:
+  case StrategyKind::metaheuristic_search:
     return true;
   }
   return false;
@@ -379,7 +386,9 @@ auto NestingRequest::is_valid() const -> bool {
       return false;
     }
     if (piece.allowed_rotations.has_value() &&
-        !detail::rotation_set_is_valid(*piece.allowed_rotations)) {
+        (!detail::rotation_set_is_valid(*piece.allowed_rotations) ||
+         !detail::rotation_set_is_subset(*piece.allowed_rotations,
+                                         execution.default_rotations))) {
       return false;
     }
   }
@@ -541,18 +550,14 @@ auto to_bounding_box_decoder_request(const NormalizedRequest &request)
       return util::Status::invalid_input;
     }
 
-    if (source_it->allowed_rotations.has_value() &&
-        !detail::rotation_sets_match(*source_it->allowed_rotations,
-                                     request.request.execution.default_rotations)) {
-      return util::Status::invalid_input;
-    }
-
     pack::PieceInput piece{
         .piece_id = expanded_piece.expanded_piece_id,
         .polygon = source_it->polygon,
         .geometry_revision = source_it->geometry_revision,
         .allow_mirror = source_it->allow_mirror,
+        .allowed_rotations = source_it->allowed_rotations,
         .grain_compatibility = source_it->grain_compatibility,
+        .restricted_to_allowed_bins = !source_it->allowed_bin_ids.empty(),
     };
 
     if (!source_it->allowed_bin_ids.empty()) {

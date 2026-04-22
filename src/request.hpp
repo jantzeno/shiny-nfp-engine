@@ -19,8 +19,8 @@ namespace shiny::nesting {
 
 enum class StrategyKind : std::uint8_t {
   bounding_box = 0,
-  irregular_constructive = 1,
-  irregular_production = 2,
+  sequential_backtrack = 1,
+  metaheuristic_search = 2,
   simulated_annealing = 3,
   alns = 4,
   gdrr = 5,
@@ -70,9 +70,12 @@ struct PieceRequest {
   std::uint64_t geometry_revision{0};
   std::int32_t priority{0};
   bool allow_mirror{false};
+  // When provided, this narrows `ExecutionPolicy::default_rotations`.
   std::optional<geom::DiscreteRotationSet> allowed_rotations{};
   place::PartGrainCompatibility grain_compatibility{
       place::PartGrainCompatibility::unrestricted};
+  // Effective bin eligibility is the intersection of these ids with
+  // `ExecutionPolicy::selected_bin_ids`.
   std::vector<std::uint32_t> allowed_bin_ids{};
 };
 
@@ -281,7 +284,7 @@ template <typename Config>
                                            ProductionOptimizerKind production_kind,
                                            const Config &legacy)
     -> const Config & {
-  if (execution.strategy == StrategyKind::irregular_production &&
+  if (execution.strategy == StrategyKind::metaheuristic_search &&
       execution.production_optimizer == production_kind) {
     return resolve_production_strategy_config(execution, production_kind, legacy);
   }

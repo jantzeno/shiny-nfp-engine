@@ -59,7 +59,8 @@ auto find_best_skyline_candidate(
   canonical_occupied_bounds.reserve(state.occupied_bounds.size());
   for (const geom::Box2 &occupied_bounds_entry : state.occupied_bounds) {
     canonical_occupied_bounds.push_back(box_for_start_corner(
-        expand_box(occupied_bounds_entry, clearance), state.container_bounds,
+        spacing_reservation_bounds(occupied_bounds_entry, clearance),
+        state.container_bounds,
         state.bin_state.start_corner));
   }
 
@@ -97,7 +98,7 @@ auto find_best_skyline_candidate(
     };
     const auto translated_piece = translate_polygon(rotated_piece, translation);
     if (overlaps_any_occupied_bounds(state.occupied_bounds,
-                                     actual_candidate_bounds) ||
+                                     actual_candidate_bounds, clearance) ||
         overlaps_any_exclusion_zone(translated_piece, actual_candidate_bounds,
                                     request.config.placement.exclusion_zones,
                                     state.bin_state.bin_id)) {

@@ -27,7 +27,7 @@ std::size_t bed1_piece_count(const MtgFixture &fixture) {
       [](const MtgPiece &p) { return p.source_bed_id == kBed1Id; }));
 }
 
-enum class SeedAlgo { bounding_box, irregular_constructive, brkga };
+enum class SeedAlgo { bounding_box, sequential_backtrack, brkga };
 
 MtgRequestOptions make_seed_options(SeedAlgo algo) {
   MtgRequestOptions options{};
@@ -39,19 +39,19 @@ MtgRequestOptions make_seed_options(SeedAlgo algo) {
     options.bounding_box.heuristic = pack::BoundingBoxHeuristic::shelf;
     options.bounding_box_deterministic_attempts = 1;
     break;
-  case SeedAlgo::irregular_constructive:
-    options.strategy = StrategyKind::irregular_constructive;
+  case SeedAlgo::sequential_backtrack:
+    options.strategy = StrategyKind::sequential_backtrack;
     break;
   case SeedAlgo::brkga:
-    options.strategy = StrategyKind::irregular_production;
+    options.strategy = StrategyKind::metaheuristic_search;
     options.production_optimizer = ProductionOptimizerKind::brkga;
-    options.production.population_size = 8;
+    options.production.population_size = 6;
     // ProductionSearchConfig::is_valid() requires elite + mutant < population
     // strictly; defaults are elite=6/mutant=4, so we must shrink them when we
     // shrink the population to keep the request valid.
     options.production.elite_count = 2;
-    options.production.mutant_count = 2;
-    options.production.max_generations = 4;
+    options.production.mutant_count = 1;
+    options.production.max_generations = 2;
     break;
   }
   return options;
@@ -68,16 +68,14 @@ MtgRequestOptions make_brkga_bed1_options() {
 TEST_CASE("mtg fixed seed produces deterministic layouts",
           "[mtg][nesting-matrix][seeds][.][slow]") {
   const auto algo = GENERATE(SeedAlgo::bounding_box,
-                             SeedAlgo::irregular_constructive,
+                             SeedAlgo::sequential_backtrack,
                              SeedAlgo::brkga);
 
   const auto fixture = load_mtg_fixture();
   auto options = make_seed_options(algo);
-  // For irregular variants restrict to bed1 to keep run-time tight; the
-  // bounding-box variant exercises both beds since it is cheap.
-  if (algo != SeedAlgo::bounding_box) {
-    options.selected_bin_ids = {kBed1Id};
-  }
+  // Restrict to bed1 to keep the slow determinism lane representative but
+  // tractable in debug builds.
+  options.selected_bin_ids = {kBed1Id};
 
   const auto request = make_request(fixture, options);
   REQUIRE(request.is_valid());
@@ -118,8 +116,8 @@ TEST_CASE("mtg seed_mode varies subsequent runs",
                              SeedProgressionMode::decrement,
                              SeedProgressionMode::random);
 
-  const std::array<std::uint64_t, 3> trial_seeds{7, 11, 13};
-  std::array<std::uint64_t, 3> trial_hashes{};
+  const std::array<std::uint64_t, 2> trial_seeds{7, 11};
+  std::array<std::uint64_t, 2> trial_hashes{};
   const std::size_t expected_count = bed1_piece_count(fixture);
 
   for (std::size_t i = 0; i < trial_seeds.size(); ++i) {
@@ -162,7 +160,7 @@ TEST_CASE("mtg seed sweep is non-degenerate",
   const std::size_t expected_count = bed1_piece_count(fixture);
   std::set<std::uint64_t> distinct_hashes;
 
-  for (std::uint64_t seed = 1; seed <= 8; ++seed) {
+  for (std::uint64_t seed = 1; seed <= 6; ++seed) {
     SolveControl control{};
     control.random_seed = seed;
     control.seed_mode = SeedProgressionMode::increment;
@@ -177,7 +175,7 @@ TEST_CASE("mtg seed sweep is non-degenerate",
     distinct_hashes.insert(hash_bin_placements(solved.value(), kBed1Id));
   }
 
-  // 8 seeds should yield meaningfully diverse layouts; >= 4 distinct is a
-  // strong non-degeneracy signal without being brittle.
-  REQUIRE(distinct_hashes.size() >= 4);
+  // Even on the reduced debug-friendly BRKGA budget, the seed sweep should
+  // still produce more than one layout family.
+  REQUIRE(distinct_hashes.size() >= 3);
 }

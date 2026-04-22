@@ -85,7 +85,7 @@ auto interrupted(const SolveControl &control,
   return control.cancellation.stop_requested() || time_budget.expired(stopwatch);
 }
 
-auto solve_irregular_constructive(const NormalizedRequest &request,
+auto solve_sequential_backtrack(const NormalizedRequest &request,
                                   const SolveControl &control)
     -> util::StatusOr<NestingResult> {
   if (!request.request.is_valid()) {
@@ -338,7 +338,7 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
   }
 
   NestingResult result{
-      .strategy = StrategyKind::irregular_constructive,
+      .strategy = StrategyKind::sequential_backtrack,
       .layout = build_layout(opened_bins, trace, unplaced_piece_ids),
       .total_parts = piece_instances.size(),
       .budget = make_budget(control, time_budget, stopwatch, processed_pieces),
