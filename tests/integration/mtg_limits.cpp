@@ -1,4 +1,4 @@
-// MTG nesting matrix — Section G: iteration & time limits.
+// MTG nesting matrix — iteration & time limits.
 //
 // Verifies that `SolveControl::iteration_limit` and
 // `SolveControl::time_limit_milliseconds` cap the OUTER search loop (one

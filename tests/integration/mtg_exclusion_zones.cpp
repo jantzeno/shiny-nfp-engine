@@ -1,4 +1,4 @@
-// MTG nesting matrix — Section J: exclusion zone forces redistribution.
+// MTG nesting matrix — exclusion zone forces redistribution.
 //
 // A canonical "half of bed1" exclusion is asserted to (a) push parts onto
 // bed2 when overflow is allowed and (b) leave originally-pinned bed1 parts

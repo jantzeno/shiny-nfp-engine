@@ -1,4 +1,4 @@
-// MTG nesting matrix — Section B: per-bed start-corner override matrix.
+// MTG nesting matrix — per-bed start-corner override matrix.
 //
 // For each algorithm in {bounding_box, sequential_backtrack} this file
 // exercises the 4x4 cartesian product of `place::PlacementStartCorner`
@@ -104,13 +104,13 @@ void run_corner_matrix(const MtgFixture &fixture,
 
 }  // namespace
 
-TEST_CASE("mtg section B start-corner override matrix (bounding_box)",
+TEST_CASE("mtg start-corner override matrix (bounding_box)",
           "[mtg][nesting-matrix][start-corners][bounding-box]") {
   const auto fixture = load_mtg_fixture();
   run_corner_matrix(fixture, &apply_strategy_bounding_box);
 }
 
-TEST_CASE("mtg section B start-corner override matrix (sequential_backtrack)",
+TEST_CASE("mtg start-corner override matrix (sequential_backtrack)",
           "[mtg][nesting-matrix][start-corners][sequential-backtrack][.][slow]") {
   const auto fixture = load_mtg_fixture();
   run_corner_matrix(fixture, &apply_strategy_sequential_backtrack);

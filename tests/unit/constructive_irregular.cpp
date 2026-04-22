@@ -1,0 +1,74 @@
+#include <algorithm>
+#include <cstddef>
+#include <vector>
+
+#include <catch2/catch_test_macros.hpp>
+
+#include "runtime/cancellation.hpp"
+#include "support/mtg_fixture.hpp"
+
+using namespace shiny::nesting;
+using namespace shiny::nesting::test::mtg;
+
+namespace {
+
+[[nodiscard]] auto placed_parts(const pack::Layout &layout) -> std::size_t {
+  return layout.placement_trace.size();
+}
+
+}  // namespace
+
+TEST_CASE("irregular constructive multi-start keeps the best layout after cancellation",
+          "[solve][irregular][multi-start][observer][cancellation]") {
+  const auto fixture = load_mtg_fixture();
+
+  MtgRequestOptions options{};
+  options.strategy = StrategyKind::sequential_backtrack;
+  options.allow_part_overflow = true;
+  options.maintain_bed_assignment = false;
+  options.selected_bin_ids = {};
+
+  const auto request = make_request(fixture, options);
+  REQUIRE(request.is_valid());
+
+  runtime::CancellationSource cancel_source{};
+  std::vector<ProgressSnapshot> observed;
+  bool saw_empty_search_pulse = false;
+  bool saw_full_layout_snapshot = false;
+  std::size_t best_observed_layout = 0;
+
+  SolveControl control{};
+  control.iteration_limit = 4;
+  control.random_seed = 99;
+  control.cancellation = cancel_source.token();
+  control.on_progress = [&](const ProgressSnapshot &snapshot) {
+    observed.push_back(snapshot);
+
+    const std::size_t observed_placed = placed_parts(snapshot.layout);
+    best_observed_layout = std::max(best_observed_layout, observed_placed);
+    saw_full_layout_snapshot |= observed_placed == fixture.pieces.size();
+
+    if (saw_full_layout_snapshot && snapshot.sequence >= 2U &&
+        snapshot.layout.placement_trace.empty()) {
+      saw_empty_search_pulse = true;
+      cancel_source.request_stop();
+    }
+  };
+
+  const auto solved = solve(request, control);
+  REQUIRE(solved.has_value());
+
+  ExpectedOutcome expected{};
+  expected.expected_placed_count = fixture.pieces.size();
+  expected.expected_stop_reason = StopReason::cancelled;
+  validate_layout(fixture, request, options, solved.value(), expected);
+
+  REQUIRE(observed.size() >= 2U);
+  REQUIRE(saw_empty_search_pulse);
+  REQUIRE(saw_full_layout_snapshot);
+  REQUIRE(best_observed_layout == fixture.pieces.size());
+  REQUIRE(placed_parts(solved.value().layout) == best_observed_layout);
+  REQUIRE(placed_parts(observed.back().layout) < placed_parts(solved.value().layout));
+  REQUIRE(solved.value().budget.cancellation_requested);
+  REQUIRE(solved.value().budget.iterations_completed >= 2U);
+}

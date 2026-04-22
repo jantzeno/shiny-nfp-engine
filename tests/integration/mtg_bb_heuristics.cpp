@@ -1,4 +1,4 @@
-// MTG Section C — Bounding-box heuristic matrix.
+// MTG nesting matrix — bounding-box heuristic matrix.
 //
 // Sweeps the cartesian product of (heuristic, spacing, placement policy,
 // deterministic attempt count) for the bounding-box constructive packer and

@@ -1,4 +1,4 @@
-// MTG nesting matrix — Section I: bed margins.
+// MTG nesting matrix — bed margins.
 //
 // Verifies that uniform and asymmetric per-side bed margins (modeled by
 // shrinking the bed polygon in `make_request`) still admit full placement

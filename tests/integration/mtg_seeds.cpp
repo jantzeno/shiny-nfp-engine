@@ -1,4 +1,4 @@
-// MTG nesting matrix — Section H: seed options.
+// MTG nesting matrix — seed options.
 //
 // Validates determinism under fixed seeds, the behavior of the seed
 // progression mode for sequential trials, and that varying the seed actually

@@ -1,4 +1,4 @@
-// MTG nesting matrix — Section A: bin-assignment matrix.
+// MTG nesting matrix — bin-assignment matrix.
 //
 // For each algorithm in {bounding_box, sequential_backtrack,
 // metaheuristic_search-BRKGA} this file exercises the
@@ -120,7 +120,7 @@ void run_single_bed(const MtgFixture &fixture,
 
 }  // namespace
 
-TEST_CASE("mtg section A bin-assignment matrix (bounding_box)",
+TEST_CASE("mtg bin-assignment matrix (bounding_box)",
           "[mtg][nesting-matrix][bin-assignment][bounding-box]") {
   const auto fixture = load_mtg_fixture();
 
@@ -135,7 +135,7 @@ TEST_CASE("mtg section A bin-assignment matrix (bounding_box)",
   }
 }
 
-TEST_CASE("mtg section A bin-assignment matrix (sequential_backtrack)",
+TEST_CASE("mtg bin-assignment matrix (sequential_backtrack)",
           "[mtg][nesting-matrix][bin-assignment][sequential-backtrack][.][slow]") {
   const auto fixture = load_mtg_fixture();
 
@@ -150,7 +150,7 @@ TEST_CASE("mtg section A bin-assignment matrix (sequential_backtrack)",
   }
 }
 
-TEST_CASE("mtg section A bin-assignment matrix (metaheuristic_search BRKGA)",
+TEST_CASE("mtg bin-assignment matrix (metaheuristic_search BRKGA)",
           "[mtg][nesting-matrix][bin-assignment][metaheuristic-search][.][slow]") {
   const auto fixture = load_mtg_fixture();
 

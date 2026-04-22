@@ -1,4 +1,4 @@
-// MTG nesting matrix — Section F: slider min/mid/max sweeps.
+// MTG nesting matrix — slider min/mid/max sweeps.
 //
 // Each slider gets two TEST_CASEs: one covering the min and mid values
 // (default visibility) and one covering the max value (hidden behind the
