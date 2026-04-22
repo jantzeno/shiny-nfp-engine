@@ -98,7 +98,7 @@ auto parse_policy(std::string_view value) -> PlacementPolicy {
 auto parse_local_search_config(const shiny::nesting::test::pt::ptree &node)
     -> LocalSearchConfig {
   LocalSearchConfig config{};
-  config.max_iterations = node.get<std::uint32_t>("max_iterations", 250);
+  config.max_refinements = node.get<std::uint32_t>("max_iterations", 250);
   config.deterministic_seed = node.get<std::uint32_t>("deterministic_seed", 1);
   config.plateau_budget = node.get<std::uint32_t>("plateau_budget", 3);
   return config;
@@ -107,7 +107,7 @@ auto parse_local_search_config(const shiny::nesting::test::pt::ptree &node)
 auto parse_genetic_search_config(const shiny::nesting::test::pt::ptree &node)
     -> GeneticSearchConfig {
   GeneticSearchConfig config{};
-  config.max_generations = node.get<std::uint32_t>("max_generations", 40);
+  config.max_iterations = node.get<std::uint32_t>("max_generations", 40);
   config.population_size = node.get<std::uint32_t>("population_size", 30);
   config.deterministic_seed = node.get<std::uint32_t>("deterministic_seed", 1);
   config.mutation_rate_percent =

@@ -152,7 +152,7 @@ auto parse_local_search_config(const shiny::nesting::test::pt::ptree &node)
   LocalSearchConfig config{};
   if (const auto max_iterations =
           node.get_optional<std::uint32_t>("max_iterations")) {
-    config.max_iterations = *max_iterations;
+    config.max_refinements = *max_iterations;
   }
   if (const auto deterministic_seed =
           node.get_optional<std::uint32_t>("deterministic_seed")) {
@@ -170,7 +170,7 @@ auto parse_genetic_search_config(const shiny::nesting::test::pt::ptree &node)
   GeneticSearchConfig config{};
   if (const auto max_generations =
           node.get_optional<std::uint32_t>("max_generations")) {
-    config.max_generations = *max_generations;
+    config.max_iterations = *max_generations;
   }
   if (const auto population_size =
           node.get_optional<std::uint32_t>("population_size")) {

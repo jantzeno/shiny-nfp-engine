@@ -21,11 +21,9 @@ enum class StopReason : std::uint8_t {
 
 enum class ProgressPhase : std::uint8_t {
   none = 0,
-  constructive = 1,
-  brkga_generation = 2,
-  brkga_polishing = 3,
-  completed = 4,
-  metaheuristic_iteration = 5,
+  part_placement = 1,   // constructive pass or BRKGA chromosome evaluation
+  part_refinement = 2,  // SA/ALNS/GDRR/LAHC move step or BRKGA polishing pass
+  completed = 3,
 };
 
 struct BudgetState {

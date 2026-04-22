@@ -34,7 +34,7 @@ void apply_algorithm(MtgRequestOptions &options, AlgorithmKind kind) {
     case AlgorithmKind::metaheuristic_search_brkga:
       options.strategy = StrategyKind::metaheuristic_search;
       options.production_optimizer = ProductionOptimizerKind::brkga;
-      options.production.max_generations = 2;
+      options.production.max_iterations = 2;
       options.production.population_size = 8;
       break;
   }

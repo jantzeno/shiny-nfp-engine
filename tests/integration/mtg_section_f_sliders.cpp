@@ -59,7 +59,7 @@ MtgRequestOptions production_brkga_bed1_defaults() {
   options.selected_bin_ids = {kBed1Id};
   // Bounded defaults; sweeps below override individual fields.
   options.production.population_size = 8;
-  options.production.max_generations = 4;
+  options.production.max_iterations = 4;
   return options;
 }
 
@@ -71,8 +71,8 @@ MtgRequestOptions production_sa_bed1_defaults() {
   options.maintain_bed_assignment = false;
   options.selected_bin_ids = {kBed1Id};
   options.production.population_size = 8;
-  options.production.max_generations = 4;
-  options.simulated_annealing.max_iterations = 8;
+  options.production.max_iterations = 4;
+  options.simulated_annealing.max_refinements = 8;
   return options;
 }
 
@@ -84,8 +84,8 @@ MtgRequestOptions production_alns_bed1_defaults() {
   options.maintain_bed_assignment = false;
   options.selected_bin_ids = {kBed1Id};
   options.production.population_size = 8;
-  options.production.max_generations = 4;
-  options.alns.max_iterations = 8;
+  options.production.max_iterations = 4;
+  options.alns.max_refinements = 8;
   options.alns.destroy_min_count = 1;
   options.alns.destroy_max_count = 2;
   return options;
@@ -99,8 +99,8 @@ MtgRequestOptions production_gdrr_bed1_defaults() {
   options.maintain_bed_assignment = false;
   options.selected_bin_ids = {kBed1Id};
   options.production.population_size = 8;
-  options.production.max_generations = 4;
-  options.gdrr.max_iterations = 8;
+  options.production.max_iterations = 4;
+  options.gdrr.max_refinements = 8;
   return options;
 }
 
@@ -112,8 +112,8 @@ MtgRequestOptions production_lahc_bed1_defaults() {
   options.maintain_bed_assignment = false;
   options.selected_bin_ids = {kBed1Id};
   options.production.population_size = 8;
-  options.production.max_generations = 4;
-  options.lahc.max_iterations = 8;
+  options.production.max_iterations = 4;
+  options.lahc.max_refinements = 8;
   options.lahc.history_length = 4;
   return options;
 }
@@ -273,23 +273,23 @@ TEST_CASE("mtg slider production.elite_count (max)",
 }
 
 // ============================================================================
-// production.max_generations — BRKGA
+// production.max_iterations — BRKGA
 // ============================================================================
 
-TEST_CASE("mtg slider production.max_generations (min/mid)",
+TEST_CASE("mtg slider production.max_iterations (min/mid)",
           "[mtg][nesting-matrix][sliders][max-generations][.][slow]") {
   const std::uint32_t value = GENERATE(std::uint32_t{1}, std::uint32_t{24});
   const auto fixture = load_mtg_fixture();
   auto options = production_brkga_bed1_defaults();
-  options.production.max_generations = value;
+  options.production.max_iterations = value;
   run_and_assert_full_bed1(fixture, options);
 }
 
-TEST_CASE("mtg slider production.max_generations (max)",
+TEST_CASE("mtg slider production.max_iterations (max)",
           "[mtg][nesting-matrix][sliders][max-generations][.][slow]") {
   const auto fixture = load_mtg_fixture();
   auto options = production_brkga_bed1_defaults();
-  options.production.max_generations = 64;
+  options.production.max_iterations = 64;
   run_and_assert_full_bed1(fixture, options);
 }
 
@@ -315,44 +315,44 @@ TEST_CASE("mtg slider production.polishing_passes (max)",
 }
 
 // ============================================================================
-// simulated_annealing.max_iterations
+// simulated_annealing.max_refinements
 // ============================================================================
 
-TEST_CASE("mtg slider simulated_annealing.max_iterations (min/mid)",
+TEST_CASE("mtg slider simulated_annealing.max_refinements (min/mid)",
           "[mtg][nesting-matrix][sliders][sa-max-iterations][.][slow]") {
   const std::uint32_t value = GENERATE(std::uint32_t{1}, std::uint32_t{48});
   const auto fixture = load_mtg_fixture();
   auto options = production_sa_bed1_defaults();
-  options.simulated_annealing.max_iterations = value;
+  options.simulated_annealing.max_refinements = value;
   run_and_assert_full_bed1(fixture, options);
 }
 
-TEST_CASE("mtg slider simulated_annealing.max_iterations (max)",
+TEST_CASE("mtg slider simulated_annealing.max_refinements (max)",
           "[mtg][nesting-matrix][sliders][sa-max-iterations][.][slow]") {
   const auto fixture = load_mtg_fixture();
   auto options = production_sa_bed1_defaults();
-  options.simulated_annealing.max_iterations = 128;
+  options.simulated_annealing.max_refinements = 128;
   run_and_assert_full_bed1(fixture, options);
 }
 
 // ============================================================================
-// alns.max_iterations
+// alns.max_refinements
 // ============================================================================
 
-TEST_CASE("mtg slider alns.max_iterations (min/mid)",
+TEST_CASE("mtg slider alns.max_refinements (min/mid)",
           "[mtg][nesting-matrix][sliders][alns-max-iterations][.][slow]") {
   const std::uint32_t value = GENERATE(std::uint32_t{1}, std::uint32_t{48});
   const auto fixture = load_mtg_fixture();
   auto options = production_alns_bed1_defaults();
-  options.alns.max_iterations = value;
+  options.alns.max_refinements = value;
   run_and_assert_full_bed1(fixture, options);
 }
 
-TEST_CASE("mtg slider alns.max_iterations (max)",
+TEST_CASE("mtg slider alns.max_refinements (max)",
           "[mtg][nesting-matrix][sliders][alns-max-iterations][.][slow]") {
   const auto fixture = load_mtg_fixture();
   auto options = production_alns_bed1_defaults();
-  options.alns.max_iterations = 128;
+  options.alns.max_refinements = 128;
   run_and_assert_full_bed1(fixture, options);
 }
 
@@ -381,44 +381,44 @@ TEST_CASE("mtg slider alns.destroy_min_max_count paired (max)",
 }
 
 // ============================================================================
-// gdrr.max_iterations
+// gdrr.max_refinements
 // ============================================================================
 
-TEST_CASE("mtg slider gdrr.max_iterations (min/mid)",
+TEST_CASE("mtg slider gdrr.max_refinements (min/mid)",
           "[mtg][nesting-matrix][sliders][gdrr-max-iterations][.][slow]") {
   const std::uint32_t value = GENERATE(std::uint32_t{1}, std::uint32_t{48});
   const auto fixture = load_mtg_fixture();
   auto options = production_gdrr_bed1_defaults();
-  options.gdrr.max_iterations = value;
+  options.gdrr.max_refinements = value;
   run_and_assert_full_bed1(fixture, options);
 }
 
-TEST_CASE("mtg slider gdrr.max_iterations (max)",
+TEST_CASE("mtg slider gdrr.max_refinements (max)",
           "[mtg][nesting-matrix][sliders][gdrr-max-iterations][.][slow]") {
   const auto fixture = load_mtg_fixture();
   auto options = production_gdrr_bed1_defaults();
-  options.gdrr.max_iterations = 128;
+  options.gdrr.max_refinements = 128;
   run_and_assert_full_bed1(fixture, options);
 }
 
 // ============================================================================
-// lahc.max_iterations
+// lahc.max_refinements
 // ============================================================================
 
-TEST_CASE("mtg slider lahc.max_iterations (min/mid)",
+TEST_CASE("mtg slider lahc.max_refinements (min/mid)",
           "[mtg][nesting-matrix][sliders][lahc-max-iterations][.][slow]") {
   const std::uint32_t value = GENERATE(std::uint32_t{1}, std::uint32_t{48});
   const auto fixture = load_mtg_fixture();
   auto options = production_lahc_bed1_defaults();
-  options.lahc.max_iterations = value;
+  options.lahc.max_refinements = value;
   run_and_assert_full_bed1(fixture, options);
 }
 
-TEST_CASE("mtg slider lahc.max_iterations (max)",
+TEST_CASE("mtg slider lahc.max_refinements (max)",
           "[mtg][nesting-matrix][sliders][lahc-max-iterations][.][slow]") {
   const auto fixture = load_mtg_fixture();
   auto options = production_lahc_bed1_defaults();
-  options.lahc.max_iterations = 128;
+  options.lahc.max_refinements = 128;
   run_and_assert_full_bed1(fixture, options);
 }
 

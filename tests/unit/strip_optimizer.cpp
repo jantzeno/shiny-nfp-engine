@@ -47,7 +47,7 @@ auto strip_case_request() -> NestingRequest {
   request.execution.production.population_size = 8;
   request.execution.production.elite_count = 2;
   request.execution.production.mutant_count = 1;
-  request.execution.production.max_generations = 4;
+  request.execution.production.max_iterations = 4;
   request.execution.production.polishing_passes = 1;
   request.execution.production.diversification_swaps = 1;
 

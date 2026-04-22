@@ -70,16 +70,16 @@ auto improvement_request() -> NestingRequest {
   request.execution.production.population_size = 12;
   request.execution.production.elite_count = 3;
   request.execution.production.mutant_count = 2;
-  request.execution.production.max_generations = 6;
+  request.execution.production.max_iterations = 6;
   request.execution.production.polishing_passes = 1;
   request.execution.production.diversification_swaps = 1;
-  request.execution.simulated_annealing.max_iterations = 10;
+  request.execution.simulated_annealing.max_refinements = 10;
   request.execution.simulated_annealing.restart_count = 2;
-  request.execution.alns.max_iterations = 12;
+  request.execution.alns.max_refinements = 12;
   request.execution.alns.destroy_min_count = 1;
   request.execution.alns.destroy_max_count = 2;
-  request.execution.gdrr.max_iterations = 12;
-  request.execution.lahc.max_iterations = 12;
+  request.execution.gdrr.max_refinements = 12;
+  request.execution.lahc.max_refinements = 12;
   request.execution.lahc.history_length = 4;
 
   request.bins.push_back(BinRequest{
@@ -118,13 +118,13 @@ auto strip_benchmark_request() -> NestingRequest {
   NestingRequest request;
   request.execution.default_rotations = {{0.0}};
   request.execution.irregular.enable_direct_overlap_check = true;
-  request.execution.simulated_annealing.max_iterations = 12;
+  request.execution.simulated_annealing.max_refinements = 12;
   request.execution.simulated_annealing.restart_count = 2;
-  request.execution.alns.max_iterations = 12;
+  request.execution.alns.max_refinements = 12;
   request.execution.alns.destroy_min_count = 1;
   request.execution.alns.destroy_max_count = 2;
-  request.execution.gdrr.max_iterations = 12;
-  request.execution.lahc.max_iterations = 12;
+  request.execution.gdrr.max_refinements = 12;
+  request.execution.lahc.max_refinements = 12;
   request.execution.lahc.history_length = 4;
 
   request.bins.push_back(BinRequest{
@@ -155,7 +155,7 @@ TEST_CASE("cooling schedules cool and clamp to the configured floor",
                           CoolingScheduleKind::lundy_mees}) {
     SAConfig config;
     config.cooling_schedule = kind;
-    config.max_iterations = 10;
+    config.max_refinements = 10;
     config.initial_temperature = 1.0;
     config.final_temperature = 0.1;
 
@@ -371,7 +371,7 @@ TEST_CASE("strategy registry resolves direct and production strategies",
           "[solve][strategy-registry]") {
   auto direct_request = improvement_request();
   direct_request.execution.strategy = StrategyKind::alns;
-  direct_request.execution.alns.max_iterations = 19;
+  direct_request.execution.alns.max_refinements = 19;
   const auto direct_normalized = shiny::nesting::normalize_request(direct_request);
   REQUIRE(direct_normalized.ok());
 
@@ -383,12 +383,12 @@ TEST_CASE("strategy registry resolves direct and production strategies",
       direct_normalized.value().request.execution.strategy_config.get_if<ALNSConfig>(
           StrategyKind::alns);
   REQUIRE(direct_config != nullptr);
-  REQUIRE(direct_config->max_iterations == 19U);
+  REQUIRE(direct_config->max_refinements == 19U);
 
   auto production_request = improvement_request();
   production_request.execution.strategy = StrategyKind::metaheuristic_search;
   production_request.execution.production_optimizer = ProductionOptimizerKind::lahc;
-  production_request.execution.lahc.max_iterations = 13;
+  production_request.execution.lahc.max_refinements = 13;
   const auto production_normalized =
       shiny::nesting::normalize_request(production_request);
   REQUIRE(production_normalized.ok());
@@ -403,5 +403,5 @@ TEST_CASE("strategy registry resolves direct and production strategies",
       production_normalized.value().request.execution.production_strategy_config
           .get_if<shiny::nesting::LAHCConfig>(ProductionOptimizerKind::lahc);
   REQUIRE(production_config != nullptr);
-  REQUIRE(production_config->max_iterations == 13U);
+  REQUIRE(production_config->max_refinements == 13U);
 }

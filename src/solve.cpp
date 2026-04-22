@@ -371,7 +371,7 @@ auto solve(const NestingRequest &request, const SolveControl &control)
                 .layout = inner.layout,
                 .budget = inner.budget,
                 .stop_reason = inner.stop_reason,
-                .phase = ProgressPhase::constructive,
+                .phase = ProgressPhase::part_placement,
                 .phase_detail =
                     std::format("Multi-start iteration {}: placing {}/{}",
                                 iteration + 1U, inner.placed_parts,
@@ -413,7 +413,7 @@ auto solve(const NestingRequest &request, const SolveControl &control)
               .layout = best_result->layout,
               .budget = budget,
               .stop_reason = StopReason::none,
-              .phase = ProgressPhase::constructive,
+              .phase = ProgressPhase::part_placement,
               .phase_detail =
                   std::format("Multi-start iteration {} (improved)",
                               iterations_completed),

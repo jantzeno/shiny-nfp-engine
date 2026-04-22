@@ -177,7 +177,7 @@ struct OrderSignatureHash {
               .layout = inner.layout,
               .budget = inner.budget,
               .stop_reason = StopReason::none,
-              .phase = ProgressPhase::brkga_generation,
+              .phase = ProgressPhase::part_placement,
               .phase_detail = std::format(
                   "Gen {}/{} chromo {}/{}: placing {}/{}",
                   generation, generation_limit,
@@ -266,7 +266,7 @@ auto emit_generation_progress(const SolveControl &control,
       .layout = best_layout,
       .budget = budget,
       .stop_reason = StopReason::none,
-      .phase = ProgressPhase::brkga_generation,
+      .phase = ProgressPhase::part_placement,
       .phase_detail = std::format("Generation {}/{}", generation, generation_limit),
       .utilization_percent = best_utilization * 100.0,
       .improved = false,
@@ -387,7 +387,7 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
       request.request.execution.production);
   const auto piece_areas = detail::piece_areas_for(request);
   const auto generation_limit =
-      control.iteration_limit > 0U ? control.iteration_limit : config.max_generations;
+      control.iteration_limit > 0U ? control.iteration_limit : config.max_iterations;
 
   SearchReplay replay{
       .optimizer = OptimizerKind::brkga,
@@ -482,7 +482,7 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
             .budget = detail::driver_make_budget(control, time_budget, stopwatch,
                                   iterations_completed),
             .stop_reason = StopReason::none,
-            .phase = ProgressPhase::brkga_generation,
+            .phase = ProgressPhase::part_placement,
             .phase_detail =
                 std::format("Evaluating {}/{} in generation {}/{}",
                             chromo_idx + 1U, population.size(),
@@ -506,7 +506,7 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
       emit_best_progress(control, sequence, generation + 1U, *best,
                          detail::driver_make_budget(control, time_budget, stopwatch,
                                      iterations_completed),
-                         replay, ProgressPhase::brkga_generation,
+                         replay, ProgressPhase::part_placement,
                          std::format("Generation {}/{} (improved)",
                                      generation + 1U, generation_limit));
     } else {
@@ -595,7 +595,7 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
           .layout = {},
           .budget = detail::driver_make_budget(control, time_budget, stopwatch, iterations_completed),
           .stop_reason = StopReason::none,
-          .phase = ProgressPhase::brkga_polishing,
+          .phase = ProgressPhase::part_refinement,
           .phase_detail = "Polishing best solution",
           .utilization_percent = best->metrics.utilization * 100.0,
           .improved = false,
@@ -609,7 +609,7 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
       emit_best_progress(control, sequence, iterations_completed, *best,
                          detail::driver_make_budget(control, time_budget, stopwatch,
                                      iterations_completed),
-                         replay, ProgressPhase::brkga_polishing,
+                         replay, ProgressPhase::part_refinement,
                          "Polishing improved solution");
     }
 
@@ -631,7 +631,7 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
         emit_best_progress(control, sequence, iterations_completed, *best,
                            detail::driver_make_budget(control, time_budget, stopwatch,
                                        iterations_completed),
-                           replay, ProgressPhase::brkga_polishing,
+                           replay, ProgressPhase::part_refinement,
                            "Strip optimization improved solution");
       }
     }

@@ -24,15 +24,15 @@ class CoolingSchedule {
 public:
   explicit CoolingSchedule(const SAConfig &config)
       : kind_{config.cooling_schedule},
-        max_iterations_{std::max<std::size_t>(config.max_iterations, 1U)},
+        max_refinements_{std::max<std::size_t>(config.max_refinements, 1U)},
         initial_temperature_{std::max(config.initial_temperature, 1e-9)},
         final_temperature_{std::clamp(config.final_temperature, 1e-9,
                                       std::max(config.initial_temperature, 1e-9))},
         lundy_beta_{config.lundy_beta},
-        geometric_alpha_{max_iterations_ <= 1U
+        geometric_alpha_{max_refinements_ <= 1U
                              ? 1.0
                              : std::pow(final_temperature_ / initial_temperature_,
-                                        1.0 / static_cast<double>(max_iterations_ - 1U))} {}
+                                        1.0 / static_cast<double>(max_refinements_ - 1U))} {}
 
   [[nodiscard]] auto initial_temperature() const -> double {
     return initial_temperature_;
@@ -51,7 +51,7 @@ public:
     case CoolingScheduleKind::linear: {
       const double progress =
           std::clamp(static_cast<double>(iteration + 1U) /
-                         static_cast<double>(max_iterations_),
+                         static_cast<double>(max_refinements_),
                      0.0, 1.0);
       cooled = initial_temperature_ +
                ((final_temperature_ - initial_temperature_) * progress);
@@ -69,7 +69,7 @@ public:
 
 private:
   CoolingScheduleKind kind_{};
-  std::size_t max_iterations_{1U};
+  std::size_t max_refinements_{1U};
   double initial_temperature_{1.0};
   double final_temperature_{0.01};
   double lundy_beta_{0.025};

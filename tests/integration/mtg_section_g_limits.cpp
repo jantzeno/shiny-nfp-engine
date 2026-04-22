@@ -21,34 +21,34 @@ namespace {
 
 void apply_generous_internal_budget(MtgRequestOptions &options,
                                     ProductionOptimizerKind kind) {
-  options.production.max_generations = 256;
+  options.production.max_iterations = 256;
   options.production.population_size = 16;
-  options.simulated_annealing.max_iterations = 256;
-  options.alns.max_iterations = 256;
-  options.gdrr.max_iterations = 256;
-  options.lahc.max_iterations = 256;
+  options.simulated_annealing.max_refinements = 256;
+  options.alns.max_refinements = 256;
+  options.gdrr.max_refinements = 256;
+  options.lahc.max_refinements = 256;
   (void)kind;
 }
 
 void apply_small_internal_budget(MtgRequestOptions &options,
                                  ProductionOptimizerKind kind) {
-  options.production.max_generations = 2;
+  options.production.max_iterations = 2;
   options.production.population_size = 8;
-  options.simulated_annealing.max_iterations = 2;
-  options.alns.max_iterations = 2;
-  options.gdrr.max_iterations = 2;
-  options.lahc.max_iterations = 2;
+  options.simulated_annealing.max_refinements = 2;
+  options.alns.max_refinements = 2;
+  options.gdrr.max_refinements = 2;
+  options.lahc.max_refinements = 2;
   (void)kind;
 }
 
 void apply_large_internal_budget(MtgRequestOptions &options,
                                  ProductionOptimizerKind kind) {
-  options.production.max_generations = 4096;
+  options.production.max_iterations = 4096;
   options.production.population_size = 16;
-  options.simulated_annealing.max_iterations = 4096;
-  options.alns.max_iterations = 4096;
-  options.gdrr.max_iterations = 4096;
-  options.lahc.max_iterations = 4096;
+  options.simulated_annealing.max_refinements = 4096;
+  options.alns.max_refinements = 4096;
+  options.gdrr.max_refinements = 4096;
+  options.lahc.max_refinements = 4096;
   (void)kind;
 }
 
@@ -139,7 +139,7 @@ TEST_CASE("mtg BRKGA single-iteration negative control",
   options.production_optimizer = ProductionOptimizerKind::brkga;
   options.selected_bin_ids = {};
   options.allow_part_overflow = true;
-  options.production.max_generations = 256;
+  options.production.max_iterations = 256;
   options.production.population_size = 16;
 
   const auto request = make_request(fixture, options);

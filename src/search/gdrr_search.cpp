@@ -60,10 +60,31 @@ auto emit_improvement(const SolveControl &control, SearchReplay &replay,
       .layout = best.result.layout,
       .budget = budget,
       .stop_reason = StopReason::none,
-      .phase = ProgressPhase::metaheuristic_iteration,
+      .phase = ProgressPhase::part_refinement,
       .phase_detail = std::format("GDRR iter {} improved via {} (goal {:.3f})",
                                   iteration, detail::operator_label(op),
                                   goal_strip_length),
+      .utilization_percent = best.metrics.utilization * 100.0,
+      .improved = true,
+  });
+}
+
+auto emit_initial_progress(const SolveControl &control, const SolutionPoolEntry &best,
+                           const BudgetState &budget,
+                           const double goal_strip_length) -> void {
+  if (!control.on_progress) {
+    return;
+  }
+  control.on_progress(ProgressSnapshot{
+      .sequence = 1U,
+      .placed_parts = best.metrics.placed_parts,
+      .total_parts = best.result.total_parts,
+      .layout = best.result.layout,
+      .budget = budget,
+      .stop_reason = StopReason::none,
+      .phase = ProgressPhase::part_refinement,
+      .phase_detail =
+          std::format("GDRR initial seed (goal {:.3f})", goal_strip_length),
       .utilization_percent = best.metrics.utilization * 100.0,
       .improved = true,
   });
@@ -95,7 +116,7 @@ auto GdrrSearch::solve(const NormalizedRequest &request,
                                                ProductionOptimizerKind::gdrr,
                                                request.request.execution.gdrr);
   const std::size_t iteration_limit =
-      control.iteration_limit > 0U ? control.iteration_limit : config.max_iterations;
+      control.iteration_limit > 0U ? control.iteration_limit : config.max_refinements;
 
   SearchReplay replay{.optimizer = OptimizerKind::gdrr};
   if (request.expanded_pieces.empty()) {
@@ -132,6 +153,7 @@ auto GdrrSearch::solve(const NormalizedRequest &request,
       .layout = best.result.layout,
       .budget = evaluator.make_budget(0),
   });
+  emit_initial_progress(control, best, evaluator.make_budget(0), goal_strip_length);
 
   for (std::size_t iteration = 0; iteration < iteration_limit; ++iteration) {
     if (evaluator.interrupted()) {
@@ -188,7 +210,7 @@ auto GdrrSearch::solve(const NormalizedRequest &request,
     }
     if (iterations_completed >= iteration_limit) {
       hit_iteration_limit = control.iteration_limit > 0U ||
-                            iteration + 1U >= config.max_iterations;
+                            iteration + 1U >= config.max_refinements;
       break;
     }
   }

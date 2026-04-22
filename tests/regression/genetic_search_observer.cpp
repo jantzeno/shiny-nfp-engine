@@ -158,7 +158,7 @@ auto parse_search_request(const shiny::nesting::test::pt::ptree &node)
     -> SearchRequest {
   SearchRequest request{};
   if (const auto local_search = node.get_child_optional("local_search")) {
-    request.local_search.max_iterations =
+    request.local_search.max_refinements =
         local_search->get<std::uint32_t>("max_iterations", 250);
     request.local_search.deterministic_seed =
         local_search->get<std::uint32_t>("deterministic_seed", 1);
@@ -166,7 +166,7 @@ auto parse_search_request(const shiny::nesting::test::pt::ptree &node)
         local_search->get<std::uint32_t>("plateau_budget", 3);
   }
   if (const auto genetic_search = node.get_child_optional("genetic_search")) {
-    request.genetic_search.max_generations =
+    request.genetic_search.max_iterations =
         genetic_search->get<std::uint32_t>("max_generations", 40);
     request.genetic_search.population_size =
         genetic_search->get<std::uint32_t>("population_size", 30);

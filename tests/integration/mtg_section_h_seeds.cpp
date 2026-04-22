@@ -51,7 +51,7 @@ MtgRequestOptions make_seed_options(SeedAlgo algo) {
     // shrink the population to keep the request valid.
     options.production.elite_count = 2;
     options.production.mutant_count = 1;
-    options.production.max_generations = 2;
+    options.production.max_iterations = 2;
     break;
   }
   return options;

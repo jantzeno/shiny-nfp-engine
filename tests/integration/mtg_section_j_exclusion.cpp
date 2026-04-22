@@ -259,7 +259,7 @@ TEST_CASE("mtg exclusion zone on bed1 forces overflow to bed2",
     run_overflow_case(0.0, [](MtgRequestOptions &o) {
       o.strategy = StrategyKind::metaheuristic_search;
       o.production_optimizer = ProductionOptimizerKind::brkga;
-      o.production.max_generations = 2;
+      o.production.max_iterations = 2;
       o.production.population_size = 8;
     });
   }

@@ -195,7 +195,7 @@ auto parse_search_request(const shiny::nesting::test::pt::ptree &node)
     -> SearchRequest {
   SearchRequest request{};
   if (const auto local_search = node.get_child_optional("local_search")) {
-    request.local_search.max_iterations =
+    request.local_search.max_refinements =
         local_search->get<std::uint32_t>("max_iterations", 250);
     request.local_search.deterministic_seed =
         local_search->get<std::uint32_t>("deterministic_seed", 1);

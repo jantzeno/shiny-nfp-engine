@@ -160,10 +160,10 @@ TEST_CASE("normalized requests materialize type-erased strategy configs",
           "[request][normalize][strategy-config]") {
   NestingRequest request;
   request.execution.strategy = StrategyKind::alns;
-  request.execution.alns.max_iterations = 23;
+  request.execution.alns.max_refinements = 23;
   request.execution.production_optimizer =
       shiny::nesting::ProductionOptimizerKind::lahc;
-  request.execution.lahc.max_iterations = 17;
+  request.execution.lahc.max_refinements = 17;
   request.bins = {{
       .bin_id = 1,
       .polygon = rectangle(0.0, 0.0, 10.0, 10.0),
@@ -180,12 +180,12 @@ TEST_CASE("normalized requests materialize type-erased strategy configs",
       normalized.value().request.execution.strategy_config.get_if<shiny::nesting::ALNSConfig>(
           StrategyKind::alns);
   REQUIRE(alns != nullptr);
-  REQUIRE(alns->max_iterations == 23U);
+  REQUIRE(alns->max_refinements == 23U);
 
   const auto *lahc =
       normalized.value().request.execution.production_strategy_config.get_if<
           shiny::nesting::LAHCConfig>(
           shiny::nesting::ProductionOptimizerKind::lahc);
   REQUIRE(lahc != nullptr);
-  REQUIRE(lahc->max_iterations == 17U);
+  REQUIRE(lahc->max_refinements == 17U);
 }

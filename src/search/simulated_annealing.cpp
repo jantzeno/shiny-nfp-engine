@@ -64,7 +64,7 @@ auto emit_improvement(const SolveControl &control, SearchReplay &replay,
       .layout = best.result.layout,
       .budget = budget,
       .stop_reason = StopReason::none,
-      .phase = ProgressPhase::metaheuristic_iteration,
+      .phase = ProgressPhase::part_refinement,
       .phase_detail = std::format("SA restart {} iter {} via {} @ T={:.3f}",
                                   restart_index + 1U, iteration,
                                   detail::operator_label(op), temperature),
@@ -91,7 +91,7 @@ auto emit_iteration_progress(const SolveControl &control, ProgressThrottle &thro
       .layout = current.result.layout,
       .budget = budget,
       .stop_reason = StopReason::none,
-      .phase = ProgressPhase::metaheuristic_iteration,
+      .phase = ProgressPhase::part_refinement,
       .phase_detail = std::format("SA restart {} iter {} {} via {} @ T={:.3f}",
                                   restart_index + 1U, iteration,
                                   accepted ? "accepted" : "rejected",
@@ -161,7 +161,7 @@ auto SimulatedAnnealingSearch::solve(const NormalizedRequest &request,
       ProductionOptimizerKind::simulated_annealing,
       request.request.execution.simulated_annealing);
   const std::size_t configured_iterations =
-      config.max_iterations * std::max<std::size_t>(config.restart_count, 1U);
+      config.max_refinements * std::max<std::size_t>(config.restart_count, 1U);
   const std::size_t iteration_limit =
       control.iteration_limit > 0U ? control.iteration_limit : configured_iterations;
 
@@ -204,7 +204,7 @@ auto SimulatedAnnealingSearch::solve(const NormalizedRequest &request,
     double temperature = cooling.initial_temperature();
     std::size_t plateau = 0;
     const std::size_t restart_budget =
-        std::min(config.max_iterations, iteration_limit - iterations_completed);
+        std::min(config.max_refinements, iteration_limit - iterations_completed);
 
     for (std::size_t restart_iteration = 0; restart_iteration < restart_budget;
          ++restart_iteration) {

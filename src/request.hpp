@@ -93,7 +93,7 @@ struct ProductionSearchConfig {
   std::size_t population_size{24};
   std::size_t elite_count{6};
   std::size_t mutant_count{4};
-  std::size_t max_generations{24};
+  std::size_t max_iterations{24};
   double elite_bias{0.7};
   std::size_t diversification_swaps{2};
   std::size_t polishing_passes{1};
@@ -108,7 +108,7 @@ struct ProductionSearchConfig {
 
 struct SAConfig {
   CoolingScheduleKind cooling_schedule{CoolingScheduleKind::geometric};
-  std::size_t max_iterations{48};
+  std::size_t max_refinements{48};
   std::size_t restart_count{2};
   double initial_temperature{0.25};
   double final_temperature{0.01};
@@ -121,7 +121,7 @@ struct SAConfig {
 };
 
 struct ALNSConfig {
-  std::size_t max_iterations{48};
+  std::size_t max_refinements{48};
   std::size_t destroy_min_count{1};
   std::size_t destroy_max_count{3};
   double initial_acceptance_ratio{0.04};
@@ -136,7 +136,7 @@ struct ALNSConfig {
 };
 
 struct GDRRConfig {
-  std::size_t max_iterations{48};
+  std::size_t max_refinements{48};
   double initial_goal_ratio{0.98};
   double goal_decay{0.995};
   std::size_t ruin_swap_count{2};
@@ -145,7 +145,7 @@ struct GDRRConfig {
 };
 
 struct LAHCConfig {
-  std::size_t max_iterations{48};
+  std::size_t max_refinements{48};
   std::size_t history_length{12};
   std::size_t plateau_limit{16};
   std::size_t perturbation_swaps{2};

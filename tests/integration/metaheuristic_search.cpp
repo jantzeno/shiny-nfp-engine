@@ -72,18 +72,18 @@ namespace {
   options.production.population_size = 6;
   options.production.elite_count = 1;
   options.production.mutant_count = 1;
-  options.production.max_generations = 2;
+  options.production.max_iterations = 2;
 
-  options.simulated_annealing.max_iterations = 4;
+  options.simulated_annealing.max_refinements = 4;
   options.simulated_annealing.restart_count = 1;
 
-  options.alns.max_iterations = 4;
+  options.alns.max_refinements = 4;
   options.alns.destroy_min_count = 1;
   options.alns.destroy_max_count = 2;
 
-  options.gdrr.max_iterations = 4;
+  options.gdrr.max_refinements = 4;
 
-  options.lahc.max_iterations = 4;
+  options.lahc.max_refinements = 4;
   options.lahc.history_length = 3;
   return options;
 }
@@ -94,14 +94,14 @@ namespace {
   options.production.population_size = 8;
   options.production.elite_count = 2;
   options.production.mutant_count = 2;
-  options.production.max_generations = 4;
+  options.production.max_iterations = 4;
 
-  options.simulated_annealing.max_iterations = 8;
+  options.simulated_annealing.max_refinements = 8;
   options.simulated_annealing.restart_count = 1;
 
-  options.alns.max_iterations = 8;
-  options.gdrr.max_iterations = 8;
-  options.lahc.max_iterations = 8;
+  options.alns.max_refinements = 8;
+  options.gdrr.max_refinements = 8;
+  options.lahc.max_refinements = 8;
   options.lahc.history_length = 4;
   return options;
 }
@@ -197,14 +197,14 @@ auto seed_priority_values(NestingRequest &request,
   request.execution.production.population_size = 6;
   request.execution.production.elite_count = 1;
   request.execution.production.mutant_count = 1;
-  request.execution.production.max_generations = 2;
-  request.execution.simulated_annealing.max_iterations = 4;
+  request.execution.production.max_iterations = 2;
+  request.execution.simulated_annealing.max_refinements = 4;
   request.execution.simulated_annealing.restart_count = 1;
-  request.execution.alns.max_iterations = 4;
+  request.execution.alns.max_refinements = 4;
   request.execution.alns.destroy_min_count = 1;
   request.execution.alns.destroy_max_count = 2;
-  request.execution.gdrr.max_iterations = 4;
-  request.execution.lahc.max_iterations = 4;
+  request.execution.gdrr.max_refinements = 4;
+  request.execution.lahc.max_refinements = 4;
   request.execution.lahc.history_length = 3;
 
   request.bins.push_back(BinRequest{

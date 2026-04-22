@@ -343,12 +343,12 @@ production_runner_class_name(const ProductionOptimizerKind optimizer)
     const ProductionOptimizerKind optimizer) -> std::string {
   const std::string shared = std::format(
       "optimizer={} placement_policy={} population_size={} elite_count={} "
-      "mutant_count={} max_generations={} polishing_passes={} "
+      "mutant_count={} max_iterations={} polishing_passes={} "
       "diversification_swaps={} elite_bias={:.3g}",
       production_optimizer_name(optimizer),
       placement_policy_name(execution.placement_policy),
       execution.production.population_size, execution.production.elite_count,
-      execution.production.mutant_count, execution.production.max_generations,
+      execution.production.mutant_count, execution.production.max_iterations,
       execution.production.polishing_passes,
       execution.production.diversification_swaps, execution.production.elite_bias);
   switch (optimizer) {
@@ -356,30 +356,30 @@ production_runner_class_name(const ProductionOptimizerKind optimizer)
     return shared;
   case ProductionOptimizerKind::simulated_annealing:
     return std::format(
-        "{} sa[max_iterations={} restart_count={} cooling_schedule={} "
+        "{} sa[max_refinements={} restart_count={} cooling_schedule={} "
         "initial_temperature={:.3g} final_temperature={:.3g}]",
-        shared, execution.simulated_annealing.max_iterations,
+        shared, execution.simulated_annealing.max_refinements,
         execution.simulated_annealing.restart_count,
         cooling_schedule_name(execution.simulated_annealing.cooling_schedule),
         execution.simulated_annealing.initial_temperature,
         execution.simulated_annealing.final_temperature);
   case ProductionOptimizerKind::alns:
     return std::format(
-        "{} alns[max_iterations={} destroy_min={} destroy_max={} "
+        "{} alns[max_refinements={} destroy_min={} destroy_max={} "
         "segment_length={}]",
-        shared, execution.alns.max_iterations, execution.alns.destroy_min_count,
+        shared, execution.alns.max_refinements, execution.alns.destroy_min_count,
         execution.alns.destroy_max_count, execution.alns.segment_length);
   case ProductionOptimizerKind::gdrr:
     return std::format(
-        "{} gdrr[max_iterations={} initial_goal_ratio={:.3g} "
+        "{} gdrr[max_refinements={} initial_goal_ratio={:.3g} "
         "goal_decay={:.3g} ruin_swap_count={}]",
-        shared, execution.gdrr.max_iterations, execution.gdrr.initial_goal_ratio,
+        shared, execution.gdrr.max_refinements, execution.gdrr.initial_goal_ratio,
         execution.gdrr.goal_decay, execution.gdrr.ruin_swap_count);
   case ProductionOptimizerKind::lahc:
     return std::format(
-        "{} lahc[max_iterations={} history_length={} plateau_limit={} "
+        "{} lahc[max_refinements={} history_length={} plateau_limit={} "
         "perturbation_swaps={}]",
-        shared, execution.lahc.max_iterations, execution.lahc.history_length,
+        shared, execution.lahc.max_refinements, execution.lahc.history_length,
         execution.lahc.plateau_limit, execution.lahc.perturbation_swaps);
   }
   return shared;

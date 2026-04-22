@@ -42,7 +42,7 @@ auto trivial_request() -> NestingRequest {
   // sequential-backtrack which have inline branches in `solve.cpp`.
   request.execution.strategy = StrategyKind::alns;
   request.execution.default_rotations = {{0.0}};
-  request.execution.alns.max_iterations = 1;
+  request.execution.alns.max_refinements = 1;
   request.bins = {{
       .bin_id = 1,
       .polygon = rectangle(0.0, 0.0, 10.0, 10.0),

@@ -58,7 +58,7 @@ auto emit_improvement(const SolveControl &control, SearchReplay &replay,
       .layout = best.result.layout,
       .budget = budget,
       .stop_reason = StopReason::none,
-      .phase = ProgressPhase::metaheuristic_iteration,
+      .phase = ProgressPhase::part_refinement,
       .phase_detail = std::format("LAHC iter {} improved via {}", iteration,
                                   detail::operator_label(op)),
       .utilization_percent = best.metrics.utilization * 100.0,
@@ -91,7 +91,7 @@ auto LahcSearch::solve(const NormalizedRequest &request,
                                                ProductionOptimizerKind::lahc,
                                                request.request.execution.lahc);
   const std::size_t iteration_limit =
-      control.iteration_limit > 0U ? control.iteration_limit : config.max_iterations;
+      control.iteration_limit > 0U ? control.iteration_limit : config.max_refinements;
 
   SearchReplay replay{.optimizer = OptimizerKind::lahc};
   if (request.expanded_pieces.empty()) {
@@ -175,7 +175,7 @@ auto LahcSearch::solve(const NormalizedRequest &request,
     }
     if (iterations_completed >= iteration_limit) {
       hit_iteration_limit = control.iteration_limit > 0U ||
-                            iteration + 1U >= config.max_iterations;
+                            iteration + 1U >= config.max_refinements;
       break;
     }
   }

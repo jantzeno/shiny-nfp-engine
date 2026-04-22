@@ -49,7 +49,7 @@ void apply_strategy_sequential_backtrack(MtgRequestOptions &options) {
 void apply_strategy_metaheuristic_search_brkga(MtgRequestOptions &options) {
   options.strategy = StrategyKind::metaheuristic_search;
   options.production_optimizer = ProductionOptimizerKind::brkga;
-  options.production.max_generations = 4;
+  options.production.max_iterations = 4;
   options.production.population_size = 8;
 }
 

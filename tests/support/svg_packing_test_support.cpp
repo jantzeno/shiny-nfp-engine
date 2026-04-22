@@ -1076,7 +1076,7 @@ auto make_search_request(const SvgPackingCaseSpec &spec,
   SearchRequest request{};
   request.decoder_request = make_decoder_request(spec, svg_case);
   request.local_search = {
-      .max_iterations = spec.search_iterations,
+      .max_refinements = spec.search_iterations,
       .deterministic_seed = kSearchSeed,
       .plateau_budget = spec.search_plateau_budget,
   };

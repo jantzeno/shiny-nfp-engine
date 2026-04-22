@@ -56,7 +56,7 @@ auto improvement_request() -> NestingRequest {
   request.execution.production.population_size = 12;
   request.execution.production.elite_count = 3;
   request.execution.production.mutant_count = 2;
-  request.execution.production.max_generations = 6;
+  request.execution.production.max_iterations = 6;
   request.execution.production.polishing_passes = 1;
   request.execution.production.diversification_swaps = 1;
 
@@ -137,7 +137,7 @@ TEST_CASE("production search obeys time budgets under search",
   request.execution.production.population_size = 48;
   request.execution.production.elite_count = 8;
   request.execution.production.mutant_count = 8;
-  request.execution.production.max_generations = 64;
+  request.execution.production.max_iterations = 64;
 
   request.bins.push_back(BinRequest{
       .bin_id = 70,

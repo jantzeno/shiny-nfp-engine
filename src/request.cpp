@@ -263,7 +263,7 @@ auto ProductionSearchConfig::is_valid() const -> bool {
   return population_size >= 2U && elite_count >= 1U &&
          elite_count < population_size && mutant_count < population_size &&
          elite_count + mutant_count < population_size &&
-         max_generations >= 1U && std::isfinite(elite_bias) && elite_bias > 0.0 &&
+         max_iterations >= 1U && std::isfinite(elite_bias) && elite_bias > 0.0 &&
          elite_bias < 1.0 && std::isfinite(gls_weight_cap) &&
          gls_weight_cap >= 1.0;
 }
@@ -279,7 +279,7 @@ auto SAConfig::is_valid() const -> bool {
     return false;
   }
 
-  return max_iterations >= 1U && restart_count >= 1U &&
+  return max_refinements >= 1U && restart_count >= 1U &&
          std::isfinite(initial_temperature) && initial_temperature > 0.0 &&
          std::isfinite(final_temperature) && final_temperature > 0.0 &&
          initial_temperature >= final_temperature && std::isfinite(lundy_beta) &&
@@ -289,7 +289,7 @@ auto SAConfig::is_valid() const -> bool {
 }
 
 auto ALNSConfig::is_valid() const -> bool {
-  return max_iterations >= 1U && destroy_min_count >= 1U &&
+  return max_refinements >= 1U && destroy_min_count >= 1U &&
          destroy_max_count >= destroy_min_count && destroy_max_count <= 64U &&
          std::isfinite(initial_acceptance_ratio) &&
          initial_acceptance_ratio >= 0.0 &&
@@ -304,14 +304,14 @@ auto ALNSConfig::is_valid() const -> bool {
 }
 
 auto GDRRConfig::is_valid() const -> bool {
-  return max_iterations >= 1U && std::isfinite(initial_goal_ratio) &&
+  return max_refinements >= 1U && std::isfinite(initial_goal_ratio) &&
          initial_goal_ratio > 0.0 && initial_goal_ratio <= 1.0 &&
          std::isfinite(goal_decay) && goal_decay > 0.0 && goal_decay < 1.0 &&
          ruin_swap_count <= 32U;
 }
 
 auto LAHCConfig::is_valid() const -> bool {
-  return max_iterations >= 1U && history_length >= 1U &&
+  return max_refinements >= 1U && history_length >= 1U &&
          history_length <= 4096U && plateau_limit <= 4096U &&
          perturbation_swaps <= 32U;
 }

@@ -34,7 +34,7 @@ auto make_bounded_readiness_genetic_config(
   const auto population_size = std::max<std::uint32_t>(4U, piece_count + 1U);
 
   return {
-      .max_generations = std::max<std::uint32_t>(2U, generation_budget),
+      .max_iterations = std::max<std::uint32_t>(2U, generation_budget),
       .population_size = population_size,
       .deterministic_seed = kSearchSeed,
       .mutation_rate_percent = 10,
