@@ -328,12 +328,12 @@ TEST_CASE("mtg piece priority survives partial placement",
   const auto fixture = load_mtg_fixture();
 
   // Note: PieceOrdering::priority is only consulted by the irregular
-  // constructive / production strategies, which are slow in debug builds and
-  // are exercised in the dedicated sequential-backtrack / metaheuristic-search
-  // suites. Here we set the priority field on a bounding-box run as a
-  // fast-lane smoke test that asserts the high-priority piece is in the placed
-  // set. The contract is: regardless of strategy, a marked priority piece must
-  // never land in unplaced_piece_ids when other (unmarked) pieces are placed.
+  // constructive / production strategies, which are exercised in the
+  // dedicated sequential-backtrack / metaheuristic-search suites with full
+  // ordering depth. Here we verify the bounding-box contract: a priority-marked
+  // piece must always appear in the placed set when any other pieces are placed,
+  // regardless of strategy. The deeper priority-sequence contract (piece order)
+  // lives in the dedicated irregular suites.
   auto options = baseline_bb_options();
   options.irregular.piece_ordering = PieceOrdering::priority;
 
