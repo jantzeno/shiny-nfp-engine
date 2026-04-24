@@ -21,6 +21,7 @@
 #define NANOSVG_IMPLEMENTATION
 #include "nanosvg.h"
 
+#include "geometry/normalize.hpp"
 #include "geometry/transform.hpp"
 #include "geometry/types.hpp"
 #include "observer.hpp"
@@ -29,6 +30,8 @@
 #include "packing/layout.hpp"
 #include "placement/config.hpp"
 #include "placement/types.hpp"
+#include "polygon_ops/boolean_ops.hpp"
+#include "polygon_ops/simplify.hpp"
 #include "request.hpp"
 #include "result.hpp"
 #include "solve.hpp"
@@ -409,6 +412,259 @@ auto load_mtg_fixture() -> MtgFixture {
     throw std::runtime_error{
         "mtg_fixture: expected " + std::to_string(kBaselinePieceCount) +
         " pieces but parsed " + std::to_string(fixture.pieces.size())};
+  }
+
+  return fixture;
+}
+
+namespace {
+
+// Extracts polygon boundaries from a single nanosvg path. Each NSVGpath
+// stores cubic-bezier control points as a flat array of length npts =
+// 3*ncubic + 1, where every third point starting at index 0 is a curve
+// endpoint (corner). For straight-line "M ... L ..." paths nanosvg still
+// emits cubics with collinear control points, so taking the endpoints
+// recovers the polygon vertices exactly.
+[[nodiscard]] auto extract_path_polygon(const NSVGpath *path) -> geom::Polygon {
+  geom::Polygon polygon{};
+  if (path == nullptr || path->npts <= 0) {
+    return polygon;
+  }
+  for (int i = 0; i + 1 <= path->npts; i += 3) {
+    polygon.outer.push_back(
+        geom::Point2{static_cast<double>(path->pts[2 * i]),
+                     static_cast<double>(path->pts[2 * i + 1])});
+  }
+  if (polygon.outer.size() >= 2 && path->closed != 0) {
+    const auto &front = polygon.outer.front();
+    const auto &back = polygon.outer.back();
+    if (std::abs(front.x - back.x) < 1e-9 &&
+        std::abs(front.y - back.y) < 1e-9) {
+      polygon.outer.pop_back();
+    }
+  }
+  return polygon;
+}
+
+[[nodiscard]] auto largest_by_area(
+    const std::vector<geom::PolygonWithHoles> &polygons)
+    -> geom::PolygonWithHoles {
+  const geom::PolygonWithHoles *best = nullptr;
+  double best_area = -1.0;
+  for (const auto &p : polygons) {
+    const double area = std::abs(geom::polygon_area(p));
+    if (area > best_area) {
+      best_area = area;
+      best = &p;
+    }
+  }
+  if (best == nullptr) {
+    throw std::runtime_error{"mtg_fixture: empty union result"};
+  }
+  return *best;
+}
+
+[[nodiscard]] auto union_subpaths(
+    const std::vector<geom::Polygon> &subpaths) -> geom::PolygonWithHoles {
+  if (subpaths.empty()) {
+    throw std::runtime_error{"mtg_fixture: artwork has no sub-paths"};
+  }
+
+  // Seed accumulator with the first sub-path that is geometrically valid.
+  std::vector<geom::PolygonWithHoles> acc;
+  std::size_t start = 0;
+  for (; start < subpaths.size(); ++start) {
+    if (subpaths[start].outer.size() >= 3) {
+      geom::PolygonWithHoles seed{};
+      seed.outer = subpaths[start].outer;
+      seed = geom::normalize_polygon(seed);
+      seed = poly::simplify_polygon(seed);
+      if (!seed.outer.empty()) {
+        acc.push_back(std::move(seed));
+        break;
+      }
+    }
+  }
+  if (acc.empty()) {
+    throw std::runtime_error{"mtg_fixture: no valid sub-paths to union"};
+  }
+
+  for (std::size_t i = start + 1; i < subpaths.size(); ++i) {
+    if (subpaths[i].outer.size() < 3) {
+      continue;
+    }
+    geom::PolygonWithHoles next{};
+    next.outer = subpaths[i].outer;
+    next = geom::normalize_polygon(next);
+    next = poly::simplify_polygon(next);
+    if (next.outer.empty()) {
+      continue;
+    }
+
+    std::vector<geom::PolygonWithHoles> rebuilt;
+    rebuilt.reserve(acc.size());
+    geom::PolygonWithHoles current = std::move(next);
+    for (const auto &existing : acc) {
+      auto merged = poly::union_polygons(existing, current);
+      if (merged.size() == 1) {
+        current = std::move(merged.front());
+      } else {
+        // Disconnected from `current`: keep `existing` as-is.
+        rebuilt.push_back(existing);
+      }
+    }
+    rebuilt.push_back(std::move(current));
+    acc = std::move(rebuilt);
+  }
+
+  // Take the largest connected component as the silhouette. Smaller
+  // disconnected detail features (e.g., isolated decorative rectangles)
+  // are dropped intentionally — they don't change the AABB and exposing
+  // them as separate polygons would break the one-piece-per-artwork
+  // contract used by the rest of the fixture.
+  auto silhouette = largest_by_area(acc);
+  // Drop holes: the test surface is the outer silhouette only; holes from
+  // sub-path topology aren't meaningful for the bug-repro use case.
+  silhouette.holes.clear();
+  return silhouette;
+}
+
+[[nodiscard]] auto translate_polygon(const geom::PolygonWithHoles &polygon,
+                                     double dx, double dy)
+    -> geom::PolygonWithHoles {
+  geom::PolygonWithHoles out{};
+  out.outer.reserve(polygon.outer.size());
+  for (const auto &p : polygon.outer) {
+    out.outer.push_back(geom::Point2{p.x + dx, p.y + dy});
+  }
+  return out;
+}
+
+struct ParsedArtwork {
+  std::uint32_t artwork_id{0};
+  // Sub-paths in document coordinates.
+  std::vector<geom::Polygon> subpaths;
+  // AABB derived from the same nanosvg `shape->bounds` source the
+  // rectangle fixture uses, for cross-validation.
+  double min_x{0.0}, min_y{0.0}, max_x{0.0}, max_y{0.0};
+  bool seeded{false};
+};
+
+[[nodiscard]] auto parse_svg_artworks(const std::filesystem::path &path)
+    -> std::unordered_map<std::uint32_t, ParsedArtwork> {
+  const auto path_string = path.string();
+  std::unique_ptr<NSVGimage, void (*)(NSVGimage *)> image{
+      nsvgParseFromFile(path_string.c_str(), "px", 96.0F), nsvgDelete};
+  if (!image) {
+    throw std::runtime_error{"mtg_fixture: failed to parse SVG: " +
+                             path.string()};
+  }
+
+  std::unordered_map<std::uint32_t, ParsedArtwork> artworks;
+  for (const auto *shape = image->shapes; shape != nullptr;
+       shape = shape->next) {
+    auto art_id = artwork_id_from_shape_id(shape->id);
+    if (!art_id.has_value()) {
+      continue;
+    }
+    auto &accum = artworks[*art_id];
+    accum.artwork_id = *art_id;
+    if (!accum.seeded) {
+      accum.min_x = shape->bounds[0];
+      accum.min_y = shape->bounds[1];
+      accum.max_x = shape->bounds[2];
+      accum.max_y = shape->bounds[3];
+      accum.seeded = true;
+    } else {
+      accum.min_x = std::min(accum.min_x, static_cast<double>(shape->bounds[0]));
+      accum.min_y = std::min(accum.min_y, static_cast<double>(shape->bounds[1]));
+      accum.max_x = std::max(accum.max_x, static_cast<double>(shape->bounds[2]));
+      accum.max_y = std::max(accum.max_y, static_cast<double>(shape->bounds[3]));
+    }
+    for (const auto *p = shape->paths; p != nullptr; p = p->next) {
+      auto poly = extract_path_polygon(p);
+      if (poly.outer.size() >= 3) {
+        accum.subpaths.push_back(std::move(poly));
+      }
+    }
+  }
+  return artworks;
+}
+
+}  // namespace
+
+auto load_mtg_fixture_with_actual_polygons() -> MtgFixture {
+  // Start from the rectangle fixture so all bed/source/piece-id metadata
+  // remains identical to the existing baseline.
+  auto fixture = load_mtg_fixture();
+
+  const auto artworks = parse_svg_artworks(fixture.source_path);
+
+  // Build artwork-id -> piece lookup. Pieces are constructed in
+  // ascending artwork-id order by `load_mtg_fixture`, but we re-resolve
+  // the mapping by reparsing the AABB labels rather than relying on
+  // index alignment.
+  std::unordered_map<std::uint32_t, std::pair<double, double>>
+      rect_aabb_by_artwork;
+  for (const auto &kv : artworks) {
+    rect_aabb_by_artwork.emplace(
+        kv.first,
+        std::make_pair(kv.second.max_x - kv.second.min_x,
+                       kv.second.max_y - kv.second.min_y));
+  }
+
+  // Build a piece index by deterministic artwork-id ordering, mirroring
+  // the loop in `load_mtg_fixture`.
+  std::vector<std::uint32_t> ordered_ids;
+  ordered_ids.reserve(artworks.size());
+  for (const auto &kv : artworks) {
+    ordered_ids.push_back(kv.first);
+  }
+  std::sort(ordered_ids.begin(), ordered_ids.end());
+
+  if (ordered_ids.size() != fixture.pieces.size()) {
+    throw std::runtime_error{
+        "mtg_fixture: artwork count drifted from rectangle fixture"};
+  }
+
+  for (std::size_t i = 0; i < ordered_ids.size(); ++i) {
+    const auto art_id = ordered_ids[i];
+    const auto &art = artworks.at(art_id);
+    auto silhouette = union_subpaths(art.subpaths);
+
+    // Origin-normalize: translate so that AABB.min == (0,0). The
+    // rectangle fixture stores piece geometry in the same convention.
+    const auto box = polygon_aabb(silhouette);
+    silhouette = translate_polygon(silhouette, -box.min.x, -box.min.y);
+    const auto local_box = polygon_aabb(silhouette);
+
+    auto &piece = fixture.pieces[i];
+
+    // Cross-check that our extracted silhouette matches the AABB the
+    // rectangle fixture computed from nanosvg's `shape->bounds`. A
+    // mismatch larger than 1e-3 mm indicates a silently-dropped
+    // sub-path or extraction bug.
+    constexpr double kAabbTolerance = 1e-3;
+    const double width = local_box.max.x - local_box.min.x;
+    const double height = local_box.max.y - local_box.min.y;
+    if (std::abs(width - piece.width_mm) > kAabbTolerance ||
+        std::abs(height - piece.height_mm) > kAabbTolerance) {
+      throw std::runtime_error{
+          "mtg_fixture: extracted polygon AABB drifted from "
+          "rectangle-fixture AABB for artwork " +
+          std::to_string(art_id)};
+    }
+
+    if (silhouette.outer.size() < 3) {
+      throw std::runtime_error{
+          "mtg_fixture: extracted polygon has fewer than 3 vertices for "
+          "artwork " +
+          std::to_string(art_id)};
+    }
+
+    piece.polygon = std::move(silhouette);
+    piece.width_mm = width;
+    piece.height_mm = height;
   }
 
   return fixture;

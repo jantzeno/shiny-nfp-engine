@@ -17,6 +17,7 @@
 #include <vector>
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include "geometry/transform.hpp"
 #include "observer.hpp"
@@ -99,9 +100,10 @@ TEST_CASE("focused asymmetric fixture makes default_rotations directly observabl
           "[mtg][nesting-matrix][engine-surface][rotations]") {
   const auto fixture = make_asymmetric_engine_surface_fixture();
   auto options = baseline_bb_options();
-  options.selected_bin_ids = {kBed1Id};
+  options.maintain_bed_assignment = true;
+  options.allow_part_overflow = false;
 
-  // Solve A — only 0°. The wide piece cannot fit the selected bed.
+  // Solve A — only 0°. The wide piece cannot fit its source bed.
   auto request_a = make_request(fixture, options);
   request_a.execution.default_rotations = geom::DiscreteRotationSet{{0.0}};
   REQUIRE(request_a.is_valid());
@@ -117,7 +119,7 @@ TEST_CASE("focused asymmetric fixture makes default_rotations directly observabl
   REQUIRE(find_piece_placement(result_a.value(), fixture.pieces.front().piece_id) ==
           nullptr);
 
-  // Solve B — 0° + 90°. The same piece now fits the selected bed only when
+  // Solve B — 0° + 90°. The same piece now fits its source bed only when
   // rotated, so the contract is visible without relying on hash drift.
   auto request_b = make_request(fixture, options);
   request_b.execution.default_rotations =
@@ -179,15 +181,22 @@ TEST_CASE("focused asymmetric fixture honors non-conflicting allowed_bin_ids",
 
 TEST_CASE("focused asymmetric fixture keeps pieces unplaced when selected bins conflict",
           "[mtg][nesting-matrix][engine-surface][allowed-bin-ids]") {
-  const auto fixture = make_asymmetric_engine_surface_fixture();
+  auto fixture = make_asymmetric_engine_surface_fixture();
+  const auto selected_bed_id = GENERATE(kBed1Id, kBed2Id);
+  const auto other_bed_id = selected_bed_id == kBed1Id ? kBed2Id : kBed1Id;
+  CAPTURE(selected_bed_id);
+  fixture.pieces[0].source_bed_id = selected_bed_id;
+  fixture.pieces[1].source_bed_id = selected_bed_id;
   auto options = baseline_bb_options();
-  options.selected_bin_ids = {kBed1Id};
+  options.maintain_bed_assignment = true;
+  options.allow_part_overflow = false;
+  options.selected_bin_ids = {selected_bed_id};
 
   auto request = make_request(fixture, options);
   request.execution.default_rotations = geom::DiscreteRotationSet{{0.0, 90.0}};
   REQUIRE(request.pieces.size() == fixture.pieces.size());
-  request.pieces[0].allowed_bin_ids = {kBed2Id};
-  request.pieces[1].allowed_bin_ids = {kBed1Id};
+  request.pieces[0].allowed_bin_ids = {other_bed_id};
+  request.pieces[1].allowed_bin_ids = {selected_bed_id};
   REQUIRE(request.is_valid());
 
   SolveControl control{};
@@ -197,8 +206,8 @@ TEST_CASE("focused asymmetric fixture keeps pieces unplaced when selected bins c
 
   ExpectedOutcome expected{};
   expected.expected_placed_count = 1;
-  expected.per_bed_counts = {{kBed1Id, 1}};
-  expected.required_assignments = {{fixture.pieces[1].piece_id, kBed1Id}};
+  expected.per_bed_counts = {{selected_bed_id, 1}};
+  expected.required_assignments = {{fixture.pieces[1].piece_id, selected_bed_id}};
   expected.require_allowed_bin_admissibility = true;
   validate_layout(fixture, request, options, solved.value(), expected);
 
@@ -210,7 +219,8 @@ TEST_CASE("mtg per-piece allowed_rotations is honored",
           "[mtg][nesting-matrix][engine-surface][rotations]") {
   const auto fixture = make_asymmetric_engine_surface_fixture();
   auto options = baseline_bb_options();
-  options.selected_bin_ids = {kBed1Id};
+  options.maintain_bed_assignment = true;
+  options.allow_part_overflow = false;
 
   auto request = make_request(fixture, options);
   REQUIRE(!request.pieces.empty());
@@ -387,7 +397,6 @@ TEST_CASE("mtg ProgressObserver receives monotonic sequences",
   // Bounding-box (constructive) emits per-placement progress snapshots —
   // sufficient to validate the observer contract without a brkga run.
   auto options = baseline_bb_options();
-  options.selected_bin_ids = {kBed1Id};
 
   const auto request = make_request(fixture, options);
   REQUIRE(request.is_valid());

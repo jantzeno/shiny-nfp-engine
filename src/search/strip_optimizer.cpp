@@ -11,8 +11,8 @@
 #include <vector>
 
 #include "geometry/polygon.hpp"
-#include "packing/sequential_backtrack_packer.hpp"
-#include "packing/packer_workspace.hpp"
+#include "packing/irregular/constructive_packer.hpp"
+#include "packing/irregular/workspace.hpp"
 #include "packing/separator.hpp"
 #include "polygon_ops/merge_region.hpp"
 #include "runtime/hash.hpp"
@@ -129,7 +129,7 @@ namespace {
     evaluated.forced_rotations.assign(order.size(), std::nullopt);
   }
 
-  pack::SequentialBacktrackPacker packer;
+  pack::IrregularConstructivePacker packer;
   SolveControl decode_control{};
   decode_control.cancellation = control.cancellation;
   decode_control.random_seed = seed_from_order(order, control.random_seed);

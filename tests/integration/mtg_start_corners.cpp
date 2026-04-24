@@ -111,7 +111,7 @@ TEST_CASE("mtg start-corner override matrix (bounding_box)",
 }
 
 TEST_CASE("mtg start-corner override matrix (sequential_backtrack)",
-          "[mtg][nesting-matrix][start-corners][sequential-backtrack][.][slow]") {
+          "[mtg][nesting-matrix][start-corners][sequential-backtrack][slow]") {
   const auto fixture = load_mtg_fixture();
   run_corner_matrix(fixture, &apply_strategy_sequential_backtrack);
 }

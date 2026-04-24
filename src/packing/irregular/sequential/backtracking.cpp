@@ -10,7 +10,7 @@
 //     pushed to the front of the retry order. Each speculative trial is
 //     scoped by `BinTrialGuard`, which restores the bin states / opened
 //     flags / placement trace if the trial does not commit.
-#include "packing/constructive_detail.hpp"
+#include "packing/irregular/core.hpp"
 
 #include <algorithm>
 #include <cassert>

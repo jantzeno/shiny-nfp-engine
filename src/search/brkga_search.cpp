@@ -14,8 +14,8 @@
 
 #include "geometry/polygon.hpp"
 #include "logging/shiny_log.hpp"
-#include "packing/sequential_backtrack_packer.hpp"
-#include "packing/packer_workspace.hpp"
+#include "packing/irregular/constructive_packer.hpp"
+#include "packing/irregular/workspace.hpp"
 #include "runtime/deterministic_rng.hpp"
 #include "runtime/hash.hpp"
 #include "runtime/timing.hpp"
@@ -146,7 +146,7 @@ struct OrderSignatureHash {
     -> EvaluatedChromosome {
   const auto reordered = reordered_request_for(genes, request);
 
-  pack::SequentialBacktrackPacker packer;
+  pack::IrregularConstructivePacker packer;
   SolveControl decode_control{};
   decode_control.cancellation = control.cancellation;
   decode_control.workspace = &workspace;

@@ -1,4 +1,4 @@
-#include "packing/constructive_detail.hpp"
+#include "packing/irregular/core.hpp"
 
 #include <algorithm>
 #include <format>
@@ -8,13 +8,14 @@
 
 #include "geometry/transform.hpp"
 #include "logging/shiny_log.hpp"
-#include "packing/candidate_generation.hpp"
+#include "packing/irregular/candidate_generation.hpp"
 
 namespace shiny::nesting::pack::detail {
 namespace {
 
-[[nodiscard]] auto bounds_corner_for_start_corner(
-    const geom::Box2 &bounds, const place::PlacementStartCorner start_corner)
+[[nodiscard]] auto
+bounds_corner_for_start_corner(const geom::Box2 &bounds,
+                               const place::PlacementStartCorner start_corner)
     -> geom::Point2 {
   switch (start_corner) {
   case place::PlacementStartCorner::bottom_left:
@@ -63,21 +64,25 @@ auto append_ring_anchors(std::vector<AnchorPoint> &anchors,
 
   if (part_spacing > 0.0) {
     for (const auto &region : bin.cached_free_regions) {
-      append_ring_anchors(anchors, region.outer,
-                          place::PlacementCandidateSource::constructive_boundary);
+      append_ring_anchors(
+          anchors, region.outer,
+          place::PlacementCandidateSource::constructive_boundary);
       for (const auto &hole : region.holes) {
-        append_ring_anchors(anchors, hole,
-                            place::PlacementCandidateSource::constructive_boundary);
+        append_ring_anchors(
+            anchors, hole,
+            place::PlacementCandidateSource::constructive_boundary);
       }
     }
   } else {
     for (const auto &zone : bin.exclusion_regions) {
-      append_ring_anchors(anchors, zone.outer,
-                          place::PlacementCandidateSource::constructive_boundary);
+      append_ring_anchors(
+          anchors, zone.outer,
+          place::PlacementCandidateSource::constructive_boundary);
     }
     for (const auto &placement : bin.state.placements) {
-      append_ring_anchors(anchors, placement.polygon.outer,
-                          place::PlacementCandidateSource::constructive_boundary);
+      append_ring_anchors(
+          anchors, placement.polygon.outer,
+          place::PlacementCandidateSource::constructive_boundary);
     }
   }
 
@@ -88,9 +93,11 @@ auto append_ring_anchors(std::vector<AnchorPoint> &anchors,
   return anchors;
 }
 
-[[nodiscard]] auto candidate_reference_points(
-    const geom::PolygonWithHoles &polygon, const geom::Box2 &bounds,
-    const place::PlacementStartCorner start_corner) -> std::vector<geom::Point2> {
+[[nodiscard]] auto
+candidate_reference_points(const geom::PolygonWithHoles &polygon,
+                           const geom::Box2 &bounds,
+                           const place::PlacementStartCorner start_corner)
+    -> std::vector<geom::Point2> {
   std::vector<geom::Point2> points = polygon.outer;
   points.push_back(bounds_corner_for_start_corner(bounds, start_corner));
   std::sort(points.begin(), points.end());
@@ -137,17 +144,13 @@ auto append_ring_anchors(std::vector<AnchorPoint> &anchors,
 
 } // namespace
 
-auto find_best_for_bin(WorkingBin &bin, const PieceInstance &piece,
-                       const NormalizedRequest &request,
-                       const runtime::TimeBudget &time_budget,
-                       const runtime::Stopwatch &stopwatch,
-                       const SolveControl &control,
-                       ProgressThrottle &search_throttle,
-                       const std::size_t placed_parts,
-                       const std::size_t total_parts,
-                       const std::uint64_t per_piece_budget_ms,
-                       cache::NfpCache *nfp_cache,
-                       runtime::DeterministicRng *rng)
+auto find_best_for_bin(
+    WorkingBin &bin, const PieceInstance &piece,
+    const NormalizedRequest &request, const runtime::TimeBudget &time_budget,
+    const runtime::Stopwatch &stopwatch, const SolveControl &control,
+    ProgressThrottle &search_throttle, const std::size_t placed_parts,
+    const std::size_t total_parts, const std::uint64_t per_piece_budget_ms,
+    cache::NfpCache *nfp_cache, runtime::DeterministicRng *rng)
     -> std::optional<CandidatePlacement> {
   if (!piece_allows_bin(piece, bin.state.bin_id)) {
     return std::nullopt;
@@ -165,10 +168,12 @@ auto find_best_for_bin(WorkingBin &bin, const PieceInstance &piece,
       strategy == CandidateStrategy::anchor_vertex ||
       strategy == CandidateStrategy::nfp_hybrid;
   const bool use_nfp_candidates = strategy != CandidateStrategy::anchor_vertex;
-  const auto anchors = use_anchor_candidates
-                           ? collect_anchors(bin, request.request.execution.part_spacing)
-                           : std::vector<AnchorPoint>{};
-  const auto &rotations = allowed_rotations_for(*piece.source, request.request.execution);
+  const auto anchors =
+      use_anchor_candidates
+          ? collect_anchors(bin, request.request.execution.part_spacing)
+          : std::vector<AnchorPoint>{};
+  const auto &rotations =
+      allowed_rotations_for(*piece.source, request.request.execution);
   const auto rotation_count = geom::rotation_count(rotations);
   const auto rotation_begin = piece.forced_rotation_index.has_value()
                                   ? piece.forced_rotation_index->value
@@ -180,7 +185,7 @@ auto find_best_for_bin(WorkingBin &bin, const PieceInstance &piece,
 
   std::optional<CandidatePlacement> best;
   std::vector<CandidatePlacement> top_k;
-  const auto piece_start_ms = stopwatch.elapsed_milliseconds();
+  const auto piece_start_ms = stopwatch.elapsed_milliseconds(); // HERE
   std::size_t eval_count = 0;
   bool search_done = false;
 
@@ -192,37 +197,38 @@ auto find_best_for_bin(WorkingBin &bin, const PieceInstance &piece,
 
     const geom::RotationIndex rotation_index{
         static_cast<std::uint16_t>(rotation_value)};
-    const auto resolved_rotation = geom::resolve_rotation(rotation_index, rotations);
+    const auto resolved_rotation =
+        geom::resolve_rotation(rotation_index, rotations);
     if (!resolved_rotation.has_value()) {
       continue;
     }
 
     const auto mirror_count = piece.source->allow_mirror ? 2U : 1U;
-    for (std::size_t mirror_index = 0; mirror_index < mirror_count && !search_done;
-         ++mirror_index) {
+    for (std::size_t mirror_index = 0;
+         mirror_index < mirror_count && !search_done; ++mirror_index) {
       const bool mirrored = mirror_index == 1U;
-      const auto source_polygon =
-          mirrored ? geom::mirror(piece.source->polygon) : piece.source->polygon;
+      const auto source_polygon = mirrored ? geom::mirror(piece.source->polygon)
+                                           : piece.source->polygon;
       const auto refined_angles =
           rotations.range_degrees.has_value()
               ? geom::local_refinement_angles(*rotations.range_degrees,
                                               resolved_rotation->degrees)
               : std::vector<double>{resolved_rotation->degrees};
-      const auto mirrored_revision =
-          effective_geometry_revision(piece.source->geometry_revision, mirrored);
+      const auto mirrored_revision = effective_geometry_revision(
+          piece.source->geometry_revision, mirrored);
       const auto container_bounds = geom::compute_bounds(bin.state.container);
 
       for (const auto refined_angle : refined_angles) {
         const geom::ResolvedRotation active_rotation{.degrees = refined_angle};
-        const auto rotated_piece = geom::rotate(source_polygon, active_rotation);
+        const auto rotated_piece =
+            geom::rotate(source_polygon, active_rotation);
         if (rotated_piece.outer.empty()) {
           continue;
         }
 
         const auto rotated_bounds = geom::compute_bounds(rotated_piece);
-        const auto reference_points =
-            candidate_reference_points(rotated_piece, rotated_bounds,
-                                       bin.state.start_corner);
+        const auto reference_points = candidate_reference_points(
+            rotated_piece, rotated_bounds, bin.state.start_corner);
 
         std::vector<GeneratedCandidatePoint> candidate_points;
         if (use_anchor_candidates) {
@@ -234,8 +240,9 @@ auto find_best_for_bin(WorkingBin &bin, const PieceInstance &piece,
         if (use_nfp_candidates) {
           const auto obstacles = obstacle_candidates_for(bin);
           auto nfp_points = generate_nfp_candidate_points(
-              bin.state.container, bin.exclusion_regions, obstacles, rotated_piece,
-              mirrored_revision, active_rotation, strategy, nfp_cache);
+              bin.state.container, bin.exclusion_regions, obstacles,
+              rotated_piece, mirrored_revision, active_rotation, strategy,
+              nfp_cache);
           if (nfp_points.ok()) {
             auto points = std::move(nfp_points).value();
             candidate_points.insert(candidate_points.end(), points.begin(),
@@ -254,7 +261,8 @@ auto find_best_for_bin(WorkingBin &bin, const PieceInstance &piece,
             if (per_piece_budget_ms > 0 &&
                 (stopwatch.elapsed_milliseconds() - piece_start_ms) >
                     per_piece_budget_ms) {
-              SHINY_DEBUG("find_best_for_bin: per-piece budget exceeded ({}ms > {}ms limit)",
+              SHINY_DEBUG("find_best_for_bin: per-piece budget exceeded ({}ms "
+                          "> {}ms limit)",
                           stopwatch.elapsed_milliseconds() - piece_start_ms,
                           per_piece_budget_ms);
               search_done = true;
@@ -264,8 +272,9 @@ auto find_best_for_bin(WorkingBin &bin, const PieceInstance &piece,
               emit_search_progress(
                   control, placed_parts, total_parts,
                   make_budget(control, time_budget, stopwatch, 0U),
-                  std::format("Searching rotation {}/{}, candidates evaluated: {}",
-                              rotation_value + 1U, rotation_count, eval_count));
+                  std::format(
+                      "Searching rotation {}/{}, candidates evaluated: {}",
+                      rotation_value + 1U, rotation_count, eval_count));
             }
           }
 
@@ -279,34 +288,33 @@ auto find_best_for_bin(WorkingBin &bin, const PieceInstance &piece,
               .max = {.x = rotated_bounds.max.x + translation.x,
                       .y = rotated_bounds.max.y + translation.y},
           };
-          const bool any_bbox_fit = request.request.execution.irregular
-                                        .enable_direct_overlap_check
-                                    ? geom::box_contains(container_bounds,
-                                                         candidate_bbox)
-                                    : std::any_of(region_bboxes.begin(),
-                                                  region_bboxes.end(),
-                                                  [&](const auto &region_bbox) {
-                                                    return geom::box_contains(
-                                                        region_bbox, candidate_bbox);
-                                                  });
+          const bool any_bbox_fit =
+              request.request.execution.irregular.enable_direct_overlap_check
+                  ? geom::box_contains(container_bounds, candidate_bbox)
+                  : std::any_of(region_bboxes.begin(), region_bboxes.end(),
+                                [&](const auto &region_bbox) {
+                                  return geom::box_contains(region_bbox,
+                                                            candidate_bbox);
+                                });
           if (!any_bbox_fit) {
             continue;
           }
 
-          const auto transformed_piece = geom::translate(rotated_piece, translation);
-          const bool fits = request.request.execution.irregular.enable_direct_overlap_check
-                                ? fits_bin_direct(transformed_piece, candidate_bbox,
-                                                  bin, request.request.execution)
-                                : fits_any_region(transformed_piece, candidate_bbox,
-                                                  free_regions, region_bboxes);
-          if (!fits ||
-              !respects_spacing(transformed_piece, bin, request.request.execution)) {
+          const auto transformed_piece =
+              geom::translate(rotated_piece, translation);
+          const bool fits =
+              request.request.execution.irregular.enable_direct_overlap_check
+                  ? fits_bin_direct(transformed_piece, candidate_bbox, bin,
+                                    request.request.execution)
+                  : fits_any_region(transformed_piece, candidate_bbox,
+                                    free_regions, region_bboxes);
+          if (!fits || !respects_spacing(transformed_piece, bin,
+                                         request.request.execution)) {
             continue;
           }
 
-          const auto hole_index =
-              hole_index_for_candidate(transformed_piece, candidate_bbox,
-                                       bin.state.holes);
+          const auto hole_index = hole_index_for_candidate(
+              transformed_piece, candidate_bbox, bin.state.holes);
           CandidatePlacement candidate{
               .placement =
                   {
@@ -325,8 +333,9 @@ auto find_best_for_bin(WorkingBin &bin, const PieceInstance &piece,
                             : candidate_point.source,
               .inside_hole = hole_index >= 0,
               .hole_index = hole_index,
-              .score = compute_candidate_score(bin, request.request.execution,
-                                               transformed_piece, candidate_bbox),
+              .score =
+                  compute_candidate_score(bin, request.request.execution,
+                                          transformed_piece, candidate_bbox),
           };
 
           if (rng != nullptr) {
@@ -335,19 +344,22 @@ auto find_best_for_bin(WorkingBin &bin, const PieceInstance &piece,
             } else {
               std::size_t worst_idx = 0;
               for (std::size_t k = 1; k < top_k.size(); ++k) {
-                if (better_candidate(bin, request.request.execution.placement_policy,
+                if (better_candidate(bin,
+                                     request.request.execution.placement_policy,
                                      top_k[worst_idx], top_k[k])) {
                   worst_idx = k;
                 }
               }
-              if (better_candidate(bin, request.request.execution.placement_policy,
+              if (better_candidate(bin,
+                                   request.request.execution.placement_policy,
                                    candidate, top_k[worst_idx])) {
                 top_k[worst_idx] = std::move(candidate);
               }
             }
           } else if (!best.has_value() ||
-                     better_candidate(bin, request.request.execution.placement_policy,
-                                      candidate, *best)) {
+                     better_candidate(
+                         bin, request.request.execution.placement_policy,
+                         candidate, *best)) {
             best = std::move(candidate);
           }
         }

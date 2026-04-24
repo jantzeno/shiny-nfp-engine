@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "geometry/transform.hpp"
-#include "packing/packer_workspace.hpp"
+#include "packing/irregular/workspace.hpp"
 #include "request.hpp"
 #include "result.hpp"
 #include "runtime/deterministic_rng.hpp"

@@ -220,8 +220,4 @@ auto emit_search_progress(const SolveControl &control, std::size_t placed_parts,
                                          const ExecutionPolicy &execution)
     -> std::vector<PieceInstance>;
 
-[[nodiscard]] auto solve_sequential_backtrack(const NormalizedRequest &request,
-                                                const SolveControl &control)
-    -> util::StatusOr<NestingResult>;
-
 } // namespace shiny::nesting::pack::detail

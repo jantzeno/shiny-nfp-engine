@@ -2,6 +2,7 @@
 
 #include "geometry/normalize.hpp"
 #include "packing/common.hpp"
+#include "placement/types.hpp"
 #include "request.hpp"
 
 namespace {
@@ -12,6 +13,7 @@ using shiny::nesting::NestingRequest;
 using shiny::nesting::PieceRequest;
 using shiny::nesting::PreprocessPolicy;
 using shiny::nesting::StrategyKind;
+using shiny::nesting::place::PartGrainCompatibility;
 
 auto rectangle(const double min_x, const double min_y, const double max_x,
                const double max_y)
@@ -69,6 +71,7 @@ TEST_CASE("normalized requests preserve engine-owned constraints",
       .quantity = 2,
       .allowed_rotations =
           shiny::nesting::geom::DiscreteRotationSet{{90.0, 270.0}},
+      .grain_compatibility = PartGrainCompatibility::parallel_to_bed,
       .allowed_bin_ids = {20},
   }};
 
@@ -98,6 +101,8 @@ TEST_CASE("normalized requests preserve engine-owned constraints",
   REQUIRE(shiny::nesting::geom::materialize_rotations(
               *decoder_request.value().pieces.front().allowed_rotations) ==
           std::vector<double>{90.0, 270.0});
+  REQUIRE(decoder_request.value().pieces.front().grain_compatibility ==
+          PartGrainCompatibility::parallel_to_bed);
   REQUIRE(decoder_request.value().pieces.front().restricted_to_allowed_bins);
   REQUIRE(decoder_request.value().pieces.front().allowed_bin_ids.size() == 2);
 }

@@ -1,4 +1,4 @@
-#include "packing/constructive_detail.hpp"
+#include "packing/irregular/core.hpp"
 
 #include <algorithm>
 

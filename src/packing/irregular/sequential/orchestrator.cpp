@@ -1,4 +1,4 @@
-#include "packing/constructive_detail.hpp"
+#include "packing/irregular/sequential/detail.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "logging/shiny_log.hpp"
-#include "packing/packer_workspace.hpp"
+#include "packing/irregular/workspace.hpp"
 
 namespace shiny::nesting::pack::detail {
 auto make_budget(const SolveControl &control,
@@ -85,7 +85,7 @@ auto interrupted(const SolveControl &control,
   return control.cancellation.stop_requested() || time_budget.expired(stopwatch);
 }
 
-auto solve_sequential_backtrack(const NormalizedRequest &request,
+auto solve_irregular_constructive(const NormalizedRequest &request,
                                   const SolveControl &control)
     -> util::StatusOr<NestingResult> {
   if (!request.request.is_valid()) {

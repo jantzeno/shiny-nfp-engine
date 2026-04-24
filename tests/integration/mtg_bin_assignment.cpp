@@ -136,7 +136,7 @@ TEST_CASE("mtg bin-assignment matrix (bounding_box)",
 }
 
 TEST_CASE("mtg bin-assignment matrix (sequential_backtrack)",
-          "[mtg][nesting-matrix][bin-assignment][sequential-backtrack][.][slow]") {
+          "[mtg][nesting-matrix][bin-assignment][sequential-backtrack][slow]") {
   const auto fixture = load_mtg_fixture();
 
   SECTION("truth table x spacing (all beds)") {
@@ -151,7 +151,7 @@ TEST_CASE("mtg bin-assignment matrix (sequential_backtrack)",
 }
 
 TEST_CASE("mtg bin-assignment matrix (metaheuristic_search BRKGA)",
-          "[mtg][nesting-matrix][bin-assignment][metaheuristic-search][.][slow]") {
+          "[mtg][nesting-matrix][bin-assignment][metaheuristic-search][slow]") {
   const auto fixture = load_mtg_fixture();
 
   SECTION("truth table x spacing (all beds)") {

@@ -200,6 +200,8 @@ target("shiny_nesting_engine")
         "src/nfp/*.cpp",
         "src/packing/*.cpp",
         "src/packing/bounding_box/*.cpp",
+        "src/packing/irregular/*.cpp",
+        "src/packing/irregular/sequential/*.cpp",
         "src/placement/config.cpp",
         "src/polygon_ops/*.cpp",
         "src/predicates/*.cpp",
@@ -233,6 +235,7 @@ target("shiny_nesting_engine_tests")
     add_files("tests/unit/cutting.cpp")
     add_files("tests/unit/decomposition_internal.cpp")
     add_files("tests/unit/nfp_geometry.cpp")
+    add_files("tests/unit/convex_nfp_collinear.cpp")
     add_files("tests/unit/overlap_infrastructure.cpp")
     add_files("tests/unit/production_search.cpp")
     add_files("tests/unit/metaheuristic_search.cpp")
@@ -253,6 +256,7 @@ target("shiny_nesting_engine_tests")
     add_files("tests/integration/mtg_exclusion_zones.cpp")
     add_files("tests/integration/mtg_engine_bug_repros.cpp")
     add_files("tests/integration/bounding_box_engine_surface.cpp")
+    add_files("tests/integration/public_surface_manifest.cpp")
     add_sysincludedirs(nanosvg_dir)
     add_deps("shiny_logging")
     add_vendor_warning_suppression_flags()

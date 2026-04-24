@@ -72,3 +72,21 @@ TEST_CASE("irregular constructive multi-start keeps the best layout after cancel
   REQUIRE(solved.value().budget.cancellation_requested);
   REQUIRE(solved.value().budget.iterations_completed >= 2U);
 }
+
+TEST_CASE("irregular constructive multi-start rejects unbounded solve control",
+          "[solve][irregular][multi-start][budget]") {
+  const auto fixture = make_asymmetric_engine_surface_fixture();
+
+  MtgRequestOptions options{};
+  options.strategy = StrategyKind::sequential_backtrack;
+  options.allow_part_overflow = true;
+  options.maintain_bed_assignment = false;
+
+  const auto request = make_request(fixture, options);
+  REQUIRE(request.is_valid());
+
+  const auto solved = solve(request, SolveControl{.random_seed = 99});
+
+  REQUIRE_FALSE(solved.ok());
+  REQUIRE(solved.status() == util::Status::invalid_input);
+}

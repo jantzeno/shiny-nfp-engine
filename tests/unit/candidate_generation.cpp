@@ -8,7 +8,7 @@
 #include <tuple>
 #include <vector>
 
-#include "packing/candidate_generation.hpp"
+#include "packing/irregular/candidate_generation.hpp"
 #include "runtime/deterministic_rng.hpp"
 
 namespace {

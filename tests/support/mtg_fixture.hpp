@@ -51,6 +51,18 @@ struct MtgFixture {
 
 [[nodiscard]] auto load_mtg_fixture() -> MtgFixture;
 
+// Same MTG SVG, but each piece polygon is the actual unioned silhouette of
+// the artwork's sub-paths (origin-normalized to its AABB), not an
+// axis-aligned bounding-box rectangle. Used to exercise non-rectangular
+// engine paths (anchor/NFP candidate generation, irregular packing) on
+// representative real geometry.
+//
+// Post-conditions per piece: outer ring is non-empty, AABB equals the
+// rectangle-fixture AABB within 1e-3 mm, polygon has no holes (the small
+// detail features are folded into the outer silhouette), and the result
+// is a single connected component.
+[[nodiscard]] auto load_mtg_fixture_with_actual_polygons() -> MtgFixture;
+
 // Small asymmetric rectangle fixture for fast engine-surface tests. Unlike the
 // broad MTG SVG fixture, this one makes rotation-sensitive behavior directly
 // observable without relying on layout-hash drift across rectangle-equivalent

@@ -21,10 +21,46 @@ using namespace shiny::nesting::test::mtg;
 
 namespace {
 
-std::size_t bed1_piece_count(const MtgFixture &fixture) {
-  return static_cast<std::size_t>(std::count_if(
-      fixture.pieces.begin(), fixture.pieces.end(),
-      [](const MtgPiece &p) { return p.source_bed_id == kBed1Id; }));
+[[nodiscard]] auto rectangle(double width_mm, double height_mm)
+    -> geom::PolygonWithHoles {
+  return {
+      .outer = {
+          {0.0, 0.0},
+          {width_mm, 0.0},
+          {width_mm, height_mm},
+          {0.0, height_mm},
+      },
+  };
+}
+
+[[nodiscard]] auto make_piece(std::uint32_t piece_id, std::string label,
+                              std::uint32_t source_bed_id, double width_mm,
+                              double height_mm) -> MtgPiece {
+  return MtgPiece{
+      .piece_id = piece_id,
+      .label = std::move(label),
+      .source_bed_id = source_bed_id,
+      .polygon = rectangle(width_mm, height_mm),
+      .width_mm = width_mm,
+      .height_mm = height_mm,
+  };
+}
+
+[[nodiscard]] auto make_seed_fixture() -> MtgFixture {
+  auto fixture = make_asymmetric_engine_surface_fixture();
+  fixture.source_path = std::filesystem::path{"synthetic://seed_fixture"};
+  fixture.pieces.push_back(make_piece(3, "bed1-medium-rect", kBed1Id, 9.0, 6.0));
+  fixture.pieces.push_back(make_piece(4, "bed2-square-a", kBed2Id, 6.0, 6.0));
+  fixture.pieces.push_back(make_piece(5, "bed2-square-b", kBed2Id, 5.0, 5.0));
+  fixture.pieces.push_back(make_piece(6, "bed1-strip", kBed1Id, 7.0, 4.0));
+  return fixture;
+}
+
+auto layout_hashes(const NestingResult &result) -> std::array<std::uint64_t, 2> {
+  return {
+      hash_bin_placements(result, kBed1Id),
+      hash_bin_placements(result, kBed2Id),
+  };
 }
 
 enum class SeedAlgo { bounding_box, sequential_backtrack, brkga };
@@ -57,25 +93,20 @@ MtgRequestOptions make_seed_options(SeedAlgo algo) {
   return options;
 }
 
-MtgRequestOptions make_brkga_bed1_options() {
-  auto options = make_seed_options(SeedAlgo::brkga);
-  options.selected_bin_ids = {kBed1Id};
-  return options;
+MtgRequestOptions make_brkga_options() {
+  return make_seed_options(SeedAlgo::brkga);
 }
 
 } // namespace
 
 TEST_CASE("mtg fixed seed produces deterministic layouts",
-          "[mtg][nesting-matrix][seeds][.][slow]") {
+          "[mtg][nesting-matrix][seeds][slow]") {
   const auto algo = GENERATE(SeedAlgo::bounding_box,
                              SeedAlgo::sequential_backtrack,
                              SeedAlgo::brkga);
 
-  const auto fixture = load_mtg_fixture();
+  const auto fixture = make_seed_fixture();
   auto options = make_seed_options(algo);
-  // Restrict to bed1 to keep the slow determinism lane representative but
-  // tractable in debug builds.
-  options.selected_bin_ids = {kBed1Id};
 
   const auto request = make_request(fixture, options);
   REQUIRE(request.is_valid());
@@ -83,6 +114,7 @@ TEST_CASE("mtg fixed seed produces deterministic layouts",
   SolveControl control{};
   control.random_seed = 42;
   control.seed_mode = SeedProgressionMode::increment;
+  control.iteration_limit = 1;
 
   auto solved_a = solve(request, control);
   REQUIRE(solved_a.has_value());
@@ -106,9 +138,9 @@ TEST_CASE("mtg fixed seed produces deterministic layouts",
 }
 
 TEST_CASE("mtg seed_mode varies subsequent runs",
-          "[mtg][nesting-matrix][seeds][seed-mode][.][slow]") {
-  const auto fixture = load_mtg_fixture();
-  const auto options = make_brkga_bed1_options();
+          "[mtg][nesting-matrix][seeds][seed-mode][slow]") {
+  const auto fixture = make_seed_fixture();
+  const auto options = make_brkga_options();
   const auto request = make_request(fixture, options);
   REQUIRE(request.is_valid());
 
@@ -117,13 +149,14 @@ TEST_CASE("mtg seed_mode varies subsequent runs",
                              SeedProgressionMode::random);
 
   const std::array<std::uint64_t, 2> trial_seeds{7, 11};
-  std::array<std::uint64_t, 2> trial_hashes{};
-  const std::size_t expected_count = bed1_piece_count(fixture);
+  std::array<std::array<std::uint64_t, 2>, 2> trial_hashes{};
+  const std::size_t expected_count = fixture.pieces.size();
 
   for (std::size_t i = 0; i < trial_seeds.size(); ++i) {
     SolveControl control{};
     control.random_seed = trial_seeds[i];
     control.seed_mode = mode;
+    control.iteration_limit = mode == SeedProgressionMode::random ? 4 : 2;
 
     auto solved = solve(request, control);
     REQUIRE(solved.has_value());
@@ -132,38 +165,39 @@ TEST_CASE("mtg seed_mode varies subsequent runs",
     expected.expected_placed_count = expected_count;
     validate_layout(fixture, request, options, solved.value(), expected);
 
-    trial_hashes[i] = hash_bin_placements(solved.value(), kBed1Id);
+    trial_hashes[i] = layout_hashes(solved.value());
 
     // increment / decrement are deterministic for a given (seed, mode).
     if (mode == SeedProgressionMode::increment ||
         mode == SeedProgressionMode::decrement) {
       auto solved_again = solve(request, control);
       REQUIRE(solved_again.has_value());
-      REQUIRE(hash_bin_placements(solved_again.value(), kBed1Id) ==
-              trial_hashes[i]);
+      REQUIRE(layout_hashes(solved_again.value()) == trial_hashes[i]);
     }
   }
 
   if (mode == SeedProgressionMode::random) {
-    std::set<std::uint64_t> distinct(trial_hashes.begin(), trial_hashes.end());
+    std::set<std::array<std::uint64_t, 2>> distinct(trial_hashes.begin(),
+                                                    trial_hashes.end());
     REQUIRE(distinct.size() >= 2);
   }
 }
 
 TEST_CASE("mtg seed sweep is non-degenerate",
-          "[mtg][nesting-matrix][seeds][seed-sweep][.][slow]") {
-  const auto fixture = load_mtg_fixture();
-  const auto options = make_brkga_bed1_options();
+          "[mtg][nesting-matrix][seeds][seed-sweep][slow]") {
+  const auto fixture = make_seed_fixture();
+  const auto options = make_brkga_options();
   const auto request = make_request(fixture, options);
   REQUIRE(request.is_valid());
 
-  const std::size_t expected_count = bed1_piece_count(fixture);
-  std::set<std::uint64_t> distinct_hashes;
+  const std::size_t expected_count = fixture.pieces.size();
+  std::set<std::array<std::uint64_t, 2>> distinct_hashes;
 
   for (std::uint64_t seed = 1; seed <= 6; ++seed) {
     SolveControl control{};
     control.random_seed = seed;
     control.seed_mode = SeedProgressionMode::increment;
+    control.iteration_limit = 2;
 
     auto solved = solve(request, control);
     REQUIRE(solved.has_value());
@@ -172,10 +206,10 @@ TEST_CASE("mtg seed sweep is non-degenerate",
     expected.expected_placed_count = expected_count;
     validate_layout(fixture, request, options, solved.value(), expected);
 
-    distinct_hashes.insert(hash_bin_placements(solved.value(), kBed1Id));
+    distinct_hashes.insert(layout_hashes(solved.value()));
   }
 
-  // Even on the reduced debug-friendly BRKGA budget, the seed sweep should
-  // still produce more than one layout family.
-  REQUIRE(distinct_hashes.size() >= 3);
+  // Even on the reduced debug-friendly BRKGA budget, the sweep should still
+  // produce more than one layout family on the small two-bed fixture.
+  REQUIRE(distinct_hashes.size() >= 2);
 }

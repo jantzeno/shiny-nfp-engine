@@ -6,7 +6,7 @@
 #include <span>
 #include <vector>
 
-#include "packing/packer_workspace.hpp"
+#include "packing/irregular/workspace.hpp"
 #include "polygon_ops/boolean_ops.hpp"
 #include "solve.hpp"
 

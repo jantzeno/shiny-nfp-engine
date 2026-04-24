@@ -1,9 +1,8 @@
 // MTG engine regressions.
 //
 // Each TEST_CASE here pins a single, minimal regression for an engine bug
-// surfaced by the MTG nesting matrix work. The cases stay hidden from the
-// default lane (`[.]`) so they remain cheap, targeted diagnostics even after
-// the broader matrix absorbs the same contract.
+// surfaced by the MTG nesting matrix work. These cases remain targeted
+// diagnostics even after the broader matrix absorbs the same contract.
 //
 // Milestone-4 classification:
 // - long-term product contracts live in the fast MTG lane
@@ -20,8 +19,12 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
+#include <string>
+#include <string_view>
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
 #include "geometry/types.hpp"
 #include "support/mtg_fixture.hpp"
@@ -55,6 +58,132 @@ namespace {
   return n;
 }
 
+// Asserts the per-bin geometric invariants (bin containment + pair-wise
+// AABB spacing) without requiring full conservation. Used by the
+// time-limited actual-polygon repros, where engine-level conservation
+// under `stop_reason=time_limit_reached` is a separately-tracked finding
+// (the engine occasionally drops a piece from `unplaced_piece_ids` when
+// the time limit fires mid-piece).
+auto assert_placed_layout_invariants(
+    const NestingResult &result, double spacing_mm) -> void {
+  for (const auto &bin : result.layout.bins) {
+    std::vector<geom::Box2> boxes;
+    boxes.reserve(bin.placements.size());
+    for (const auto &p : bin.placements) {
+      boxes.push_back(aabb_of(p.polygon));
+    }
+    for (std::size_t i = 0; i < boxes.size(); ++i) {
+      for (std::size_t j = i + 1; j < boxes.size(); ++j) {
+        INFO("bin " << bin.bin_id << " spacing-violation pair "
+                    << bin.placements[i].placement.piece_id << " vs "
+                    << bin.placements[j].placement.piece_id);
+        REQUIRE_FALSE(boxes_violate_spacing(boxes[i], boxes[j], spacing_mm,
+                                            1e-3));
+      }
+    }
+  }
+}
+
+inline constexpr std::uint64_t kActualPolygonTimeCapMs = 60'000U;
+inline constexpr std::uint32_t kActualPolygonSeed = 1234U;
+
+[[nodiscard]] constexpr auto candidate_strategy_name(const CandidateStrategy strategy)
+    -> std::string_view {
+  switch (strategy) {
+  case CandidateStrategy::anchor_vertex:
+    return "anchor_vertex";
+  case CandidateStrategy::nfp_perfect:
+    return "nfp_perfect";
+  case CandidateStrategy::nfp_arrangement:
+    return "nfp_arrangement";
+  case CandidateStrategy::nfp_hybrid:
+    return "nfp_hybrid";
+  case CandidateStrategy::count:
+    return "count";
+  }
+  return "unknown";
+}
+
+[[nodiscard]] constexpr auto stop_reason_name(const StopReason reason)
+    -> std::string_view {
+  switch (reason) {
+  case StopReason::none:
+    return "none";
+  case StopReason::completed:
+    return "completed";
+  case StopReason::cancelled:
+    return "cancelled";
+  case StopReason::iteration_limit_reached:
+    return "iteration_limit_reached";
+  case StopReason::time_limit_reached:
+    return "time_limit_reached";
+  case StopReason::invalid_request:
+    return "invalid_request";
+  }
+  return "unknown";
+}
+
+[[nodiscard]] auto make_actual_polygon_constructive_options(
+    const CandidateStrategy candidate_strategy) -> MtgRequestOptions {
+  MtgRequestOptions options{};
+  options.strategy = StrategyKind::sequential_backtrack;
+  options.placement_policy = place::PlacementPolicy::bottom_left;
+  options.irregular.candidate_strategy = candidate_strategy;
+  options.maintain_bed_assignment = false;
+  options.allow_part_overflow = true;
+  options.part_spacing_mm = 0.0;
+  return options;
+}
+
+struct ActualPolygonSolveOutcome {
+  std::optional<NestingResult> result{};
+  std::string exception_message{};
+};
+
+[[nodiscard]] auto solve_actual_polygon_constructive_case(
+    const CandidateStrategy candidate_strategy) -> ActualPolygonSolveOutcome {
+  const auto fixture = load_mtg_fixture_with_actual_polygons();
+  const auto options =
+      make_actual_polygon_constructive_options(candidate_strategy);
+  const auto request = make_request(fixture, options);
+  REQUIRE(request.is_valid());
+
+  try {
+    const auto solved = solve(
+        request, SolveControl{.time_limit_milliseconds = kActualPolygonTimeCapMs,
+                              .random_seed = kActualPolygonSeed});
+    REQUIRE(solved.has_value());
+
+    const auto &result = solved.value();
+    const auto placed = total_placed(result);
+    const std::uint64_t slack =
+        std::max<std::uint64_t>(500U, kActualPolygonTimeCapMs);
+    INFO("strategy=" << candidate_strategy_name(candidate_strategy)
+                     << " placed=" << placed << "/" << kBaselinePieceCount
+                     << " unplaced="
+                     << result.layout.unplaced_piece_ids.size()
+                     << " stop_reason="
+                     << stop_reason_name(result.stop_reason)
+                     << " elapsed_ms="
+                     << result.budget.elapsed_milliseconds
+                     << " iterations="
+                     << result.budget.iterations_completed);
+    REQUIRE(result.budget.elapsed_milliseconds <=
+            kActualPolygonTimeCapMs + slack);
+    assert_placed_layout_invariants(result, options.part_spacing_mm);
+    return ActualPolygonSolveOutcome{
+        .result = result,
+    };
+  } catch (const std::exception &ex) {
+    INFO("strategy=" << candidate_strategy_name(candidate_strategy)
+                     << " threw exception: " << ex.what());
+    return ActualPolygonSolveOutcome{
+        .result = std::nullopt,
+        .exception_message = ex.what(),
+    };
+  }
+}
+
 }  // namespace
 
 // -----------------------------------------------------------------------------
@@ -66,7 +195,7 @@ namespace {
 // 17/18 placed.
 // -----------------------------------------------------------------------------
 TEST_CASE("REGRESSION: bb-shelf pinned packing places every source-pinned piece",
-          "[mtg][engine-bug-repro][bb-pinned][.]") {
+          "[mtg][engine-bug-repro][bb-pinned]") {
   const auto fixture = load_mtg_fixture();
 
   MtgRequestOptions options{};
@@ -104,7 +233,7 @@ TEST_CASE("REGRESSION: bb-shelf pinned packing places every source-pinned piece"
 // relocating it to the selected bed.
 // -----------------------------------------------------------------------------
 TEST_CASE("REGRESSION: allowed_bin_ids remains enforced under selected_bin_ids",
-          "[mtg][engine-bug-repro][allowed-bin-ids][.]") {
+          "[mtg][engine-bug-repro][allowed-bin-ids]") {
   const auto fixture = load_mtg_fixture();
 
   SECTION("selected={bed1}, override one bed-2-source piece to allowed={bed2}") {
@@ -228,7 +357,7 @@ TEST_CASE("REGRESSION: allowed_bin_ids remains enforced under selected_bin_ids",
 // matches the fixture's `boxes_overlap(a, b, effective_spacing)` check.
 // -----------------------------------------------------------------------------
 TEST_CASE("REGRESSION: bb heuristic honors requested spacing",
-          "[mtg][engine-bug-repro][bb-overlap][.]") {
+          "[mtg][engine-bug-repro][bb-overlap]") {
   const auto fixture = load_mtg_fixture();
 
   MtgRequestOptions options{};
@@ -271,4 +400,45 @@ TEST_CASE("REGRESSION: bb heuristic honors requested spacing",
       }
     }
   }
+}
+
+// -----------------------------------------------------------------------------
+// Repro 4: actual-polygon anchor_vertex should place the full MTG set.
+//
+// This is intentionally normative. Today it fails by hitting the time cap and
+// placing only a subset of the real silhouettes.
+// -----------------------------------------------------------------------------
+TEST_CASE("REGRESSION: anchor_vertex places every actual-polygon MTG silhouette",
+          "[mtg][engine-bug-repro][actual-polygons][anchor-vertex]") {
+  const auto outcome =
+      solve_actual_polygon_constructive_case(CandidateStrategy::anchor_vertex);
+  REQUIRE(outcome.result.has_value());
+  const auto &result = *outcome.result;
+  const auto placed = total_placed(result);
+
+  REQUIRE(result.stop_reason == StopReason::completed);
+  REQUIRE(placed == static_cast<std::size_t>(kBaselinePieceCount));
+}
+
+// -----------------------------------------------------------------------------
+// Repro 5: actual-polygon NFP strategies should solve the full MTG set.
+//
+// This is intentionally normative. Today the actual-polygon NFP family fails in
+// multiple ways under the fixed solve setup: some strategies throw CGAL
+// exceptions, and `nfp_hybrid` reaches the time cap with only 8/18 placed.
+// -----------------------------------------------------------------------------
+TEST_CASE("REGRESSION: NFP strategies place every actual-polygon MTG silhouette",
+          "[mtg][engine-bug-repro][actual-polygons][nfp-strategies]") {
+  const auto candidate_strategy = GENERATE(CandidateStrategy::nfp_perfect,
+                                           CandidateStrategy::nfp_arrangement,
+                                           CandidateStrategy::nfp_hybrid);
+
+  const auto outcome =
+      solve_actual_polygon_constructive_case(candidate_strategy);
+  REQUIRE(outcome.result.has_value());
+  const auto &result = *outcome.result;
+  const auto placed = total_placed(result);
+
+  REQUIRE(result.stop_reason == StopReason::completed);
+  REQUIRE(placed == static_cast<std::size_t>(kBaselinePieceCount));
 }

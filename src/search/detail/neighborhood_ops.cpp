@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "geometry/polygon.hpp"
-#include "packing/sequential_backtrack_packer.hpp"
+#include "packing/irregular/constructive_packer.hpp"
 #include "runtime/hash.hpp"
 #include "search/disruption.hpp"
 
@@ -371,7 +371,7 @@ auto OrderEvaluator::evaluate(std::span<const std::size_t> order,
     evaluated.forced_rotations.assign(evaluated.order.size(), std::nullopt);
   }
 
-  pack::SequentialBacktrackPacker packer;
+  pack::IrregularConstructivePacker packer;
   SolveControl decode_control{};
   decode_control.cancellation = control_.cancellation;
   decode_control.random_seed = seed_from_order(order, evaluated.forced_rotations,

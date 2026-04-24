@@ -55,7 +55,7 @@ void apply_large_internal_budget(MtgRequestOptions &options,
 }  // namespace
 
 TEST_CASE("mtg iteration limit caps the search",
-          "[mtg][nesting-matrix][limits][iteration-limit][.][slow]") {
+          "[mtg][nesting-matrix][limits][iteration-limit][slow]") {
   const auto fixture = load_mtg_fixture();
 
   const auto optimizer = GENERATE(ProductionOptimizerKind::brkga,
@@ -69,7 +69,7 @@ TEST_CASE("mtg iteration limit caps the search",
   MtgRequestOptions options{};
   options.strategy = StrategyKind::metaheuristic_search;
   options.production_optimizer = optimizer;
-  options.selected_bin_ids = {kBed1Id};
+  options.selected_bin_ids = {};
   options.allow_part_overflow = true;
   options.maintain_bed_assignment = false;
   apply_generous_internal_budget(options, optimizer);
@@ -102,7 +102,7 @@ TEST_CASE("mtg iteration limit caps the search",
 }
 
 TEST_CASE("mtg unlimited iteration limit completes",
-          "[mtg][nesting-matrix][limits][iteration-limit][.][slow]") {
+          "[mtg][nesting-matrix][limits][iteration-limit][slow]") {
   const auto fixture = load_mtg_fixture();
 
   const auto optimizer = GENERATE(ProductionOptimizerKind::brkga,
@@ -114,7 +114,7 @@ TEST_CASE("mtg unlimited iteration limit completes",
   MtgRequestOptions options{};
   options.strategy = StrategyKind::metaheuristic_search;
   options.production_optimizer = optimizer;
-  options.selected_bin_ids = {kBed1Id};
+  options.selected_bin_ids = {};
   options.allow_part_overflow = true;
   apply_small_internal_budget(options, optimizer);
 
@@ -131,7 +131,7 @@ TEST_CASE("mtg unlimited iteration limit completes",
 }
 
 TEST_CASE("mtg BRKGA single-iteration negative control",
-          "[mtg][nesting-matrix][limits][iteration-limit][negative-control][.][slow]") {
+          "[mtg][nesting-matrix][limits][iteration-limit][negative-control][slow]") {
   const auto fixture = load_mtg_fixture();
 
   MtgRequestOptions options{};
@@ -158,7 +158,7 @@ TEST_CASE("mtg BRKGA single-iteration negative control",
 }
 
 TEST_CASE("mtg time limit caps the search",
-          "[mtg][nesting-matrix][limits][time-limit][.][slow]") {
+          "[mtg][nesting-matrix][limits][time-limit][slow]") {
   const auto fixture = load_mtg_fixture();
 
   const auto optimizer = GENERATE(ProductionOptimizerKind::brkga,
@@ -172,7 +172,7 @@ TEST_CASE("mtg time limit caps the search",
   MtgRequestOptions options{};
   options.strategy = StrategyKind::metaheuristic_search;
   options.production_optimizer = optimizer;
-  options.selected_bin_ids = {kBed1Id};
+  options.selected_bin_ids = {};
   options.allow_part_overflow = true;
   apply_large_internal_budget(options, optimizer);
 
@@ -198,7 +198,7 @@ TEST_CASE("mtg time limit caps the search",
 }
 
 TEST_CASE("mtg unlimited time completes",
-          "[mtg][nesting-matrix][limits][time-limit][.][slow]") {
+          "[mtg][nesting-matrix][limits][time-limit][slow]") {
   const auto fixture = load_mtg_fixture();
 
   const auto optimizer = GENERATE(ProductionOptimizerKind::brkga,
@@ -210,7 +210,7 @@ TEST_CASE("mtg unlimited time completes",
   MtgRequestOptions options{};
   options.strategy = StrategyKind::metaheuristic_search;
   options.production_optimizer = optimizer;
-  options.selected_bin_ids = {kBed1Id};
+  options.selected_bin_ids = {};
   options.allow_part_overflow = true;
   apply_small_internal_budget(options, optimizer);
 
@@ -227,7 +227,7 @@ TEST_CASE("mtg unlimited time completes",
 }
 
 TEST_CASE("mtg bb and constructive honor limits",
-          "[mtg][nesting-matrix][limits][.][slow]") {
+          "[mtg][nesting-matrix][limits][slow]") {
   const auto fixture = load_mtg_fixture();
 
   SECTION("bounding_box honors iteration_limit=1") {
@@ -286,7 +286,7 @@ TEST_CASE("mtg progress entries diagnostic",
   MtgRequestOptions options{};
   options.strategy = StrategyKind::metaheuristic_search;
   options.production_optimizer = optimizer;
-  options.selected_bin_ids = {kBed1Id};
+  options.selected_bin_ids = {};
   options.allow_part_overflow = true;
   options.maintain_bed_assignment = false;
   apply_generous_internal_budget(options, optimizer);

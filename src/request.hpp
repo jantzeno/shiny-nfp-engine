@@ -154,7 +154,7 @@ struct LAHCConfig {
 };
 
 struct IrregularOptions {
-  CandidateStrategy candidate_strategy{CandidateStrategy::anchor_vertex};
+  CandidateStrategy candidate_strategy{CandidateStrategy::nfp_hybrid};
   std::size_t max_candidate_points{300};
   double candidate_gaussian_sigma{0.5};
   PieceOrdering piece_ordering{PieceOrdering::input};

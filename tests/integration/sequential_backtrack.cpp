@@ -174,11 +174,13 @@ auto seed_priority_values(NestingRequest &request,
 
 }  // namespace
 
-TEST_CASE("mtg sequential-backtrack positive matrix places every part",
-          "[mtg][nesting-matrix][sequential-backtrack][.][slow]") {
+TEST_CASE("mtg sequential-backtrack positive matrix places every part on the asymmetric synthetic fixture",
+          "[mtg][nesting-matrix][sequential-backtrack][slow]") {
+  // This breadth matrix intentionally stays on the small synthetic fixture so it
+  // remains fast and shape-independent. Real-silhouette underplacement on the
+  // MTG artwork is characterized separately in mtg_engine_bug_repros.cpp.
   const auto fixture = make_asymmetric_engine_surface_fixture();
 
-  const bool bed1_only = GENERATE(false, true);
   const double spacing_mm = GENERATE(0.0, 1.0);
   const auto candidate_strategy = GENERATE(CandidateStrategy::anchor_vertex,
                                            CandidateStrategy::nfp_perfect,
@@ -193,8 +195,6 @@ TEST_CASE("mtg sequential-backtrack positive matrix places every part",
   const bool enable_compaction = GENERATE(false, true);
 
   MtgRequestOptions options = baseline_constructive_options();
-  options.selected_bin_ids = bed1_only ? std::vector<std::uint32_t>{kBed1Id}
-                                       : std::vector<std::uint32_t>{};
   options.part_spacing_mm = spacing_mm;
   options.irregular.candidate_strategy = candidate_strategy;
   options.irregular.piece_ordering = piece_ordering;
@@ -223,7 +223,8 @@ TEST_CASE("mtg sequential-backtrack honors per-piece allowed_rotations",
   const auto fixture = make_asymmetric_engine_surface_fixture();
 
   auto options = baseline_constructive_options();
-  options.selected_bin_ids = {kBed1Id};
+  options.maintain_bed_assignment = true;
+  options.allow_part_overflow = false;
 
   auto request = make_request(fixture, options);
   request.execution.default_rotations = four_rotations();
@@ -280,7 +281,6 @@ TEST_CASE("mtg sequential-backtrack expands quantity>1 instances",
   const auto fixture = make_asymmetric_engine_surface_fixture();
 
   auto options = baseline_constructive_options();
-  options.selected_bin_ids = {kBed1Id};
 
   auto request = make_request(fixture, options);
   request.execution.default_rotations = four_rotations();
@@ -295,9 +295,6 @@ TEST_CASE("mtg sequential-backtrack expands quantity>1 instances",
   REQUIRE(solved.value().stop_reason == StopReason::completed);
   REQUIRE(solved.value().layout.unplaced_piece_ids.empty());
   REQUIRE(count_total_placements(solved.value()) == fixture.pieces.size() + 2U);
-  for (const auto &bin : solved.value().layout.bins) {
-    REQUIRE(bin.bin_id == kBed1Id);
-  }
 
   const auto expanded_ids = expanded_piece_ids_for_source(request, target_piece_id);
   REQUIRE(expanded_ids.size() == 3U);
@@ -342,13 +339,21 @@ TEST_CASE("mtg sequential-backtrack enforces allowed_bin_ids",
   }
 
   SECTION("selected beds conflicting with allowed_bin_ids keep the piece unplaced") {
+    auto fixture = make_asymmetric_engine_surface_fixture();
+    const auto selected_bed_id = GENERATE(kBed1Id, kBed2Id);
+    const auto other_bed_id = selected_bed_id == kBed1Id ? kBed2Id : kBed1Id;
+    CAPTURE(selected_bed_id);
+    fixture.pieces[0].source_bed_id = selected_bed_id;
+    fixture.pieces[1].source_bed_id = selected_bed_id;
     auto options = baseline_constructive_options();
-    options.selected_bin_ids = {kBed1Id};
+    options.maintain_bed_assignment = true;
+    options.allow_part_overflow = false;
+    options.selected_bin_ids = {selected_bed_id};
 
     auto request = make_request(fixture, options);
     request.execution.default_rotations = four_rotations();
-    request.pieces[0].allowed_bin_ids = {kBed2Id};
-    request.pieces[1].allowed_bin_ids = {kBed1Id};
+    request.pieces[0].allowed_bin_ids = {other_bed_id};
+    request.pieces[1].allowed_bin_ids = {selected_bed_id};
     REQUIRE(request.is_valid());
 
     const auto solved = solve(request, SolveControl{.random_seed = 0});
@@ -356,8 +361,8 @@ TEST_CASE("mtg sequential-backtrack enforces allowed_bin_ids",
 
     ExpectedOutcome expected{};
     expected.expected_placed_count = 1;
-    expected.per_bed_counts = {{kBed1Id, 1}};
-    expected.required_assignments = {{fixture.pieces[1].piece_id, kBed1Id}};
+    expected.per_bed_counts = {{selected_bed_id, 1}};
+    expected.required_assignments = {{fixture.pieces[1].piece_id, selected_bed_id}};
     expected.require_allowed_bin_admissibility = true;
     validate_layout(fixture, request, options, solved.value(), expected);
 
@@ -461,12 +466,11 @@ TEST_CASE("sequential-backtrack enable_part_in_part_placement fills the hole",
   REQUIRE(overlap.empty());
 }
 
-TEST_CASE("mtg sequential-backtrack explore_concave_candidates still places every part",
+TEST_CASE("mtg sequential-backtrack explore_concave_candidates still places every part on the asymmetric synthetic fixture",
           "[mtg][nesting-matrix][sequential-backtrack][concave-candidates]") {
   const auto fixture = make_asymmetric_engine_surface_fixture();
 
   auto options = baseline_constructive_options();
-  options.selected_bin_ids = {kBed1Id};
   options.irregular.candidate_strategy = CandidateStrategy::nfp_hybrid;
 
   auto request = make_request(fixture, options);

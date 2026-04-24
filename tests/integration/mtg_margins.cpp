@@ -43,7 +43,7 @@ void apply_algorithm(MtgRequestOptions &options, AlgorithmKind kind) {
 }  // namespace
 
 TEST_CASE("mtg uniform bed margins still place every part",
-          "[mtg][nesting-matrix][margins][uniform-margins][.][slow]") {
+          "[mtg][nesting-matrix][margins][uniform-margins][slow]") {
   const auto fixture = load_mtg_fixture();
 
   const auto algorithm = GENERATE(AlgorithmKind::bounding_box,
@@ -109,7 +109,7 @@ TEST_CASE("mtg uniform bed margin actually changes the layout",
 }
 
 TEST_CASE("mtg asymmetric bed margins respect each side",
-          "[mtg][nesting-matrix][margins][asymmetric-margins][.][slow]") {
+          "[mtg][nesting-matrix][margins][asymmetric-margins][slow]") {
   const auto fixture = load_mtg_fixture();
 
   const auto algorithm = GENERATE(AlgorithmKind::bounding_box,

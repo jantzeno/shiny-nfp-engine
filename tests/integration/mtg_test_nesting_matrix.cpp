@@ -8,6 +8,7 @@
 // invariants live in `tests/support/mtg_fixture.{hpp,cpp}` and are invoked
 // through `validate_layout(...)`.
 
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "support/mtg_fixture.hpp"
@@ -41,6 +42,45 @@ TEST_CASE("mtg fixture loads with 2 beds and 18 parts",
   REQUIRE(bed1_pieces > 0);
   REQUIRE(bed2_pieces > 0);
   REQUIRE(bed1_pieces + bed2_pieces == kBaselinePieceCount);
+}
+
+TEST_CASE("mtg actual-polygon fixture preserves rectangle-fixture metadata and AABBs",
+          "[mtg][nesting-matrix][fixture][actual-polygons]") {
+  const auto rectangle_fixture = load_mtg_fixture();
+  const auto actual_fixture = load_mtg_fixture_with_actual_polygons();
+
+  REQUIRE(actual_fixture.bed1.bed_id == rectangle_fixture.bed1.bed_id);
+  REQUIRE(actual_fixture.bed2.bed_id == rectangle_fixture.bed2.bed_id);
+  REQUIRE(actual_fixture.bed1.width_mm ==
+          Catch::Approx(rectangle_fixture.bed1.width_mm).margin(1e-3));
+  REQUIRE(actual_fixture.bed1.height_mm ==
+          Catch::Approx(rectangle_fixture.bed1.height_mm).margin(1e-3));
+  REQUIRE(actual_fixture.bed2.width_mm ==
+          Catch::Approx(rectangle_fixture.bed2.width_mm).margin(1e-3));
+  REQUIRE(actual_fixture.bed2.height_mm ==
+          Catch::Approx(rectangle_fixture.bed2.height_mm).margin(1e-3));
+  REQUIRE(actual_fixture.pieces.size() == rectangle_fixture.pieces.size());
+
+  bool saw_non_rectangular_outline = false;
+  for (std::size_t index = 0; index < rectangle_fixture.pieces.size(); ++index) {
+    const auto &rectangle_piece = rectangle_fixture.pieces[index];
+    const auto &actual_piece = actual_fixture.pieces[index];
+
+    REQUIRE(actual_piece.piece_id == rectangle_piece.piece_id);
+    REQUIRE(actual_piece.label == rectangle_piece.label);
+    REQUIRE(actual_piece.source_bed_id == rectangle_piece.source_bed_id);
+     REQUIRE(actual_piece.width_mm ==
+             Catch::Approx(rectangle_piece.width_mm).margin(1e-3));
+     REQUIRE(actual_piece.height_mm ==
+             Catch::Approx(rectangle_piece.height_mm).margin(1e-3));
+     REQUIRE_FALSE(actual_piece.polygon.outer.empty());
+     REQUIRE(actual_piece.polygon.holes.empty());
+     if (actual_piece.polygon.outer.size() != 4U) {
+       saw_non_rectangular_outline = true;
+     }
+  }
+
+  REQUIRE(saw_non_rectangular_outline);
 }
 
 TEST_CASE("mtg baseline bounding-box solve places every part",

@@ -1,4 +1,4 @@
-#include "packing/candidate_generation.hpp"
+#include "packing/irregular/candidate_generation.hpp"
 
 #include <algorithm>
 #include <array>

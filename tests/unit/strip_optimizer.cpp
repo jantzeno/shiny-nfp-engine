@@ -6,7 +6,7 @@
 #include <span>
 #include <vector>
 
-#include "packing/sequential_backtrack_packer.hpp"
+#include "packing/irregular/sequential/packer.hpp"
 #include "request.hpp"
 #include "runtime/deterministic_rng.hpp"
 #include "runtime/timing.hpp"

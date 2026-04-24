@@ -76,7 +76,7 @@ namespace {
 }  // namespace
 
 TEST_CASE("mtg exclusion zone on bed1 forces overflow to bed2",
-          "[mtg][nesting-matrix][exclusion-zones][.][slow]") {
+          "[mtg][nesting-matrix][exclusion-zones][slow]") {
   const auto fixture = load_mtg_fixture();
   const auto rect = bed1_half_block_exclusion();
   const auto exclusion = make_rect_exclusion(99, kBed1Id, rect.min_x,
