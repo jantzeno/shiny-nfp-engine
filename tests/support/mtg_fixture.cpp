@@ -43,8 +43,7 @@ namespace {
 constexpr double kInvariantTolerance = 1e-3;
 
 [[nodiscard]] auto resolve_fixture_root() -> std::filesystem::path {
-  if (const char *env =
-          std::getenv("SHINY_NESTING_ENGINE_TEST_FIXTURE_ROOT")) {
+  if (const char *env = std::getenv("SHINY_NESTING_ENGINE_TEST_FIXTURE_ROOT")) {
     if (env[0] != '\0') {
       return std::filesystem::path{env};
     }
@@ -61,9 +60,8 @@ constexpr double kInvariantTolerance = 1e-3;
     }
     candidate = candidate.parent_path();
   }
-  throw std::runtime_error{
-      "mtg_fixture: cannot resolve fixture root (set "
-      "SHINY_NESTING_ENGINE_TEST_FIXTURE_ROOT)"};
+  throw std::runtime_error{"mtg_fixture: cannot resolve fixture root (set "
+                           "SHINY_NESTING_ENGINE_TEST_FIXTURE_ROOT)"};
 }
 
 [[nodiscard]] auto rect_polygon(double min_x, double min_y, double max_x,
@@ -188,8 +186,8 @@ struct ParsedShape {
   return inset_polygon(bed.polygon, margins);
 }
 
-[[nodiscard]] auto contains_box(const geom::Box2 &outer, const geom::Box2 &inner)
-    -> bool {
+[[nodiscard]] auto contains_box(const geom::Box2 &outer,
+                                const geom::Box2 &inner) -> bool {
   return inner.min.x >= outer.min.x - kInvariantTolerance &&
          inner.min.y >= outer.min.y - kInvariantTolerance &&
          inner.max.x <= outer.max.x + kInvariantTolerance &&
@@ -224,16 +222,18 @@ struct PieceValidationLookups {
   return piece;
 }
 
-[[nodiscard]] auto effective_rotation_set(
-    const PieceRequest &piece,
-    const ExecutionPolicy &execution) -> const geom::DiscreteRotationSet & {
+[[nodiscard]] auto effective_rotation_set(const PieceRequest &piece,
+                                          const ExecutionPolicy &execution)
+    -> const geom::DiscreteRotationSet & {
   return piece.allowed_rotations.has_value() ? *piece.allowed_rotations
                                              : execution.default_rotations;
 }
 
-[[nodiscard]] auto resolve_piece_rotation(
-    const PieceRequest &piece, const ExecutionPolicy &execution,
-    const geom::RotationIndex rotation_index) -> std::optional<geom::ResolvedRotation> {
+[[nodiscard]] auto
+resolve_piece_rotation(const PieceRequest &piece,
+                       const ExecutionPolicy &execution,
+                       const geom::RotationIndex rotation_index)
+    -> std::optional<geom::ResolvedRotation> {
   return geom::resolve_rotation(rotation_index,
                                 effective_rotation_set(piece, execution));
 }
@@ -279,17 +279,18 @@ struct PieceValidationLookups {
   return lookups;
 }
 
-}  // namespace
+} // namespace
 
 auto make_asymmetric_engine_surface_fixture() -> MtgFixture {
   MtgFixture fixture{};
-  fixture.source_path = std::filesystem::path{
-      "synthetic://asymmetric_engine_surface_fixture"};
+  fixture.source_path =
+      std::filesystem::path{"synthetic://asymmetric_engine_surface_fixture"};
   fixture.bed1 = make_rect_bed(kBed1Id, 16.0, 22.0);
   fixture.bed2 = make_rect_bed(kBed2Id, 22.0, 12.0);
   fixture.pieces.push_back(
       make_rect_piece(1, "rotates-into-bed1", kBed1Id, 20.0, 8.0));
-  fixture.pieces.push_back(make_rect_piece(2, "bed2-square", kBed2Id, 4.0, 4.0));
+  fixture.pieces.push_back(
+      make_rect_piece(2, "bed2-square", kBed2Id, 4.0, 4.0));
   return fixture;
 }
 
@@ -368,34 +369,33 @@ auto load_mtg_fixture() -> MtgFixture {
   for (auto &kv : accums) {
     ordered.push_back(kv.second);
   }
-  std::sort(ordered.begin(), ordered.end(),
-            [](const auto &a, const auto &b) {
-              return a.artwork_id < b.artwork_id;
-            });
+  std::sort(ordered.begin(), ordered.end(), [](const auto &a, const auto &b) {
+    return a.artwork_id < b.artwork_id;
+  });
 
   // Source-bed assignment: containment of the artwork AABB centroid.
-  const auto bed1_box = polygon_aabb(rect_polygon(
-      bed_shapes.at(kBed1Id).min_x, bed_shapes.at(kBed1Id).min_y,
-      bed_shapes.at(kBed1Id).max_x, bed_shapes.at(kBed1Id).max_y));
-  const auto bed2_box = polygon_aabb(rect_polygon(
-      bed_shapes.at(kBed2Id).min_x, bed_shapes.at(kBed2Id).min_y,
-      bed_shapes.at(kBed2Id).max_x, bed_shapes.at(kBed2Id).max_y));
+  const auto bed1_box = polygon_aabb(
+      rect_polygon(bed_shapes.at(kBed1Id).min_x, bed_shapes.at(kBed1Id).min_y,
+                   bed_shapes.at(kBed1Id).max_x, bed_shapes.at(kBed1Id).max_y));
+  const auto bed2_box = polygon_aabb(
+      rect_polygon(bed_shapes.at(kBed2Id).min_x, bed_shapes.at(kBed2Id).min_y,
+                   bed_shapes.at(kBed2Id).max_x, bed_shapes.at(kBed2Id).max_y));
 
   std::uint32_t next_piece_id = 1;
   for (const auto &a : ordered) {
     const double cx = 0.5 * (a.min_x + a.max_x);
     const double cy = 0.5 * (a.min_y + a.max_y);
     std::uint32_t source_bed = 0;
-    if (cx >= bed1_box.min.x && cx <= bed1_box.max.x &&
-        cy >= bed1_box.min.y && cy <= bed1_box.max.y) {
+    if (cx >= bed1_box.min.x && cx <= bed1_box.max.x && cy >= bed1_box.min.y &&
+        cy <= bed1_box.max.y) {
       source_bed = kBed1Id;
     } else if (cx >= bed2_box.min.x && cx <= bed2_box.max.x &&
                cy >= bed2_box.min.y && cy <= bed2_box.max.y) {
       source_bed = kBed2Id;
     } else {
-      throw std::runtime_error{
-          "mtg_fixture: artwork " + std::to_string(a.artwork_id) +
-          " centroid lies outside both beds"};
+      throw std::runtime_error{"mtg_fixture: artwork " +
+                               std::to_string(a.artwork_id) +
+                               " centroid lies outside both beds"};
     }
 
     MtgPiece piece{};
@@ -446,8 +446,8 @@ namespace {
   return polygon;
 }
 
-[[nodiscard]] auto largest_by_area(
-    const std::vector<geom::PolygonWithHoles> &polygons)
+[[nodiscard]] auto
+largest_by_area(const std::vector<geom::PolygonWithHoles> &polygons)
     -> geom::PolygonWithHoles {
   const geom::PolygonWithHoles *best = nullptr;
   double best_area = -1.0;
@@ -464,8 +464,8 @@ namespace {
   return *best;
 }
 
-[[nodiscard]] auto union_subpaths(
-    const std::vector<geom::Polygon> &subpaths) -> geom::PolygonWithHoles {
+[[nodiscard]] auto union_subpaths(const std::vector<geom::Polygon> &subpaths)
+    -> geom::PolygonWithHoles {
   if (subpaths.empty()) {
     throw std::runtime_error{"mtg_fixture: artwork has no sub-paths"};
   }
@@ -576,10 +576,14 @@ struct ParsedArtwork {
       accum.max_y = shape->bounds[3];
       accum.seeded = true;
     } else {
-      accum.min_x = std::min(accum.min_x, static_cast<double>(shape->bounds[0]));
-      accum.min_y = std::min(accum.min_y, static_cast<double>(shape->bounds[1]));
-      accum.max_x = std::max(accum.max_x, static_cast<double>(shape->bounds[2]));
-      accum.max_y = std::max(accum.max_y, static_cast<double>(shape->bounds[3]));
+      accum.min_x =
+          std::min(accum.min_x, static_cast<double>(shape->bounds[0]));
+      accum.min_y =
+          std::min(accum.min_y, static_cast<double>(shape->bounds[1]));
+      accum.max_x =
+          std::max(accum.max_x, static_cast<double>(shape->bounds[2]));
+      accum.max_y =
+          std::max(accum.max_y, static_cast<double>(shape->bounds[3]));
     }
     for (const auto *p = shape->paths; p != nullptr; p = p->next) {
       auto poly = extract_path_polygon(p);
@@ -591,7 +595,7 @@ struct ParsedArtwork {
   return artworks;
 }
 
-}  // namespace
+} // namespace
 
 auto load_mtg_fixture_with_actual_polygons() -> MtgFixture {
   // Start from the rectangle fixture so all bed/source/piece-id metadata
@@ -608,9 +612,8 @@ auto load_mtg_fixture_with_actual_polygons() -> MtgFixture {
       rect_aabb_by_artwork;
   for (const auto &kv : artworks) {
     rect_aabb_by_artwork.emplace(
-        kv.first,
-        std::make_pair(kv.second.max_x - kv.second.min_x,
-                       kv.second.max_y - kv.second.min_y));
+        kv.first, std::make_pair(kv.second.max_x - kv.second.min_x,
+                                 kv.second.max_y - kv.second.min_y));
   }
 
   // Build a piece index by deterministic artwork-id ordering, mirroring
@@ -695,10 +698,10 @@ auto make_request(const MtgFixture &fixture, const MtgRequestOptions &options)
     }
     return bin;
   };
-  request.bins.push_back(
-      build_bin(fixture.bed1, options.bed1_start_corner, options.bed1_exclusions));
-  request.bins.push_back(
-      build_bin(fixture.bed2, options.bed2_start_corner, options.bed2_exclusions));
+  request.bins.push_back(build_bin(fixture.bed1, options.bed1_start_corner,
+                                   options.bed1_exclusions));
+  request.bins.push_back(build_bin(fixture.bed2, options.bed2_start_corner,
+                                   options.bed2_exclusions));
 
   // Pieces.
   const bool pinned =
@@ -808,16 +811,15 @@ void validate_layout(const MtgFixture &fixture, const NestingRequest &request,
       const auto piece_box = polygon_aabb(placement.polygon);
       placement_boxes.push_back(piece_box);
 
-      INFO("Piece " << placement.placement.piece_id << " bin "
-                    << bin.bin_id << " AABB ["
-                    << piece_box.min.x << "," << piece_box.min.y << "]-["
-                    << piece_box.max.x << "," << piece_box.max.y << "]");
+      INFO("Piece " << placement.placement.piece_id << " bin " << bin.bin_id
+                    << " AABB [" << piece_box.min.x << "," << piece_box.min.y
+                    << "]-[" << piece_box.max.x << "," << piece_box.max.y
+                    << "]");
       REQUIRE(contains_box(bin_box, piece_box));
 
-      INFO("Placement bin_id " << placement.placement.bin_id
-                               << " mismatches containing bin "
-                               << bin.bin_id << " for piece "
-                               << placement.placement.piece_id);
+      INFO("Placement bin_id "
+           << placement.placement.bin_id << " mismatches containing bin "
+           << bin.bin_id << " for piece " << placement.placement.piece_id);
       REQUIRE(placement.placement.bin_id == bin.bin_id);
 
       const auto fixture_piece_it =
@@ -831,8 +833,9 @@ void validate_layout(const MtgFixture &fixture, const NestingRequest &request,
       const auto *request_piece = request_piece_it->second;
 
       if (expected.require_rotation_admissibility) {
-        const auto resolved_rotation = resolve_piece_rotation(
-            *request_piece, request.execution, placement.placement.rotation_index);
+        const auto resolved_rotation =
+            resolve_piece_rotation(*request_piece, request.execution,
+                                   placement.placement.rotation_index);
         INFO("Piece " << placement.placement.piece_id << " rotation_index "
                       << placement.placement.rotation_index.value
                       << " must resolve within the admissible rotation set");
@@ -853,8 +856,8 @@ void validate_layout(const MtgFixture &fixture, const NestingRequest &request,
       }
 
       // Allowed-bin restriction derived from the export_face pinning model.
-      const bool pinned = options.maintain_bed_assignment ||
-                          !options.allow_part_overflow;
+      const bool pinned =
+          options.maintain_bed_assignment || !options.allow_part_overflow;
       if (pinned) {
         REQUIRE(bin.bin_id == fixture_piece->source_bed_id);
       }
@@ -864,23 +867,23 @@ void validate_layout(const MtgFixture &fixture, const NestingRequest &request,
 
     for (std::size_t i = 0; i < placement_boxes.size(); ++i) {
       for (std::size_t j = i + 1; j < placement_boxes.size(); ++j) {
-        INFO("Overlap check bin " << bin.bin_id << " pieces "
-                                  << bin.placements[i].placement.piece_id
-                                  << " vs "
-                                  << bin.placements[j].placement.piece_id);
-        REQUIRE_FALSE(boxes_violate_spacing(placement_boxes[i], placement_boxes[j],
-                                            options.part_spacing_mm,
-                                            spacing_tolerance));
+        INFO("Overlap check bin "
+             << bin.bin_id << " pieces " << bin.placements[i].placement.piece_id
+             << " vs " << bin.placements[j].placement.piece_id);
+        REQUIRE_FALSE(
+            boxes_violate_spacing(placement_boxes[i], placement_boxes[j],
+                                  options.part_spacing_mm, spacing_tolerance));
       }
     }
 
-    // Exclusion zones are checked exact (no spacing slack) — engine contract is hard disjointness.
+    // Exclusion zones are checked exact (no spacing slack) — engine contract is
+    // hard disjointness.
     for (const auto &zone : expected.exclusions_to_check) {
       if (zone.bin_id.has_value() && *zone.bin_id != bin.bin_id) {
         continue;
       }
-      const auto zone_box = polygon_aabb(
-          geom::PolygonWithHoles{.outer = zone.region.outer});
+      const auto zone_box =
+          polygon_aabb(geom::PolygonWithHoles{.outer = zone.region.outer});
       for (std::size_t i = 0; i < placement_boxes.size(); ++i) {
         INFO("Piece " << bin.placements[i].placement.piece_id
                       << " overlaps exclusion zone " << zone.zone_id);
@@ -901,9 +904,9 @@ void validate_layout(const MtgFixture &fixture, const NestingRequest &request,
     ++unplaced_counts[pid];
   }
   INFO("Conservation: placed " << total_placed << " + unplaced "
-                                << result.layout.unplaced_piece_ids.size()
-                                << " != expected total "
-                                << expected_total_unique_with_quantity);
+                               << result.layout.unplaced_piece_ids.size()
+                               << " != expected total "
+                               << expected_total_unique_with_quantity);
   REQUIRE(total_placed + result.layout.unplaced_piece_ids.size() ==
           expected_total_unique_with_quantity);
 
@@ -915,8 +918,8 @@ void validate_layout(const MtgFixture &fixture, const NestingRequest &request,
                                 ? unplaced_counts.at(p.piece_id)
                                 : 0U;
     INFO("Per-piece presence piece " << p.piece_id << " placed " << placed_n
-                                      << " unplaced " << unplaced_n
-                                      << " quantity " << p.quantity);
+                                     << " unplaced " << unplaced_n
+                                     << " quantity " << p.quantity);
     REQUIRE(placed_n + unplaced_n == p.quantity);
   }
 
@@ -947,16 +950,16 @@ void validate_layout(const MtgFixture &fixture, const NestingRequest &request,
   }
 
   if (expected.iteration_cap.has_value()) {
-    INFO("Budget iterations " << result.budget.iterations_completed
+    INFO("Budget iterations " << result.budget.operations_completed
                               << " vs cap " << *expected.iteration_cap);
-    REQUIRE(result.budget.iterations_completed <= *expected.iteration_cap);
+    REQUIRE(result.budget.operations_completed <= *expected.iteration_cap);
   }
 
   if (expected.time_cap_ms.has_value()) {
     // Allow generous slack since the engine checks time at iteration
     // boundaries; this is a sanity ceiling, not a strict budget.
-    const std::uint64_t slack = std::max<std::uint64_t>(
-        500U, *expected.time_cap_ms);
+    const std::uint64_t slack =
+        std::max<std::uint64_t>(500U, *expected.time_cap_ms);
     INFO("Budget elapsed_ms " << result.budget.elapsed_milliseconds
                               << " vs cap " << *expected.time_cap_ms
                               << " + slack " << slack);
@@ -967,7 +970,7 @@ void validate_layout(const MtgFixture &fixture, const NestingRequest &request,
 
 auto hash_bin_placements(const NestingResult &result, std::uint32_t bin_id)
     -> std::uint64_t {
-  std::uint64_t hash = 1469598103934665603ULL;  // FNV offset basis
+  std::uint64_t hash = 1469598103934665603ULL; // FNV offset basis
   auto mix = [&](std::uint64_t v) {
     hash ^= v;
     hash *= 1099511628211ULL;
@@ -992,4 +995,4 @@ auto hash_bin_placements(const NestingResult &result, std::uint32_t bin_id)
   return hash;
 }
 
-}  // namespace shiny::nesting::test::mtg
+} // namespace shiny::nesting::test::mtg

@@ -7,8 +7,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
-#include <string>
-
+#include "solve.hpp"
 #include "support/mtg_fixture.hpp"
 
 using namespace shiny::nesting;
@@ -22,33 +21,48 @@ enum class AlgorithmKind {
   metaheuristic_search_brkga,
 };
 
+constexpr std::uint64_t kSeed = 77;
+constexpr std::size_t kControlIterationLimit = 2;
+
 void apply_algorithm(MtgRequestOptions &options, AlgorithmKind kind) {
   switch (kind) {
-    case AlgorithmKind::bounding_box:
-      options.strategy = StrategyKind::bounding_box;
-      options.bounding_box.heuristic = pack::BoundingBoxHeuristic::shelf;
-      break;
-    case AlgorithmKind::sequential_backtrack:
-      options.strategy = StrategyKind::sequential_backtrack;
-      break;
-    case AlgorithmKind::metaheuristic_search_brkga:
-      options.strategy = StrategyKind::metaheuristic_search;
-      options.production_optimizer = ProductionOptimizerKind::brkga;
-      options.production.max_iterations = 2;
-      options.production.population_size = 8;
-      break;
+  case AlgorithmKind::bounding_box:
+    options.strategy = StrategyKind::bounding_box;
+    options.bounding_box.heuristic = pack::BoundingBoxHeuristic::shelf;
+    break;
+  case AlgorithmKind::sequential_backtrack:
+    options.strategy = StrategyKind::sequential_backtrack;
+    break;
+  case AlgorithmKind::metaheuristic_search_brkga:
+    options.strategy = StrategyKind::metaheuristic_search;
+    options.production_optimizer = ProductionOptimizerKind::brkga;
+    options.production.max_iterations = 1;
+    options.production.population_size = 4;
+    options.production.elite_count = 1;
+    options.production.mutant_count = 1;
+    break;
   }
 }
 
-}  // namespace
+SolveControl base_solve_control(AlgorithmKind algorithm) {
+  SolveControl control{};
+  control.random_seed = kSeed;
+  if (algorithm == AlgorithmKind::sequential_backtrack ||
+      algorithm == AlgorithmKind::metaheuristic_search_brkga) {
+    control.operation_limit = kControlIterationLimit;
+  }
+  return control;
+}
+
+} // namespace
 
 TEST_CASE("mtg uniform bed margins still place every part",
           "[mtg][nesting-matrix][margins][uniform-margins][slow]") {
   const auto fixture = load_mtg_fixture();
 
-  const auto algorithm = GENERATE(AlgorithmKind::bounding_box,
-                                  AlgorithmKind::sequential_backtrack,
-                                  AlgorithmKind::metaheuristic_search_brkga);
+  const auto algorithm =
+      GENERATE(AlgorithmKind::bounding_box, AlgorithmKind::sequential_backtrack,
+               AlgorithmKind::metaheuristic_search_brkga);
   const double margin_mm = GENERATE(0.0, 5.0, 25.0);
   const double spacing_mm = GENERATE(0.0, 1.0);
 
@@ -64,8 +78,7 @@ TEST_CASE("mtg uniform bed margins still place every part",
   const auto request = make_request(fixture, options);
   REQUIRE(request.is_valid());
 
-  SolveControl control{};
-  control.random_seed = 17;
+  const SolveControl control = base_solve_control(algorithm);
 
   auto solved = solve(request, control);
   REQUIRE(solved.has_value());
@@ -92,8 +105,8 @@ TEST_CASE("mtg uniform bed margin actually changes the layout",
     const auto request = make_request(fixture, options);
     REQUIRE(request.is_valid());
 
-    SolveControl control{};
-    control.random_seed = 17;
+    const SolveControl control =
+        base_solve_control(AlgorithmKind::bounding_box);
 
     auto solved = solve(request, control);
     REQUIRE(solved.has_value());
@@ -112,9 +125,9 @@ TEST_CASE("mtg asymmetric bed margins respect each side",
           "[mtg][nesting-matrix][margins][asymmetric-margins][slow]") {
   const auto fixture = load_mtg_fixture();
 
-  const auto algorithm = GENERATE(AlgorithmKind::bounding_box,
-                                  AlgorithmKind::sequential_backtrack,
-                                  AlgorithmKind::metaheuristic_search_brkga);
+  const auto algorithm =
+      GENERATE(AlgorithmKind::bounding_box, AlgorithmKind::sequential_backtrack,
+               AlgorithmKind::metaheuristic_search_brkga);
 
   MtgRequestOptions options{};
   apply_algorithm(options, algorithm);
@@ -127,8 +140,7 @@ TEST_CASE("mtg asymmetric bed margins respect each side",
   const auto request = make_request(fixture, options);
   REQUIRE(request.is_valid());
 
-  SolveControl control{};
-  control.random_seed = 17;
+  const SolveControl control = base_solve_control(algorithm);
 
   auto solved = solve(request, control);
   REQUIRE(solved.has_value());

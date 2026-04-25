@@ -8,7 +8,7 @@
 #include "runtime/deterministic_rng.hpp"
 #include "search/detail/cooling_schedule.hpp"
 #include "search/detail/lahc.hpp"
-#include "search/detail/neighborhood_ops.hpp"
+#include "search/detail/neighborhood_search.hpp"
 #include "search/strategy_registry.hpp"
 #include "solve.hpp"
 
@@ -29,31 +29,33 @@ using shiny::nesting::geom::PolygonWithHoles;
 using shiny::nesting::runtime::DeterministicRng;
 using shiny::nesting::search::detail::CoolingSchedule;
 using shiny::nesting::search::detail::LateAcceptanceHistory;
-using shiny::nesting::search::detail::NeighborhoodOperator;
+using shiny::nesting::search::detail::NeighborhoodSearch;
 using shiny::nesting::search::detail::OrderEvaluator;
 
 auto rectangle(double min_x, double min_y, double max_x, double max_y)
     -> PolygonWithHoles {
   return {
-      .outer = {
-          {min_x, min_y},
-          {max_x, min_y},
-          {max_x, max_y},
-          {min_x, max_y},
-      },
+      .outer =
+          {
+              {min_x, min_y},
+              {max_x, min_y},
+              {max_x, max_y},
+              {min_x, max_y},
+          },
   };
 }
 
-auto frame(double min_x, double min_y, double max_x, double max_y, double hole_min_x,
-           double hole_min_y, double hole_max_x, double hole_max_y)
-    -> PolygonWithHoles {
+auto frame(double min_x, double min_y, double max_x, double max_y,
+           double hole_min_x, double hole_min_y, double hole_max_x,
+           double hole_max_y) -> PolygonWithHoles {
   return {
-      .outer = {
-          {min_x, min_y},
-          {max_x, min_y},
-          {max_x, max_y},
-          {min_x, max_y},
-      },
+      .outer =
+          {
+              {min_x, min_y},
+              {max_x, min_y},
+              {max_x, max_y},
+              {min_x, max_y},
+          },
       .holes = {{
           {hole_min_x, hole_min_y},
           {hole_min_x, hole_max_y},
@@ -150,9 +152,9 @@ auto strip_benchmark_request() -> NestingRequest {
 
 TEST_CASE("cooling schedules cool and clamp to the configured floor",
           "[search][metaheuristic][cooling]") {
-  for (const auto kind : {CoolingScheduleKind::geometric, CoolingScheduleKind::linear,
-                          CoolingScheduleKind::adaptive,
-                          CoolingScheduleKind::lundy_mees}) {
+  for (const auto kind :
+       {CoolingScheduleKind::geometric, CoolingScheduleKind::linear,
+        CoolingScheduleKind::adaptive, CoolingScheduleKind::lundy_mees}) {
     SAConfig config;
     config.cooling_schedule = kind;
     config.max_refinements = 10;
@@ -162,7 +164,8 @@ TEST_CASE("cooling schedules cool and clamp to the configured floor",
     CoolingSchedule schedule(config);
     double temperature = schedule.initial_temperature();
     for (std::size_t iteration = 0; iteration < 10U; ++iteration) {
-      const double next = schedule.next_temperature(temperature, iteration, true);
+      const double next =
+          schedule.next_temperature(temperature, iteration, true);
       REQUIRE(next <= temperature + 1e-9);
       REQUIRE(next >= config.final_temperature - 1e-9);
       temperature = next;
@@ -183,36 +186,38 @@ TEST_CASE("late acceptance history compares against historical scores",
 
 TEST_CASE("shared neighborhood operators produce order changes",
           "[search][metaheuristic][neighborhood]") {
-  const auto normalized = shiny::nesting::normalize_request(neighborhood_request());
+  const auto normalized =
+      shiny::nesting::normalize_request(neighborhood_request());
   REQUIRE(normalized.ok());
 
   shiny::nesting::runtime::Stopwatch stopwatch;
   shiny::nesting::runtime::TimeBudget time_budget;
   OrderEvaluator evaluator(normalized.value(), SolveControl{.random_seed = 19},
                            time_budget, stopwatch);
-  const auto order = shiny::nesting::search::detail::original_order(normalized.value());
+  const auto order =
+      shiny::nesting::search::detail::original_order(normalized.value());
   const auto forced_rotations =
-      shiny::nesting::search::detail::original_forced_rotations(normalized.value());
+      shiny::nesting::search::detail::original_forced_rotations(
+          normalized.value());
 
-  for (const auto op : std::array{NeighborhoodOperator::adjacent_swap,
-                                  NeighborhoodOperator::random_swap,
-                                  NeighborhoodOperator::relocate,
-                                  NeighborhoodOperator::inversion,
-                                  NeighborhoodOperator::large_item_swap,
-                                  NeighborhoodOperator::rotation_change,
-                                  NeighborhoodOperator::random_destroy_repair,
-                                  NeighborhoodOperator::area_destroy_repair,
-                                  NeighborhoodOperator::related_destroy_repair,
-                                  NeighborhoodOperator::cluster_destroy_repair,
-                                  NeighborhoodOperator::regret_destroy_repair}) {
+  for (const auto op : std::array{
+           NeighborhoodSearch::adjacent_swap, NeighborhoodSearch::random_swap,
+           NeighborhoodSearch::relocate, NeighborhoodSearch::inversion,
+           NeighborhoodSearch::large_item_swap,
+           NeighborhoodSearch::rotation_change,
+           NeighborhoodSearch::random_destroy_repair,
+           NeighborhoodSearch::area_destroy_repair,
+           NeighborhoodSearch::related_destroy_repair,
+           NeighborhoodSearch::cluster_destroy_repair,
+           NeighborhoodSearch::regret_destroy_repair}) {
     bool changed = false;
     for (std::size_t attempt = 0; attempt < 4U && !changed; ++attempt) {
       DeterministicRng rng(19 + attempt);
       const auto move = shiny::nesting::search::detail::propose_move(
           order, forced_rotations, normalized.value(), evaluator.piece_areas(),
           evaluator.piece_rotation_counts(), rng, op, 2U);
-      changed = move.changed &&
-                (move.order != order || move.forced_rotations != forced_rotations);
+      changed = move.changed && (move.order != order ||
+                                 move.forced_rotations != forced_rotations);
     }
     INFO(static_cast<int>(op));
     REQUIRE(changed);
@@ -240,10 +245,11 @@ TEST_CASE("order evaluator honors forced rotation assignments",
   shiny::nesting::runtime::TimeBudget time_budget;
   OrderEvaluator evaluator(normalized.value(), SolveControl{.random_seed = 7},
                            time_budget, stopwatch);
-  const auto order = shiny::nesting::search::detail::original_order(normalized.value());
+  const auto order =
+      shiny::nesting::search::detail::original_order(normalized.value());
 
-  auto forced_zero =
-      shiny::nesting::search::detail::original_forced_rotations(normalized.value());
+  auto forced_zero = shiny::nesting::search::detail::original_forced_rotations(
+      normalized.value());
   forced_zero[0] = shiny::nesting::geom::RotationIndex{0};
   const auto unplaced = evaluator.evaluate(order, forced_zero, 1U);
   REQUIRE(unplaced.metrics.placed_parts == 0U);
@@ -253,7 +259,8 @@ TEST_CASE("order evaluator honors forced rotation assignments",
   const auto placed = evaluator.evaluate(order, forced_ninety, 2U);
   REQUIRE(placed.metrics.placed_parts == 1U);
   REQUIRE(placed.result.layout.placement_trace.size() == 1U);
-  REQUIRE(placed.result.layout.placement_trace.front().rotation_index.value == 1U);
+  REQUIRE(placed.result.layout.placement_trace.front().rotation_index.value ==
+          1U);
 }
 
 TEST_CASE("metaheuristic strategies improve the constructive baseline",
@@ -275,9 +282,8 @@ TEST_CASE("metaheuristic strategies improve the constructive baseline",
   for (const auto &[strategy, optimizer] : strategies) {
     auto request = improvement_request();
     request.execution.strategy = strategy;
-    const auto result =
-        shiny::nesting::solve(request, SolveControl{.iteration_limit = 12,
-                                                    .random_seed = 17});
+    const auto result = shiny::nesting::solve(
+        request, SolveControl{.operation_limit = 12, .random_seed = 17});
     INFO(static_cast<int>(strategy));
     REQUIRE(result.ok());
     REQUIRE(result.value().layout.placement_trace.size() == 2U);
@@ -304,7 +310,8 @@ TEST_CASE("metaheuristic strategies preserve or improve benchmark-style cases",
   bool saw_strict_improvement = false;
   for (const auto &[case_id, constructive_seed] : benchmark_cases) {
     auto constructive_request = constructive_seed;
-    constructive_request.execution.strategy = StrategyKind::sequential_backtrack;
+    constructive_request.execution.strategy =
+        StrategyKind::sequential_backtrack;
     const auto constructive = shiny::nesting::solve(constructive_request);
     INFO(case_id);
     REQUIRE(constructive.ok());
@@ -316,9 +323,8 @@ TEST_CASE("metaheuristic strategies preserve or improve benchmark-style cases",
     for (const auto &[strategy, optimizer] : strategies) {
       auto request = constructive_seed;
       request.execution.strategy = strategy;
-      const auto result =
-          shiny::nesting::solve(request, SolveControl{.iteration_limit = 16,
-                                                      .random_seed = 17});
+      const auto result = shiny::nesting::solve(
+          request, SolveControl{.operation_limit = 16, .random_seed = 17});
       INFO(static_cast<int>(strategy));
       REQUIRE(result.ok());
       REQUIRE(result.value().search.optimizer == optimizer);
@@ -353,16 +359,15 @@ TEST_CASE("irregular production dispatch can route to the new optimizers",
     request.execution.strategy = StrategyKind::metaheuristic_search;
     request.execution.production_optimizer = optimizer;
 
-    const auto result =
-        shiny::nesting::solve(request, SolveControl{.iteration_limit = 12,
-                                                    .random_seed = 17});
+    const auto result = shiny::nesting::solve(
+        request, SolveControl{.operation_limit = 12, .random_seed = 17});
     INFO(static_cast<int>(optimizer));
     REQUIRE(result.ok());
     REQUIRE(result.value().strategy == StrategyKind::metaheuristic_search);
     REQUIRE(result.value().search.optimizer == expected);
     REQUIRE(result.value().layout.placement_trace.size() == 2U);
     const auto stop_reason = result.value().stop_reason;
-    REQUIRE((stop_reason == StopReason::iteration_limit_reached ||
+    REQUIRE((stop_reason == StopReason::operation_limit_reached ||
              stop_reason == StopReason::completed));
   }
 }
@@ -372,22 +377,26 @@ TEST_CASE("strategy registry resolves direct and production strategies",
   auto direct_request = improvement_request();
   direct_request.execution.strategy = StrategyKind::alns;
   direct_request.execution.alns.max_refinements = 19;
-  const auto direct_normalized = shiny::nesting::normalize_request(direct_request);
+  const auto direct_normalized =
+      shiny::nesting::normalize_request(direct_request);
   REQUIRE(direct_normalized.ok());
 
-  const auto direct_resolved = shiny::nesting::search::StrategyRegistry::instance().resolve(
-      direct_normalized.value().request.execution);
+  const auto direct_resolved =
+      shiny::nesting::search::StrategyRegistry::instance().resolve(
+          direct_normalized.value().request.execution);
   REQUIRE(direct_resolved.run != nullptr);
   REQUIRE_FALSE(direct_resolved.result_strategy_override.has_value());
   const auto *direct_config =
-      direct_normalized.value().request.execution.strategy_config.get_if<ALNSConfig>(
-          StrategyKind::alns);
+      direct_normalized.value()
+          .request.execution.strategy_config.get_if<ALNSConfig>(
+              StrategyKind::alns);
   REQUIRE(direct_config != nullptr);
   REQUIRE(direct_config->max_refinements == 19U);
 
   auto production_request = improvement_request();
   production_request.execution.strategy = StrategyKind::metaheuristic_search;
-  production_request.execution.production_optimizer = ProductionOptimizerKind::lahc;
+  production_request.execution.production_optimizer =
+      ProductionOptimizerKind::lahc;
   production_request.execution.lahc.max_refinements = 13;
   const auto production_normalized =
       shiny::nesting::normalize_request(production_request);
@@ -400,7 +409,8 @@ TEST_CASE("strategy registry resolves direct and production strategies",
   REQUIRE(production_resolved.result_strategy_override ==
           StrategyKind::metaheuristic_search);
   const auto *production_config =
-      production_normalized.value().request.execution.production_strategy_config
+      production_normalized.value()
+          .request.execution.production_strategy_config
           .get_if<shiny::nesting::LAHCConfig>(ProductionOptimizerKind::lahc);
   REQUIRE(production_config != nullptr);
   REQUIRE(production_config->max_refinements == 13U);

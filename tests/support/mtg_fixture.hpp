@@ -145,7 +145,7 @@ struct ExpectedOutcome {
   std::optional<StopReason> expected_stop_reason{};
   // If set, every placed piece must avoid this exclusion polygon (per bin).
   std::vector<place::BedExclusionZone> exclusions_to_check{};
-  // Iteration cap to verify against `result.budget.iterations_completed`.
+  // Iteration cap to verify against `result.budget.operations_completed`.
   std::optional<std::size_t> iteration_cap{};
   // Time cap (ms) to verify against `result.budget.elapsed_milliseconds`.
   std::optional<std::uint64_t> time_cap_ms{};

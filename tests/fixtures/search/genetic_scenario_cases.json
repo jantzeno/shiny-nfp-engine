@@ -154,7 +154,7 @@
                     2
                 ],
                 "best_total_utilization": 0.8333333333333334,
-                "iterations_completed": 4,
+                "operations_completed": 4,
                 "progress_count": 5
             },
             "notes": "The production GA should discover the one-bin order deterministically on the canonical three-piece sample."

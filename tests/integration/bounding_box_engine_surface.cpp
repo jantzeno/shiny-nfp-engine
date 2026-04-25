@@ -72,11 +72,12 @@ namespace {
   return nullptr;
 }
 
-[[nodiscard]] auto resolve_piece_rotation_degrees(
-    const NestingRequest &request, const pack::PlacedPiece &placed)
+[[nodiscard]] auto
+resolve_piece_rotation_degrees(const NestingRequest &request,
+                               const pack::PlacedPiece &placed)
     -> std::optional<double> {
-  const auto piece_it =
-      std::find_if(request.pieces.begin(), request.pieces.end(), [&](const auto &piece) {
+  const auto piece_it = std::find_if(
+      request.pieces.begin(), request.pieces.end(), [&](const auto &piece) {
         return piece.piece_id == placed.placement.piece_id;
       });
   if (piece_it == request.pieces.end()) {
@@ -94,10 +95,11 @@ namespace {
   return rotation->degrees;
 }
 
-}  // namespace
+} // namespace
 
-TEST_CASE("focused asymmetric fixture makes default_rotations directly observable",
-          "[mtg][nesting-matrix][engine-surface][rotations]") {
+TEST_CASE(
+    "focused asymmetric fixture makes default_rotations directly observable",
+    "[mtg][nesting-matrix][engine-surface][rotations]") {
   const auto fixture = make_asymmetric_engine_surface_fixture();
   auto options = baseline_bb_options();
   options.maintain_bed_assignment = true;
@@ -116,8 +118,8 @@ TEST_CASE("focused asymmetric fixture makes default_rotations directly observabl
   expected_a.expected_placed_count = 1;
   expected_a.require_rotation_admissibility = true;
   validate_layout(fixture, request_a, options, result_a.value(), expected_a);
-  REQUIRE(find_piece_placement(result_a.value(), fixture.pieces.front().piece_id) ==
-          nullptr);
+  REQUIRE(find_piece_placement(result_a.value(),
+                               fixture.pieces.front().piece_id) == nullptr);
 
   // Solve B — 0° + 90°. The same piece now fits its source bed only when
   // rotated, so the contract is visible without relying on hash drift.
@@ -132,7 +134,8 @@ TEST_CASE("focused asymmetric fixture makes default_rotations directly observabl
 
   ExpectedOutcome expected_b{};
   expected_b.expected_placed_count = fixture.pieces.size();
-  expected_b.required_assignments = {{fixture.pieces.front().piece_id, kBed1Id}};
+  expected_b.required_assignments = {
+      {fixture.pieces.front().piece_id, kBed1Id}};
   expected_b.require_rotation_admissibility = true;
   validate_layout(fixture, request_b, options, result_b.value(), expected_b);
 
@@ -172,14 +175,16 @@ TEST_CASE("focused asymmetric fixture honors non-conflicting allowed_bin_ids",
   expected.require_allowed_bin_admissibility = true;
   validate_layout(fixture, request, options, solved.value(), expected);
 
-  const auto *placed = find_piece_placement(solved.value(), fixture.pieces[0].piece_id);
+  const auto *placed =
+      find_piece_placement(solved.value(), fixture.pieces[0].piece_id);
   REQUIRE(placed != nullptr);
   const auto rotation = resolve_piece_rotation_degrees(request, *placed);
   REQUIRE(rotation.has_value());
   REQUIRE(std::fabs(*rotation - 90.0) <= 1e-9);
 }
 
-TEST_CASE("focused asymmetric fixture keeps pieces unplaced when selected bins conflict",
+TEST_CASE("focused asymmetric fixture keeps pieces unplaced when selected bins "
+          "conflict",
           "[mtg][nesting-matrix][engine-surface][allowed-bin-ids]") {
   auto fixture = make_asymmetric_engine_surface_fixture();
   const auto selected_bed_id = GENERATE(kBed1Id, kBed2Id);
@@ -207,12 +212,15 @@ TEST_CASE("focused asymmetric fixture keeps pieces unplaced when selected bins c
   ExpectedOutcome expected{};
   expected.expected_placed_count = 1;
   expected.per_bed_counts = {{selected_bed_id, 1}};
-  expected.required_assignments = {{fixture.pieces[1].piece_id, selected_bed_id}};
+  expected.required_assignments = {
+      {fixture.pieces[1].piece_id, selected_bed_id}};
   expected.require_allowed_bin_admissibility = true;
   validate_layout(fixture, request, options, solved.value(), expected);
 
-  REQUIRE(find_piece_placement(solved.value(), fixture.pieces[0].piece_id) == nullptr);
-  REQUIRE(find_piece_placement(solved.value(), fixture.pieces[1].piece_id) != nullptr);
+  REQUIRE(find_piece_placement(solved.value(), fixture.pieces[0].piece_id) ==
+          nullptr);
+  REQUIRE(find_piece_placement(solved.value(), fixture.pieces[1].piece_id) !=
+          nullptr);
 }
 
 TEST_CASE("mtg per-piece allowed_rotations is honored",
@@ -284,7 +292,8 @@ TEST_CASE("mtg quantity>1 places duplicate pieces",
   // Find smallest piece in the fixture by AABB area.
   REQUIRE(!fixture.pieces.empty());
   std::size_t smallest_idx = 0;
-  double smallest_area = fixture.pieces[0].width_mm * fixture.pieces[0].height_mm;
+  double smallest_area =
+      fixture.pieces[0].width_mm * fixture.pieces[0].height_mm;
   for (std::size_t i = 1; i < fixture.pieces.size(); ++i) {
     const auto area = fixture.pieces[i].width_mm * fixture.pieces[i].height_mm;
     if (area < smallest_area) {
@@ -341,9 +350,9 @@ TEST_CASE("mtg piece priority survives partial placement",
   // constructive / production strategies, which are exercised in the
   // dedicated sequential-backtrack / metaheuristic-search suites with full
   // ordering depth. Here we verify the bounding-box contract: a priority-marked
-  // piece must always appear in the placed set when any other pieces are placed,
-  // regardless of strategy. The deeper priority-sequence contract (piece order)
-  // lives in the dedicated irregular suites.
+  // piece must always appear in the placed set when any other pieces are
+  // placed, regardless of strategy. The deeper priority-sequence contract
+  // (piece order) lives in the dedicated irregular suites.
   auto options = baseline_bb_options();
   options.irregular.piece_ordering = PieceOrdering::priority;
 
@@ -372,9 +381,8 @@ TEST_CASE("mtg piece priority survives partial placement",
   REQUIRE(solved.has_value());
 
   const auto &unplaced = solved.value().layout.unplaced_piece_ids;
-  const bool priority_unplaced =
-      std::find(unplaced.begin(), unplaced.end(), priority_piece_id) !=
-      unplaced.end();
+  const bool priority_unplaced = std::find(unplaced.begin(), unplaced.end(),
+                                           priority_piece_id) != unplaced.end();
   INFO("unplaced count=" << unplaced.size()
                          << " priority_piece_id=" << priority_piece_id);
   REQUIRE_FALSE(priority_unplaced);
@@ -416,13 +424,13 @@ TEST_CASE("mtg ProgressObserver receives monotonic sequences",
     INFO("seq[" << i - 1 << "]=" << observed[i - 1].sequence << " seq[" << i
                 << "]=" << observed[i].sequence);
     REQUIRE(observed[i].sequence == observed[i - 1].sequence + 1U);
-    REQUIRE(observed[i].budget.iterations_completed >=
-            observed[i - 1].budget.iterations_completed);
+    REQUIRE(observed[i].budget.operations_completed >=
+            observed[i - 1].budget.operations_completed);
   }
   REQUIRE(observed.front().sequence == 1U);
-  REQUIRE(observed.back().budget.iterations_completed ==
-          solved.value().budget.iterations_completed);
-  REQUIRE(observed.back().budget.iterations_completed <=
+  REQUIRE(observed.back().budget.operations_completed ==
+          solved.value().budget.operations_completed);
+  REQUIRE(observed.back().budget.operations_completed <=
           request.execution.deterministic_attempts.max_attempts);
   REQUIRE(solved.value().stop_reason == StopReason::completed);
 }

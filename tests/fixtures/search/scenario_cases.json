@@ -142,7 +142,7 @@
                     2
                 ],
                 "best_total_utilization": 0.8333333333333334,
-                "iterations_completed": 4,
+                "operations_completed": 4,
                 "progress_count": 5,
                 "progress": [
                     {
@@ -365,7 +365,7 @@
                     4
                 ],
                 "best_total_utilization": 1.0,
-                "iterations_completed": 3,
+                "operations_completed": 3,
                 "progress_count": 4,
                 "progress": [
                     {
@@ -581,7 +581,7 @@
                     2
                 ],
                 "best_total_utilization": 0.8333333333333334,
-                "iterations_completed": 4,
+                "operations_completed": 4,
                 "progress_count": 5
             },
             "notes": "With one grain-constrained part and one explicit clamp keep-out, the baseline order strands a piece but the first insert-neighbor pass still finds the one-bin layout."
@@ -752,7 +752,7 @@
                     3
                 ],
                 "best_total_utilization": 0.8333333333333334,
-                "iterations_completed": 4,
+                "operations_completed": 4,
                 "progress_count": 5,
                 "progress": [
                     {
@@ -980,7 +980,7 @@
                     3
                 ],
                 "best_total_utilization": 0.8333333333333334,
-                "iterations_completed": 4,
+                "operations_completed": 4,
                 "progress_count": 5,
                 "progress": [
                     {
@@ -1260,7 +1260,7 @@
                     5
                 ],
                 "best_total_utilization": 1.0,
-                "iterations_completed": 4,
+                "operations_completed": 4,
                 "progress_count": 5,
                 "progress": [
                     {
@@ -1550,7 +1550,7 @@
                     5
                 ],
                 "best_total_utilization": 1.0,
-                "iterations_completed": 4,
+                "operations_completed": 4,
                 "progress_count": 5,
                 "progress": [
                     {
@@ -1808,7 +1808,7 @@
                     202
                 ],
                 "best_total_utilization": 0.9166666666666666,
-                "iterations_completed": 5,
+                "operations_completed": 5,
                 "progress_count": 6,
                 "progress": [
                     {
@@ -2029,7 +2029,7 @@
                     302
                 ],
                 "best_total_utilization": 0.875,
-                "iterations_completed": 4,
+                "operations_completed": 4,
                 "progress_count": 5,
                 "progress": [
                     {
@@ -2248,7 +2248,7 @@
                     403
                 ],
                 "best_total_utilization": 0.8333333333333334,
-                "iterations_completed": 4,
+                "operations_completed": 4,
                 "progress_count": 5,
                 "progress": [
                     {
@@ -2484,7 +2484,7 @@
                     504
                 ],
                 "best_total_utilization": 0.9166666666666666,
-                "iterations_completed": 3,
+                "operations_completed": 3,
                 "progress_count": 4,
                 "progress": [
                     {
@@ -2693,7 +2693,7 @@
                     604
                 ],
                 "best_total_utilization": 0.5833333333333334,
-                "iterations_completed": 3,
+                "operations_completed": 3,
                 "progress_count": 4,
                 "progress": [
                     {
@@ -2962,7 +2962,7 @@
                     5
                 ],
                 "best_total_utilization": 1.0,
-                "iterations_completed": 6,
+                "operations_completed": 6,
                 "progress_count": 7,
                 "progress": [
                     {

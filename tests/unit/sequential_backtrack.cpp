@@ -15,8 +15,8 @@ namespace {
 using shiny::nesting::BinRequest;
 using shiny::nesting::CandidateStrategy;
 using shiny::nesting::NestingRequest;
-using shiny::nesting::PieceRequest;
 using shiny::nesting::PieceOrdering;
+using shiny::nesting::PieceRequest;
 using shiny::nesting::ProgressSnapshot;
 using shiny::nesting::SolveControl;
 using shiny::nesting::StopReason;
@@ -28,25 +28,27 @@ using shiny::nesting::place::PlacementCandidateSource;
 auto rectangle(double min_x, double min_y, double max_x, double max_y)
     -> PolygonWithHoles {
   return {
-      .outer = {
-          {min_x, min_y},
-          {max_x, min_y},
-          {max_x, max_y},
-          {min_x, max_y},
-      },
+      .outer =
+          {
+              {min_x, min_y},
+              {max_x, min_y},
+              {max_x, max_y},
+              {min_x, max_y},
+          },
   };
 }
 
-auto frame(double min_x, double min_y, double max_x, double max_y, double hole_min_x,
-           double hole_min_y, double hole_max_x, double hole_max_y)
-    -> PolygonWithHoles {
+auto frame(double min_x, double min_y, double max_x, double max_y,
+           double hole_min_x, double hole_min_y, double hole_max_x,
+           double hole_max_y) -> PolygonWithHoles {
   return {
-      .outer = {
-          {min_x, min_y},
-          {max_x, min_y},
-          {max_x, max_y},
-          {min_x, max_y},
-      },
+      .outer =
+          {
+              {min_x, min_y},
+              {max_x, min_y},
+              {max_x, max_y},
+              {min_x, max_y},
+          },
       .holes = {{
           {hole_min_x, hole_min_y},
           {hole_min_x, hole_max_y},
@@ -56,14 +58,14 @@ auto frame(double min_x, double min_y, double max_x, double max_y, double hole_m
   };
 }
 
-auto total_intersection_area(std::span<const PolygonWithHoles> polygons) -> double {
+auto total_intersection_area(std::span<const PolygonWithHoles> polygons)
+    -> double {
   double total = 0.0;
   for (std::size_t lhs_index = 0; lhs_index < polygons.size(); ++lhs_index) {
     for (std::size_t rhs_index = lhs_index + 1U; rhs_index < polygons.size();
          ++rhs_index) {
-      const auto overlap =
-          shiny::nesting::poly::intersection_polygons(polygons[lhs_index],
-                                                      polygons[rhs_index]);
+      const auto overlap = shiny::nesting::poly::intersection_polygons(
+          polygons[lhs_index], polygons[rhs_index]);
       for (const auto &polygon : overlap) {
         total += shiny::nesting::geom::polygon_area(polygon);
       }
@@ -89,7 +91,8 @@ auto require_same_trace(const shiny::nesting::pack::Layout &lhs,
 
 } // namespace
 
-TEST_CASE("irregular constructive solver places hole-contained parts and emits progress",
+TEST_CASE("irregular constructive solver places hole-contained parts and emits "
+          "progress",
           "[solve][irregular][hole][progress]") {
   NestingRequest request;
   request.execution.strategy = StrategyKind::sequential_backtrack;
@@ -112,9 +115,10 @@ TEST_CASE("irregular constructive solver places hole-contained parts and emits p
   std::vector<ProgressSnapshot> snapshots;
   const auto result_or = shiny::nesting::solve(
       request, SolveControl{
-                   .on_progress = [&](const ProgressSnapshot &snapshot) {
-                     snapshots.push_back(snapshot);
-                   },
+                   .on_progress =
+                       [&](const ProgressSnapshot &snapshot) {
+                         snapshots.push_back(snapshot);
+                       },
                });
 
   REQUIRE(result_or.ok());
@@ -138,13 +142,14 @@ TEST_CASE("irregular constructive solver places hole-contained parts and emits p
           Catch::Approx(0.0).margin(1e-8));
 
   REQUIRE(snapshots.size() == 2U);
-  REQUIRE(snapshots[0].placed_parts == 1U);
-  REQUIRE(snapshots[1].placed_parts == 2U);
+  REQUIRE(snapshots[0].placements_successful == 1U);
+  REQUIRE(snapshots[1].placements_successful == 2U);
   REQUIRE(snapshots[1].stop_reason == StopReason::completed);
 }
 
-TEST_CASE("irregular constructive solver honors exclusion zones and allowed bins",
-          "[solve][irregular][exclusion][bins]") {
+TEST_CASE(
+    "irregular constructive solver honors exclusion zones and allowed bins",
+    "[solve][irregular][exclusion][bins]") {
   NestingRequest request;
   request.execution.strategy = StrategyKind::sequential_backtrack;
   request.execution.default_rotations = {{0.0}};
@@ -152,11 +157,10 @@ TEST_CASE("irregular constructive solver honors exclusion zones and allowed bins
   request.bins.push_back(BinRequest{
       .bin_id = 20,
       .polygon = rectangle(0.0, 0.0, 8.0, 8.0),
-      .exclusion_zones =
-          {{
-              .zone_id = 1,
-              .region = {.outer = {{0.0, 0.0}, {5.0, 0.0}, {5.0, 5.0}, {0.0, 5.0}}},
-          }},
+      .exclusion_zones = {{
+          .zone_id = 1,
+          .region = {.outer = {{0.0, 0.0}, {5.0, 0.0}, {5.0, 5.0}, {0.0, 5.0}}},
+      }},
   });
   request.bins.push_back(BinRequest{
       .bin_id = 21,
@@ -183,13 +187,14 @@ TEST_CASE("irregular constructive solver honors exclusion zones and allowed bins
   const auto &first_bin = result.layout.bins[0];
   REQUIRE(first_bin.bin_id == 20U);
   REQUIRE(first_bin.placements.size() == 1U);
-  REQUIRE(first_bin.placements.front().placement.translation == Point2{5.0, 0.0});
+  REQUIRE(first_bin.placements.front().placement.translation ==
+          Point2{5.0, 0.0});
 
   const auto exclusion = PolygonWithHoles{
       .outer = {{0.0, 0.0}, {5.0, 0.0}, {5.0, 5.0}, {0.0, 5.0}},
   };
-  REQUIRE(shiny::nesting::poly::polygon_distance(first_bin.placements.front().polygon,
-                                                 exclusion) ==
+  REQUIRE(shiny::nesting::poly::polygon_distance(
+              first_bin.placements.front().polygon, exclusion) ==
           Catch::Approx(0.0).margin(1e-8));
 
   const auto &second_bin = result.layout.bins[1];
@@ -222,15 +227,17 @@ TEST_CASE("irregular constructive solver is deterministic for fixed input",
       .polygon = rectangle(0.0, 0.0, 2.0, 2.0),
   });
 
-  const auto first = shiny::nesting::solve(request, SolveControl{.iteration_limit = 1, .random_seed = 17});
-  const auto second = shiny::nesting::solve(request, SolveControl{.iteration_limit = 1, .random_seed = 17});
+  const auto first = shiny::nesting::solve(
+      request, SolveControl{.operation_limit = 1, .random_seed = 17});
+  const auto second = shiny::nesting::solve(
+      request, SolveControl{.operation_limit = 1, .random_seed = 17});
 
   REQUIRE(first.ok());
   REQUIRE(second.ok());
   REQUIRE(first.value().layout.placement_trace.size() ==
           second.value().layout.placement_trace.size());
-  for (std::size_t index = 0; index < first.value().layout.placement_trace.size();
-       ++index) {
+  for (std::size_t index = 0;
+       index < first.value().layout.placement_trace.size(); ++index) {
     const auto &lhs = first.value().layout.placement_trace[index];
     const auto &rhs = second.value().layout.placement_trace[index];
     REQUIRE(lhs.piece_id == rhs.piece_id);
@@ -241,12 +248,14 @@ TEST_CASE("irregular constructive solver is deterministic for fixed input",
   }
 }
 
-TEST_CASE("irregular constructive solver uses NFP perfect candidates when requested",
-          "[solve][irregular][nfp][candidates]") {
+TEST_CASE(
+    "irregular constructive solver uses NFP perfect candidates when requested",
+    "[solve][irregular][nfp][candidates]") {
   NestingRequest request;
   request.execution.strategy = StrategyKind::sequential_backtrack;
   request.execution.default_rotations = {{0.0}};
-  request.execution.irregular.candidate_strategy = CandidateStrategy::nfp_perfect;
+  request.execution.irregular.candidate_strategy =
+      CandidateStrategy::nfp_perfect;
   request.execution.irregular.piece_ordering = PieceOrdering::input;
 
   request.bins.push_back(BinRequest{
@@ -276,7 +285,8 @@ TEST_CASE("irregular constructive solver honors configured piece ordering",
   NestingRequest request;
   request.execution.strategy = StrategyKind::sequential_backtrack;
   request.execution.default_rotations = {{0.0}};
-  request.execution.irregular.piece_ordering = PieceOrdering::largest_area_first;
+  request.execution.irregular.piece_ordering =
+      PieceOrdering::largest_area_first;
 
   request.bins.push_back(BinRequest{
       .bin_id = 41,
@@ -321,14 +331,18 @@ TEST_CASE("irregular constructive shared workspace preserves repeated results",
       .polygon = rectangle(0.0, 0.0, 2.0, 2.0),
   });
 
-  const auto baseline =
-      shiny::nesting::solve(request, SolveControl{.iteration_limit = 1, .random_seed = 23});
+  const auto baseline = shiny::nesting::solve(
+      request, SolveControl{.operation_limit = 1, .random_seed = 23});
 
   shiny::nesting::pack::PackerWorkspace workspace;
-  const auto first = shiny::nesting::solve(
-      request, SolveControl{.iteration_limit = 1, .random_seed = 23, .workspace = &workspace});
-  const auto second = shiny::nesting::solve(
-      request, SolveControl{.iteration_limit = 1, .random_seed = 23, .workspace = &workspace});
+  const auto first =
+      shiny::nesting::solve(request, SolveControl{.operation_limit = 1,
+                                                  .random_seed = 23,
+                                                  .workspace = &workspace});
+  const auto second =
+      shiny::nesting::solve(request, SolveControl{.operation_limit = 1,
+                                                  .random_seed = 23,
+                                                  .workspace = &workspace});
 
   REQUIRE(baseline.ok());
   REQUIRE(first.ok());
@@ -337,8 +351,9 @@ TEST_CASE("irregular constructive shared workspace preserves repeated results",
   require_same_trace(first.value().layout, second.value().layout);
 }
 
-TEST_CASE("irregular constructive backtracking can free a hole for a blocked part",
-          "[solve][irregular][backtracking]") {
+TEST_CASE(
+    "irregular constructive backtracking can free a hole for a blocked part",
+    "[solve][irregular][backtracking]") {
   NestingRequest baseline_request;
   baseline_request.execution.strategy = StrategyKind::sequential_backtrack;
   baseline_request.execution.enable_part_in_part_placement = true;
@@ -379,11 +394,13 @@ TEST_CASE("irregular constructive backtracking can free a hole for a blocked par
 
   const auto &placements = recovered.value().layout.bins.front().placements;
   const auto large_it = std::find_if(
-      placements.begin(), placements.end(),
-      [](const auto &placement) { return placement.placement.piece_id == 14U; });
+      placements.begin(), placements.end(), [](const auto &placement) {
+        return placement.placement.piece_id == 14U;
+      });
   const auto small_it = std::find_if(
-      placements.begin(), placements.end(),
-      [](const auto &placement) { return placement.placement.piece_id == 13U; });
+      placements.begin(), placements.end(), [](const auto &placement) {
+        return placement.placement.piece_id == 13U;
+      });
   REQUIRE(large_it != placements.end());
   REQUIRE(small_it != placements.end());
   REQUIRE(large_it->inside_hole);
@@ -461,19 +478,22 @@ TEST_CASE("irregular constructive compaction and backtracking stay compatible",
 
   const auto &placements = result.value().layout.bins.front().placements;
   const auto large_it = std::find_if(
-      placements.begin(), placements.end(),
-      [](const auto &placement) { return placement.placement.piece_id == 17U; });
+      placements.begin(), placements.end(), [](const auto &placement) {
+        return placement.placement.piece_id == 17U;
+      });
   const auto small_it = std::find_if(
-      placements.begin(), placements.end(),
-      [](const auto &placement) { return placement.placement.piece_id == 16U; });
+      placements.begin(), placements.end(), [](const auto &placement) {
+        return placement.placement.piece_id == 16U;
+      });
   REQUIRE(large_it != placements.end());
   REQUIRE(small_it != placements.end());
   REQUIRE(large_it->inside_hole);
   REQUIRE_FALSE(small_it->inside_hole);
 }
 
-TEST_CASE("backtracking trial that shrinks the trace then fails fully restores it",
-          "[solve][irregular][backtracking][rollback][trace-shrink]") {
+TEST_CASE(
+    "backtracking trial that shrinks the trace then fails fully restores it",
+    "[solve][irregular][backtracking][rollback][trace-shrink]") {
   // Construct a layout that places several pieces successfully, then
   // hits a piece that cannot fit. Backtracking must remove (shrink the
   // trace by) the most-recent placements and try to re-pack them along

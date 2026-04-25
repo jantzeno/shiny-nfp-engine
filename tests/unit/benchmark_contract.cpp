@@ -37,7 +37,7 @@ TEST_CASE("benchmark support emits canonical algorithm metrics",
          .total_ms = 5.0,
          .best_bin_count = 1,
          .best_unplaced_piece_count = 0,
-         .iterations_completed = 3,
+         .operations_completed = 3,
          .reevaluation_cache_size = 2});
   });
   REQUIRE(jostle_output.find("algorithm=jostle_search") != std::string::npos);

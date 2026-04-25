@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 
 #include "observer.hpp"
 #include "request.hpp"
@@ -33,6 +34,7 @@ struct NestingResult {
   StrategyKind strategy{StrategyKind::bounding_box};
   pack::Layout layout{};
   std::size_t total_parts{0};
+  std::uint64_t effective_seed{0};
   BudgetState budget{};
   StopReason stop_reason{StopReason::none};
   SearchReplay search{};

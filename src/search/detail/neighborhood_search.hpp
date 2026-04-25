@@ -10,7 +10,6 @@
 #include "geometry/transform.hpp"
 #include "packing/irregular/workspace.hpp"
 #include "request.hpp"
-#include "result.hpp"
 #include "runtime/deterministic_rng.hpp"
 #include "runtime/timing.hpp"
 #include "search/solution_pool.hpp"
@@ -18,7 +17,7 @@
 
 namespace shiny::nesting::search::detail {
 
-enum class NeighborhoodOperator : std::uint8_t {
+enum class NeighborhoodSearch : std::uint8_t {
   adjacent_swap = 0,
   random_swap = 1,
   relocate = 2,
@@ -33,7 +32,7 @@ enum class NeighborhoodOperator : std::uint8_t {
 };
 
 struct NeighborhoodMove {
-  NeighborhoodOperator op{NeighborhoodOperator::random_swap};
+  NeighborhoodSearch op{NeighborhoodSearch::random_swap};
   std::vector<std::size_t> order{};
   std::vector<std::optional<geom::RotationIndex>> forced_rotations{};
   std::size_t primary_index{0};
@@ -51,16 +50,16 @@ public:
   [[nodiscard]] auto evaluate(
       std::span<const std::size_t> order,
       std::span<const std::optional<geom::RotationIndex>> forced_rotations = {},
-      std::uint64_t seed_bias = 0) const
-      -> SolutionPoolEntry;
+      std::uint64_t seed_bias = 0) const -> SolutionPoolEntry;
 
   [[nodiscard]] auto interrupted() const -> bool;
 
-  [[nodiscard]] auto make_budget(std::size_t iterations_completed) const
+  [[nodiscard]] auto make_budget(std::size_t operations_completed) const
       -> BudgetState;
 
   [[nodiscard]] auto piece_areas() const -> std::span<const double>;
-  [[nodiscard]] auto piece_rotation_counts() const -> std::span<const std::size_t>;
+  [[nodiscard]] auto piece_rotation_counts() const
+      -> std::span<const std::size_t>;
 
 private:
   const NormalizedRequest &request_;
@@ -94,27 +93,24 @@ private:
 [[nodiscard]] auto original_forced_rotations(const NormalizedRequest &request)
     -> std::vector<std::optional<geom::RotationIndex>>;
 
-[[nodiscard]] auto propose_move(std::span<const std::size_t> order,
-                                std::span<const std::optional<geom::RotationIndex>>
-                                    forced_rotations,
-                                const NormalizedRequest &request,
-                                std::span<const double> piece_areas,
-                                std::span<const std::size_t> piece_rotation_counts,
-                                runtime::DeterministicRng &rng,
-                                NeighborhoodOperator op,
-                                std::size_t intensity = 1U)
-    -> NeighborhoodMove;
+[[nodiscard]] auto propose_move(
+    std::span<const std::size_t> order,
+    std::span<const std::optional<geom::RotationIndex>> forced_rotations,
+    const NormalizedRequest &request, std::span<const double> piece_areas,
+    std::span<const std::size_t> piece_rotation_counts,
+    runtime::DeterministicRng &rng, NeighborhoodSearch op,
+    std::size_t intensity = 1U) -> NeighborhoodMove;
 
 [[nodiscard]] auto random_operator(runtime::DeterministicRng &rng,
                                    bool include_destroy_repair = true)
-    -> NeighborhoodOperator;
+    -> NeighborhoodSearch;
 
 // Canonical operator set used by ALNS-style adaptive selection drivers.
 // Centralised here so adding a new operator only requires touching this
 // list (plus any operator-specific dispatch in `propose_move`). Keep
 // the list ordered destroy-repair → swaps → rotation/relocate so the
 // adaptive weight table semantics are stable across drivers.
-[[nodiscard]] auto all_alns_operators() -> std::vector<NeighborhoodOperator>;
+[[nodiscard]] auto all_alns_operators() -> std::vector<NeighborhoodSearch>;
 
 [[nodiscard]] auto objective_score(const LayoutMetrics &metrics) -> double;
 
@@ -126,6 +122,6 @@ private:
                                         const LayoutMetrics &best,
                                         double tolerance_ratio) -> bool;
 
-[[nodiscard]] auto operator_label(NeighborhoodOperator op) -> std::string_view;
+[[nodiscard]] auto operator_label(NeighborhoodSearch op) -> std::string_view;
 
 } // namespace shiny::nesting::search::detail

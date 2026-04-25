@@ -38,7 +38,7 @@ TEST_CASE("irregular constructive multi-start keeps the best layout after cancel
   std::size_t best_observed_layout = 0;
 
   SolveControl control{};
-  control.iteration_limit = 4;
+  control.operation_limit = 4;
   control.random_seed = 99;
   control.cancellation = cancel_source.token();
   control.on_progress = [&](const ProgressSnapshot &snapshot) {
@@ -70,7 +70,7 @@ TEST_CASE("irregular constructive multi-start keeps the best layout after cancel
   REQUIRE(placed_parts(solved.value().layout) == best_observed_layout);
   REQUIRE(placed_parts(observed.back().layout) < placed_parts(solved.value().layout));
   REQUIRE(solved.value().budget.cancellation_requested);
-  REQUIRE(solved.value().budget.iterations_completed >= 2U);
+  REQUIRE(solved.value().budget.operations_completed >= 2U);
 }
 
 TEST_CASE("irregular constructive multi-start rejects unbounded solve control",

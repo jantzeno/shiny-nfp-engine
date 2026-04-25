@@ -64,8 +64,8 @@ namespace {
 // under `stop_reason=time_limit_reached` is a separately-tracked finding
 // (the engine occasionally drops a piece from `unplaced_piece_ids` when
 // the time limit fires mid-piece).
-auto assert_placed_layout_invariants(
-    const NestingResult &result, double spacing_mm) -> void {
+auto assert_placed_layout_invariants(const NestingResult &result,
+                                     double spacing_mm) -> void {
   for (const auto &bin : result.layout.bins) {
     std::vector<geom::Box2> boxes;
     boxes.reserve(bin.placements.size());
@@ -77,8 +77,8 @@ auto assert_placed_layout_invariants(
         INFO("bin " << bin.bin_id << " spacing-violation pair "
                     << bin.placements[i].placement.piece_id << " vs "
                     << bin.placements[j].placement.piece_id);
-        REQUIRE_FALSE(boxes_violate_spacing(boxes[i], boxes[j], spacing_mm,
-                                            1e-3));
+        REQUIRE_FALSE(
+            boxes_violate_spacing(boxes[i], boxes[j], spacing_mm, 1e-3));
       }
     }
   }
@@ -87,8 +87,8 @@ auto assert_placed_layout_invariants(
 inline constexpr std::uint64_t kActualPolygonTimeCapMs = 60'000U;
 inline constexpr std::uint32_t kActualPolygonSeed = 1234U;
 
-[[nodiscard]] constexpr auto candidate_strategy_name(const CandidateStrategy strategy)
-    -> std::string_view {
+[[nodiscard]] constexpr auto
+candidate_strategy_name(const CandidateStrategy strategy) -> std::string_view {
   switch (strategy) {
   case CandidateStrategy::anchor_vertex:
     return "anchor_vertex";
@@ -113,8 +113,8 @@ inline constexpr std::uint32_t kActualPolygonSeed = 1234U;
     return "completed";
   case StopReason::cancelled:
     return "cancelled";
-  case StopReason::iteration_limit_reached:
-    return "iteration_limit_reached";
+  case StopReason::operation_limit_reached:
+    return "operation_limit_reached";
   case StopReason::time_limit_reached:
     return "time_limit_reached";
   case StopReason::invalid_request:
@@ -145,13 +145,15 @@ struct ActualPolygonSolveOutcome {
   const auto fixture = load_mtg_fixture_with_actual_polygons();
   const auto options =
       make_actual_polygon_constructive_options(candidate_strategy);
-  const auto request = make_request(fixture, options);
+  auto request = make_request(fixture, options);
   REQUIRE(request.is_valid());
 
   try {
-    const auto solved = solve(
-        request, SolveControl{.time_limit_milliseconds = kActualPolygonTimeCapMs,
-                              .random_seed = kActualPolygonSeed});
+    SolveControl control{};
+    control.time_limit_milliseconds = kActualPolygonTimeCapMs;
+    control.random_seed = 0;
+
+    const auto solved = solve(request, control);
     REQUIRE(solved.has_value());
 
     const auto &result = solved.value();
@@ -160,14 +162,10 @@ struct ActualPolygonSolveOutcome {
         std::max<std::uint64_t>(500U, kActualPolygonTimeCapMs);
     INFO("strategy=" << candidate_strategy_name(candidate_strategy)
                      << " placed=" << placed << "/" << kBaselinePieceCount
-                     << " unplaced="
-                     << result.layout.unplaced_piece_ids.size()
-                     << " stop_reason="
-                     << stop_reason_name(result.stop_reason)
-                     << " elapsed_ms="
-                     << result.budget.elapsed_milliseconds
-                     << " iterations="
-                     << result.budget.iterations_completed);
+                     << " unplaced=" << result.layout.unplaced_piece_ids.size()
+                     << " stop_reason=" << stop_reason_name(result.stop_reason)
+                     << " elapsed_ms=" << result.budget.elapsed_milliseconds
+                     << " iterations=" << result.budget.operations_completed);
     REQUIRE(result.budget.elapsed_milliseconds <=
             kActualPolygonTimeCapMs + slack);
     assert_placed_layout_invariants(result, options.part_spacing_mm);
@@ -184,7 +182,7 @@ struct ActualPolygonSolveOutcome {
   }
 }
 
-}  // namespace
+} // namespace
 
 // -----------------------------------------------------------------------------
 // Repro 1: bb-shelf with pinned-to-source-bed model leaves one piece unplaced.
@@ -194,8 +192,9 @@ struct ActualPolygonSolveOutcome {
 // fixture piece individually fits its source bed, yet bb-shelf ends with
 // 17/18 placed.
 // -----------------------------------------------------------------------------
-TEST_CASE("REGRESSION: bb-shelf pinned packing places every source-pinned piece",
-          "[mtg][engine-bug-repro][bb-pinned]") {
+TEST_CASE(
+    "REGRESSION: bb-shelf pinned packing places every source-pinned piece",
+    "[mtg][engine-bug-repro][bb-pinned]") {
   const auto fixture = load_mtg_fixture();
 
   MtgRequestOptions options{};
@@ -217,17 +216,15 @@ TEST_CASE("REGRESSION: bb-shelf pinned packing places every source-pinned piece"
   REQUIRE(solved.has_value());
 
   const auto placed = total_placed(solved.value());
-  INFO("bb-shelf pinned placed " << placed << " of "
-                                 << kBaselinePieceCount
-                                 << " (unplaced "
-                                 << solved.value().layout.unplaced_piece_ids.size()
-                                 << ")");
+  INFO("bb-shelf pinned placed "
+       << placed << " of " << kBaselinePieceCount << " (unplaced "
+       << solved.value().layout.unplaced_piece_ids.size() << ")");
   REQUIRE(placed == static_cast<std::size_t>(kBaselinePieceCount));
 }
 
 // -----------------------------------------------------------------------------
-// Regression 2: historical allowed_bin_ids/selected_bin_ids asymmetry. This is the
-// Milestone-2 ownership boundary for request-surface semantics: per-piece
+// Regression 2: historical allowed_bin_ids/selected_bin_ids asymmetry. This is
+// the Milestone-2 ownership boundary for request-surface semantics: per-piece
 // allowed_bin_ids must be honored after selected-bin filtering, and an empty
 // effective intersection must leave the piece unplaced rather than silently
 // relocating it to the selected bed.
@@ -236,7 +233,8 @@ TEST_CASE("REGRESSION: allowed_bin_ids remains enforced under selected_bin_ids",
           "[mtg][engine-bug-repro][allowed-bin-ids]") {
   const auto fixture = load_mtg_fixture();
 
-  SECTION("selected={bed1}, override one bed-2-source piece to allowed={bed2}") {
+  SECTION(
+      "selected={bed1}, override one bed-2-source piece to allowed={bed2}") {
     MtgRequestOptions options{};
     options.strategy = StrategyKind::bounding_box;
     options.bounding_box.heuristic = pack::BoundingBoxHeuristic::shelf;
@@ -284,7 +282,8 @@ TEST_CASE("REGRESSION: allowed_bin_ids remains enforced under selected_bin_ids",
     }
   }
 
-  SECTION("selected={bed2}, override one bed-1-source piece to allowed={bed1}") {
+  SECTION(
+      "selected={bed2}, override one bed-1-source piece to allowed={bed1}") {
     MtgRequestOptions options{};
     options.strategy = StrategyKind::bounding_box;
     options.bounding_box.heuristic = pack::BoundingBoxHeuristic::shelf;
@@ -388,13 +387,12 @@ TEST_CASE("REGRESSION: bb heuristic honors requested spacing",
       for (std::size_t j = i + 1; j < bin.placements.size(); ++j) {
         const auto box_b = aabb_of(bin.placements[j].polygon);
         INFO("bin1 spacing-violation pair pieces "
-             << bin.placements[i].placement.piece_id << " ["
-             << box_a.min.x << "," << box_a.min.y << "]-[" << box_a.max.x
-             << "," << box_a.max.y << "] vs "
-             << bin.placements[j].placement.piece_id << " ["
-             << box_b.min.x << "," << box_b.min.y << "]-[" << box_b.max.x
-             << "," << box_b.max.y << "] (required spacing "
-             << options.part_spacing_mm << " mm)");
+             << bin.placements[i].placement.piece_id << " [" << box_a.min.x
+             << "," << box_a.min.y << "]-[" << box_a.max.x << "," << box_a.max.y
+             << "] vs " << bin.placements[j].placement.piece_id << " ["
+             << box_b.min.x << "," << box_b.min.y << "]-[" << box_b.max.x << ","
+             << box_b.max.y << "] (required spacing " << options.part_spacing_mm
+             << " mm)");
         REQUIRE_FALSE(
             boxes_violate_spacing(box_a, box_b, options.part_spacing_mm, 1e-3));
       }
@@ -408,8 +406,9 @@ TEST_CASE("REGRESSION: bb heuristic honors requested spacing",
 // This is intentionally normative. Today it fails by hitting the time cap and
 // placing only a subset of the real silhouettes.
 // -----------------------------------------------------------------------------
-TEST_CASE("REGRESSION: anchor_vertex places every actual-polygon MTG silhouette",
-          "[mtg][engine-bug-repro][actual-polygons][anchor-vertex]") {
+TEST_CASE(
+    "REGRESSION: anchor_vertex places every actual-polygon MTG silhouette",
+    "[mtg][engine-bug-repro][actual-polygons][anchor-vertex]") {
   const auto outcome =
       solve_actual_polygon_constructive_case(CandidateStrategy::anchor_vertex);
   REQUIRE(outcome.result.has_value());
@@ -427,8 +426,9 @@ TEST_CASE("REGRESSION: anchor_vertex places every actual-polygon MTG silhouette"
 // multiple ways under the fixed solve setup: some strategies throw CGAL
 // exceptions, and `nfp_hybrid` reaches the time cap with only 8/18 placed.
 // -----------------------------------------------------------------------------
-TEST_CASE("REGRESSION: NFP strategies place every actual-polygon MTG silhouette",
-          "[mtg][engine-bug-repro][actual-polygons][nfp-strategies]") {
+TEST_CASE(
+    "REGRESSION: NFP strategies place every actual-polygon MTG silhouette",
+    "[mtg][engine-bug-repro][actual-polygons][nfp-strategies]") {
   const auto candidate_strategy = GENERATE(CandidateStrategy::nfp_perfect,
                                            CandidateStrategy::nfp_arrangement,
                                            CandidateStrategy::nfp_hybrid);

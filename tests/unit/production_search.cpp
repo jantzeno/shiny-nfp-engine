@@ -21,25 +21,27 @@ using shiny::nesting::geom::PolygonWithHoles;
 auto rectangle(double min_x, double min_y, double max_x, double max_y)
     -> PolygonWithHoles {
   return {
-      .outer = {
-          {min_x, min_y},
-          {max_x, min_y},
-          {max_x, max_y},
-          {min_x, max_y},
-      },
+      .outer =
+          {
+              {min_x, min_y},
+              {max_x, min_y},
+              {max_x, max_y},
+              {min_x, max_y},
+          },
   };
 }
 
-auto frame(double min_x, double min_y, double max_x, double max_y, double hole_min_x,
-           double hole_min_y, double hole_max_x, double hole_max_y)
-    -> PolygonWithHoles {
+auto frame(double min_x, double min_y, double max_x, double max_y,
+           double hole_min_x, double hole_min_y, double hole_max_x,
+           double hole_max_y) -> PolygonWithHoles {
   return {
-      .outer = {
-          {min_x, min_y},
-          {max_x, min_y},
-          {max_x, max_y},
-          {min_x, max_y},
-      },
+      .outer =
+          {
+              {min_x, min_y},
+              {max_x, min_y},
+              {max_x, max_y},
+              {min_x, max_y},
+          },
       .holes = {{
           {hole_min_x, hole_min_y},
           {hole_min_x, hole_max_y},
@@ -77,7 +79,8 @@ auto improvement_request() -> NestingRequest {
 
 } // namespace
 
-TEST_CASE("production search improves the constructive seed and records replayable progress",
+TEST_CASE("production search improves the constructive seed and records "
+          "replayable progress",
           "[solve][production][brkga]") {
   auto constructive_request = improvement_request();
   constructive_request.execution.strategy = StrategyKind::sequential_backtrack;
@@ -89,10 +92,11 @@ TEST_CASE("production search improves the constructive seed and records replayab
   std::vector<ProgressSnapshot> snapshots;
   const auto production = shiny::nesting::solve(
       production_request, SolveControl{
-                              .on_progress = [&](const ProgressSnapshot &snapshot) {
-                                snapshots.push_back(snapshot);
-                              },
-                              .iteration_limit = 4,
+                              .on_progress =
+                                  [&](const ProgressSnapshot &snapshot) {
+                                    snapshots.push_back(snapshot);
+                                  },
+                              .operation_limit = 4,
                               .random_seed = 17,
                           });
 
@@ -105,26 +109,27 @@ TEST_CASE("production search improves the constructive seed and records replayab
   REQUIRE(production.value().search.sparrow_polished);
   REQUIRE_FALSE(production.value().search.progress.empty());
   REQUIRE(production.value().search.progress.front().iteration == 1U);
-  REQUIRE(production.value().search.progress.back().layout.placement_trace.size() ==
-          production.value().layout.placement_trace.size());
+  REQUIRE(
+      production.value().search.progress.back().layout.placement_trace.size() ==
+      production.value().layout.placement_trace.size());
   REQUIRE_FALSE(snapshots.empty());
 }
 
-TEST_CASE("production search respects iteration limits and cancellation",
+TEST_CASE("production search respects operation limits and cancellation",
           "[solve][production][budget]") {
   auto request = improvement_request();
   request.execution.strategy = StrategyKind::metaheuristic_search;
 
-  const auto limited =
-      shiny::nesting::solve(request, SolveControl{.iteration_limit = 1, .random_seed = 3});
+  const auto limited = shiny::nesting::solve(
+      request, SolveControl{.operation_limit = 1, .random_seed = 3});
   REQUIRE(limited.ok());
-  REQUIRE(limited.value().stop_reason == StopReason::iteration_limit_reached);
-  REQUIRE(limited.value().budget.iterations_completed == 1U);
+  REQUIRE(limited.value().stop_reason == StopReason::operation_limit_reached);
+  REQUIRE(limited.value().budget.operations_completed == 1U);
 
   shiny::nesting::runtime::CancellationSource source;
   source.request_stop();
-  const auto cancelled =
-      shiny::nesting::solve(request, SolveControl{.cancellation = source.token()});
+  const auto cancelled = shiny::nesting::solve(
+      request, SolveControl{.cancellation = source.token()});
   REQUIRE(cancelled.ok());
   REQUIRE(cancelled.value().stop_reason == StopReason::cancelled);
 }
@@ -150,8 +155,8 @@ TEST_CASE("production search obeys time budgets under search",
     });
   }
 
-  const auto result =
-      shiny::nesting::solve(request, SolveControl{.time_limit_milliseconds = 1});
+  const auto result = shiny::nesting::solve(
+      request, SolveControl{.time_limit_milliseconds = 1});
   REQUIRE(result.ok());
   REQUIRE(result.value().stop_reason == StopReason::time_limit_reached);
 }

@@ -38,31 +38,29 @@ namespace shiny::nesting::search::detail {
 // True iff any stop condition is currently active (cancellation or time
 // limit expired).  Mirrors OrderEvaluator::interrupted() for drivers that
 // manage their own timing state without an OrderEvaluator (e.g. BRKGA).
-[[nodiscard]] auto driver_interrupted(
-    const SolveControl &control,
-    const runtime::TimeBudget &time_budget,
-    const runtime::Stopwatch &stopwatch) noexcept -> bool;
+[[nodiscard]] auto
+driver_interrupted(const SolveControl &control,
+                   const runtime::TimeBudget &time_budget,
+                   const runtime::Stopwatch &stopwatch) noexcept -> bool;
 
 // Classify the terminal stop reason after a search loop exits.
-[[nodiscard]] auto driver_stop_reason(
-    const SolveControl &control,
-    const runtime::TimeBudget &time_budget,
-    const runtime::Stopwatch &stopwatch,
-    bool hit_iteration_limit) noexcept -> StopReason;
+[[nodiscard]] auto driver_stop_reason(const SolveControl &control,
+                                      const runtime::TimeBudget &time_budget,
+                                      const runtime::Stopwatch &stopwatch,
+                                      bool hit_operation_limit) noexcept
+    -> StopReason;
 
 // Build a BudgetState snapshot from the current timing and control state.
-[[nodiscard]] auto driver_make_budget(
-    const SolveControl &control,
-    const runtime::TimeBudget &time_budget,
-    const runtime::Stopwatch &stopwatch,
-    std::size_t iterations_completed) noexcept -> BudgetState;
+[[nodiscard]] auto driver_make_budget(const SolveControl &control,
+                                      const runtime::TimeBudget &time_budget,
+                                      const runtime::Stopwatch &stopwatch,
+                                      std::size_t operations_completed) noexcept
+    -> BudgetState;
 
 // Construct the zero-iteration NestingResult returned when a request
 // carries no expanded pieces.  Takes ownership of `replay`.
 [[nodiscard]] auto driver_empty_result(
-    StrategyKind strategy,
-    SearchReplay replay,
-    const SolveControl &control,
+    StrategyKind strategy, SearchReplay replay, const SolveControl &control,
     const runtime::TimeBudget &time_budget,
     const runtime::Stopwatch &stopwatch) noexcept -> NestingResult;
 

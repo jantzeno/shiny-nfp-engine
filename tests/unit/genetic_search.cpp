@@ -273,9 +273,9 @@ TEST_CASE("genetic search scenario fixtures", "[search][genetic][fixtures]") {
         REQUIRE(result.best.total_utilization ==
                 Approx(*best_total_utilization));
       }
-      if (const auto iterations_completed =
-              expected.get_optional<std::uint32_t>("iterations_completed")) {
-        REQUIRE(result.iterations_completed == *iterations_completed);
+      if (const auto operations_completed =
+              expected.get_optional<std::uint32_t>("operations_completed")) {
+        REQUIRE(result.operations_completed == *operations_completed);
       }
       if (const auto progress_count =
               expected.get_optional<std::size_t>("progress_count")) {
@@ -305,7 +305,7 @@ TEST_CASE("genetic search is deterministic for a fixed scenario seed",
   REQUIRE(first.best.bin_count == second.best.bin_count);
   REQUIRE(first.best.total_utilization ==
           Approx(second.best.total_utilization));
-  REQUIRE(first.iterations_completed == second.iterations_completed);
+  REQUIRE(first.operations_completed == second.operations_completed);
 }
 
 TEST_CASE(
@@ -333,7 +333,7 @@ TEST_CASE(
   REQUIRE(parallel.best.bin_count == serial.best.bin_count);
   REQUIRE(parallel.best.total_utilization ==
           Approx(serial.best.total_utilization));
-  REQUIRE(parallel.iterations_completed == serial.iterations_completed);
+  REQUIRE(parallel.operations_completed == serial.operations_completed);
   REQUIRE(parallel.progress.size() == serial.progress.size());
 }
 
@@ -363,8 +363,8 @@ TEST_CASE("genetic search repeated parallel runs remain stable",
   REQUIRE(second.best.total_utilization ==
           Approx(first.best.total_utilization));
   REQUIRE(third.best.total_utilization == Approx(first.best.total_utilization));
-  REQUIRE(second.iterations_completed == first.iterations_completed);
-  REQUIRE(third.iterations_completed == first.iterations_completed);
+  REQUIRE(second.operations_completed == first.operations_completed);
+  REQUIRE(third.operations_completed == first.operations_completed);
 }
 
 TEST_CASE("genetic search observer replay matches retained history",
@@ -437,7 +437,7 @@ TEST_CASE("genetic search acknowledges cancellation at a safe boundary",
   const auto result = search.improve(request);
 
   REQUIRE(result.status == SearchRunStatus::cancelled);
-  REQUIRE(result.iterations_completed == 0U);
+  REQUIRE(result.operations_completed == 0U);
   REQUIRE(result.progress.size() == 1U);
 }
 
@@ -475,7 +475,7 @@ TEST_CASE("genetic search discards a cancelled in-flight generation",
   const auto result = search.improve(request);
 
   REQUIRE(result.status == SearchRunStatus::cancelled);
-  REQUIRE(result.iterations_completed == 0U);
+  REQUIRE(result.operations_completed == 0U);
   REQUIRE(result.progress.size() == 1U);
   REQUIRE(result.best.piece_order == result.baseline.piece_order);
   REQUIRE(result.best.unplaced_piece_count ==
@@ -524,7 +524,7 @@ TEST_CASE("genetic search discards a timed-out in-flight generation",
   const auto result = search.improve(request);
 
   REQUIRE(result.status == SearchRunStatus::timed_out);
-  REQUIRE(result.iterations_completed == 0U);
+  REQUIRE(result.operations_completed == 0U);
   REQUIRE(result.progress.size() == 1U);
   REQUIRE(result.best.piece_order == result.baseline.piece_order);
   REQUIRE(result.best.unplaced_piece_count ==
@@ -552,7 +552,7 @@ TEST_CASE("genetic search does not cache an interrupted baseline decode",
   const auto result = search.improve(request);
 
   REQUIRE(result.status == SearchRunStatus::cancelled);
-  REQUIRE(result.iterations_completed == 0U);
+  REQUIRE(result.operations_completed == 0U);
   REQUIRE(result.progress.size() == 1U);
   REQUIRE(result.baseline.decode.interrupted);
   REQUIRE(result.best.decode.interrupted);
@@ -574,14 +574,14 @@ TEST_CASE("genetic search plateau budget bounds stalled generations",
 
   GeneticSearch immediate_search;
   const auto immediate = immediate_search.improve(request);
-  REQUIRE(immediate.iterations_completed == 1U);
+  REQUIRE(immediate.operations_completed == 1U);
   REQUIRE_FALSE(immediate.improved());
 
   request.genetic_search.plateau_generations = 3;
 
   GeneticSearch plateau_search;
   const auto plateau = plateau_search.improve(request);
-  REQUIRE(plateau.iterations_completed == 3U);
+  REQUIRE(plateau.operations_completed == 3U);
   REQUIRE_FALSE(plateau.improved());
   REQUIRE(plateau.best.piece_order == immediate.best.piece_order);
 }

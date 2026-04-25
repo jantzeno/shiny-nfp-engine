@@ -26,28 +26,31 @@ using namespace shiny::nesting::test::mtg;
 
 namespace {
 
-[[nodiscard]] auto rectangle(double min_x, double min_y, double max_x, double max_y)
-    -> geom::PolygonWithHoles {
+[[nodiscard]] auto rectangle(double min_x, double min_y, double max_x,
+                             double max_y) -> geom::PolygonWithHoles {
   return {
-      .outer = {
-          {min_x, min_y},
-          {max_x, min_y},
-          {max_x, max_y},
-          {min_x, max_y},
-      },
+      .outer =
+          {
+              {min_x, min_y},
+              {max_x, min_y},
+              {max_x, max_y},
+              {min_x, max_y},
+          },
   };
 }
 
 [[nodiscard]] auto frame(double min_x, double min_y, double max_x, double max_y,
-                         double hole_min_x, double hole_min_y, double hole_max_x,
-                         double hole_max_y) -> geom::PolygonWithHoles {
+                         double hole_min_x, double hole_min_y,
+                         double hole_max_x, double hole_max_y)
+    -> geom::PolygonWithHoles {
   return {
-      .outer = {
-          {min_x, min_y},
-          {max_x, min_y},
-          {max_x, max_y},
-          {min_x, max_y},
-      },
+      .outer =
+          {
+              {min_x, min_y},
+              {max_x, min_y},
+              {max_x, max_y},
+              {min_x, max_y},
+          },
       .holes = {{
           {hole_min_x, hole_min_y},
           {hole_min_x, hole_max_y},
@@ -69,22 +72,23 @@ namespace {
   options.allow_part_overflow = true;
   options.maintain_bed_assignment = false;
 
-  options.production.population_size = 6;
+  options.production.population_size = 4;
   options.production.elite_count = 1;
   options.production.mutant_count = 1;
   options.production.max_iterations = 2;
+  options.production.polishing_passes = 0;
 
-  options.simulated_annealing.max_refinements = 4;
+  options.simulated_annealing.max_refinements = 2;
   options.simulated_annealing.restart_count = 1;
 
-  options.alns.max_refinements = 4;
+  options.alns.max_refinements = 2;
   options.alns.destroy_min_count = 1;
   options.alns.destroy_max_count = 2;
 
-  options.gdrr.max_refinements = 4;
+  options.gdrr.max_refinements = 2;
 
-  options.lahc.max_refinements = 4;
-  options.lahc.history_length = 3;
+  options.lahc.max_refinements = 2;
+  options.lahc.history_length = 4;
   return options;
 }
 
@@ -130,11 +134,12 @@ namespace {
   return nullptr;
 }
 
-[[nodiscard]] auto resolve_piece_rotation_degrees(
-    const NestingRequest &request, const pack::PlacedPiece &placed)
+[[nodiscard]] auto
+resolve_piece_rotation_degrees(const NestingRequest &request,
+                               const pack::PlacedPiece &placed)
     -> std::optional<double> {
-  const auto piece_it =
-      std::find_if(request.pieces.begin(), request.pieces.end(), [&](const auto &piece) {
+  const auto piece_it = std::find_if(
+      request.pieces.begin(), request.pieces.end(), [&](const auto &piece) {
         return piece.piece_id == placed.placement.piece_id;
       });
   if (piece_it == request.pieces.end()) {
@@ -188,7 +193,8 @@ auto seed_priority_values(NestingRequest &request,
   return expanded_ids;
 }
 
-[[nodiscard]] auto make_hole_request(ProductionOptimizerKind kind) -> NestingRequest {
+[[nodiscard]] auto make_hole_request(ProductionOptimizerKind kind)
+    -> NestingRequest {
   NestingRequest request;
   request.execution.strategy = StrategyKind::metaheuristic_search;
   request.execution.production_optimizer = kind;
@@ -224,30 +230,29 @@ auto seed_priority_values(NestingRequest &request,
 
 [[nodiscard]] auto fast_production_control() -> SolveControl {
   return SolveControl{
-      .iteration_limit = 2,
+      .operation_limit = 2,
       .random_seed = 31,
   };
 }
 
-}  // namespace
+} // namespace
 
-TEST_CASE("mtg metaheuristic-search positive matrix places every part on the asymmetric synthetic fixture",
+TEST_CASE("mtg metaheuristic-search positive matrix places every part on the "
+          "asymmetric synthetic fixture",
           "[mtg][nesting-matrix][metaheuristic-search][slow]") {
-  // This breadth matrix intentionally stays on the small synthetic fixture so it
-  // remains fast and optimizer-focused. Real-silhouette underplacement on the
-  // MTG artwork is characterized separately in mtg_engine_bug_repros.cpp.
+  // This breadth matrix intentionally stays on the small synthetic fixture so
+  // it remains fast and optimizer-focused. Real-silhouette underplacement on
+  // the MTG artwork is characterized separately in mtg_engine_bug_repros.cpp.
   const auto fixture = make_asymmetric_engine_surface_fixture();
 
   const auto kind = ProductionOptimizerKind::simulated_annealing;
   const double spacing_mm = GENERATE(0.0, 1.0);
-  const auto candidate_strategy = GENERATE(CandidateStrategy::anchor_vertex,
-                                           CandidateStrategy::nfp_perfect,
-                                           CandidateStrategy::nfp_arrangement,
-                                           CandidateStrategy::nfp_hybrid);
-  const auto piece_ordering = GENERATE(PieceOrdering::input,
-                                       PieceOrdering::largest_area_first,
-                                       PieceOrdering::hull_diameter_first,
-                                       PieceOrdering::priority);
+  const auto candidate_strategy = GENERATE(
+      CandidateStrategy::anchor_vertex, CandidateStrategy::nfp_perfect,
+      CandidateStrategy::nfp_arrangement, CandidateStrategy::nfp_hybrid);
+  const auto piece_ordering =
+      GENERATE(PieceOrdering::input, PieceOrdering::largest_area_first,
+               PieceOrdering::hull_diameter_first, PieceOrdering::priority);
   const bool enable_direct_overlap_check = GENERATE(false, true);
   const bool enable_backtracking = GENERATE(false, true);
   const bool enable_compaction = GENERATE(false, true);
@@ -276,15 +281,16 @@ TEST_CASE("mtg metaheuristic-search positive matrix places every part on the asy
   validate_layout(fixture, request, options, solved.value(), expected);
 }
 
-TEST_CASE("mtg metaheuristic-search optimizer breadth places every part on the asymmetric synthetic fixture",
+TEST_CASE("mtg metaheuristic-search optimizer breadth places every part on the "
+          "asymmetric synthetic fixture",
           "[mtg][nesting-matrix][metaheuristic-search][slow]") {
   const auto fixture = make_asymmetric_engine_surface_fixture();
 
-  const auto kind = GENERATE(ProductionOptimizerKind::brkga,
-                             ProductionOptimizerKind::simulated_annealing,
-                             ProductionOptimizerKind::alns,
-                             ProductionOptimizerKind::gdrr,
-                             ProductionOptimizerKind::lahc);
+  const auto kind =
+      GENERATE(ProductionOptimizerKind::brkga,
+               ProductionOptimizerKind::simulated_annealing,
+               ProductionOptimizerKind::alns, ProductionOptimizerKind::gdrr,
+               ProductionOptimizerKind::lahc);
   auto options = baseline_production_options(kind);
 
   auto request = make_request(fixture, options);
@@ -302,11 +308,11 @@ TEST_CASE("mtg metaheuristic-search optimizer breadth places every part on the a
 
 TEST_CASE("mtg metaheuristic-search honors per-piece allowed_rotations",
           "[mtg][nesting-matrix][metaheuristic-search][rotations]") {
-  const auto kind = GENERATE(ProductionOptimizerKind::brkga,
-                             ProductionOptimizerKind::simulated_annealing,
-                             ProductionOptimizerKind::alns,
-                             ProductionOptimizerKind::gdrr,
-                             ProductionOptimizerKind::lahc);
+  const auto kind =
+      GENERATE(ProductionOptimizerKind::brkga,
+               ProductionOptimizerKind::simulated_annealing,
+               ProductionOptimizerKind::alns, ProductionOptimizerKind::gdrr,
+               ProductionOptimizerKind::lahc);
   const auto fixture = make_asymmetric_engine_surface_fixture();
 
   auto options = baseline_production_options(kind);
@@ -335,13 +341,14 @@ TEST_CASE("mtg metaheuristic-search honors per-piece allowed_rotations",
   REQUIRE(std::fabs(*rotation - 90.0) <= 1e-9);
 }
 
-TEST_CASE("mtg metaheuristic-search allow_mirror toggle preserves full placement",
-          "[mtg][nesting-matrix][metaheuristic-search][mirror]") {
-  const auto kind = GENERATE(ProductionOptimizerKind::brkga,
-                             ProductionOptimizerKind::simulated_annealing,
-                             ProductionOptimizerKind::alns,
-                             ProductionOptimizerKind::gdrr,
-                             ProductionOptimizerKind::lahc);
+TEST_CASE(
+    "mtg metaheuristic-search allow_mirror toggle preserves full placement",
+    "[mtg][nesting-matrix][metaheuristic-search][mirror]") {
+  const auto kind =
+      GENERATE(ProductionOptimizerKind::brkga,
+               ProductionOptimizerKind::simulated_annealing,
+               ProductionOptimizerKind::alns, ProductionOptimizerKind::gdrr,
+               ProductionOptimizerKind::lahc);
   const auto fixture = make_asymmetric_engine_surface_fixture();
   auto options = baseline_production_options(kind);
 
@@ -370,11 +377,11 @@ TEST_CASE("mtg metaheuristic-search allow_mirror toggle preserves full placement
 
 TEST_CASE("mtg metaheuristic-search expands quantity>1 instances",
           "[mtg][nesting-matrix][metaheuristic-search][quantity]") {
-  const auto kind = GENERATE(ProductionOptimizerKind::brkga,
-                             ProductionOptimizerKind::simulated_annealing,
-                             ProductionOptimizerKind::alns,
-                             ProductionOptimizerKind::gdrr,
-                             ProductionOptimizerKind::lahc);
+  const auto kind =
+      GENERATE(ProductionOptimizerKind::brkga,
+               ProductionOptimizerKind::simulated_annealing,
+               ProductionOptimizerKind::alns, ProductionOptimizerKind::gdrr,
+               ProductionOptimizerKind::lahc);
   const auto fixture = make_asymmetric_engine_surface_fixture();
 
   auto options = baseline_production_options(kind);
@@ -392,7 +399,8 @@ TEST_CASE("mtg metaheuristic-search expands quantity>1 instances",
   REQUIRE(solved.value().layout.unplaced_piece_ids.empty());
   REQUIRE(count_total_placements(solved.value()) == fixture.pieces.size() + 2U);
 
-  const auto expanded_ids = expanded_piece_ids_for_source(request, target_piece_id);
+  const auto expanded_ids =
+      expanded_piece_ids_for_source(request, target_piece_id);
   REQUIRE(expanded_ids.size() == 3U);
 
   std::size_t placed_target_instances = 0;
@@ -409,11 +417,11 @@ TEST_CASE("mtg metaheuristic-search expands quantity>1 instances",
 
 TEST_CASE("mtg metaheuristic-search enforces allowed_bin_ids",
           "[mtg][nesting-matrix][metaheuristic-search][allowed-bin-ids]") {
-  const auto kind = GENERATE(ProductionOptimizerKind::brkga,
-                             ProductionOptimizerKind::simulated_annealing,
-                             ProductionOptimizerKind::alns,
-                             ProductionOptimizerKind::gdrr,
-                             ProductionOptimizerKind::lahc);
+  const auto kind =
+      GENERATE(ProductionOptimizerKind::brkga,
+               ProductionOptimizerKind::simulated_annealing,
+               ProductionOptimizerKind::alns, ProductionOptimizerKind::gdrr,
+               ProductionOptimizerKind::lahc);
   const auto fixture = make_asymmetric_engine_surface_fixture();
 
   SECTION("non-conflicting allowed_bin_ids stay admissible") {
@@ -439,7 +447,8 @@ TEST_CASE("mtg metaheuristic-search enforces allowed_bin_ids",
     validate_layout(fixture, request, options, solved.value(), expected);
   }
 
-  SECTION("selected beds conflicting with allowed_bin_ids keep the piece unplaced") {
+  SECTION("selected beds conflicting with allowed_bin_ids keep the piece "
+          "unplaced") {
     auto fixture = make_asymmetric_engine_surface_fixture();
     const auto selected_bed_id = GENERATE(kBed1Id, kBed2Id);
     const auto other_bed_id = selected_bed_id == kBed1Id ? kBed2Id : kBed1Id;
@@ -463,21 +472,25 @@ TEST_CASE("mtg metaheuristic-search enforces allowed_bin_ids",
     ExpectedOutcome expected{};
     expected.expected_placed_count = 1;
     expected.per_bed_counts = {{selected_bed_id, 1}};
-    expected.required_assignments = {{fixture.pieces[1].piece_id, selected_bed_id}};
+    expected.required_assignments = {
+        {fixture.pieces[1].piece_id, selected_bed_id}};
     expected.require_allowed_bin_admissibility = true;
     validate_layout(fixture, request, options, solved.value(), expected);
 
-    REQUIRE(find_piece_placement(solved.value(), fixture.pieces[0].piece_id) == nullptr);
+    REQUIRE(find_piece_placement(solved.value(), fixture.pieces[0].piece_id) ==
+            nullptr);
   }
 }
 
-TEST_CASE("mtg metaheuristic-search maintain_bed_assignment pins pieces to source beds",
-          "[mtg][nesting-matrix][metaheuristic-search][maintain-bed-assignment]") {
-  const auto kind = GENERATE(ProductionOptimizerKind::brkga,
-                             ProductionOptimizerKind::simulated_annealing,
-                             ProductionOptimizerKind::alns,
-                             ProductionOptimizerKind::gdrr,
-                             ProductionOptimizerKind::lahc);
+TEST_CASE(
+    "mtg metaheuristic-search maintain_bed_assignment pins pieces to source "
+    "beds",
+    "[mtg][nesting-matrix][metaheuristic-search][maintain-bed-assignment]") {
+  const auto kind =
+      GENERATE(ProductionOptimizerKind::brkga,
+               ProductionOptimizerKind::simulated_annealing,
+               ProductionOptimizerKind::alns, ProductionOptimizerKind::gdrr,
+               ProductionOptimizerKind::lahc);
   const auto fixture = make_asymmetric_engine_surface_fixture();
 
   auto options = baseline_production_options(kind);
@@ -501,13 +514,15 @@ TEST_CASE("mtg metaheuristic-search maintain_bed_assignment pins pieces to sourc
   validate_layout(fixture, request, options, solved.value(), expected);
 }
 
-TEST_CASE("mtg metaheuristic-search observer and cancellation work for every optimizer",
-          "[mtg][nesting-matrix][metaheuristic-search][observer][cancellation]") {
-  const auto kind = GENERATE(ProductionOptimizerKind::brkga,
-                             ProductionOptimizerKind::simulated_annealing,
-                             ProductionOptimizerKind::alns,
-                             ProductionOptimizerKind::gdrr,
-                             ProductionOptimizerKind::lahc);
+TEST_CASE(
+    "mtg metaheuristic-search observer and cancellation work for every "
+    "optimizer",
+    "[mtg][nesting-matrix][metaheuristic-search][observer][cancellation]") {
+  const auto kind =
+      GENERATE(ProductionOptimizerKind::brkga,
+               ProductionOptimizerKind::simulated_annealing,
+               ProductionOptimizerKind::alns, ProductionOptimizerKind::gdrr,
+               ProductionOptimizerKind::lahc);
   const auto fixture = load_mtg_fixture();
 
   const auto options = observer_production_options(kind);
@@ -532,8 +547,8 @@ TEST_CASE("mtg metaheuristic-search observer and cancellation work for every opt
 
   REQUIRE(observed.size() >= 2U);
   for (std::size_t index = 1; index < observed.size(); ++index) {
-    REQUIRE(observed[index].budget.iterations_completed >=
-            observed[index - 1].budget.iterations_completed);
+    REQUIRE(observed[index].budget.operations_completed >=
+            observed[index - 1].budget.operations_completed);
   }
 
   REQUIRE(solved.value().stop_reason == StopReason::cancelled);
@@ -542,11 +557,11 @@ TEST_CASE("mtg metaheuristic-search observer and cancellation work for every opt
 
 TEST_CASE("metaheuristic-search enable_part_in_part_placement fills the hole",
           "[mtg][nesting-matrix][metaheuristic-search][part-in-part]") {
-  const auto kind = GENERATE(ProductionOptimizerKind::brkga,
-                             ProductionOptimizerKind::simulated_annealing,
-                             ProductionOptimizerKind::alns,
-                             ProductionOptimizerKind::gdrr,
-                             ProductionOptimizerKind::lahc);
+  const auto kind =
+      GENERATE(ProductionOptimizerKind::brkga,
+               ProductionOptimizerKind::simulated_annealing,
+               ProductionOptimizerKind::alns, ProductionOptimizerKind::gdrr,
+               ProductionOptimizerKind::lahc);
   const auto request = make_hole_request(kind);
   REQUIRE(request.is_valid());
 
@@ -559,18 +574,19 @@ TEST_CASE("metaheuristic-search enable_part_in_part_placement fills the hole",
   const auto &placements = solved.value().layout.bins.front().placements;
   REQUIRE(placements[1].inside_hole);
 
-  const auto overlap = poly::intersection_polygons(placements[0].polygon,
-                                                   placements[1].polygon);
+  const auto overlap =
+      poly::intersection_polygons(placements[0].polygon, placements[1].polygon);
   REQUIRE(overlap.empty());
 }
 
-TEST_CASE("mtg metaheuristic-search explore_concave_candidates still places every part on the asymmetric synthetic fixture",
+TEST_CASE("mtg metaheuristic-search explore_concave_candidates still places "
+          "every part on the asymmetric synthetic fixture",
           "[mtg][nesting-matrix][metaheuristic-search][concave-candidates]") {
-  const auto kind = GENERATE(ProductionOptimizerKind::brkga,
-                             ProductionOptimizerKind::simulated_annealing,
-                             ProductionOptimizerKind::alns,
-                             ProductionOptimizerKind::gdrr,
-                             ProductionOptimizerKind::lahc);
+  const auto kind =
+      GENERATE(ProductionOptimizerKind::brkga,
+               ProductionOptimizerKind::simulated_annealing,
+               ProductionOptimizerKind::alns, ProductionOptimizerKind::gdrr,
+               ProductionOptimizerKind::lahc);
   const auto fixture = make_asymmetric_engine_surface_fixture();
 
   auto options = baseline_production_options(kind);

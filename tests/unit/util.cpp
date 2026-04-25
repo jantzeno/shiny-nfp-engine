@@ -21,5 +21,5 @@ TEST_CASE("status or carries values and error states", "[util][status]") {
   REQUIRE_FALSE(static_cast<bool>(error_or));
   REQUIRE(error_or.status() == shiny::nesting::util::Status::invalid_input);
 
-  SHINY_NFP_LOG(info, "status-or test exercised logging hook");
+  SHINY_NESTING_LOG(info, "status-or test exercised logging hook");
 }

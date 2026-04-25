@@ -24,7 +24,7 @@ enum class SeedProgressionMode : std::uint8_t {
 struct SolveControl {
   ProgressObserver on_progress{};
   runtime::CancellationToken cancellation{};
-  std::size_t iteration_limit{0};
+  std::size_t operation_limit{0};
   std::uint64_t time_limit_milliseconds{0};
   std::uint64_t random_seed{0};
   SeedProgressionMode seed_mode{SeedProgressionMode::increment};

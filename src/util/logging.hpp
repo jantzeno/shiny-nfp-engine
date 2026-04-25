@@ -46,8 +46,8 @@ inline auto log_message(LogLevel level, Args &&...args) -> void {
 /**
  * @brief Convenience macro for compile-time gated repo logging.
  */
-#define SHINY_NFP_LOG(level, ...)                                              \
+#define SHINY_NESTING_LOG(level, ...)                                          \
   do {                                                                         \
-    ::shiny::nesting::util::detail::log_message(                                   \
-        ::shiny::nesting::util::LogLevel::level, __VA_ARGS__);                     \
+    ::shiny::nesting::util::detail::log_message(                               \
+        ::shiny::nesting::util::LogLevel::level, __VA_ARGS__);                 \
   } while (false)

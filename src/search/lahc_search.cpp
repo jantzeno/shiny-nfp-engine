@@ -8,7 +8,7 @@
 #include "runtime/timing.hpp"
 #include "search/detail/driver_scaffolding.hpp"
 #include "search/detail/lahc.hpp"
-#include "search/detail/neighborhood_ops.hpp"
+#include "search/detail/neighborhood_search.hpp"
 #include "search/strategy_registry.hpp"
 
 namespace shiny::nesting::search {
@@ -38,10 +38,31 @@ void register_lahc_strategy() {
 
 namespace {
 
+auto emit_initial_progress(const SolveControl &control,
+                           const SolutionPoolEntry &best,
+                           const BudgetState &budget) -> void {
+  if (!control.on_progress) {
+    return;
+  }
+  control.on_progress(ProgressSnapshot{
+      .sequence = 1U,
+      .placements_successful = best.metrics.placed_parts,
+      .total_requested_parts = best.result.total_parts,
+      .refinement_steps_completed = 0U,
+      .layout = best.result.layout,
+      .budget = budget,
+      .stop_reason = StopReason::none,
+      .phase = ProgressPhase::refinement,
+      .phase_detail = "LAHC initial seed",
+      .utilization_percent = best.metrics.utilization * 100.0,
+      .improved = true,
+  });
+}
+
 auto emit_improvement(const SolveControl &control, SearchReplay &replay,
                       const std::size_t sequence, const std::size_t iteration,
                       const SolutionPoolEntry &best, const BudgetState &budget,
-                      const detail::NeighborhoodOperator op) -> void {
+                      const detail::NeighborhoodSearch op) -> void {
   replay.progress.push_back({
       .iteration = iteration,
       .improved = true,
@@ -53,16 +74,43 @@ auto emit_improvement(const SolveControl &control, SearchReplay &replay,
   }
   control.on_progress(ProgressSnapshot{
       .sequence = sequence,
-      .placed_parts = best.metrics.placed_parts,
-      .total_parts = best.result.total_parts,
+      .placements_successful = best.metrics.placed_parts,
+      .total_requested_parts = best.result.total_parts,
+      .refinement_steps_completed = iteration,
       .layout = best.result.layout,
       .budget = budget,
       .stop_reason = StopReason::none,
-      .phase = ProgressPhase::part_refinement,
+      .phase = ProgressPhase::refinement,
       .phase_detail = std::format("LAHC iter {} improved via {}", iteration,
                                   detail::operator_label(op)),
       .utilization_percent = best.metrics.utilization * 100.0,
       .improved = true,
+  });
+}
+
+auto emit_iteration_progress(const SolveControl &control,
+                             const std::size_t iteration,
+                             const SolutionPoolEntry &current,
+                             const BudgetState &budget,
+                             const detail::NeighborhoodSearch op,
+                             const bool accepted) -> void {
+  if (!control.on_progress) {
+    return;
+  }
+  control.on_progress(ProgressSnapshot{
+      .sequence = 0,
+      .placements_successful = current.metrics.placed_parts,
+      .total_requested_parts = current.result.total_parts,
+      .refinement_steps_completed = iteration,
+      .layout = current.result.layout,
+      .budget = budget,
+      .stop_reason = StopReason::none,
+      .phase = ProgressPhase::refinement,
+      .phase_detail = std::format("LAHC iter {} {} via {}", iteration,
+                                  accepted ? "accepted" : "rejected",
+                                  detail::operator_label(op)),
+      .utilization_percent = current.metrics.utilization * 100.0,
+      .improved = false,
   });
 }
 
@@ -86,12 +134,12 @@ auto LahcSearch::solve(const NormalizedRequest &request,
 
   runtime::Stopwatch stopwatch;
   const runtime::TimeBudget time_budget(control.time_limit_milliseconds);
-  const auto &config = resolve_strategy_config(request.request.execution,
-                                               StrategyKind::lahc,
-                                               ProductionOptimizerKind::lahc,
-                                               request.request.execution.lahc);
-  const std::size_t iteration_limit =
-      control.iteration_limit > 0U ? control.iteration_limit : config.max_refinements;
+  const auto &config = resolve_strategy_config(
+      request.request.execution, StrategyKind::lahc,
+      ProductionOptimizerKind::lahc, request.request.execution.lahc);
+  const std::size_t operation_limit = control.operation_limit > 0U
+                                          ? control.operation_limit
+                                          : config.max_refinements;
 
   SearchReplay replay{.optimizer = OptimizerKind::lahc};
   if (request.expanded_pieces.empty()) {
@@ -115,9 +163,9 @@ auto LahcSearch::solve(const NormalizedRequest &request,
   detail::LateAcceptanceHistory lahc(config.history_length,
                                      detail::objective_score(current.metrics));
 
-  std::size_t iterations_completed = 0;
+  std::size_t operations_completed = 0;
   std::size_t sequence = 1U;
-  bool hit_iteration_limit = false;
+  bool hit_operation_limit = false;
   std::size_t plateau = 0;
   replay.progress.push_back({
       .iteration = 0,
@@ -125,24 +173,26 @@ auto LahcSearch::solve(const NormalizedRequest &request,
       .layout = best.result.layout,
       .budget = evaluator.make_budget(0),
   });
+  emit_initial_progress(control, best, evaluator.make_budget(0));
 
-  for (std::size_t iteration = 0; iteration < iteration_limit; ++iteration) {
+  for (std::size_t iteration = 0; iteration < operation_limit; ++iteration) {
     if (evaluator.interrupted()) {
       break;
     }
 
     const auto op = detail::random_operator(rng, true);
     const auto move = detail::propose_move(
-        current.order, current.forced_rotations, request, evaluator.piece_areas(),
-        evaluator.piece_rotation_counts(), rng, op,
-        1U + rng.uniform_index(std::max<std::size_t>(config.perturbation_swaps, 1U)));
+        current.order, current.forced_rotations, request,
+        evaluator.piece_areas(), evaluator.piece_rotation_counts(), rng, op,
+        1U + rng.uniform_index(
+                 std::max<std::size_t>(config.perturbation_swaps, 1U)));
     if (!move.changed) {
       continue;
     }
 
     auto candidate =
         evaluator.evaluate(move.order, move.forced_rotations, iteration + 31U);
-    ++iterations_completed;
+    ++operations_completed;
 
     const double current_score = detail::objective_score(current.metrics);
     const double candidate_score = detail::objective_score(candidate.metrics);
@@ -166,15 +216,18 @@ auto LahcSearch::solve(const NormalizedRequest &request,
     if (better_metrics(candidate.metrics, best.metrics)) {
       best = candidate;
       ++sequence;
-      emit_improvement(control, replay, sequence, iterations_completed, best,
-                       evaluator.make_budget(iterations_completed), op);
+      emit_improvement(control, replay, sequence, operations_completed, best,
+                       evaluator.make_budget(operations_completed), op);
     }
+    emit_iteration_progress(control, operations_completed, current,
+                            evaluator.make_budget(operations_completed), op,
+                            accepted);
     if (plateau >= config.plateau_limit) {
       current = best;
       plateau = 0;
     }
-    if (iterations_completed >= iteration_limit) {
-      hit_iteration_limit = control.iteration_limit > 0U ||
+    if (operations_completed >= operation_limit) {
+      hit_operation_limit = control.operation_limit > 0U ||
                             iteration + 1U >= config.max_refinements;
       break;
     }
@@ -182,9 +235,9 @@ auto LahcSearch::solve(const NormalizedRequest &request,
 
   NestingResult result = best.result;
   result.strategy = StrategyKind::lahc;
-  result.budget = evaluator.make_budget(iterations_completed);
-  result.stop_reason =
-      detail::driver_stop_reason(control, time_budget, stopwatch, hit_iteration_limit);
+  result.budget = evaluator.make_budget(operations_completed);
+  result.stop_reason = detail::driver_stop_reason(
+      control, time_budget, stopwatch, hit_operation_limit);
   result.search = std::move(replay);
   return result;
 }

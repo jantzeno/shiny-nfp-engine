@@ -388,7 +388,7 @@ void require_same_progress_entry(const SearchProgressEntry &actual,
 void require_same_run_summary(const SearchRunSummary &actual,
                               const SearchRunSummary &expected) {
   REQUIRE(actual.algorithm_kind == expected.algorithm_kind);
-  REQUIRE(actual.iterations_completed == expected.iterations_completed);
+  REQUIRE(actual.operations_completed == expected.operations_completed);
   REQUIRE(actual.iteration_budget == expected.iteration_budget);
   REQUIRE(actual.timestamp_unix_ms == expected.timestamp_unix_ms);
   REQUIRE(actual.elapsed_ms == expected.elapsed_ms);
@@ -589,8 +589,8 @@ TEST_CASE("search scenario fixtures", "[search][scenario][fixtures]") {
               expected.get<std::size_t>("best_bin_count"));
       REQUIRE(result.best.piece_order ==
               parse_ids(expected.get_child("best_piece_order")));
-      REQUIRE(result.iterations_completed ==
-              expected.get<std::uint32_t>("iterations_completed"));
+      REQUIRE(result.operations_completed ==
+              expected.get<std::uint32_t>("operations_completed"));
       REQUIRE(result.progress.size() ==
               expected.get<std::size_t>("progress_count"));
 
@@ -661,7 +661,7 @@ TEST_CASE("search preserves the single-worker baseline across worker counts",
   REQUIRE(parallel.best.bin_count == serial.best.bin_count);
   REQUIRE(parallel.best.total_utilization ==
           Approx(serial.best.total_utilization));
-  REQUIRE(parallel.iterations_completed == serial.iterations_completed);
+  REQUIRE(parallel.operations_completed == serial.operations_completed);
   REQUIRE(parallel.progress.size() == serial.progress.size());
 }
 
@@ -691,8 +691,8 @@ TEST_CASE("search repeated parallel runs remain stable",
   REQUIRE(second.best.total_utilization ==
           Approx(first.best.total_utilization));
   REQUIRE(third.best.total_utilization == Approx(first.best.total_utilization));
-  REQUIRE(second.iterations_completed == first.iterations_completed);
-  REQUIRE(third.iterations_completed == first.iterations_completed);
+  REQUIRE(second.operations_completed == first.operations_completed);
+  REQUIRE(third.operations_completed == first.operations_completed);
 }
 
 TEST_CASE("search observer replay matches retained history and final progress",
@@ -779,7 +779,7 @@ TEST_CASE("search acknowledges cancellation at a safe observer boundary",
   const auto result = search.improve(request);
 
   REQUIRE(result.status == SearchRunStatus::cancelled);
-  REQUIRE(result.iterations_completed == 0U);
+  REQUIRE(result.operations_completed == 0U);
   REQUIRE(result.progress.size() == 1U);
   REQUIRE(live_events.size() == 3U);
   REQUIRE(shiny::nesting::search::search_event_kind(live_events[0]) ==
@@ -824,7 +824,7 @@ TEST_CASE("search discards a cancelled in-flight iteration",
   const auto result = search.improve(request);
 
   REQUIRE(result.status == SearchRunStatus::cancelled);
-  REQUIRE(result.iterations_completed == 0U);
+  REQUIRE(result.operations_completed == 0U);
   REQUIRE(result.progress.size() == 1U);
   REQUIRE(result.best.piece_order == result.baseline.piece_order);
   REQUIRE(result.best.unplaced_piece_count ==
@@ -873,7 +873,7 @@ TEST_CASE("search discards a timed-out in-flight iteration",
   const auto result = search.improve(request);
 
   REQUIRE(result.status == SearchRunStatus::timed_out);
-  REQUIRE(result.iterations_completed == 0U);
+  REQUIRE(result.operations_completed == 0U);
   REQUIRE(result.progress.size() == 1U);
   REQUIRE(result.best.piece_order == result.baseline.piece_order);
   REQUIRE(result.best.unplaced_piece_count ==
@@ -910,7 +910,7 @@ TEST_CASE("search emits timeout when the time budget is exceeded",
   const auto result = search.improve(request);
 
   REQUIRE(result.status == SearchRunStatus::timed_out);
-  REQUIRE(result.iterations_completed == 0U);
+  REQUIRE(result.operations_completed == 0U);
   REQUIRE(result.progress.size() == 1U);
   REQUIRE(live_events.size() == 3U);
   REQUIRE(shiny::nesting::search::search_event_kind(live_events[0]) ==
@@ -935,7 +935,7 @@ TEST_CASE("search does not cache an interrupted baseline decode",
   const auto result = search.improve(request);
 
   REQUIRE(result.status == SearchRunStatus::cancelled);
-  REQUIRE(result.iterations_completed == 0U);
+  REQUIRE(result.operations_completed == 0U);
   REQUIRE(result.progress.size() == 1U);
   REQUIRE(result.baseline.decode.interrupted);
   REQUIRE(result.best.decode.interrupted);
@@ -1034,7 +1034,7 @@ TEST_CASE("search plateau budget delays termination after a stall",
 
   JostleSearch immediate_search;
   const auto immediate = immediate_search.improve(request);
-  REQUIRE(immediate.iterations_completed == 1U);
+  REQUIRE(immediate.operations_completed == 1U);
   REQUIRE(immediate.progress.size() == 2U);
   REQUIRE_FALSE(immediate.improved());
 
@@ -1042,7 +1042,7 @@ TEST_CASE("search plateau budget delays termination after a stall",
 
   JostleSearch plateau_search;
   const auto plateau = plateau_search.improve(request);
-  REQUIRE(plateau.iterations_completed == 3U);
+  REQUIRE(plateau.operations_completed == 3U);
   REQUIRE(plateau.progress.size() == 4U);
   REQUIRE_FALSE(plateau.improved());
   REQUIRE(plateau.best.piece_order == immediate.best.piece_order);

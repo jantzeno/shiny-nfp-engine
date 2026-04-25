@@ -13,9 +13,9 @@
 #include "runtime/timing.hpp"
 #include "search/detail/cooling_schedule.hpp"
 #include "search/detail/driver_scaffolding.hpp"
-#include "search/detail/neighborhood_ops.hpp"
-#include "search/strategy_registry.hpp"
+#include "search/detail/neighborhood_search.hpp"
 #include "search/solution_pool.hpp"
+#include "search/strategy_registry.hpp"
 
 namespace shiny::nesting::search {
 namespace {
@@ -45,7 +45,8 @@ void register_alns_strategy() {
 namespace {
 
 [[nodiscard]] auto choose_operator(const std::vector<double> &weights,
-                                   runtime::DeterministicRng &rng) -> std::size_t {
+                                   runtime::DeterministicRng &rng)
+    -> std::size_t {
   const double total = std::accumulate(weights.begin(), weights.end(), 0.0);
   if (total <= 0.0) {
     return 0U;
@@ -63,7 +64,7 @@ namespace {
 auto emit_improvement(const SolveControl &control, SearchReplay &replay,
                       const std::size_t sequence, const std::size_t iteration,
                       const SolutionPoolEntry &best, const BudgetState &budget,
-                      const detail::NeighborhoodOperator op,
+                      const detail::NeighborhoodSearch op,
                       const double acceptance_ratio) -> void {
   replay.progress.push_back({
       .iteration = iteration,
@@ -76,37 +77,40 @@ auto emit_improvement(const SolveControl &control, SearchReplay &replay,
   }
   control.on_progress(ProgressSnapshot{
       .sequence = sequence,
-      .placed_parts = best.metrics.placed_parts,
-      .total_parts = best.result.total_parts,
+      .placements_successful = best.metrics.placed_parts,
+      .total_requested_parts = best.result.total_parts,
+      .refinement_steps_completed = iteration,
       .layout = best.result.layout,
       .budget = budget,
       .stop_reason = StopReason::none,
-      .phase = ProgressPhase::part_refinement,
-      .phase_detail = std::format("ALNS iter {} improved via {} (tol {:.3f})",
-                                  iteration, detail::operator_label(op),
-                                  acceptance_ratio),
+      .phase = ProgressPhase::refinement,
+      .phase_detail =
+          std::format("ALNS iter {} improved via {} (tol {:.3f})", iteration,
+                      detail::operator_label(op), acceptance_ratio),
       .utilization_percent = best.metrics.utilization * 100.0,
       .improved = true,
   });
 }
 
-auto emit_iteration_progress(const SolveControl &control, ProgressThrottle &throttle,
+auto emit_iteration_progress(const SolveControl &control,
+                             ProgressThrottle &throttle,
                              const std::size_t iteration,
                              const SolutionPoolEntry &current,
                              const BudgetState &budget,
-                             const detail::NeighborhoodOperator op,
+                             const detail::NeighborhoodSearch op,
                              const bool accepted) -> void {
   if (!control.on_progress || !throttle.should_emit()) {
     return;
   }
   control.on_progress(ProgressSnapshot{
       .sequence = 0,
-      .placed_parts = current.metrics.placed_parts,
-      .total_parts = current.result.total_parts,
+      .placements_successful = current.metrics.placed_parts,
+      .total_requested_parts = current.result.total_parts,
+      .refinement_steps_completed = iteration,
       .layout = current.result.layout,
       .budget = budget,
       .stop_reason = StopReason::none,
-      .phase = ProgressPhase::part_refinement,
+      .phase = ProgressPhase::refinement,
       .phase_detail = std::format("ALNS iter {} {} via {}", iteration,
                                   accepted ? "accepted" : "rejected",
                                   detail::operator_label(op)),
@@ -140,12 +144,12 @@ auto AlnsSearch::solve(const NormalizedRequest &request,
 
   runtime::Stopwatch stopwatch;
   const runtime::TimeBudget time_budget(control.time_limit_milliseconds);
-  const auto &config = resolve_strategy_config(request.request.execution,
-                                               StrategyKind::alns,
-                                               ProductionOptimizerKind::alns,
-                                               request.request.execution.alns);
-  const std::size_t iteration_limit =
-      control.iteration_limit > 0U ? control.iteration_limit : config.max_refinements;
+  const auto &config = resolve_strategy_config(
+      request.request.execution, StrategyKind::alns,
+      ProductionOptimizerKind::alns, request.request.execution.alns);
+  const std::size_t operation_limit = control.operation_limit > 0U
+                                          ? control.operation_limit
+                                          : config.max_refinements;
 
   SearchReplay replay{.optimizer = OptimizerKind::alns};
   if (request.expanded_pieces.empty()) {
@@ -159,7 +163,7 @@ auto AlnsSearch::solve(const NormalizedRequest &request,
   SolutionPool pool(8U);
 
   SAConfig cooling_config;
-  cooling_config.max_refinements = std::max<std::size_t>(iteration_limit, 1U);
+  cooling_config.max_refinements = std::max<std::size_t>(operation_limit, 1U);
   cooling_config.initial_temperature = config.initial_acceptance_ratio;
   cooling_config.final_temperature = config.final_acceptance_ratio;
   cooling_config.cooling_schedule = CoolingScheduleKind::geometric;
@@ -176,13 +180,15 @@ auto AlnsSearch::solve(const NormalizedRequest &request,
   auto reverse_seed =
       evaluator.evaluate(detail::reverse_order(request), forced_rotations, 3U);
   pool.insert(reverse_seed);
-  auto best = better_metrics(area_seed.metrics, current.metrics) ? area_seed : current;
+  auto best =
+      better_metrics(area_seed.metrics, current.metrics) ? area_seed : current;
   if (better_metrics(reverse_seed.metrics, best.metrics)) {
     best = reverse_seed;
   }
   current = best;
 
-  std::vector<detail::NeighborhoodOperator> operators = detail::all_alns_operators();
+  std::vector<detail::NeighborhoodSearch> operators =
+      detail::all_alns_operators();
   std::vector<double> weights(operators.size(), 1.0);
 
   std::size_t sequence = 1U;
@@ -192,11 +198,11 @@ auto AlnsSearch::solve(const NormalizedRequest &request,
       .layout = best.result.layout,
       .budget = evaluator.make_budget(0),
   });
-  std::size_t iterations_completed = 0;
-  bool hit_iteration_limit = false;
+  std::size_t operations_completed = 0;
+  bool hit_operation_limit = false;
   double acceptance_ratio = cooling.initial_temperature();
 
-  for (std::size_t iteration = 0; iteration < iteration_limit; ++iteration) {
+  for (std::size_t iteration = 0; iteration < operation_limit; ++iteration) {
     if (evaluator.interrupted()) {
       break;
     }
@@ -204,21 +210,22 @@ auto AlnsSearch::solve(const NormalizedRequest &request,
     const auto selected = choose_operator(weights, rng);
     const auto destroy_span =
         config.destroy_max_count - config.destroy_min_count + 1U;
-    const auto intensity = config.destroy_min_count +
-                           rng.uniform_index(std::max<std::size_t>(destroy_span, 1U));
+    const auto intensity =
+        config.destroy_min_count +
+        rng.uniform_index(std::max<std::size_t>(destroy_span, 1U));
     const auto *base = pool.select(rng);
     const auto move = detail::propose_move(
         base == nullptr ? current.order : base->order,
-        base == nullptr ? current.forced_rotations : base->forced_rotations, request,
-        evaluator.piece_areas(), evaluator.piece_rotation_counts(), rng,
-        operators[selected], intensity);
+        base == nullptr ? current.forced_rotations : base->forced_rotations,
+        request, evaluator.piece_areas(), evaluator.piece_rotation_counts(),
+        rng, operators[selected], intensity);
     if (!move.changed) {
       continue;
     }
 
     auto candidate =
         evaluator.evaluate(move.order, move.forced_rotations, iteration + 11U);
-    ++iterations_completed;
+    ++operations_completed;
 
     const bool accepted =
         better_metrics(candidate.metrics, current.metrics) ||
@@ -235,18 +242,18 @@ auto AlnsSearch::solve(const NormalizedRequest &request,
       pool.insert(candidate);
       reward = config.reward_improve;
       ++sequence;
-      emit_improvement(control, replay, sequence, iterations_completed, best,
-                       evaluator.make_budget(iterations_completed),
+      emit_improvement(control, replay, sequence, operations_completed, best,
+                       evaluator.make_budget(operations_completed),
                        operators[selected], acceptance_ratio);
     } else {
-      emit_iteration_progress(control, throttle, iterations_completed, current,
-                              evaluator.make_budget(iterations_completed),
+      emit_iteration_progress(control, throttle, operations_completed, current,
+                              evaluator.make_budget(operations_completed),
                               operators[selected], accepted);
     }
 
-    weights[selected] = std::max(
-        0.1, ((1.0 - config.reaction_factor) * weights[selected]) +
-                 (config.reaction_factor * reward));
+    weights[selected] =
+        std::max(0.1, ((1.0 - config.reaction_factor) * weights[selected]) +
+                          (config.reaction_factor * reward));
     if ((iteration + 1U) % config.segment_length == 0U) {
       for (auto &weight : weights) {
         weight = std::max(0.25, weight * 0.95);
@@ -255,8 +262,8 @@ auto AlnsSearch::solve(const NormalizedRequest &request,
 
     acceptance_ratio =
         cooling.next_temperature(acceptance_ratio, iteration, accepted);
-    if (iterations_completed >= iteration_limit) {
-      hit_iteration_limit = control.iteration_limit > 0U ||
+    if (operations_completed >= operation_limit) {
+      hit_operation_limit = control.operation_limit > 0U ||
                             iteration + 1U >= config.max_refinements;
       break;
     }
@@ -264,9 +271,9 @@ auto AlnsSearch::solve(const NormalizedRequest &request,
 
   NestingResult result = best.result;
   result.strategy = StrategyKind::alns;
-  result.budget = evaluator.make_budget(iterations_completed);
-  result.stop_reason =
-      detail::driver_stop_reason(control, time_budget, stopwatch, hit_iteration_limit);
+  result.budget = evaluator.make_budget(operations_completed);
+  result.stop_reason = detail::driver_stop_reason(
+      control, time_budget, stopwatch, hit_operation_limit);
   result.search = std::move(replay);
   return result;
 }

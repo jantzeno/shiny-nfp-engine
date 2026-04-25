@@ -25,8 +25,9 @@ TEST_CASE("timing budget reports expiry", "[runtime][timing]") {
   REQUIRE(budget.expired(stopwatch));
 }
 
-TEST_CASE("cancellation probe and progress snapshots carry shared execution state",
-          "[runtime][observer]") {
+TEST_CASE(
+    "cancellation probe and progress snapshots carry shared execution state",
+    "[runtime][observer]") {
   shiny::nesting::runtime::CancellationSource source;
   const auto token = source.token();
   const auto probe = shiny::nesting::runtime::make_interruption_probe(token);
@@ -39,11 +40,11 @@ TEST_CASE("cancellation probe and progress snapshots carry shared execution stat
 
   shiny::nesting::ProgressSnapshot snapshot;
   snapshot.sequence = 4;
-  snapshot.placed_parts = 3;
-  snapshot.total_parts = 7;
-  snapshot.budget.iteration_limit_enabled = true;
-  snapshot.budget.iteration_limit = 25;
-  snapshot.budget.iterations_completed = 12;
+  snapshot.placements_successful = 3;
+  snapshot.total_requested_parts = 7;
+  snapshot.budget.operation_limit_enabled = true;
+  snapshot.budget.operation_limit = 25;
+  snapshot.budget.operations_completed = 12;
   snapshot.budget.time_limit_enabled = true;
   snapshot.budget.time_limit_milliseconds = 10'000;
   snapshot.budget.elapsed_milliseconds = 3'500;
@@ -51,9 +52,9 @@ TEST_CASE("cancellation probe and progress snapshots carry shared execution stat
   snapshot.stop_reason = shiny::nesting::StopReason::time_limit_reached;
 
   REQUIRE(snapshot.sequence == 4);
-  REQUIRE(snapshot.placed_parts == 3);
-  REQUIRE(snapshot.total_parts == 7);
-  REQUIRE(snapshot.budget.iteration_limit == 25);
+  REQUIRE(snapshot.placements_successful == 3);
+  REQUIRE(snapshot.total_requested_parts == 7);
+  REQUIRE(snapshot.budget.operation_limit == 25);
   REQUIRE(snapshot.budget.elapsed_milliseconds == 3'500);
   REQUIRE(snapshot.stop_reason ==
           shiny::nesting::StopReason::time_limit_reached);

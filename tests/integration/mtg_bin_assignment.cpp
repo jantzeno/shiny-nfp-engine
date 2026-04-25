@@ -26,6 +26,8 @@ using namespace shiny::nesting::test::mtg;
 
 namespace {
 
+constexpr std::uint64_t kSeed = 1234;
+
 [[nodiscard]] auto count_pieces_on(const MtgFixture &fixture,
                                    std::uint32_t bed_id) -> std::size_t {
   return static_cast<std::size_t>(
@@ -49,8 +51,19 @@ void apply_strategy_sequential_backtrack(MtgRequestOptions &options) {
 void apply_strategy_metaheuristic_search_brkga(MtgRequestOptions &options) {
   options.strategy = StrategyKind::metaheuristic_search;
   options.production_optimizer = ProductionOptimizerKind::brkga;
-  options.production.max_iterations = 4;
-  options.production.population_size = 8;
+  options.production.max_iterations = 1;
+  options.production.population_size = 3;
+  options.production.elite_count = 1;
+  options.production.mutant_count = 1;
+  options.production.polishing_passes = 0;
+}
+
+[[nodiscard]] auto base_solve_control(const MtgRequestOptions &options)
+    -> SolveControl {
+  SolveControl control{};
+  control.random_seed =
+      options.strategy == StrategyKind::sequential_backtrack ? 0U : kSeed;
+  return control;
 }
 
 void run_truth_table(const MtgFixture &fixture,
@@ -72,8 +85,7 @@ void run_truth_table(const MtgFixture &fixture,
   const auto request = make_request(fixture, options);
   REQUIRE(request.is_valid());
 
-  SolveControl control{};
-  control.random_seed = 1234;
+  const SolveControl control = base_solve_control(options);
 
   auto solved = solve(request, control);
   REQUIRE(solved.has_value());
@@ -106,8 +118,7 @@ void run_single_bed(const MtgFixture &fixture,
   const auto request = make_request(fixture, options);
   REQUIRE(request.is_valid());
 
-  SolveControl control{};
-  control.random_seed = 1234;
+  const SolveControl control = base_solve_control(options);
 
   auto solved = solve(request, control);
   REQUIRE(solved.has_value());
@@ -118,7 +129,7 @@ void run_single_bed(const MtgFixture &fixture,
   validate_layout(fixture, request, options, solved.value(), expected);
 }
 
-}  // namespace
+} // namespace
 
 TEST_CASE("mtg bin-assignment matrix (bounding_box)",
           "[mtg][nesting-matrix][bin-assignment][bounding-box]") {

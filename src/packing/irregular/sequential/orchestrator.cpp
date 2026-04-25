@@ -15,11 +15,11 @@ namespace shiny::nesting::pack::detail {
 auto make_budget(const SolveControl &control,
                  const runtime::TimeBudget &time_budget,
                  const runtime::Stopwatch &stopwatch,
-                 const std::size_t iterations_completed) -> BudgetState {
+                 const std::size_t operations_completed) -> BudgetState {
   return {
-      .iteration_limit_enabled = control.iteration_limit > 0U,
-      .iteration_limit = control.iteration_limit,
-      .iterations_completed = iterations_completed,
+      .operation_limit_enabled = control.operation_limit > 0U,
+      .operation_limit = control.operation_limit,
+      .operations_completed = operations_completed,
       .time_limit_enabled = time_budget.enabled(),
       .time_limit_milliseconds = time_budget.limit_milliseconds(),
       .elapsed_milliseconds = stopwatch.elapsed_milliseconds(),
@@ -28,51 +28,61 @@ auto make_budget(const SolveControl &control,
 }
 
 auto emit_progress(const SolveControl &control, const std::size_t sequence,
-                   const std::size_t placed_parts, const std::size_t total_parts,
+                   const std::size_t placement_attempts_completed,
+                   const std::size_t placements_successful,
+                   const std::size_t total_requested_parts,
+                   const std::size_t candidate_evaluations_completed,
                    const std::span<const WorkingBin> bins,
                    const std::vector<PlacementTraceEntry> &trace,
                    const std::vector<std::uint32_t> &unplaced,
                    const BudgetState &budget, const StopReason stop_reason,
-                   const std::string &phase_detail,
-                   const bool lightweight) -> void {
+                   const std::string &phase_detail, const bool lightweight)
+    -> void {
   if (!control.on_progress) {
     return;
   }
 
-  SHINY_DEBUG("constructive emit_progress: seq={} placed={}/{} bins={} lightweight={} "
-              "elapsed_ms={}",
-              sequence, placed_parts, total_parts, bins.size(), lightweight,
-              budget.elapsed_milliseconds);
+  SHINY_DEBUG(
+      "constructive emit_progress: seq={} placed={}/{} bins={} lightweight={} "
+      "elapsed_ms={}",
+      sequence, placements_successful, total_requested_parts, bins.size(),
+      lightweight, budget.elapsed_milliseconds);
 
   control.on_progress(ProgressSnapshot{
       .sequence = sequence,
-      .placed_parts = placed_parts,
-      .total_parts = total_parts,
+      .placement_attempts_completed = placement_attempts_completed,
+      .placements_successful = placements_successful,
+      .total_requested_parts = total_requested_parts,
+      .candidate_evaluations_completed = candidate_evaluations_completed,
       .layout = lightweight ? build_lightweight_layout(bins, trace, unplaced)
                             : build_layout(bins, trace, unplaced),
       .budget = budget,
       .stop_reason = stop_reason,
-      .phase = ProgressPhase::part_placement,
+      .phase = ProgressPhase::placement,
       .phase_detail = phase_detail,
       .utilization_percent = compute_utilization_percent(bins),
       .improved = !lightweight,
   });
 }
 
-auto emit_search_progress(const SolveControl &control, const std::size_t placed_parts,
-                          const std::size_t total_parts, const BudgetState &budget,
+auto emit_search_progress(const SolveControl &control,
+                          const std::size_t placements_successful,
+                          const std::size_t total_requested_parts,
+                          const std::size_t candidate_evaluations_completed,
+                          const BudgetState &budget,
                           const std::string &phase_detail) -> void {
   if (!control.on_progress) {
     return;
   }
   control.on_progress(ProgressSnapshot{
       .sequence = 0,
-      .placed_parts = placed_parts,
-      .total_parts = total_parts,
+      .placements_successful = placements_successful,
+      .total_requested_parts = total_requested_parts,
+      .candidate_evaluations_completed = candidate_evaluations_completed,
       .layout = {},
       .budget = budget,
       .stop_reason = StopReason::none,
-      .phase = ProgressPhase::part_placement,
+      .phase = ProgressPhase::placement,
       .phase_detail = phase_detail,
       .utilization_percent = 0.0,
       .improved = false,
@@ -82,7 +92,8 @@ auto emit_search_progress(const SolveControl &control, const std::size_t placed_
 auto interrupted(const SolveControl &control,
                  const runtime::TimeBudget &time_budget,
                  const runtime::Stopwatch &stopwatch) -> bool {
-  return control.cancellation.stop_requested() || time_budget.expired(stopwatch);
+  return control.cancellation.stop_requested() ||
+         time_budget.expired(stopwatch);
 }
 
 auto solve_irregular_constructive(const NormalizedRequest &request,
@@ -92,8 +103,8 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
     return util::Status::invalid_input;
   }
 
-  const auto piece_instances =
-      order_piece_instances(build_piece_instances(request), request.request.execution);
+  const auto piece_instances = order_piece_instances(
+      build_piece_instances(request), request.request.execution);
   const auto bin_instances = build_bin_instances(request);
   if (piece_instances.size() != request.expanded_pieces.size() ||
       bin_instances.size() != request.expanded_bins.size()) {
@@ -129,12 +140,15 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
   std::vector<bool> opened_flags(bin_instances.size(), false);
   std::vector<PlacementTraceEntry> trace;
   std::vector<std::uint32_t> unplaced_piece_ids;
+  std::size_t placement_attempts_completed = 0;
   std::size_t placements_completed = 0;
   std::size_t processed_pieces = 0;
+  std::size_t candidate_evaluations_completed = 0;
   std::size_t sequence = 0;
   StopReason stop_reason = StopReason::completed;
 
-  for (std::size_t piece_index = 0; piece_index < piece_instances.size(); ++piece_index) {
+  for (std::size_t piece_index = 0; piece_index < piece_instances.size();
+       ++piece_index) {
     if (control.cancellation.stop_requested()) {
       stop_reason = StopReason::cancelled;
       break;
@@ -143,11 +157,6 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
       stop_reason = StopReason::time_limit_reached;
       break;
     }
-    if (control.iteration_limit > 0U && processed_pieces >= control.iteration_limit) {
-      stop_reason = StopReason::iteration_limit_reached;
-      break;
-    }
-
     const auto &piece = piece_instances[piece_index];
     ++processed_pieces;
 
@@ -163,40 +172,61 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
       }
     }
 
-    bool placed = try_place_piece(
-        piece, request, bin_instances, opened_bins, opened_flags, trace, time_budget,
-        stopwatch, control, search_throttle, placements_completed,
-        piece_instances.size(), per_piece_budget_ms, &workspace->nfp_cache, rng_ptr);
+    PlacementAttemptContext attempt_context{
+        .started_milliseconds = stopwatch.elapsed_milliseconds(),
+        .budget_milliseconds = per_piece_budget_ms,
+    };
 
-    if (interrupted(control, time_budget, stopwatch)) {
+    auto placement_status = try_place_piece(
+        piece, request, bin_instances, opened_bins, opened_flags, trace,
+        time_budget, stopwatch, control, search_throttle, placements_completed,
+        piece_instances.size(), attempt_context, &workspace->nfp_cache,
+        rng_ptr);
+    candidate_evaluations_completed +=
+        attempt_context.candidate_evaluations_completed;
+
+    if (placement_status == PlacementSearchStatus::interrupted ||
+        interrupted(control, time_budget, stopwatch)) {
+      ++placement_attempts_completed;
+      unplaced_piece_ids.push_back(piece.expanded.expanded_piece_id);
       stop_reason = control.cancellation.stop_requested()
                         ? StopReason::cancelled
                         : StopReason::time_limit_reached;
       break;
     }
 
-    if (!placed && request.request.execution.irregular.enable_backtracking) {
-      placed = try_backtrack_place_piece(
+    if (placement_status == PlacementSearchStatus::no_candidate &&
+        request.request.execution.irregular.enable_backtracking) {
+      attempt_context.candidate_evaluations_completed = 0;
+      placement_status = try_backtrack_place_piece(
           piece, request, bin_instances, opened_bins, opened_flags, trace,
           piece_by_id, time_budget, stopwatch, control, search_throttle,
-          piece_instances.size(), per_piece_budget_ms, &workspace->nfp_cache, rng_ptr,
-          request.request.execution.irregular.max_backtrack_pieces);
+          piece_instances.size(), attempt_context, &workspace->nfp_cache,
+          rng_ptr, request.request.execution.irregular.max_backtrack_pieces);
+      candidate_evaluations_completed +=
+          attempt_context.candidate_evaluations_completed;
     }
 
-    if (interrupted(control, time_budget, stopwatch)) {
+    if (placement_status == PlacementSearchStatus::interrupted ||
+        interrupted(control, time_budget, stopwatch)) {
+      ++placement_attempts_completed;
+      unplaced_piece_ids.push_back(piece.expanded.expanded_piece_id);
       stop_reason = control.cancellation.stop_requested()
                         ? StopReason::cancelled
                         : StopReason::time_limit_reached;
       break;
     }
 
-    if (placed) {
+    ++placement_attempts_completed;
+    if (placement_status == PlacementSearchStatus::found) {
       placements_completed = trace.size();
       ++sequence;
       if (throttle.should_emit()) {
-        emit_progress(control, sequence, placements_completed, piece_instances.size(),
-                      opened_bins, trace, unplaced_piece_ids,
-                      make_budget(control, time_budget, stopwatch, processed_pieces),
+        emit_progress(control, sequence, placement_attempts_completed,
+                      placements_completed, piece_instances.size(),
+                      candidate_evaluations_completed, opened_bins, trace,
+                      unplaced_piece_ids,
+                      make_budget(control, time_budget, stopwatch, 0U),
                       StopReason::none,
                       std::format("Placing part {}/{}", placements_completed,
                                   piece_instances.size()),
@@ -209,9 +239,10 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
   }
 
   if (stop_reason != StopReason::completed) {
-    for (std::size_t piece_index = processed_pieces; piece_index < piece_instances.size();
-         ++piece_index) {
-      unplaced_piece_ids.push_back(piece_instances[piece_index].expanded.expanded_piece_id);
+    for (std::size_t piece_index = processed_pieces;
+         piece_index < piece_instances.size(); ++piece_index) {
+      unplaced_piece_ids.push_back(
+          piece_instances[piece_index].expanded.expanded_piece_id);
     }
   }
 
@@ -248,15 +279,21 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
           remove_trace_entries_for_piece(trace, original.placement.piece_id);
           rebuild_working_bin(bin, request.request.execution);
 
-          const auto candidate = find_best_for_bin(
+          PlacementAttemptContext compaction_attempt{
+              .started_milliseconds = stopwatch.elapsed_milliseconds(),
+          };
+          const auto search_result = find_best_for_bin(
               bin, *piece_it->second, request, time_budget, stopwatch, control,
-              search_throttle, placements_completed, piece_instances.size(), 0U,
-              &workspace->nfp_cache, nullptr);
+              search_throttle, placements_completed, piece_instances.size(),
+              compaction_attempt, &workspace->nfp_cache, nullptr);
+          candidate_evaluations_completed +=
+              compaction_attempt.candidate_evaluations_completed;
 
-          if (candidate.has_value() &&
+          if (search_result.candidate.has_value() &&
               better_candidate(bin, request.request.execution.placement_policy,
-                               *candidate, current_candidate)) {
-            apply_candidate(bin, *candidate, trace, false, request.request.execution);
+                               *search_result.candidate, current_candidate)) {
+            apply_candidate(bin, *search_result.candidate, trace, false,
+                            request.request.execution);
             moved_any = true;
             continue;
           }
@@ -283,46 +320,61 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
 
       std::optional<CandidatePlacement> best_existing;
       std::size_t best_existing_index = 0;
-      for (std::size_t bin_index = 0; bin_index < opened_bins.size(); ++bin_index) {
-        const auto candidate = find_best_for_bin(
+      PlacementAttemptContext retry_attempt{
+          .started_milliseconds = stopwatch.elapsed_milliseconds(),
+      };
+      for (std::size_t bin_index = 0; bin_index < opened_bins.size();
+           ++bin_index) {
+        auto search_result = find_best_for_bin(
             opened_bins[bin_index], *piece_it->second, request, time_budget,
             stopwatch, control, search_throttle, placements_completed,
-            piece_instances.size(), 0U, &workspace->nfp_cache, nullptr);
-        if (!candidate.has_value()) {
+            piece_instances.size(), retry_attempt, &workspace->nfp_cache,
+            nullptr);
+        if (!search_result.candidate.has_value()) {
           continue;
         }
         if (!best_existing.has_value() ||
             better_candidate(opened_bins[best_existing_index],
-                             request.request.execution.placement_policy, *candidate,
-                             *best_existing)) {
-          best_existing = candidate;
+                             request.request.execution.placement_policy,
+                             *search_result.candidate, *best_existing)) {
+          best_existing = std::move(search_result.candidate);
           best_existing_index = bin_index;
         }
       }
+      candidate_evaluations_completed +=
+          retry_attempt.candidate_evaluations_completed;
 
       if (best_existing.has_value()) {
-        apply_candidate(opened_bins[best_existing_index], *best_existing, trace, false,
-                        request.request.execution);
+        apply_candidate(opened_bins[best_existing_index], *best_existing, trace,
+                        false, request.request.execution);
         ++placements_completed;
         continue;
       }
 
       bool placed = false;
-      for (std::size_t bin_index = 0; bin_index < bin_instances.size(); ++bin_index) {
+      for (std::size_t bin_index = 0; bin_index < bin_instances.size();
+           ++bin_index) {
         if (opened_flags[bin_index]) {
           continue;
         }
         auto working_bin = make_working_bin(bin_instances[bin_index]);
         refresh_bin_state(working_bin, request.request.execution);
-        const auto candidate = find_best_for_bin(
-            working_bin, *piece_it->second, request, time_budget, stopwatch, control,
-            search_throttle, placements_completed, piece_instances.size(), 0U,
-            &workspace->nfp_cache, nullptr);
-        if (!candidate.has_value()) {
+        PlacementAttemptContext new_bin_attempt{
+            .started_milliseconds = stopwatch.elapsed_milliseconds(),
+        };
+        const auto search_result =
+            find_best_for_bin(working_bin, *piece_it->second, request,
+                              time_budget, stopwatch, control, search_throttle,
+                              placements_completed, piece_instances.size(),
+                              new_bin_attempt, &workspace->nfp_cache, nullptr);
+        candidate_evaluations_completed +=
+            new_bin_attempt.candidate_evaluations_completed;
+        if (!search_result.candidate.has_value()) {
           continue;
         }
 
-        apply_candidate(working_bin, *candidate, trace, true, request.request.execution);
+        apply_candidate(working_bin, *search_result.candidate, trace, true,
+                        request.request.execution);
         opened_flags[bin_index] = true;
         opened_bins.push_back(std::move(working_bin));
         ++placements_completed;
@@ -341,16 +393,19 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
       .strategy = StrategyKind::sequential_backtrack,
       .layout = build_layout(opened_bins, trace, unplaced_piece_ids),
       .total_parts = piece_instances.size(),
-      .budget = make_budget(control, time_budget, stopwatch, processed_pieces),
+      .effective_seed = control.random_seed,
+      .budget = make_budget(control, time_budget, stopwatch,
+                            stop_reason == StopReason::completed ? 1U : 0U),
       .stop_reason = stop_reason,
   };
 
   ++sequence;
-  emit_progress(control, sequence, placements_completed, piece_instances.size(),
-                opened_bins, trace, unplaced_piece_ids, result.budget, stop_reason,
-                std::format("Placed {}/{}", placements_completed,
-                            piece_instances.size()),
-                false);
+  emit_progress(
+      control, sequence, placement_attempts_completed, placements_completed,
+      piece_instances.size(), candidate_evaluations_completed, opened_bins,
+      trace, unplaced_piece_ids, result.budget, stop_reason,
+      std::format("Placed {}/{}", placements_completed, piece_instances.size()),
+      false);
   return result;
 }
 

@@ -18,7 +18,7 @@ std::shared_ptr<spdlog::logger> g_logger;
 
 [[nodiscard]] auto ParseLevelFromEnvironment()
     -> std::optional<spdlog::level::level_enum> {
-  const char *raw_level = std::getenv("SHINY_NFP_LOG_LEVEL");
+  const char *raw_level = std::getenv("SHINY_NESTING_LOG_LEVEL");
   if (raw_level == nullptr || *raw_level == '\0') {
     return std::nullopt;
   }

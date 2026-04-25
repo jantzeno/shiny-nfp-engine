@@ -1,4 +1,4 @@
-#include "search/detail/neighborhood_ops.hpp"
+#include "search/detail/neighborhood_search.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -13,6 +13,7 @@
 #include "geometry/polygon.hpp"
 #include "packing/irregular/constructive_packer.hpp"
 #include "runtime/hash.hpp"
+#include "search/detail/layout_validation.hpp"
 #include "search/disruption.hpp"
 
 namespace shiny::nesting::search::detail {
@@ -21,7 +22,8 @@ auto piece_areas_for(const NormalizedRequest &request) -> std::vector<double> {
   std::unordered_map<std::uint32_t, double> areas_by_source_piece;
   areas_by_source_piece.reserve(request.request.pieces.size());
   for (const auto &piece : request.request.pieces) {
-    areas_by_source_piece.emplace(piece.piece_id, geom::polygon_area(piece.polygon));
+    areas_by_source_piece.emplace(piece.piece_id,
+                                  geom::polygon_area(piece.polygon));
   }
 
   std::vector<double> areas;
@@ -52,10 +54,11 @@ struct RemovedPiece {
   std::unordered_map<std::uint32_t, std::size_t> counts_by_source_piece;
   counts_by_source_piece.reserve(request.request.pieces.size());
   for (const auto &piece : request.request.pieces) {
-    const auto &rotations =
-        piece.allowed_rotations.has_value() ? *piece.allowed_rotations
-                                            : request.request.execution.default_rotations;
-    counts_by_source_piece.emplace(piece.piece_id, geom::rotation_count(rotations));
+    const auto &rotations = piece.allowed_rotations.has_value()
+                                ? *piece.allowed_rotations
+                                : request.request.execution.default_rotations;
+    counts_by_source_piece.emplace(piece.piece_id,
+                                   geom::rotation_count(rotations));
   }
 
   std::vector<std::size_t> counts;
@@ -67,11 +70,10 @@ struct RemovedPiece {
   return counts;
 }
 
-[[nodiscard]] auto seed_from_order(std::span<const std::size_t> order,
-                                   std::span<const std::optional<geom::RotationIndex>>
-                                       forced_rotations,
-                                   const std::uint64_t base_seed,
-                                    const std::uint64_t seed_bias)
+[[nodiscard]] auto seed_from_order(
+    std::span<const std::size_t> order,
+    std::span<const std::optional<geom::RotationIndex>> forced_rotations,
+    const std::uint64_t base_seed, const std::uint64_t seed_bias)
     -> std::uint64_t {
   std::uint64_t hash = runtime::hash::kFnv1aOffsetBasis;
   for (const auto index : order) {
@@ -87,11 +89,10 @@ struct RemovedPiece {
   return hash ^ base_seed ^ (seed_bias * runtime::hash::kGoldenRatio64);
 }
 
-[[nodiscard]] auto reordered_request_for(std::span<const std::size_t> order,
-                                         std::span<const std::optional<geom::RotationIndex>>
-                                             forced_rotations,
-                                         const NormalizedRequest &request)
-    -> NormalizedRequest {
+[[nodiscard]] auto reordered_request_for(
+    std::span<const std::size_t> order,
+    std::span<const std::optional<geom::RotationIndex>> forced_rotations,
+    const NormalizedRequest &request) -> NormalizedRequest {
   NormalizedRequest reordered = request;
   reordered.expanded_pieces.clear();
   reordered.forced_rotations.clear();
@@ -106,10 +107,12 @@ struct RemovedPiece {
   return reordered;
 }
 
-auto swap_positions(std::vector<std::size_t> &order,
-                    std::vector<std::optional<geom::RotationIndex>> &forced_rotations,
-                    const std::size_t lhs, const std::size_t rhs) -> bool {
-  if (order.size() < 2U || lhs >= order.size() || rhs >= order.size() || lhs == rhs) {
+auto swap_positions(
+    std::vector<std::size_t> &order,
+    std::vector<std::optional<geom::RotationIndex>> &forced_rotations,
+    const std::size_t lhs, const std::size_t rhs) -> bool {
+  if (order.size() < 2U || lhs >= order.size() || rhs >= order.size() ||
+      lhs == rhs) {
     return false;
   }
   std::swap(order[lhs], order[rhs]);
@@ -134,10 +137,12 @@ auto swap_positions(std::vector<std::size_t> &order,
   return piece_index < piece_areas.size() ? piece_areas[piece_index] : 0.0;
 }
 
-[[nodiscard]] auto select_removal_positions(
-    std::span<const std::size_t> order, std::span<const double> piece_areas,
-    runtime::DeterministicRng &rng, const std::size_t destroy_count,
-    const DestroyStrategy strategy) -> std::vector<std::size_t> {
+[[nodiscard]] auto select_removal_positions(std::span<const std::size_t> order,
+                                            std::span<const double> piece_areas,
+                                            runtime::DeterministicRng &rng,
+                                            const std::size_t destroy_count,
+                                            const DestroyStrategy strategy)
+    -> std::vector<std::size_t> {
   std::vector<std::size_t> removal_positions(order.size());
   std::iota(removal_positions.begin(), removal_positions.end(), 0U);
 
@@ -157,25 +162,26 @@ auto swap_positions(std::vector<std::size_t> &order,
   case DestroyStrategy::related: {
     const auto seed_position = rng.uniform_index(order.size());
     const auto seed_area = area_for_piece(piece_areas, order[seed_position]);
-    std::stable_sort(removal_positions.begin(), removal_positions.end(),
-                     [&](const std::size_t lhs, const std::size_t rhs) {
-                       const auto lhs_area = area_for_piece(piece_areas, order[lhs]);
-                       const auto rhs_area = area_for_piece(piece_areas, order[rhs]);
-                       const auto lhs_score =
-                           std::abs(std::log((lhs_area + 1e-9) / (seed_area + 1e-9))) +
-                           (0.15 * static_cast<double>(
-                                       lhs > seed_position ? lhs - seed_position
-                                                           : seed_position - lhs));
-                       const auto rhs_score =
-                           std::abs(std::log((rhs_area + 1e-9) / (seed_area + 1e-9))) +
-                           (0.15 * static_cast<double>(
-                                       rhs > seed_position ? rhs - seed_position
-                                                           : seed_position - rhs));
-                       if (lhs_score != rhs_score) {
-                         return lhs_score < rhs_score;
-                       }
-                       return lhs < rhs;
-                     });
+    std::stable_sort(
+        removal_positions.begin(), removal_positions.end(),
+        [&](const std::size_t lhs, const std::size_t rhs) {
+          const auto lhs_area = area_for_piece(piece_areas, order[lhs]);
+          const auto rhs_area = area_for_piece(piece_areas, order[rhs]);
+          const auto lhs_score =
+              std::abs(std::log((lhs_area + 1e-9) / (seed_area + 1e-9))) +
+              (0.15 * static_cast<double>(lhs > seed_position
+                                              ? lhs - seed_position
+                                              : seed_position - lhs));
+          const auto rhs_score =
+              std::abs(std::log((rhs_area + 1e-9) / (seed_area + 1e-9))) +
+              (0.15 * static_cast<double>(rhs > seed_position
+                                              ? rhs - seed_position
+                                              : seed_position - rhs));
+          if (lhs_score != rhs_score) {
+            return lhs_score < rhs_score;
+          }
+          return lhs < rhs;
+        });
     removal_positions.resize(destroy_count);
     break;
   }
@@ -205,10 +211,12 @@ auto swap_positions(std::vector<std::size_t> &order,
   const auto piece_area = area_for_piece(piece_areas, piece);
   double cost = 0.0;
   if (insert_pos > 0U) {
-    cost += std::abs(piece_area - area_for_piece(piece_areas, order[insert_pos - 1U]));
+    cost += std::abs(piece_area -
+                     area_for_piece(piece_areas, order[insert_pos - 1U]));
   }
   if (insert_pos < order.size()) {
-    cost += std::abs(piece_area - area_for_piece(piece_areas, order[insert_pos]));
+    cost +=
+        std::abs(piece_area - area_for_piece(piece_areas, order[insert_pos]));
   }
   cost += 0.01 * static_cast<double>(insert_pos);
   return cost;
@@ -243,23 +251,24 @@ struct InsertionChoice {
   return choice;
 }
 
-void insert_removed_random(std::vector<std::size_t> &order,
-                           std::vector<std::optional<geom::RotationIndex>> &forced_rotations,
-                           std::span<const RemovedPiece> removed,
-                           runtime::DeterministicRng &rng) {
+void insert_removed_random(
+    std::vector<std::size_t> &order,
+    std::vector<std::optional<geom::RotationIndex>> &forced_rotations,
+    std::span<const RemovedPiece> removed, runtime::DeterministicRng &rng) {
   for (const auto &piece : removed) {
     const auto insert_pos = rng.uniform_index(order.size() + 1U);
-    order.insert(order.begin() + static_cast<std::ptrdiff_t>(insert_pos), piece.piece);
-    forced_rotations.insert(
-        forced_rotations.begin() + static_cast<std::ptrdiff_t>(insert_pos),
-        piece.forced_rotation);
+    order.insert(order.begin() + static_cast<std::ptrdiff_t>(insert_pos),
+                 piece.piece);
+    forced_rotations.insert(forced_rotations.begin() +
+                                static_cast<std::ptrdiff_t>(insert_pos),
+                            piece.forced_rotation);
   }
 }
 
-void insert_removed_regret(std::vector<std::size_t> &order,
-                           std::vector<std::optional<geom::RotationIndex>> &forced_rotations,
-                           std::vector<RemovedPiece> removed,
-                           std::span<const double> piece_areas) {
+void insert_removed_regret(
+    std::vector<std::size_t> &order,
+    std::vector<std::optional<geom::RotationIndex>> &forced_rotations,
+    std::vector<RemovedPiece> removed, std::span<const double> piece_areas) {
   while (!removed.empty()) {
     std::size_t best_index = 0U;
     InsertionChoice best_choice =
@@ -267,7 +276,8 @@ void insert_removed_regret(std::vector<std::size_t> &order,
     double best_regret = best_choice.second_cost - best_choice.best_cost;
 
     for (std::size_t index = 1; index < removed.size(); ++index) {
-      const auto choice = best_insertion_choice(order, removed[index].piece, piece_areas);
+      const auto choice =
+          best_insertion_choice(order, removed[index].piece, piece_areas);
       const auto regret = choice.second_cost - choice.best_cost;
       if (regret > best_regret ||
           (regret == best_regret && choice.best_cost < best_choice.best_cost)) {
@@ -278,29 +288,29 @@ void insert_removed_regret(std::vector<std::size_t> &order,
     }
 
     const auto piece = removed[best_index];
-    order.insert(order.begin() + static_cast<std::ptrdiff_t>(best_choice.insert_pos),
+    order.insert(order.begin() +
+                     static_cast<std::ptrdiff_t>(best_choice.insert_pos),
                  piece.piece);
     forced_rotations.insert(
-        forced_rotations.begin() + static_cast<std::ptrdiff_t>(best_choice.insert_pos),
+        forced_rotations.begin() +
+            static_cast<std::ptrdiff_t>(best_choice.insert_pos),
         piece.forced_rotation);
     removed.erase(removed.begin() + static_cast<std::ptrdiff_t>(best_index));
   }
 }
 
-[[nodiscard]] auto destroy_and_repair(std::span<const std::size_t> order,
-                                      std::span<const std::optional<geom::RotationIndex>>
-                                          forced_rotations,
-                                      std::span<const double> piece_areas,
-                                      runtime::DeterministicRng &rng,
-                                      const std::size_t destroy_count,
-                                      const DestroyStrategy destroy_strategy,
-                                      const bool use_regret_repair,
-                                      const NeighborhoodOperator op)
+[[nodiscard]] auto destroy_and_repair(
+    std::span<const std::size_t> order,
+    std::span<const std::optional<geom::RotationIndex>> forced_rotations,
+    std::span<const double> piece_areas, runtime::DeterministicRng &rng,
+    const std::size_t destroy_count, const DestroyStrategy destroy_strategy,
+    const bool use_regret_repair, const NeighborhoodSearch op)
     -> NeighborhoodMove {
   NeighborhoodMove move;
   move.op = op;
   move.order.assign(order.begin(), order.end());
-  move.forced_rotations.assign(forced_rotations.begin(), forced_rotations.end());
+  move.forced_rotations.assign(forced_rotations.begin(),
+                               forced_rotations.end());
   if (move.forced_rotations.size() != move.order.size()) {
     move.forced_rotations.assign(move.order.size(), std::nullopt);
   }
@@ -309,12 +319,12 @@ void insert_removed_regret(std::vector<std::size_t> &order,
     return move;
   }
 
-  const auto removal_positions =
-      select_removal_positions(order, piece_areas, rng, move.destroy_count,
-                               destroy_strategy);
+  const auto removal_positions = select_removal_positions(
+      order, piece_areas, rng, move.destroy_count, destroy_strategy);
   std::vector<RemovedPiece> removed;
   removed.reserve(move.destroy_count);
-  for (auto it = removal_positions.rbegin(); it != removal_positions.rend(); ++it) {
+  for (auto it = removal_positions.rbegin(); it != removal_positions.rend();
+       ++it) {
     removed.push_back({
         .piece = move.order[*it],
         .forced_rotation = move.forced_rotations[*it],
@@ -343,7 +353,8 @@ void insert_removed_regret(std::vector<std::size_t> &order,
     insert_removed_random(move.order, move.forced_rotations, removed, rng);
   }
 
-  move.changed = move.order != std::vector<std::size_t>(order.begin(), order.end());
+  move.changed =
+      move.order != std::vector<std::size_t>(order.begin(), order.end());
   return move;
 }
 
@@ -355,18 +366,19 @@ OrderEvaluator::OrderEvaluator(const NormalizedRequest &request,
                                const runtime::Stopwatch &stopwatch)
     : request_{request}, control_{control}, time_budget_{time_budget},
       stopwatch_{stopwatch},
-      workspace_{control.workspace != nullptr ? control.workspace : &local_workspace_},
+      workspace_{control.workspace != nullptr ? control.workspace
+                                              : &local_workspace_},
       piece_areas_{piece_areas_for(request)},
       piece_rotation_counts_{piece_rotation_counts_for(request)} {}
 
-auto OrderEvaluator::evaluate(std::span<const std::size_t> order,
-                              std::span<const std::optional<geom::RotationIndex>>
-                                  forced_rotations,
-                              const std::uint64_t seed_bias) const
-    -> SolutionPoolEntry {
+auto OrderEvaluator::evaluate(
+    std::span<const std::size_t> order,
+    std::span<const std::optional<geom::RotationIndex>> forced_rotations,
+    const std::uint64_t seed_bias) const -> SolutionPoolEntry {
   SolutionPoolEntry evaluated;
   evaluated.order.assign(order.begin(), order.end());
-  evaluated.forced_rotations.assign(forced_rotations.begin(), forced_rotations.end());
+  evaluated.forced_rotations.assign(forced_rotations.begin(),
+                                    forced_rotations.end());
   if (evaluated.forced_rotations.size() != evaluated.order.size()) {
     evaluated.forced_rotations.assign(evaluated.order.size(), std::nullopt);
   }
@@ -374,8 +386,8 @@ auto OrderEvaluator::evaluate(std::span<const std::size_t> order,
   pack::IrregularConstructivePacker packer;
   SolveControl decode_control{};
   decode_control.cancellation = control_.cancellation;
-  decode_control.random_seed = seed_from_order(order, evaluated.forced_rotations,
-                                               control_.random_seed, seed_bias);
+  decode_control.random_seed = seed_from_order(
+      order, evaluated.forced_rotations, control_.random_seed, seed_bias);
   decode_control.workspace = workspace_;
   if (time_budget_.enabled()) {
     const auto elapsed = stopwatch_.elapsed_milliseconds();
@@ -385,10 +397,11 @@ auto OrderEvaluator::evaluate(std::span<const std::size_t> order,
             : time_budget_.limit_milliseconds() - elapsed;
   }
 
-  const auto result_or =
-      packer.solve(reordered_request_for(order, evaluated.forced_rotations, request_),
-                   decode_control);
-  if (result_or.ok()) {
+  const auto result_or = packer.solve(
+      reordered_request_for(order, evaluated.forced_rotations, request_),
+      decode_control);
+  if (result_or.ok() && !constructive_layout_has_geometry_violation(
+                            request_, result_or.value())) {
     evaluated.result = result_or.value();
     evaluated.metrics = metrics_for_layout(evaluated.result.layout);
     return evaluated;
@@ -401,15 +414,16 @@ auto OrderEvaluator::evaluate(std::span<const std::size_t> order,
 }
 
 auto OrderEvaluator::interrupted() const -> bool {
-  return control_.cancellation.stop_requested() || time_budget_.expired(stopwatch_);
+  return control_.cancellation.stop_requested() ||
+         time_budget_.expired(stopwatch_);
 }
 
-auto OrderEvaluator::make_budget(const std::size_t iterations_completed) const
+auto OrderEvaluator::make_budget(const std::size_t operations_completed) const
     -> BudgetState {
   return {
-      .iteration_limit_enabled = control_.iteration_limit > 0U,
-      .iteration_limit = control_.iteration_limit,
-      .iterations_completed = iterations_completed,
+      .operation_limit_enabled = control_.operation_limit > 0U,
+      .operation_limit = control_.operation_limit,
+      .operations_completed = operations_completed,
       .time_limit_enabled = time_budget_.enabled(),
       .time_limit_milliseconds = time_budget_.limit_milliseconds(),
       .elapsed_milliseconds = stopwatch_.elapsed_milliseconds(),
@@ -426,7 +440,8 @@ auto OrderEvaluator::piece_rotation_counts() const
   return piece_rotation_counts_;
 }
 
-auto original_order(const NormalizedRequest &request) -> std::vector<std::size_t> {
+auto original_order(const NormalizedRequest &request)
+    -> std::vector<std::size_t> {
   std::vector<std::size_t> order(request.expanded_pieces.size());
   std::iota(order.begin(), order.end(), 0U);
   return order;
@@ -446,7 +461,8 @@ auto descending_area_order(std::span<const double> piece_areas)
   return order;
 }
 
-auto reverse_order(const NormalizedRequest &request) -> std::vector<std::size_t> {
+auto reverse_order(const NormalizedRequest &request)
+    -> std::vector<std::size_t> {
   auto order = original_order(request);
   std::reverse(order.begin(), order.end());
   return order;
@@ -465,21 +481,22 @@ auto original_forced_rotations(const NormalizedRequest &request)
   if (request.forced_rotations.size() == request.expanded_pieces.size()) {
     return request.forced_rotations;
   }
-  return std::vector<std::optional<geom::RotationIndex>>(request.expanded_pieces.size(),
-                                                         std::nullopt);
+  return std::vector<std::optional<geom::RotationIndex>>(
+      request.expanded_pieces.size(), std::nullopt);
 }
 
-auto propose_move(std::span<const std::size_t> order,
-                  std::span<const std::optional<geom::RotationIndex>> forced_rotations,
-                  const NormalizedRequest &request,
-                  std::span<const double> piece_areas,
-                  std::span<const std::size_t> piece_rotation_counts,
-                  runtime::DeterministicRng &rng, const NeighborhoodOperator op,
-                  const std::size_t intensity) -> NeighborhoodMove {
+auto propose_move(
+    std::span<const std::size_t> order,
+    std::span<const std::optional<geom::RotationIndex>> forced_rotations,
+    const NormalizedRequest &request, std::span<const double> piece_areas,
+    std::span<const std::size_t> piece_rotation_counts,
+    runtime::DeterministicRng &rng, const NeighborhoodSearch op,
+    const std::size_t intensity) -> NeighborhoodMove {
   NeighborhoodMove move;
   move.op = op;
   move.order.assign(order.begin(), order.end());
-  move.forced_rotations.assign(forced_rotations.begin(), forced_rotations.end());
+  move.forced_rotations.assign(forced_rotations.begin(),
+                               forced_rotations.end());
   if (move.forced_rotations.size() != move.order.size()) {
     move.forced_rotations.assign(move.order.size(), std::nullopt);
   }
@@ -488,14 +505,15 @@ auto propose_move(std::span<const std::size_t> order,
   }
 
   switch (op) {
-  case NeighborhoodOperator::adjacent_swap: {
+  case NeighborhoodSearch::adjacent_swap: {
     const auto lhs = rng.uniform_index(order.size() - 1U);
     move.primary_index = lhs;
     move.secondary_index = lhs + 1U;
-    move.changed = swap_positions(move.order, move.forced_rotations, lhs, lhs + 1U);
+    move.changed =
+        swap_positions(move.order, move.forced_rotations, lhs, lhs + 1U);
     break;
   }
-  case NeighborhoodOperator::random_swap: {
+  case NeighborhoodSearch::random_swap: {
     const auto lhs = rng.uniform_index(order.size());
     auto rhs = rng.uniform_index(order.size());
     if (lhs == rhs) {
@@ -506,7 +524,7 @@ auto propose_move(std::span<const std::size_t> order,
     move.changed = swap_positions(move.order, move.forced_rotations, lhs, rhs);
     break;
   }
-  case NeighborhoodOperator::relocate: {
+  case NeighborhoodSearch::relocate: {
     const auto from = rng.uniform_index(order.size());
     auto to = rng.uniform_index(order.size());
     if (from == to) {
@@ -520,16 +538,18 @@ auto propose_move(std::span<const std::size_t> order,
     if (to > from) {
       --to;
     }
-    move.order.insert(move.order.begin() + static_cast<std::ptrdiff_t>(to), value);
-    move.forced_rotations.insert(
-        move.forced_rotations.begin() + static_cast<std::ptrdiff_t>(to),
-        forced_rotation);
+    move.order.insert(move.order.begin() + static_cast<std::ptrdiff_t>(to),
+                      value);
+    move.forced_rotations.insert(move.forced_rotations.begin() +
+                                     static_cast<std::ptrdiff_t>(to),
+                                 forced_rotation);
     move.primary_index = from;
     move.secondary_index = to;
-    move.changed = move.order != std::vector<std::size_t>(order.begin(), order.end());
+    move.changed =
+        move.order != std::vector<std::size_t>(order.begin(), order.end());
     break;
   }
-  case NeighborhoodOperator::inversion: {
+  case NeighborhoodSearch::inversion: {
     auto lhs = rng.uniform_index(order.size());
     auto rhs = rng.uniform_index(order.size());
     if (lhs > rhs) {
@@ -540,24 +560,26 @@ auto propose_move(std::span<const std::size_t> order,
     }
     std::reverse(move.order.begin() + static_cast<std::ptrdiff_t>(lhs),
                  move.order.begin() + static_cast<std::ptrdiff_t>(rhs + 1U));
-    std::reverse(move.forced_rotations.begin() + static_cast<std::ptrdiff_t>(lhs),
-                 move.forced_rotations.begin() +
-                     static_cast<std::ptrdiff_t>(rhs + 1U));
+    std::reverse(
+        move.forced_rotations.begin() + static_cast<std::ptrdiff_t>(lhs),
+        move.forced_rotations.begin() + static_cast<std::ptrdiff_t>(rhs + 1U));
     move.primary_index = lhs;
     move.secondary_index = rhs;
     move.changed = lhs != rhs;
     break;
   }
-  case NeighborhoodOperator::large_item_swap: {
-    const auto disrupted = disrupt_large_items(order, request, piece_areas, rng);
+  case NeighborhoodSearch::large_item_swap: {
+    const auto disrupted =
+        disrupt_large_items(order, request, piece_areas, rng);
     move.order = disrupted.order;
-    move.forced_rotations.assign(forced_rotations.begin(), forced_rotations.end());
+    move.forced_rotations.assign(forced_rotations.begin(),
+                                 forced_rotations.end());
     if (move.forced_rotations.size() != move.order.size()) {
       move.forced_rotations.assign(move.order.size(), std::nullopt);
     }
     if (disrupted.applied) {
-      swap_positions(move.order, move.forced_rotations, disrupted.first_position,
-                     disrupted.second_position);
+      swap_positions(move.order, move.forced_rotations,
+                     disrupted.first_position, disrupted.second_position);
       move.order = disrupted.order;
     }
     move.primary_index = disrupted.first_position;
@@ -565,7 +587,7 @@ auto propose_move(std::span<const std::size_t> order,
     move.changed = disrupted.applied;
     break;
   }
-  case NeighborhoodOperator::rotation_change: {
+  case NeighborhoodSearch::rotation_change: {
     std::vector<std::size_t> rotatable_positions;
     rotatable_positions.reserve(order.size());
     for (std::size_t index = 0; index < order.size(); ++index) {
@@ -578,52 +600,54 @@ auto propose_move(std::span<const std::size_t> order,
     if (rotatable_positions.empty()) {
       break;
     }
-    const auto position = rotatable_positions[rng.uniform_index(rotatable_positions.size())];
+    const auto position =
+        rotatable_positions[rng.uniform_index(rotatable_positions.size())];
     const auto piece_index = order[position];
     const auto rotation_count = piece_rotation_counts[piece_index];
-    const auto current_rotation =
-        move.forced_rotations[position].has_value()
-            ? move.forced_rotations[position]->value
-            : 0U;
+    const auto current_rotation = move.forced_rotations[position].has_value()
+                                      ? move.forced_rotations[position]->value
+                                      : 0U;
     const auto delta = 1U + rng.uniform_index(rotation_count - 1U);
     const auto next_rotation =
         static_cast<std::uint16_t>((current_rotation + delta) % rotation_count);
     move.forced_rotations[position] = geom::RotationIndex{next_rotation};
     move.primary_index = position;
     move.secondary_index = next_rotation;
-    move.changed = !forced_rotations.empty()
-                       ? move.forced_rotations !=
-                             std::vector<std::optional<geom::RotationIndex>>(
-                                 forced_rotations.begin(), forced_rotations.end())
-                       : true;
+    move.changed =
+        !forced_rotations.empty()
+            ? move.forced_rotations !=
+                  std::vector<std::optional<geom::RotationIndex>>(
+                      forced_rotations.begin(), forced_rotations.end())
+            : true;
     break;
   }
-  case NeighborhoodOperator::random_destroy_repair:
-    move = destroy_and_repair(order, forced_rotations, piece_areas, rng, intensity,
-                              DestroyStrategy::random, false, op);
+  case NeighborhoodSearch::random_destroy_repair:
+    move = destroy_and_repair(order, forced_rotations, piece_areas, rng,
+                              intensity, DestroyStrategy::random, false, op);
     break;
-  case NeighborhoodOperator::area_destroy_repair:
-    move = destroy_and_repair(order, forced_rotations, piece_areas, rng, intensity,
-                              DestroyStrategy::area, false, op);
+  case NeighborhoodSearch::area_destroy_repair:
+    move = destroy_and_repair(order, forced_rotations, piece_areas, rng,
+                              intensity, DestroyStrategy::area, false, op);
     break;
-  case NeighborhoodOperator::related_destroy_repair:
-    move = destroy_and_repair(order, forced_rotations, piece_areas, rng, intensity,
-                              DestroyStrategy::related, false, op);
+  case NeighborhoodSearch::related_destroy_repair:
+    move = destroy_and_repair(order, forced_rotations, piece_areas, rng,
+                              intensity, DestroyStrategy::related, false, op);
     break;
-  case NeighborhoodOperator::cluster_destroy_repair:
-    move = destroy_and_repair(order, forced_rotations, piece_areas, rng, intensity,
-                              DestroyStrategy::cluster, false, op);
+  case NeighborhoodSearch::cluster_destroy_repair:
+    move = destroy_and_repair(order, forced_rotations, piece_areas, rng,
+                              intensity, DestroyStrategy::cluster, false, op);
     break;
-  case NeighborhoodOperator::regret_destroy_repair:
-    move = destroy_and_repair(order, forced_rotations, piece_areas, rng, intensity,
-                              DestroyStrategy::area, true, op);
+  case NeighborhoodSearch::regret_destroy_repair:
+    move = destroy_and_repair(order, forced_rotations, piece_areas, rng,
+                              intensity, DestroyStrategy::area, true, op);
     break;
   }
 
   if (!move.changed && order.size() >= 2U) {
-    move.op = NeighborhoodOperator::random_swap;
+    move.op = NeighborhoodSearch::random_swap;
     move.order.assign(order.begin(), order.end());
-    move.forced_rotations.assign(forced_rotations.begin(), forced_rotations.end());
+    move.forced_rotations.assign(forced_rotations.begin(),
+                                 forced_rotations.end());
     if (move.forced_rotations.size() != move.order.size()) {
       move.forced_rotations.assign(move.order.size(), std::nullopt);
     }
@@ -634,29 +658,28 @@ auto propose_move(std::span<const std::size_t> order,
     }
     move.primary_index = lhs;
     move.secondary_index = rhs;
-    move.changed =
-        swap_positions(move.order, move.forced_rotations, lhs, rhs);
+    move.changed = swap_positions(move.order, move.forced_rotations, lhs, rhs);
   }
 
   return move;
 }
 
 auto random_operator(runtime::DeterministicRng &rng,
-                     const bool include_destroy_repair) -> NeighborhoodOperator {
+                     const bool include_destroy_repair) -> NeighborhoodSearch {
   const std::size_t count = include_destroy_repair ? 11U : 6U;
-  return static_cast<NeighborhoodOperator>(rng.uniform_index(count));
+  return static_cast<NeighborhoodSearch>(rng.uniform_index(count));
 }
 
-auto all_alns_operators() -> std::vector<NeighborhoodOperator> {
+auto all_alns_operators() -> std::vector<NeighborhoodSearch> {
   return {
-      NeighborhoodOperator::random_destroy_repair,
-      NeighborhoodOperator::area_destroy_repair,
-      NeighborhoodOperator::related_destroy_repair,
-      NeighborhoodOperator::cluster_destroy_repair,
-      NeighborhoodOperator::regret_destroy_repair,
-      NeighborhoodOperator::large_item_swap,
-      NeighborhoodOperator::rotation_change,
-      NeighborhoodOperator::relocate,
+      NeighborhoodSearch::random_destroy_repair,
+      NeighborhoodSearch::area_destroy_repair,
+      NeighborhoodSearch::related_destroy_repair,
+      NeighborhoodSearch::cluster_destroy_repair,
+      NeighborhoodSearch::regret_destroy_repair,
+      NeighborhoodSearch::large_item_swap,
+      NeighborhoodSearch::rotation_change,
+      NeighborhoodSearch::relocate,
   };
 }
 
@@ -702,29 +725,29 @@ auto within_record_window(const LayoutMetrics &candidate,
   return candidate.utilization + (ratio * 0.5) >= best.utilization;
 }
 
-auto operator_label(const NeighborhoodOperator op) -> std::string_view {
+auto operator_label(const NeighborhoodSearch op) -> std::string_view {
   switch (op) {
-  case NeighborhoodOperator::adjacent_swap:
+  case NeighborhoodSearch::adjacent_swap:
     return "adjacent-swap";
-  case NeighborhoodOperator::random_swap:
+  case NeighborhoodSearch::random_swap:
     return "random-swap";
-  case NeighborhoodOperator::relocate:
+  case NeighborhoodSearch::relocate:
     return "relocate";
-  case NeighborhoodOperator::inversion:
+  case NeighborhoodSearch::inversion:
     return "inversion";
-  case NeighborhoodOperator::large_item_swap:
+  case NeighborhoodSearch::large_item_swap:
     return "large-item-swap";
-  case NeighborhoodOperator::rotation_change:
+  case NeighborhoodSearch::rotation_change:
     return "rotation-change";
-  case NeighborhoodOperator::random_destroy_repair:
+  case NeighborhoodSearch::random_destroy_repair:
     return "random-destroy-repair";
-  case NeighborhoodOperator::area_destroy_repair:
+  case NeighborhoodSearch::area_destroy_repair:
     return "area-destroy-repair";
-  case NeighborhoodOperator::related_destroy_repair:
+  case NeighborhoodSearch::related_destroy_repair:
     return "related-destroy-repair";
-  case NeighborhoodOperator::cluster_destroy_repair:
+  case NeighborhoodSearch::cluster_destroy_repair:
     return "cluster-destroy-repair";
-  case NeighborhoodOperator::regret_destroy_repair:
+  case NeighborhoodSearch::regret_destroy_repair:
     return "regret-destroy-repair";
   }
   return "unknown";

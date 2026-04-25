@@ -410,7 +410,7 @@ TEST_CASE("mtg sequential-backtrack multi-start observer keeps the best full lay
   std::size_t best_observed_layout = 0;
 
   SolveControl control{};
-  control.iteration_limit = 4;
+  control.operation_limit = 4;
   control.random_seed = 99;
   control.cancellation = cancel_source.token();
   control.on_progress = [&](const ProgressSnapshot &snapshot) {
@@ -443,7 +443,7 @@ TEST_CASE("mtg sequential-backtrack multi-start observer keeps the best full lay
   REQUIRE(observed.back().layout.placement_trace.size() <
           solved.value().layout.placement_trace.size());
   REQUIRE(solved.value().budget.cancellation_requested);
-  REQUIRE(solved.value().budget.iterations_completed >= 2U);
+  REQUIRE(solved.value().budget.operations_completed >= 2U);
 }
 
 TEST_CASE("sequential-backtrack enable_part_in_part_placement fills the hole",

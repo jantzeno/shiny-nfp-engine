@@ -100,7 +100,8 @@ auto make_solve_request(PolygonWithHoles bin, std::vector<PieceRequest> pieces)
 
 TEST_CASE("bounding box algorithm kind uses canonical vocabulary",
           "[packing][bounding-box][algorithm]") {
-  REQUIRE(shiny::nesting::to_string(AlgorithmKind::bounding_box) == "bounding_box");
+  REQUIRE(shiny::nesting::to_string(AlgorithmKind::bounding_box) ==
+          "bounding_box");
   const auto parsed = shiny::nesting::parse_algorithm_kind("bounding_box");
   REQUIRE(parsed.has_value());
   REQUIRE(*parsed == AlgorithmKind::bounding_box);
@@ -267,14 +268,18 @@ TEST_CASE("bounding box skyline heuristic respects piece spacing",
   REQUIRE(result.bins.front().placements[1].placement.translation.y == 0.0);
 }
 
-TEST_CASE("bounding box solve selects the best deterministic attempt and emits progress",
+TEST_CASE("bounding box solve selects the best deterministic attempt and emits "
+          "progress",
           "[solve][bounding-box][progress]") {
   auto request = make_solve_request(
       make_rectangle(0.0, 0.0, 4.0, 4.0),
       {
-          PieceRequest{.piece_id = 1, .polygon = make_rectangle(0.0, 0.0, 2.0, 2.0)},
-          PieceRequest{.piece_id = 2, .polygon = make_rectangle(0.0, 0.0, 2.0, 2.0)},
-          PieceRequest{.piece_id = 3, .polygon = make_rectangle(0.0, 0.0, 4.0, 2.0)},
+          PieceRequest{.piece_id = 1,
+                       .polygon = make_rectangle(0.0, 0.0, 2.0, 2.0)},
+          PieceRequest{.piece_id = 2,
+                       .polygon = make_rectangle(0.0, 0.0, 2.0, 2.0)},
+          PieceRequest{.piece_id = 3,
+                       .polygon = make_rectangle(0.0, 0.0, 4.0, 2.0)},
       });
   request.execution.bounding_box.heuristic =
       BoundingBoxHeuristic::free_rectangle_backfill;
@@ -282,43 +287,49 @@ TEST_CASE("bounding box solve selects the best deterministic attempt and emits p
 
   std::vector<ProgressSnapshot> snapshots;
   const auto result = shiny::nesting::solve(
-      request, SolveControl{.on_progress = [&](const ProgressSnapshot &snapshot) {
+      request,
+      SolveControl{.on_progress = [&](const ProgressSnapshot &snapshot) {
         snapshots.push_back(snapshot);
       }});
 
   REQUIRE(result.ok());
   REQUIRE(result.value().layout.placement_trace.size() == 3U);
   REQUIRE(result.value().stop_reason == StopReason::completed);
-  REQUIRE(result.value().budget.iterations_completed == 3U);
+  REQUIRE(result.value().budget.operations_completed == 3U);
   REQUIRE(snapshots.size() == 3U);
   REQUIRE(snapshots.front().sequence == 1U);
   REQUIRE(snapshots.back().sequence == 3U);
-  REQUIRE(snapshots.back().budget.iterations_completed == 3U);
+  REQUIRE(snapshots.back().budget.operations_completed == 3U);
 }
 
-TEST_CASE("bounding box solve obeys iteration limits across deterministic attempts",
-          "[solve][bounding-box][budget]") {
+TEST_CASE(
+    "bounding box solve obeys operation limits across deterministic attempts",
+    "[solve][bounding-box][budget]") {
   auto request = make_solve_request(
       make_rectangle(0.0, 0.0, 8.0, 8.0),
       {
-          PieceRequest{.piece_id = 1, .polygon = make_rectangle(0.0, 0.0, 1.0, 4.0)},
-          PieceRequest{.piece_id = 2, .polygon = make_rectangle(0.0, 0.0, 3.0, 2.0)},
-          PieceRequest{.piece_id = 3, .polygon = make_rectangle(0.0, 0.0, 2.0, 1.0)},
+          PieceRequest{.piece_id = 1,
+                       .polygon = make_rectangle(0.0, 0.0, 1.0, 4.0)},
+          PieceRequest{.piece_id = 2,
+                       .polygon = make_rectangle(0.0, 0.0, 3.0, 2.0)},
+          PieceRequest{.piece_id = 3,
+                       .polygon = make_rectangle(0.0, 0.0, 2.0, 1.0)},
       });
   request.execution.deterministic_attempts.max_attempts = 3;
 
   std::vector<ProgressSnapshot> snapshots;
   const auto result = shiny::nesting::solve(
-      request, SolveControl{.on_progress = [&](const ProgressSnapshot &snapshot) {
-        snapshots.push_back(snapshot);
-      },
-                            .iteration_limit = 1});
+      request, SolveControl{.on_progress =
+                                [&](const ProgressSnapshot &snapshot) {
+                                  snapshots.push_back(snapshot);
+                                },
+                            .operation_limit = 1});
 
   REQUIRE(result.ok());
-  REQUIRE(result.value().stop_reason == StopReason::iteration_limit_reached);
-  REQUIRE(result.value().budget.iterations_completed == 1U);
+  REQUIRE(result.value().stop_reason == StopReason::operation_limit_reached);
+  REQUIRE(result.value().budget.operations_completed == 1U);
   REQUIRE(snapshots.size() == 1U);
-  REQUIRE(snapshots.front().budget.iterations_completed == 1U);
+  REQUIRE(snapshots.front().budget.operations_completed == 1U);
 }
 
 TEST_CASE("bounding box packer respects exclusion zones",
@@ -397,7 +408,8 @@ TEST_CASE("bounding box packer always starts from top-right origin corner",
           .bin_id = 50,
           .polygon = make_rectangle(0.0, 0.0, 10.0, 10.0),
           .geometry_revision = 1,
-          .start_corner = shiny::nesting::place::PlacementStartCorner::top_right,
+          .start_corner =
+              shiny::nesting::place::PlacementStartCorner::top_right,
       },
       {
           make_piece(1, make_rectangle(0.0, 0.0, 6.0, 4.0), 1),
@@ -470,10 +482,9 @@ TEST_CASE("bounding box packer reports each deterministic attempt",
   std::vector<std::size_t> observed_placed_counts;
   const auto attempts = packer.decode_attempts(
       request, {},
-      [&observed_attempt_indices,
-       &observed_placed_counts](const std::size_t attempt_index,
-                                const shiny::nesting::pack::DecoderResult
-                                    &result) {
+      [&observed_attempt_indices, &observed_placed_counts](
+          const std::size_t attempt_index,
+          const shiny::nesting::pack::DecoderResult &result) {
         observed_attempt_indices.push_back(attempt_index);
         observed_placed_counts.push_back(result.layout.placement_trace.size());
       });
@@ -535,7 +546,8 @@ TEST_CASE("bounding box skyline heuristic honors top-right start corners",
           .bin_id = 81,
           .polygon = make_rectangle(0.0, 0.0, 4.0, 4.0),
           .geometry_revision = 1,
-          .start_corner = shiny::nesting::place::PlacementStartCorner::top_right,
+          .start_corner =
+              shiny::nesting::place::PlacementStartCorner::top_right,
       },
       {
           make_piece(1, make_rectangle(0.0, 0.0, 3.0, 4.0), 1),

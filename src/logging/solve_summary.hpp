@@ -38,8 +38,9 @@ namespace shiny::nesting::log {
   return "unknown";
 }
 
-[[nodiscard]] constexpr auto production_optimizer_name(
-    const ProductionOptimizerKind kind) -> std::string_view {
+[[nodiscard]] constexpr auto
+production_optimizer_name(const ProductionOptimizerKind kind)
+    -> std::string_view {
   switch (kind) {
   case ProductionOptimizerKind::brkga:
     return "brkga";
@@ -55,8 +56,8 @@ namespace shiny::nesting::log {
   return "unknown";
 }
 
-[[nodiscard]] constexpr auto candidate_strategy_name(
-    const CandidateStrategy strategy) -> std::string_view {
+[[nodiscard]] constexpr auto
+candidate_strategy_name(const CandidateStrategy strategy) -> std::string_view {
   switch (strategy) {
   case CandidateStrategy::anchor_vertex:
     return "anchor_vertex";
@@ -87,8 +88,8 @@ namespace shiny::nesting::log {
   return "unknown";
 }
 
-[[nodiscard]] constexpr auto placement_policy_name(
-    const place::PlacementPolicy policy) -> std::string_view {
+[[nodiscard]] constexpr auto
+placement_policy_name(const place::PlacementPolicy policy) -> std::string_view {
   switch (policy) {
   case place::PlacementPolicy::bottom_left:
     return "bottom_left";
@@ -100,8 +101,9 @@ namespace shiny::nesting::log {
   return "unknown";
 }
 
-[[nodiscard]] constexpr auto bounding_box_heuristic_name(
-    const pack::BoundingBoxHeuristic heuristic) -> std::string_view {
+[[nodiscard]] constexpr auto
+bounding_box_heuristic_name(const pack::BoundingBoxHeuristic heuristic)
+    -> std::string_view {
   switch (heuristic) {
   case pack::BoundingBoxHeuristic::shelf:
     return "shelf";
@@ -113,8 +115,8 @@ namespace shiny::nesting::log {
   return "unknown";
 }
 
-[[nodiscard]] constexpr auto cooling_schedule_name(
-    const CoolingScheduleKind schedule) -> std::string_view {
+[[nodiscard]] constexpr auto
+cooling_schedule_name(const CoolingScheduleKind schedule) -> std::string_view {
   switch (schedule) {
   case CoolingScheduleKind::geometric:
     return "geometric";
@@ -150,8 +152,8 @@ namespace shiny::nesting::log {
     return "completed";
   case StopReason::cancelled:
     return "cancelled";
-  case StopReason::iteration_limit_reached:
-    return "iteration_limit_reached";
+  case StopReason::operation_limit_reached:
+    return "operation_limit_reached";
   case StopReason::time_limit_reached:
     return "time_limit_reached";
   case StopReason::invalid_request:
@@ -199,8 +201,9 @@ production_runner_class_name(const ProductionOptimizerKind optimizer)
   return "unknown";
 }
 
-[[nodiscard]] inline auto effective_runner_class_name(
-    const ExecutionPolicy &execution) -> std::string_view {
+[[nodiscard]] inline auto
+effective_runner_class_name(const ExecutionPolicy &execution)
+    -> std::string_view {
   return execution.strategy == StrategyKind::metaheuristic_search
              ? production_runner_class_name(execution.production_optimizer)
              : runner_class_name(execution.strategy);
@@ -222,8 +225,8 @@ production_runner_class_name(const ProductionOptimizerKind optimizer)
   return formatted;
 }
 
-[[nodiscard]] inline auto total_requested_quantity(const NestingRequest &request)
-    -> std::size_t {
+[[nodiscard]] inline auto
+total_requested_quantity(const NestingRequest &request) -> std::size_t {
   return std::accumulate(
       request.pieces.begin(), request.pieces.end(), std::size_t{0},
       [](const std::size_t total, const PieceRequest &piece) {
@@ -231,53 +234,55 @@ production_runner_class_name(const ProductionOptimizerKind optimizer)
       });
 }
 
-[[nodiscard]] inline auto count_pieces_with_allowed_bins(
-    const NestingRequest &request) -> std::size_t {
-  return static_cast<std::size_t>(std::count_if(
-      request.pieces.begin(), request.pieces.end(), [](const PieceRequest &piece) {
-        return !piece.allowed_bin_ids.empty();
-      }));
+[[nodiscard]] inline auto
+count_pieces_with_allowed_bins(const NestingRequest &request) -> std::size_t {
+  return static_cast<std::size_t>(
+      std::count_if(request.pieces.begin(), request.pieces.end(),
+                    [](const PieceRequest &piece) {
+                      return !piece.allowed_bin_ids.empty();
+                    }));
 }
 
-[[nodiscard]] inline auto count_pieces_with_custom_rotations(
-    const NestingRequest &request) -> std::size_t {
-  return static_cast<std::size_t>(std::count_if(
-      request.pieces.begin(), request.pieces.end(), [](const PieceRequest &piece) {
-        return piece.allowed_rotations.has_value();
-      }));
+[[nodiscard]] inline auto
+count_pieces_with_custom_rotations(const NestingRequest &request)
+    -> std::size_t {
+  return static_cast<std::size_t>(
+      std::count_if(request.pieces.begin(), request.pieces.end(),
+                    [](const PieceRequest &piece) {
+                      return piece.allowed_rotations.has_value();
+                    }));
 }
 
 [[nodiscard]] inline auto count_mirrored_pieces(const NestingRequest &request)
     -> std::size_t {
   return static_cast<std::size_t>(std::count_if(
-      request.pieces.begin(), request.pieces.end(), [](const PieceRequest &piece) {
-        return piece.allow_mirror;
-      }));
+      request.pieces.begin(), request.pieces.end(),
+      [](const PieceRequest &piece) { return piece.allow_mirror; }));
 }
 
 [[nodiscard]] inline auto count_priority_pieces(const NestingRequest &request)
     -> std::size_t {
   return static_cast<std::size_t>(std::count_if(
-      request.pieces.begin(), request.pieces.end(), [](const PieceRequest &piece) {
-        return piece.priority != 0;
-      }));
+      request.pieces.begin(), request.pieces.end(),
+      [](const PieceRequest &piece) { return piece.priority != 0; }));
 }
 
-[[nodiscard]] inline auto count_bins_with_non_default_start_corner(
-    const NestingRequest &request) -> std::size_t {
+[[nodiscard]] inline auto
+count_bins_with_non_default_start_corner(const NestingRequest &request)
+    -> std::size_t {
   return static_cast<std::size_t>(std::count_if(
       request.bins.begin(), request.bins.end(), [](const BinRequest &bin) {
         return bin.start_corner != place::PlacementStartCorner::bottom_left;
       }));
 }
 
-[[nodiscard]] inline auto count_total_exclusion_zones(
-    const NestingRequest &request) -> std::size_t {
-  return std::accumulate(
-      request.bins.begin(), request.bins.end(), std::size_t{0},
-      [](const std::size_t total, const BinRequest &bin) {
-        return total + bin.exclusion_zones.size();
-      });
+[[nodiscard]] inline auto
+count_total_exclusion_zones(const NestingRequest &request) -> std::size_t {
+  return std::accumulate(request.bins.begin(), request.bins.end(),
+                         std::size_t{0},
+                         [](const std::size_t total, const BinRequest &bin) {
+                           return total + bin.exclusion_zones.size();
+                         });
 }
 
 [[nodiscard]] inline auto request_surface_summary(const NestingRequest &request)
@@ -287,12 +292,13 @@ production_runner_class_name(const ProductionOptimizerKind optimizer)
       "default_rotations={} restricted_pieces={} custom_rot_pieces={} "
       "mirror_pieces={} priority_pieces={} start_corner_overrides={} "
       "exclusion_zones={} part_in_part={} explore_concave={}",
-      request.pieces.size(), total_requested_quantity(request), request.bins.size(),
-      format_id_list(request.execution.selected_bin_ids), request.execution.part_spacing,
+      request.pieces.size(), total_requested_quantity(request),
+      request.bins.size(), format_id_list(request.execution.selected_bin_ids),
+      request.execution.part_spacing,
       geom::rotation_count(request.execution.default_rotations),
       count_pieces_with_allowed_bins(request),
-      count_pieces_with_custom_rotations(request), count_mirrored_pieces(request),
-      count_priority_pieces(request),
+      count_pieces_with_custom_rotations(request),
+      count_mirrored_pieces(request), count_priority_pieces(request),
       count_bins_with_non_default_start_corner(request),
       count_total_exclusion_zones(request),
       bool_name(request.execution.enable_part_in_part_placement),
@@ -301,25 +307,25 @@ production_runner_class_name(const ProductionOptimizerKind optimizer)
 
 [[nodiscard]] inline auto control_surface_summary(const SolveControl &control)
     -> std::string {
+  return std::format("seed={} seed_mode={} operation_limit={} time_limit_ms={} "
+                     "has_progress={} has_workspace={}",
+                     control.random_seed, seed_mode_name(control.seed_mode),
+                     control.operation_limit, control.time_limit_milliseconds,
+                     bool_name(static_cast<bool>(control.on_progress)),
+                     bool_name(control.workspace != nullptr));
+}
+
+[[nodiscard]] inline auto
+bounding_box_settings_summary(const ExecutionPolicy &execution) -> std::string {
   return std::format(
-      "seed={} seed_mode={} iteration_limit={} time_limit_ms={} "
-      "has_progress={} has_workspace={}",
-      control.random_seed, seed_mode_name(control.seed_mode),
-      control.iteration_limit, control.time_limit_milliseconds,
-      bool_name(static_cast<bool>(control.on_progress)),
-      bool_name(control.workspace != nullptr));
+      "heuristic={} placement_policy={} attempts={}",
+      bounding_box_heuristic_name(execution.bounding_box.heuristic),
+      placement_policy_name(execution.placement_policy),
+      execution.deterministic_attempts.max_attempts);
 }
 
-[[nodiscard]] inline auto bounding_box_settings_summary(
-    const ExecutionPolicy &execution) -> std::string {
-  return std::format("heuristic={} placement_policy={} attempts={}",
-                     bounding_box_heuristic_name(execution.bounding_box.heuristic),
-                     placement_policy_name(execution.placement_policy),
-                     execution.deterministic_attempts.max_attempts);
-}
-
-[[nodiscard]] inline auto irregular_settings_summary(
-    const ExecutionPolicy &execution) -> std::string {
+[[nodiscard]] inline auto
+irregular_settings_summary(const ExecutionPolicy &execution) -> std::string {
   return std::format(
       "placement_policy={} candidate_strategy={} piece_ordering={} "
       "max_candidate_points={} gaussian_sigma={:.3g} merge_free_regions={} "
@@ -338,19 +344,21 @@ production_runner_class_name(const ProductionOptimizerKind optimizer)
       execution.irregular.compaction_passes);
 }
 
-[[nodiscard]] inline auto production_settings_summary(
-    const ExecutionPolicy &execution,
-    const ProductionOptimizerKind optimizer) -> std::string {
+[[nodiscard]] inline auto
+production_settings_summary(const ExecutionPolicy &execution,
+                            const ProductionOptimizerKind optimizer)
+    -> std::string {
   const std::string shared = std::format(
       "optimizer={} placement_policy={} population_size={} elite_count={} "
-      "mutant_count={} max_iterations={} polishing_passes={} "
+      "mutant_count={} max_operations={} polishing_passes={} "
       "diversification_swaps={} elite_bias={:.3g}",
       production_optimizer_name(optimizer),
       placement_policy_name(execution.placement_policy),
       execution.production.population_size, execution.production.elite_count,
       execution.production.mutant_count, execution.production.max_iterations,
       execution.production.polishing_passes,
-      execution.production.diversification_swaps, execution.production.elite_bias);
+      execution.production.diversification_swaps,
+      execution.production.elite_bias);
   switch (optimizer) {
   case ProductionOptimizerKind::brkga:
     return shared;
@@ -367,14 +375,16 @@ production_runner_class_name(const ProductionOptimizerKind optimizer)
     return std::format(
         "{} alns[max_refinements={} destroy_min={} destroy_max={} "
         "segment_length={}]",
-        shared, execution.alns.max_refinements, execution.alns.destroy_min_count,
-        execution.alns.destroy_max_count, execution.alns.segment_length);
+        shared, execution.alns.max_refinements,
+        execution.alns.destroy_min_count, execution.alns.destroy_max_count,
+        execution.alns.segment_length);
   case ProductionOptimizerKind::gdrr:
-    return std::format(
-        "{} gdrr[max_refinements={} initial_goal_ratio={:.3g} "
-        "goal_decay={:.3g} ruin_swap_count={}]",
-        shared, execution.gdrr.max_refinements, execution.gdrr.initial_goal_ratio,
-        execution.gdrr.goal_decay, execution.gdrr.ruin_swap_count);
+    return std::format("{} gdrr[max_refinements={} initial_goal_ratio={:.3g} "
+                       "goal_decay={:.3g} ruin_swap_count={}]",
+                       shared, execution.gdrr.max_refinements,
+                       execution.gdrr.initial_goal_ratio,
+                       execution.gdrr.goal_decay,
+                       execution.gdrr.ruin_swap_count);
   case ProductionOptimizerKind::lahc:
     return std::format(
         "{} lahc[max_refinements={} history_length={} plateau_limit={} "
@@ -385,24 +395,28 @@ production_runner_class_name(const ProductionOptimizerKind optimizer)
   return shared;
 }
 
-[[nodiscard]] inline auto strategy_settings_summary(
-    const ExecutionPolicy &execution) -> std::string {
+[[nodiscard]] inline auto
+strategy_settings_summary(const ExecutionPolicy &execution) -> std::string {
   switch (execution.strategy) {
   case StrategyKind::bounding_box:
     return bounding_box_settings_summary(execution);
   case StrategyKind::sequential_backtrack:
     return irregular_settings_summary(execution);
   case StrategyKind::metaheuristic_search:
-    return production_settings_summary(execution, execution.production_optimizer);
+    return production_settings_summary(execution,
+                                       execution.production_optimizer);
   case StrategyKind::simulated_annealing:
     return production_settings_summary(
         execution, ProductionOptimizerKind::simulated_annealing);
   case StrategyKind::alns:
-    return production_settings_summary(execution, ProductionOptimizerKind::alns);
+    return production_settings_summary(execution,
+                                       ProductionOptimizerKind::alns);
   case StrategyKind::gdrr:
-    return production_settings_summary(execution, ProductionOptimizerKind::gdrr);
+    return production_settings_summary(execution,
+                                       ProductionOptimizerKind::gdrr);
   case StrategyKind::lahc:
-    return production_settings_summary(execution, ProductionOptimizerKind::lahc);
+    return production_settings_summary(execution,
+                                       ProductionOptimizerKind::lahc);
   }
   return "unknown";
 }

@@ -137,7 +137,7 @@ void run_and_assert_full_all_beds(const MtgFixture &fixture,
   if (options.strategy == StrategyKind::sequential_backtrack ||
       (options.strategy == StrategyKind::metaheuristic_search &&
        options.production_optimizer == ProductionOptimizerKind::brkga)) {
-    control.iteration_limit = kMaxControlIterations;
+    control.operation_limit = kMaxControlIterations;
   }
 
   auto solved = solve(request, control);

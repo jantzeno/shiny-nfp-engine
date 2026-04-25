@@ -38,7 +38,7 @@ TEST_CASE("profile decode benchmark emits canonical algorithm metric",
          .search_total_ms = 2.0,
          .search_best_bin_count = 1,
          .search_best_unplaced_piece_count = 0,
-         .search_iterations_completed = 4,
+         .search_operations_completed = 4,
          .search_reevaluation_cache_size = 6});
   });
 

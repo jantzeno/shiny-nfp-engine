@@ -27,6 +27,8 @@ using namespace shiny::nesting::test::mtg;
 
 namespace {
 
+constexpr std::uint64_t kSeed = 7;
+
 constexpr std::array<place::PlacementStartCorner, 4> kAllCorners{
     place::PlacementStartCorner::bottom_left,
     place::PlacementStartCorner::bottom_right,
@@ -43,6 +45,14 @@ void apply_strategy_bounding_box(MtgRequestOptions &options) {
 void apply_strategy_sequential_backtrack(MtgRequestOptions &options) {
   options.strategy = StrategyKind::sequential_backtrack;
   options.irregular = {};
+}
+
+[[nodiscard]] auto base_solve_control(const MtgRequestOptions &options)
+    -> SolveControl {
+  SolveControl control{};
+  control.random_seed =
+      options.strategy == StrategyKind::sequential_backtrack ? 0U : kSeed;
+  return control;
 }
 
 void run_corner_matrix(const MtgFixture &fixture,
@@ -69,8 +79,7 @@ void run_corner_matrix(const MtgFixture &fixture,
       const auto request = make_request(fixture, options);
       REQUIRE(request.is_valid());
 
-      SolveControl control{};
-      control.random_seed = 7;
+      const SolveControl control = base_solve_control(options);
 
       auto solved = solve(request, control);
       REQUIRE(solved.has_value());
@@ -102,7 +111,7 @@ void run_corner_matrix(const MtgFixture &fixture,
                       [](const auto &kv) { return kv.second.size() == 1; }));
 }
 
-}  // namespace
+} // namespace
 
 TEST_CASE("mtg start-corner override matrix (bounding_box)",
           "[mtg][nesting-matrix][start-corners][bounding-box]") {

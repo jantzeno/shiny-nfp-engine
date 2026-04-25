@@ -149,17 +149,17 @@ auto find_best_for_bin(
     const NormalizedRequest &request, const runtime::TimeBudget &time_budget,
     const runtime::Stopwatch &stopwatch, const SolveControl &control,
     ProgressThrottle &search_throttle, const std::size_t placed_parts,
-    const std::size_t total_parts, const std::uint64_t per_piece_budget_ms,
+    const std::size_t total_parts, PlacementAttemptContext &attempt_context,
     cache::NfpCache *nfp_cache, runtime::DeterministicRng *rng)
-    -> std::optional<CandidatePlacement> {
+    -> PlacementSearchResult {
   if (!piece_allows_bin(piece, bin.state.bin_id)) {
-    return std::nullopt;
+    return {.status = PlacementSearchStatus::no_candidate};
   }
 
   ensure_free_regions_cached(bin, request.request.execution);
   const auto &free_regions = bin.cached_free_regions;
   if (free_regions.empty()) {
-    return std::nullopt;
+    return {.status = PlacementSearchStatus::no_candidate};
   }
   const auto &region_bboxes = bin.cached_region_bboxes;
 
@@ -185,13 +185,14 @@ auto find_best_for_bin(
 
   std::optional<CandidatePlacement> best;
   std::vector<CandidatePlacement> top_k;
-  const auto piece_start_ms = stopwatch.elapsed_milliseconds(); // HERE
-  std::size_t eval_count = 0;
+  std::size_t local_eval_count = 0;
   bool search_done = false;
+  PlacementSearchStatus stop_status = PlacementSearchStatus::no_candidate;
 
   for (std::size_t rotation_value = rotation_begin;
        rotation_value < rotation_end && !search_done; ++rotation_value) {
     if (interrupted(control, time_budget, stopwatch)) {
+      stop_status = PlacementSearchStatus::interrupted;
       break;
     }
 
@@ -253,28 +254,36 @@ auto find_best_for_bin(
                                bin.state.start_corner, rng);
 
         for (const auto &candidate_point : candidate_points) {
-          if (++eval_count % kInterruptCheckInterval == 0) {
+          ++attempt_context.candidate_evaluations_completed;
+          ++local_eval_count;
+          if (local_eval_count % kInterruptCheckInterval == 0) {
             if (interrupted(control, time_budget, stopwatch)) {
+              stop_status = PlacementSearchStatus::interrupted;
               search_done = true;
               break;
             }
-            if (per_piece_budget_ms > 0 &&
-                (stopwatch.elapsed_milliseconds() - piece_start_ms) >
-                    per_piece_budget_ms) {
+            if (attempt_context.budget_milliseconds > 0 &&
+                (stopwatch.elapsed_milliseconds() -
+                 attempt_context.started_milliseconds) >
+                    attempt_context.budget_milliseconds) {
               SHINY_DEBUG("find_best_for_bin: per-piece budget exceeded ({}ms "
                           "> {}ms limit)",
-                          stopwatch.elapsed_milliseconds() - piece_start_ms,
-                          per_piece_budget_ms);
+                          stopwatch.elapsed_milliseconds() -
+                              attempt_context.started_milliseconds,
+                          attempt_context.budget_milliseconds);
+              stop_status = PlacementSearchStatus::placement_budget_exhausted;
               search_done = true;
               break;
             }
             if (search_throttle.should_emit()) {
               emit_search_progress(
                   control, placed_parts, total_parts,
+                  attempt_context.candidate_evaluations_completed,
                   make_budget(control, time_budget, stopwatch, 0U),
                   std::format(
                       "Searching rotation {}/{}, candidates evaluated: {}",
-                      rotation_value + 1U, rotation_count, eval_count));
+                      rotation_value + 1U, rotation_count,
+                      attempt_context.candidate_evaluations_completed));
             }
           }
 
@@ -368,9 +377,14 @@ auto find_best_for_bin(
   }
 
   if (rng != nullptr && !top_k.empty()) {
-    return std::move(top_k[rng->uniform_index(top_k.size())]);
+    return {.status = PlacementSearchStatus::found,
+            .candidate = std::move(top_k[rng->uniform_index(top_k.size())])};
   }
-  return best;
+  if (best.has_value()) {
+    return {.status = PlacementSearchStatus::found,
+            .candidate = std::move(best)};
+  }
+  return {.status = stop_status};
 }
 
 } // namespace shiny::nesting::pack::detail
