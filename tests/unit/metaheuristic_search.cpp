@@ -372,6 +372,63 @@ TEST_CASE("irregular production dispatch can route to the new optimizers",
   }
 }
 
+TEST_CASE("metaheuristic internal exhaustion is not a caller operation limit",
+          "[solve][metaheuristic][budget]") {
+  const std::array strategies{
+      StrategyKind::simulated_annealing,
+      StrategyKind::alns,
+      StrategyKind::gdrr,
+      StrategyKind::lahc,
+  };
+
+  for (const auto strategy : strategies) {
+    auto request = improvement_request();
+    request.execution.strategy = strategy;
+    request.execution.simulated_annealing.max_refinements = 1;
+    request.execution.simulated_annealing.restart_count = 2;
+    request.execution.alns.max_refinements = 1;
+    request.execution.gdrr.max_refinements = 1;
+    request.execution.lahc.max_refinements = 1;
+
+    const auto result = shiny::nesting::solve(
+        request, SolveControl{.operation_limit = 0, .random_seed = 17});
+    INFO(static_cast<int>(strategy));
+    REQUIRE(result.ok());
+    REQUIRE_FALSE(result.value().budget.operation_limit_enabled);
+    REQUIRE(result.value().budget.operation_limit == 0U);
+    REQUIRE(result.value().stop_reason != StopReason::operation_limit_reached);
+  }
+}
+
+TEST_CASE("metaheuristic caller operation caps stop at the external limit",
+          "[solve][metaheuristic][budget]") {
+  const std::array strategies{
+      StrategyKind::simulated_annealing,
+      StrategyKind::alns,
+      StrategyKind::gdrr,
+      StrategyKind::lahc,
+  };
+
+  for (const auto strategy : strategies) {
+    auto request = improvement_request();
+    request.execution.strategy = strategy;
+    request.execution.simulated_annealing.max_refinements = 2;
+    request.execution.simulated_annealing.restart_count = 2;
+    request.execution.alns.max_refinements = 2;
+    request.execution.gdrr.max_refinements = 2;
+    request.execution.lahc.max_refinements = 2;
+
+    const auto result = shiny::nesting::solve(
+        request, SolveControl{.operation_limit = 1, .random_seed = 17});
+    INFO(static_cast<int>(strategy));
+    REQUIRE(result.ok());
+    REQUIRE(result.value().budget.operation_limit_enabled);
+    REQUIRE(result.value().budget.operation_limit == 1U);
+    REQUIRE(result.value().budget.operations_completed <= 1U);
+    REQUIRE(result.value().stop_reason == StopReason::operation_limit_reached);
+  }
+}
+
 TEST_CASE("strategy registry resolves direct and production strategies",
           "[solve][strategy-registry]") {
   auto direct_request = improvement_request();

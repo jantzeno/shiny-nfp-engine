@@ -22,8 +22,10 @@
 #include "nanosvg.h"
 
 #include "geometry/normalize.hpp"
+#include "geometry/sanitize.hpp"
 #include "geometry/transform.hpp"
 #include "geometry/types.hpp"
+#include "geometry/validity.hpp"
 #include "observer.hpp"
 #include "packing/common.hpp"
 #include "packing/config.hpp"
@@ -34,13 +36,33 @@
 #include "polygon_ops/simplify.hpp"
 #include "request.hpp"
 #include "result.hpp"
-#include "solve.hpp"
 
 namespace shiny::nesting::test::mtg {
 
 namespace {
 
 constexpr double kInvariantTolerance = 1e-3;
+
+[[nodiscard]] constexpr auto
+validity_issue_name(const geom::PolygonValidityIssue issue) -> const char * {
+  switch (issue) {
+  case geom::PolygonValidityIssue::ok:
+    return "ok";
+  case geom::PolygonValidityIssue::non_finite_coordinate:
+    return "non_finite_coordinate";
+  case geom::PolygonValidityIssue::too_few_vertices:
+    return "too_few_vertices";
+  case geom::PolygonValidityIssue::zero_area:
+    return "zero_area";
+  case geom::PolygonValidityIssue::self_intersection:
+    return "self_intersection";
+  case geom::PolygonValidityIssue::hole_outside_outer:
+    return "hole_outside_outer";
+  case geom::PolygonValidityIssue::hole_intersection:
+    return "hole_intersection";
+  }
+  return "unknown";
+}
 
 [[nodiscard]] auto resolve_fixture_root() -> std::filesystem::path {
   if (const char *env = std::getenv("SHINY_NESTING_ENGINE_TEST_FIXTURE_ROOT")) {
@@ -665,7 +687,21 @@ auto load_mtg_fixture_with_actual_polygons() -> MtgFixture {
           std::to_string(art_id)};
     }
 
-    piece.polygon = std::move(silhouette);
+    const auto sanitized = geom::sanitize_polygon(silhouette);
+    const auto validity = geom::validate_polygon(sanitized.polygon);
+    if (!validity.is_valid()) {
+      throw std::runtime_error{
+          "mtg_fixture: invalid extracted polygon for artwork " +
+          std::to_string(art_id) +
+          " issue=" + validity_issue_name(validity.issue)};
+    }
+    if (sanitized.sliver_rings > 0U) {
+      throw std::runtime_error{
+          "mtg_fixture: extracted polygon contains sliver rings for artwork " +
+          std::to_string(art_id)};
+    }
+
+    piece.polygon = std::move(sanitized.polygon);
     piece.width_mm = width;
     piece.height_mm = height;
   }

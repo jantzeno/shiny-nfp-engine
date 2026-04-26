@@ -163,9 +163,9 @@ auto SimulatedAnnealingSearch::solve(const NormalizedRequest &request,
       request.request.execution.simulated_annealing);
   const std::size_t configured_iterations =
       config.max_refinements * std::max<std::size_t>(config.restart_count, 1U);
-  const std::size_t operation_limit = control.operation_limit > 0U
-                                          ? control.operation_limit
-                                          : configured_iterations;
+  const auto operation_budget =
+      detail::make_operation_budget(control, configured_iterations);
+  const std::size_t operation_limit = operation_budget.iteration_limit();
 
   SearchReplay replay{.optimizer = OptimizerKind::simulated_annealing};
   if (request.expanded_pieces.empty()) {
@@ -189,7 +189,8 @@ auto SimulatedAnnealingSearch::solve(const NormalizedRequest &request,
       break;
     }
     if (operations_completed >= operation_limit) {
-      hit_operation_limit = true;
+      hit_operation_limit =
+          operation_budget.external_limit_reached(operations_completed);
       break;
     }
 
@@ -272,7 +273,8 @@ auto SimulatedAnnealingSearch::solve(const NormalizedRequest &request,
         plateau = 0;
       }
       if (operations_completed >= operation_limit) {
-        hit_operation_limit = true;
+        hit_operation_limit =
+            operation_budget.external_limit_reached(operations_completed);
         break;
       }
     }

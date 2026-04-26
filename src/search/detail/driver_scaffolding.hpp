@@ -25,7 +25,6 @@
 //                            five drivers, differing only in StrategyKind.
 
 #include <cstddef>
-#include <cstdint>
 
 #include "observer.hpp"
 #include "request.hpp"
@@ -34,6 +33,21 @@
 #include "solve.hpp"
 
 namespace shiny::nesting::search::detail {
+
+struct OperationBudget {
+  bool external_limit_enabled{false};
+  std::size_t external_limit{0};
+  std::size_t internal_limit{0};
+
+  [[nodiscard]] auto iteration_limit() const noexcept -> std::size_t;
+  [[nodiscard]] auto
+  external_limit_reached(std::size_t operations_completed) const noexcept
+      -> bool;
+};
+
+[[nodiscard]] auto make_operation_budget(const SolveControl &control,
+                                         std::size_t internal_limit) noexcept
+    -> OperationBudget;
 
 // True iff any stop condition is currently active (cancellation or time
 // limit expired).  Mirrors OrderEvaluator::interrupted() for drivers that

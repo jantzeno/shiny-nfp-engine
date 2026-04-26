@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <chrono>
 #include <thread>
 
 #include "observer.hpp"
@@ -22,6 +23,23 @@ TEST_CASE("timing budget reports expiry", "[runtime][timing]") {
   std::this_thread::sleep_for(std::chrono::milliseconds(2));
 
   REQUIRE(budget.enabled());
+  REQUIRE(budget.expired(stopwatch));
+}
+
+TEST_CASE("timing budget reports remaining time without hidden caps",
+          "[runtime][timing]") {
+  shiny::nesting::runtime::Stopwatch stopwatch;
+  shiny::nesting::runtime::TimeBudget unlimited;
+  shiny::nesting::runtime::TimeBudget budget(20);
+
+  REQUIRE_FALSE(unlimited.enabled());
+  REQUIRE(unlimited.remaining_milliseconds(stopwatch) == 0U);
+  REQUIRE(budget.remaining_milliseconds(stopwatch) <= 20U);
+  REQUIRE(budget.remaining_milliseconds(stopwatch) > 0U);
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(25));
+
+  REQUIRE(budget.remaining_milliseconds(stopwatch) == 0U);
   REQUIRE(budget.expired(stopwatch));
 }
 

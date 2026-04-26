@@ -27,6 +27,9 @@ public:
 
   [[nodiscard]] auto expired(const Stopwatch &stopwatch) const -> bool;
 
+  [[nodiscard]] auto remaining_milliseconds(const Stopwatch &stopwatch) const
+      -> std::uint64_t;
+
 private:
   std::uint64_t limit_milliseconds_{0};
 };

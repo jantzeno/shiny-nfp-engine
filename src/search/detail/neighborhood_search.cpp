@@ -390,11 +390,14 @@ auto OrderEvaluator::evaluate(
       order, evaluated.forced_rotations, control_.random_seed, seed_bias);
   decode_control.workspace = workspace_;
   if (time_budget_.enabled()) {
-    const auto elapsed = stopwatch_.elapsed_milliseconds();
-    decode_control.time_limit_milliseconds =
-        elapsed >= time_budget_.limit_milliseconds()
-            ? 1U
-            : time_budget_.limit_milliseconds() - elapsed;
+    const auto remaining = time_budget_.remaining_milliseconds(stopwatch_);
+    if (remaining == 0U) {
+      evaluated.result.strategy = StrategyKind::sequential_backtrack;
+      evaluated.result.total_parts = request_.expanded_pieces.size();
+      evaluated.result.stop_reason = StopReason::time_limit_reached;
+      return evaluated;
+    }
+    decode_control.time_limit_milliseconds = remaining;
   }
 
   const auto result_or = packer.solve(

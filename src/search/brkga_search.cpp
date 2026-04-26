@@ -151,11 +151,16 @@ evaluate_genes(std::span<const double> genes, const NormalizedRequest &request,
   // produces a genuinely different layout via stochastic tie-breaking.
   decode_control.random_seed = seed_from_genes(genes, control.random_seed);
   if (time_budget.enabled()) {
-    const auto elapsed = stopwatch.elapsed_milliseconds();
-    decode_control.time_limit_milliseconds =
-        elapsed >= time_budget.limit_milliseconds()
-            ? 1U
-            : time_budget.limit_milliseconds() - elapsed;
+    const auto remaining = time_budget.remaining_milliseconds(stopwatch);
+    if (remaining == 0U) {
+      EvaluatedChromosome evaluated;
+      evaluated.genes.assign(genes.begin(), genes.end());
+      evaluated.result.strategy = StrategyKind::sequential_backtrack;
+      evaluated.result.total_parts = request.expanded_pieces.size();
+      evaluated.result.stop_reason = StopReason::time_limit_reached;
+      return evaluated;
+    }
+    decode_control.time_limit_milliseconds = remaining;
   }
 
   // Forward lightweight progress from inner constructive packer so the
@@ -390,9 +395,9 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
       request.request.execution, ProductionOptimizerKind::brkga,
       request.request.execution.production);
   const auto piece_areas = detail::piece_areas_for(request);
-  const auto generation_limit = control.operation_limit > 0U
-                                    ? control.operation_limit
-                                    : config.max_iterations;
+  const auto operation_budget =
+      detail::make_operation_budget(control, config.max_iterations);
+  const auto generation_limit = operation_budget.iteration_limit();
 
   SearchReplay replay{
       .optimizer = OptimizerKind::brkga,
@@ -538,7 +543,8 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
 
     if (generation + 1U >= generation_limit) {
       generation_budget_exhausted = true;
-      hit_operation_limit = control.operation_limit > 0U;
+      hit_operation_limit =
+          operation_budget.external_limit_reached(operations_completed);
       break;
     }
     if (detail::driver_interrupted(control, time_budget, stopwatch)) {

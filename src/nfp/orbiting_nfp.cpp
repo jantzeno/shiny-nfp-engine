@@ -9,9 +9,10 @@
 #include "decomposition/convex_decomposition.hpp"
 #include "geometry/normalize.hpp"
 #include "geometry/polygon.hpp"
-#include "geometry/transform.hpp"
+#include "geometry/sanitize.hpp"
 #include "geometry/validity.hpp"
 #include "geometry/vector_ops.hpp"
+#include "logging/shiny_log.hpp"
 #include "nfp/convex_nfp.hpp"
 #include "polygon_ops/boolean_ops.hpp"
 #include "polygon_ops/convex_hull.hpp"
@@ -120,12 +121,14 @@ struct TranslationVector {
 };
 
 [[nodiscard]] auto near_zero(const double value,
-                             const double tolerance = kContactTolerance) -> bool {
+                             const double tolerance = kContactTolerance)
+    -> bool {
   return std::abs(value) <= tolerance;
 }
 
-[[nodiscard]] auto near_same_point(const geom::Point2 &lhs, const geom::Point2 &rhs,
-                                    const double tolerance = kContactTolerance)
+[[nodiscard]] auto near_same_point(const geom::Point2 &lhs,
+                                   const geom::Point2 &rhs,
+                                   const double tolerance = kContactTolerance)
     -> bool {
   return geom::point_distance(lhs, rhs) <= tolerance;
 }
@@ -151,8 +154,8 @@ struct TranslationVector {
   return {.start = ring[index], .end = ring[(index + 1U) % ring.size()]};
 }
 
-[[nodiscard]] auto edges_parallel(const geom::Vector2 &lhs, const geom::Vector2 &rhs)
-    -> bool {
+[[nodiscard]] auto edges_parallel(const geom::Vector2 &lhs,
+                                  const geom::Vector2 &rhs) -> bool {
   const auto lhs_length = geom::vector_length(lhs);
   const auto rhs_length = geom::vector_length(rhs);
   if (near_zero(lhs_length) || near_zero(rhs_length)) {
@@ -194,7 +197,8 @@ struct TranslationVector {
   return {.x = centroid_x * scale, .y = centroid_y * scale};
 }
 
-[[nodiscard]] auto translate_ring(const geom::Ring &ring, const geom::Vector2 &translation)
+[[nodiscard]] auto translate_ring(const geom::Ring &ring,
+                                  const geom::Vector2 &translation)
     -> geom::Ring {
   geom::Ring translated;
   translated.reserve(ring.size());
@@ -217,36 +221,51 @@ struct TranslationVector {
   return geom::polygon_area(lhs) < geom::polygon_area(rhs);
 }
 
-[[nodiscard]] auto merge_polygon_set(std::vector<geom::PolygonWithHoles> polygons)
+[[nodiscard]] auto
+merge_polygon_set(std::vector<geom::PolygonWithHoles> polygons)
     -> std::vector<geom::PolygonWithHoles> {
   polygons = poly::greedy_pairwise_merge(
       std::move(polygons),
       [](const geom::PolygonWithHoles &lhs, const geom::PolygonWithHoles &rhs)
           -> std::optional<geom::PolygonWithHoles> {
-        const auto unioned = poly::union_polygons(lhs, rhs);
-        if (unioned.size() != 1U) {
+        auto unioned = poly::try_union_polygons(lhs, rhs);
+        if (!unioned.ok()) {
+          SHINY_DEBUG("orbiting_nfp: merge union failed status={} lhs_outer={} "
+                      "rhs_outer={}",
+                      util::status_name(unioned.status()), lhs.outer.size(),
+                      rhs.outer.size());
           return std::nullopt;
         }
-        return unioned.front();
+        if (unioned.value().size() != 1U) {
+          return std::nullopt;
+        }
+        return unioned.value().front();
       });
   std::sort(polygons.begin(), polygons.end(), polygon_less);
   return polygons;
 }
 
 [[nodiscard]] auto has_actual_overlap(const geom::Ring &stationary,
-                                      const geom::Ring &orbiting) -> bool {
-  const auto overlap = poly::intersection_polygons(
+                                      const geom::Ring &orbiting)
+    -> util::StatusOr<bool> {
+  auto overlap = poly::try_intersection_polygons(
       geom::PolygonWithHoles{.outer = stationary},
       geom::PolygonWithHoles{.outer = orbiting});
+  if (!overlap.ok()) {
+    SHINY_DEBUG("orbiting_nfp: overlap intersection failed status={}",
+                util::status_name(overlap.status()));
+    return overlap.status();
+  }
   double overlap_area = 0.0;
-  for (const auto &polygon : overlap) {
+  for (const auto &polygon : overlap.value()) {
     overlap_area += geom::polygon_area(polygon);
   }
   return overlap_area > kContactTolerance * kContactTolerance;
 }
 
 [[nodiscard]] auto find_contacts(const geom::Ring &stationary,
-                                 const geom::Ring &orbiting) -> std::vector<Contact> {
+                                 const geom::Ring &orbiting)
+    -> std::vector<Contact> {
   std::vector<Contact> contacts;
   contacts.reserve(stationary.size() + orbiting.size());
 
@@ -300,15 +319,18 @@ struct TranslationVector {
           geom::point_to_segment_distance(orbiting_edge.start, stationary_edge);
       const auto distance_end =
           geom::point_to_segment_distance(orbiting_edge.end, stationary_edge);
-      if (distance_start > kContactTolerance || distance_end > kContactTolerance) {
+      if (distance_start > kContactTolerance ||
+          distance_end > kContactTolerance) {
         continue;
       }
 
-      contacts.push_back({.type = ContactType::edge_edge,
-                          .stationary_index = stationary_index,
-                          .orbiting_index = orbiting_index,
-                          .point = {.x = (orbiting_edge.start.x + orbiting_edge.end.x) / 2.0,
-                                    .y = (orbiting_edge.start.y + orbiting_edge.end.y) / 2.0}});
+      contacts.push_back(
+          {.type = ContactType::edge_edge,
+           .stationary_index = stationary_index,
+           .orbiting_index = orbiting_index,
+           .point = {.x = (orbiting_edge.start.x + orbiting_edge.end.x) / 2.0,
+                     .y =
+                         (orbiting_edge.start.y + orbiting_edge.end.y) / 2.0}});
     }
   }
 
@@ -323,10 +345,9 @@ struct TranslationVector {
           .reference_position = reference_position};
 }
 
-[[nodiscard]] auto compute_translation_vectors(const TouchingGroup &touching_group,
-                                               const geom::Ring &stationary,
-                                               const geom::Ring &orbiting)
-    -> std::vector<TranslationVector> {
+[[nodiscard]] auto compute_translation_vectors(
+    const TouchingGroup &touching_group, const geom::Ring &stationary,
+    const geom::Ring &orbiting) -> std::vector<TranslationVector> {
   std::vector<TranslationVector> vectors;
   vectors.reserve(touching_group.contacts.size() * 2U);
 
@@ -352,7 +373,8 @@ struct TranslationVector {
       const auto direction = geom::normalize_vector(edge, kContactTolerance);
       const auto reverse = geom::scale_vector(direction, -1.0);
       const auto edge_start = orbiting[contact.orbiting_index];
-      const auto edge_end = orbiting[(contact.orbiting_index + 1U) % orbiting.size()];
+      const auto edge_end =
+          orbiting[(contact.orbiting_index + 1U) % orbiting.size()];
       vectors.push_back(
           {.direction = reverse,
            .max_distance = geom::point_distance(contact.point, edge_end)});
@@ -362,16 +384,15 @@ struct TranslationVector {
       break;
     }
     case ContactType::edge_edge: {
-      const auto direction =
-          geom::normalize_vector(edge_vector(stationary, contact.stationary_index),
-                                 kContactTolerance);
+      const auto direction = geom::normalize_vector(
+          edge_vector(stationary, contact.stationary_index), kContactTolerance);
       const auto reverse = geom::scale_vector(direction, -1.0);
-      const auto stationary_length =
-          geom::point_distance(stationary[contact.stationary_index],
-                         stationary[(contact.stationary_index + 1U) % stationary.size()]);
-      const auto orbiting_length =
-          geom::point_distance(orbiting[contact.orbiting_index],
-                         orbiting[(contact.orbiting_index + 1U) % orbiting.size()]);
+      const auto stationary_length = geom::point_distance(
+          stationary[contact.stationary_index],
+          stationary[(contact.stationary_index + 1U) % stationary.size()]);
+      const auto orbiting_length = geom::point_distance(
+          orbiting[contact.orbiting_index],
+          orbiting[(contact.orbiting_index + 1U) % orbiting.size()]);
       const auto max_distance = stationary_length + orbiting_length;
       vectors.push_back({.direction = direction, .max_distance = max_distance});
       vectors.push_back({.direction = reverse, .max_distance = max_distance});
@@ -383,26 +404,26 @@ struct TranslationVector {
   return vectors;
 }
 
-[[nodiscard]] auto handle_perfect_fit(const TouchingGroup &touching_group,
-                                      const geom::Ring &stationary,
-                                      const geom::Ring &orbiting,
-                                      const std::vector<geom::Point2> &visited_positions)
+[[nodiscard]] auto
+handle_perfect_fit(const TouchingGroup &touching_group,
+                   const geom::Ring &stationary, const geom::Ring &orbiting,
+                   const std::vector<geom::Point2> &visited_positions)
     -> std::vector<TranslationVector> {
-  auto vectors = compute_translation_vectors(touching_group, stationary, orbiting);
+  auto vectors =
+      compute_translation_vectors(touching_group, stationary, orbiting);
   vectors.erase(
       std::remove_if(vectors.begin(), vectors.end(),
                      [&](const TranslationVector &candidate) {
                        const auto step = std::min(candidate.max_distance, 1.0);
-                        const auto probe = geom::point_plus_vector(
-                            touching_group.reference_position,
-                            geom::scale_vector(candidate.direction, step));
-                       return std::any_of(visited_positions.begin(),
-                                          visited_positions.end(),
-                                          [&](const geom::Point2 &visited) {
-                                            return near_same_point(probe, visited,
-                                                                   kContactTolerance *
-                                                                       10.0);
-                                          });
+                       const auto probe = geom::point_plus_vector(
+                           touching_group.reference_position,
+                           geom::scale_vector(candidate.direction, step));
+                       return std::any_of(
+                           visited_positions.begin(), visited_positions.end(),
+                           [&](const geom::Point2 &visited) {
+                             return near_same_point(probe, visited,
+                                                    kContactTolerance * 10.0);
+                           });
                      }),
       vectors.end());
   return vectors;
@@ -422,16 +443,15 @@ struct TranslationVector {
 [[nodiscard]] auto select_translation_vector(
     const std::vector<TranslationVector> &vectors,
     const std::optional<geom::Vector2> &previous_direction,
-    const geom::Point2 &stationary_centroid, const geom::Point2 &orbiting_position)
-    -> const TranslationVector * {
+    const geom::Point2 &stationary_centroid,
+    const geom::Point2 &orbiting_position) -> const TranslationVector * {
   if (vectors.empty()) {
     return nullptr;
   }
 
-  const auto radial =
-      geom::normalize_vector(
-          geom::vector_between(stationary_centroid, orbiting_position),
-          kContactTolerance);
+  const auto radial = geom::normalize_vector(
+      geom::vector_between(stationary_centroid, orbiting_position),
+      kContactTolerance);
   const geom::Vector2 ccw_preferred{.x = -radial.y, .y = radial.x};
 
   const TranslationVector *best = &vectors.front();
@@ -462,7 +482,8 @@ struct CollisionEvent {
                                             const geom::Vector2 &ray_direction,
                                             const geom::Segment2 &segment)
     -> std::optional<double> {
-  const auto segment_direction = geom::vector_between(segment.start, segment.end);
+  const auto segment_direction =
+      geom::vector_between(segment.start, segment.end);
   const auto denominator = geom::cross(ray_direction, segment_direction);
   if (std::abs(denominator) <= kContactTolerance) {
     return std::nullopt;
@@ -494,8 +515,9 @@ struct CollisionEvent {
        ++orbiting_index) {
     for (std::size_t stationary_index = 0; stationary_index < stationary.size();
          ++stationary_index) {
-      const auto intersection = ray_segment_intersection(
-          orbiting[orbiting_index], direction, edge_segment(stationary, stationary_index));
+      const auto intersection =
+          ray_segment_intersection(orbiting[orbiting_index], direction,
+                                   edge_segment(stationary, stationary_index));
       if (!intersection.has_value()) {
         continue;
       }
@@ -515,8 +537,9 @@ struct CollisionEvent {
        ++stationary_index) {
     for (std::size_t orbiting_index = 0; orbiting_index < orbiting.size();
          ++orbiting_index) {
-      const auto intersection = ray_segment_intersection(
-          stationary[stationary_index], reverse, edge_segment(orbiting, orbiting_index));
+      const auto intersection =
+          ray_segment_intersection(stationary[stationary_index], reverse,
+                                   edge_segment(orbiting, orbiting_index));
       if (!intersection.has_value()) {
         continue;
       }
@@ -544,9 +567,8 @@ struct CollisionEvent {
   for (const auto &orbiting_vertex : orbiting) {
     for (std::size_t stationary_index = 0; stationary_index < stationary.size();
          ++stationary_index) {
-      const auto candidate =
-          geom::closest_point_on_segment(orbiting_vertex,
-                                         edge_segment(stationary, stationary_index));
+      const auto candidate = geom::closest_point_on_segment(
+          orbiting_vertex, edge_segment(stationary, stationary_index));
       const auto distance = geom::point_distance(orbiting_vertex, candidate);
       if (distance < minimum_distance) {
         minimum_distance = distance;
@@ -613,19 +635,18 @@ struct CollisionEvent {
       std::span<const geom::Point2>(stationary.data(), stationary.size()));
   const auto orbiting_bounds = geom::compute_bounds(
       std::span<const geom::Point2>(orbiting.data(), orbiting.size()));
-  const auto stationary_diameter = geom::point_distance(
-      stationary_bounds.min, stationary_bounds.max);
-  const auto orbiting_diameter = geom::point_distance(
-      orbiting_bounds.min, orbiting_bounds.max);
-  const auto max_slide_distance = std::max(
-      kMinTranslation,
-      kMaxSlideStepDiameterFraction *
-          (stationary_diameter + orbiting_diameter));
+  const auto stationary_diameter =
+      geom::point_distance(stationary_bounds.min, stationary_bounds.max);
+  const auto orbiting_diameter =
+      geom::point_distance(orbiting_bounds.min, orbiting_bounds.max);
+  const auto max_slide_distance =
+      std::max(kMinTranslation, kMaxSlideStepDiameterFraction *
+                                    (stationary_diameter + orbiting_diameter));
 
   for (std::size_t iteration = 0; iteration < kMaxIterations; ++iteration) {
     (void)iteration;
-    const auto orbiting_current =
-        translate_ring(orbiting, {.x = current_position.x, .y = current_position.y});
+    const auto orbiting_current = translate_ring(
+        orbiting, {.x = current_position.x, .y = current_position.y});
     const auto touching_group =
         create_touching_group(stationary, orbiting_current, current_position);
 
@@ -665,8 +686,8 @@ struct CollisionEvent {
 
     const auto intended_translation =
         geom::scale_vector(selected->direction, intended_distance);
-    const auto collision =
-        check_translation_collision(stationary, orbiting_current, intended_translation);
+    const auto collision = check_translation_collision(
+        stationary, orbiting_current, intended_translation);
     const auto actual_distance =
         collision.has_value()
             ? std::max(collision->distance - kContactTolerance, 0.0)
@@ -675,16 +696,16 @@ struct CollisionEvent {
       break;
     }
 
-    const auto new_position =
-        geom::point_plus_vector(
-            current_position,
-            geom::scale_vector(selected->direction, actual_distance));
-    if (path.size() > 2U &&
-        geom::point_distance(new_position, start_position) < kContactTolerance * 10.0) {
+    const auto new_position = geom::point_plus_vector(
+        current_position,
+        geom::scale_vector(selected->direction, actual_distance));
+    if (path.size() > 2U && geom::point_distance(new_position, start_position) <
+                                kContactTolerance * 10.0) {
       break;
     }
 
-    if (geom::point_distance(new_position, current_position) > kMinTranslation) {
+    if (geom::point_distance(new_position, current_position) >
+        kMinTranslation) {
       path.push_back(new_position);
       previous_direction = selected->direction;
     }
@@ -705,47 +726,54 @@ struct CollisionEvent {
 // Both rings are dereferenced unconditionally; callers (currently only
 // `compute_simple_orbiting_nfp`) gate this with a `size() < 3` check.
 [[nodiscard]] auto find_start_position(const geom::Ring &stationary_hull,
-                                       const geom::Ring &orbiting) -> geom::Point2 {
-  const auto stationary_it = std::min_element(
-      stationary_hull.begin(), stationary_hull.end(),
-      [](const geom::Point2 &lhs, const geom::Point2 &rhs) {
-        if (lhs.y != rhs.y) {
-          return lhs.y < rhs.y;
-        }
-        return lhs.x < rhs.x;
-      });
-  const auto orbiting_it = std::max_element(
-      orbiting.begin(), orbiting.end(),
-      [](const geom::Point2 &lhs, const geom::Point2 &rhs) {
-        if (lhs.y != rhs.y) {
-          return lhs.y < rhs.y;
-        }
-        return lhs.x > rhs.x;
-      });
+                                       const geom::Ring &orbiting)
+    -> geom::Point2 {
+  const auto stationary_it =
+      std::min_element(stationary_hull.begin(), stationary_hull.end(),
+                       [](const geom::Point2 &lhs, const geom::Point2 &rhs) {
+                         if (lhs.y != rhs.y) {
+                           return lhs.y < rhs.y;
+                         }
+                         return lhs.x < rhs.x;
+                       });
+  const auto orbiting_it =
+      std::max_element(orbiting.begin(), orbiting.end(),
+                       [](const geom::Point2 &lhs, const geom::Point2 &rhs) {
+                         if (lhs.y != rhs.y) {
+                           return lhs.y < rhs.y;
+                         }
+                         return lhs.x > rhs.x;
+                       });
 
   return {.x = stationary_it->x - orbiting_it->x,
           .y = stationary_it->y - orbiting_it->y};
 }
 
-[[nodiscard]] auto compute_simple_orbiting_nfp(const geom::PolygonWithHoles &fixed,
-                                               const geom::PolygonWithHoles &moving)
+[[nodiscard]] auto
+compute_simple_orbiting_nfp(const geom::PolygonWithHoles &fixed,
+                            const geom::PolygonWithHoles &moving)
     -> util::StatusOr<geom::PolygonWithHoles> {
   if (!fixed.holes.empty() || !moving.holes.empty()) {
     return util::Status::invalid_input;
   }
 
   const auto stationary = ensure_ccw(fixed.outer);
-  const auto stationary_hull =
-      ensure_ccw(poly::compute_convex_hull(geom::Polygon{.outer = stationary}).outer);
+  const auto stationary_hull = ensure_ccw(
+      poly::compute_convex_hull(geom::Polygon{.outer = stationary}).outer);
   const auto orbiting = ensure_ccw(moving.outer);
-  if (stationary.size() < 3U || stationary_hull.size() < 3U || orbiting.size() < 3U) {
+  if (stationary.size() < 3U || stationary_hull.size() < 3U ||
+      orbiting.size() < 3U) {
     return util::Status::invalid_input;
   }
 
   const auto start_position = find_start_position(stationary_hull, orbiting);
   const auto orbiting_at_start =
       translate_ring(orbiting, {.x = start_position.x, .y = start_position.y});
-  if (has_actual_overlap(stationary, orbiting_at_start)) {
+  auto overlap = has_actual_overlap(stationary, orbiting_at_start);
+  if (!overlap.ok()) {
+    return overlap.status();
+  }
+  if (overlap.value()) {
     return util::Status::computation_failed;
   }
 
@@ -757,11 +785,13 @@ struct CollisionEvent {
 auto compute_orbiting_nfp(const geom::PolygonWithHoles &fixed,
                           const geom::PolygonWithHoles &moving)
     -> util::StatusOr<std::vector<geom::PolygonWithHoles>> {
-  const auto normalized_fixed = geom::normalize_polygon(fixed);
-  const auto normalized_moving = geom::normalize_polygon(moving);
+  const auto normalized_fixed = geom::sanitize_polygon(fixed).polygon;
+  const auto normalized_moving = geom::sanitize_polygon(moving).polygon;
 
   if (!geom::validate_polygon(normalized_fixed).is_valid() ||
       !geom::validate_polygon(normalized_moving).is_valid()) {
+    SHINY_DEBUG("orbiting_nfp: invalid input fixed_outer={} moving_outer={}",
+                normalized_fixed.outer.size(), normalized_moving.outer.size());
     return util::Status::invalid_input;
   }
 

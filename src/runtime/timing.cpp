@@ -23,8 +23,16 @@ auto TimeBudget::limit_milliseconds() const -> std::uint64_t {
 auto TimeBudget::enabled() const -> bool { return limit_milliseconds_ > 0U; }
 
 auto TimeBudget::expired(const Stopwatch &stopwatch) const -> bool {
-  return enabled() &&
-         stopwatch.elapsed_milliseconds() >= limit_milliseconds_;
+  return enabled() && stopwatch.elapsed_milliseconds() >= limit_milliseconds_;
+}
+
+auto TimeBudget::remaining_milliseconds(const Stopwatch &stopwatch) const
+    -> std::uint64_t {
+  if (!enabled()) {
+    return 0U;
+  }
+  const auto elapsed = stopwatch.elapsed_milliseconds();
+  return elapsed >= limit_milliseconds_ ? 0U : limit_milliseconds_ - elapsed;
 }
 
 } // namespace shiny::nesting::runtime

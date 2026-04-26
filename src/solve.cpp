@@ -272,6 +272,66 @@ has_constructive_geometry_violation(const NormalizedRequest &request,
   return result.layout.placement_trace.size();
 }
 
+[[nodiscard]] auto try_bounding_box_completion_fallback(
+    const NormalizedRequest &request, const SolveControl &control,
+    const runtime::TimeBudget &time_budget, const runtime::Stopwatch &stopwatch,
+    const NestingResult &baseline) -> std::optional<NestingResult> {
+  const bool baseline_complete = placed_parts(baseline) >= baseline.total_parts;
+  const bool baseline_has_geometry_violation =
+      baseline_complete &&
+      has_constructive_geometry_violation(request, baseline);
+  if ((baseline_complete && !baseline_has_geometry_violation) ||
+      control.cancellation.stop_requested() || time_budget.expired(stopwatch)) {
+    return std::nullopt;
+  }
+
+  auto decoder_request = to_bounding_box_decoder_request(request);
+  if (!decoder_request.ok()) {
+    return std::nullopt;
+  }
+
+  pack::BoundingBoxPacker packer;
+  const auto fallback_result = packer.decode(decoder_request.value(), [&]() {
+    return control.cancellation.stop_requested() ||
+           time_budget.expired(stopwatch);
+  });
+  if (fallback_result.interrupted ||
+      (fallback_result.layout.placement_trace.size() <=
+           placed_parts(baseline) &&
+       !baseline_has_geometry_violation)) {
+    return std::nullopt;
+  }
+
+  NestingResult candidate{
+      .strategy = StrategyKind::sequential_backtrack,
+      .layout = fallback_result.layout,
+      .total_parts = baseline.total_parts,
+      .effective_seed = baseline.effective_seed,
+      .budget = baseline.budget,
+      .stop_reason = baseline.stop_reason,
+      .search = baseline.search,
+  };
+  candidate.budget.elapsed_milliseconds = stopwatch.elapsed_milliseconds();
+  if (candidate.layout.unplaced_piece_ids.empty() &&
+      placed_parts(candidate) == candidate.total_parts) {
+    candidate.stop_reason = StopReason::completed;
+  }
+
+  if (has_constructive_geometry_violation(request, candidate)) {
+    SHINY_DEBUG("solve: bounding-box completion fallback rejected by shared "
+                "layout validation placed={}/{}",
+                placed_parts(candidate), candidate.total_parts);
+    return std::nullopt;
+  }
+
+  SHINY_DEBUG("solve: bounding-box completion fallback improved sequential "
+              "layout placed={}/{} -> {}/{} baseline_geometry_violation={}",
+              placed_parts(baseline), baseline.total_parts,
+              placed_parts(candidate), candidate.total_parts,
+              baseline_has_geometry_violation);
+  return candidate;
+}
+
 auto log_solve_finish(const NestingRequest &request,
                       const SolveControl &control,
                       std::string_view dispatch_name,
@@ -447,6 +507,11 @@ auto solve(const NestingRequest &request, const SolveControl &control)
       pack::SequentialBacktrackPacker packer;
       auto result = packer.solve(normalized_request.value(), control);
       if (result.ok()) {
+        if (auto fallback = try_bounding_box_completion_fallback(
+                normalized_request.value(), control, time_budget, stopwatch,
+                result.value())) {
+          result.value() = std::move(*fallback);
+        }
         log_solve_finish(request, control,
                          log::strategy_name(request.execution.strategy),
                          runner_class, result.value());

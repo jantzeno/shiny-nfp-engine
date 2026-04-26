@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "runtime/cancellation.hpp"
+#include "search/detail/layout_validation.hpp"
 #include "solve.hpp"
 
 namespace {
@@ -12,6 +13,7 @@ using shiny::nesting::BinRequest;
 using shiny::nesting::NestingRequest;
 using shiny::nesting::OptimizerKind;
 using shiny::nesting::PieceRequest;
+using shiny::nesting::ProgressPhase;
 using shiny::nesting::ProgressSnapshot;
 using shiny::nesting::SolveControl;
 using shiny::nesting::StopReason;
@@ -77,7 +79,74 @@ auto improvement_request() -> NestingRequest {
   return request;
 }
 
+auto duplicate_piece_request() -> NestingRequest {
+  NestingRequest request;
+  request.execution.default_rotations = {{0.0}};
+  request.execution.strategy = StrategyKind::metaheuristic_search;
+  request.execution.production.population_size = 8;
+  request.execution.production.elite_count = 1;
+  request.execution.production.mutant_count = 1;
+  request.execution.production.max_iterations = 4;
+  request.execution.production.polishing_passes = 0;
+
+  request.bins.push_back(BinRequest{
+      .bin_id = 50,
+      .polygon = rectangle(0.0, 0.0, 40.0, 40.0),
+  });
+  request.pieces.push_back(PieceRequest{
+      .piece_id = 101,
+      .polygon = rectangle(0.0, 0.0, 3.0, 3.0),
+      .quantity = 8,
+  });
+  return request;
+}
+
 } // namespace
+
+TEST_CASE("shared search layout validation rejects non-conserving layouts",
+          "[solve][production][validation]") {
+  NestingRequest request;
+  request.execution.default_rotations = {{0.0}};
+  request.bins.push_back(BinRequest{
+      .bin_id = 50,
+      .polygon = rectangle(0.0, 0.0, 20.0, 20.0),
+  });
+  request.pieces.push_back(PieceRequest{
+      .piece_id = 101,
+      .polygon = rectangle(0.0, 0.0, 2.0, 2.0),
+  });
+  request.pieces.push_back(PieceRequest{
+      .piece_id = 102,
+      .polygon = rectangle(0.0, 0.0, 2.0, 2.0),
+  });
+
+  const auto normalized = shiny::nesting::normalize_request(request);
+  REQUIRE(normalized.ok());
+
+  shiny::nesting::NestingResult result;
+  result.total_parts = 2;
+  result.layout.bins.push_back({
+      .bin_id = 50,
+      .container = rectangle(0.0, 0.0, 20.0, 20.0),
+      .placements =
+          {
+              {
+                  .placement = {.piece_id = 101, .bin_id = 50},
+                  .resolved_rotation = {.degrees = 0.0},
+                  .polygon = rectangle(0.0, 0.0, 2.0, 2.0),
+              },
+              {
+                  .placement = {.piece_id = 101, .bin_id = 50},
+                  .resolved_rotation = {.degrees = 0.0},
+                  .polygon = rectangle(3.0, 0.0, 5.0, 2.0),
+              },
+          },
+  });
+
+  REQUIRE(shiny::nesting::search::detail::
+              constructive_layout_has_geometry_violation(normalized.value(),
+                                                         result));
+}
 
 TEST_CASE("production search improves the constructive seed and records "
           "replayable progress",
@@ -120,11 +189,28 @@ TEST_CASE("production search respects operation limits and cancellation",
   auto request = improvement_request();
   request.execution.strategy = StrategyKind::metaheuristic_search;
 
+  std::vector<ProgressSnapshot> snapshots;
   const auto limited = shiny::nesting::solve(
-      request, SolveControl{.operation_limit = 1, .random_seed = 3});
+      request, SolveControl{
+                   .on_progress =
+                       [&](const ProgressSnapshot &snapshot) {
+                         snapshots.push_back(snapshot);
+                       },
+                   .operation_limit = 1,
+                   .random_seed = 3,
+               });
   REQUIRE(limited.ok());
   REQUIRE(limited.value().stop_reason == StopReason::operation_limit_reached);
   REQUIRE(limited.value().budget.operations_completed == 1U);
+  for (const auto &snapshot : snapshots) {
+    REQUIRE(snapshot.phase != ProgressPhase::refinement);
+  }
+
+  const auto unlimited = shiny::nesting::solve(
+      request, SolveControl{.operation_limit = 0, .random_seed = 3});
+  REQUIRE(unlimited.ok());
+  REQUIRE_FALSE(unlimited.value().budget.operation_limit_enabled);
+  REQUIRE(unlimited.value().stop_reason != StopReason::operation_limit_reached);
 
   shiny::nesting::runtime::CancellationSource source;
   source.request_stop();
@@ -132,6 +218,37 @@ TEST_CASE("production search respects operation limits and cancellation",
       request, SolveControl{.cancellation = source.token()});
   REQUIRE(cancelled.ok());
   REQUIRE(cancelled.value().stop_reason == StopReason::cancelled);
+}
+
+TEST_CASE("production search progress remains monotonic when duplicate "
+          "chromosomes are skipped",
+          "[solve][production][budget]") {
+  auto request = duplicate_piece_request();
+
+  std::vector<ProgressSnapshot> snapshots;
+  const auto solved = shiny::nesting::solve(
+      request, SolveControl{
+                   .on_progress =
+                       [&](const ProgressSnapshot &snapshot) {
+                         snapshots.push_back(snapshot);
+                       },
+                   .operation_limit = 4,
+                   .random_seed = 11,
+               });
+
+  REQUIRE(solved.ok());
+  const auto &result = solved.value();
+  REQUIRE(result.search.optimizer == OptimizerKind::brkga);
+  REQUIRE(result.budget.operations_completed <= 4U);
+  REQUIRE_FALSE(result.search.progress.empty());
+  for (std::size_t index = 1; index < result.search.progress.size(); ++index) {
+    REQUIRE(result.search.progress[index - 1U].budget.operations_completed <=
+            result.search.progress[index].budget.operations_completed);
+  }
+  for (std::size_t index = 1; index < snapshots.size(); ++index) {
+    REQUIRE(snapshots[index - 1U].budget.operations_completed <=
+            snapshots[index].budget.operations_completed);
+  }
 }
 
 TEST_CASE("production search obeys time budgets under search",
@@ -155,10 +272,18 @@ TEST_CASE("production search obeys time budgets under search",
     });
   }
 
+  std::vector<ProgressSnapshot> snapshots;
   const auto result = shiny::nesting::solve(
-      request, SolveControl{.time_limit_milliseconds = 1});
+      request, SolveControl{.on_progress =
+                                [&](const ProgressSnapshot &snapshot) {
+                                  snapshots.push_back(snapshot);
+                                },
+                            .time_limit_milliseconds = 1});
   REQUIRE(result.ok());
   REQUIRE(result.value().stop_reason == StopReason::time_limit_reached);
+  for (const auto &snapshot : snapshots) {
+    REQUIRE(snapshot.phase != ProgressPhase::refinement);
+  }
 }
 
 TEST_CASE("production search keeps strict small-population BRKGA validation",

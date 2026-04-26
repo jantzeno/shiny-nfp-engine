@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "geometry/types.hpp"
+#include "util/status.hpp"
 
 namespace shiny::nesting::poly {
 
@@ -17,6 +18,10 @@ namespace shiny::nesting::poly {
                                   const geom::PolygonWithHoles &rhs)
     -> std::vector<geom::PolygonWithHoles>;
 
+[[nodiscard]] auto try_union_polygons(const geom::PolygonWithHoles &lhs,
+                                      const geom::PolygonWithHoles &rhs)
+    -> util::StatusOr<std::vector<geom::PolygonWithHoles>>;
+
 /**
  * @brief Computes the polygonal intersection of two regions.
  *
@@ -27,6 +32,10 @@ namespace shiny::nesting::poly {
 [[nodiscard]] auto intersection_polygons(const geom::PolygonWithHoles &lhs,
                                          const geom::PolygonWithHoles &rhs)
     -> std::vector<geom::PolygonWithHoles>;
+
+[[nodiscard]] auto try_intersection_polygons(const geom::PolygonWithHoles &lhs,
+                                             const geom::PolygonWithHoles &rhs)
+    -> util::StatusOr<std::vector<geom::PolygonWithHoles>>;
 
 /**
  * @brief Computes the polygonal difference `lhs - rhs`.
@@ -39,6 +48,10 @@ namespace shiny::nesting::poly {
                                        const geom::PolygonWithHoles &rhs)
     -> std::vector<geom::PolygonWithHoles>;
 
+[[nodiscard]] auto try_difference_polygons(const geom::PolygonWithHoles &lhs,
+                                           const geom::PolygonWithHoles &rhs)
+    -> util::StatusOr<std::vector<geom::PolygonWithHoles>>;
+
 /**
  * @brief Subtracts `obstacle` from every region in `regions`, in place.
  *
@@ -50,6 +63,10 @@ namespace shiny::nesting::poly {
 auto subtract_region_set(std::vector<geom::PolygonWithHoles> &regions,
                          const geom::PolygonWithHoles &obstacle) -> void;
 
+auto try_subtract_region_set(std::vector<geom::PolygonWithHoles> &regions,
+                             const geom::PolygonWithHoles &obstacle)
+    -> util::Status;
+
 /**
  * @brief Computes the minimum Euclidean distance between two polygonal regions.
  *
@@ -59,7 +76,8 @@ auto subtract_region_set(std::vector<geom::PolygonWithHoles> &regions,
  *   boundary-to-boundary distance.
  */
 [[nodiscard]] auto polygon_distance(const geom::PolygonWithHoles &lhs,
-                                    const geom::PolygonWithHoles &rhs) -> double;
+                                    const geom::PolygonWithHoles &rhs)
+    -> double;
 
 /**
  * @brief Inflates (or deflates) a polygon by a uniform distance.

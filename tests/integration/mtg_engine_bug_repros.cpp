@@ -20,6 +20,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <string_view>
 
@@ -56,6 +57,28 @@ namespace {
     n += bin.placements.size();
   }
   return n;
+}
+
+[[nodiscard]] auto actual_polygon_layout_summary(const NestingResult &result)
+    -> std::string {
+  std::ostringstream out;
+  out << "bins=";
+  for (std::size_t index = 0; index < result.layout.bins.size(); ++index) {
+    const auto &bin = result.layout.bins[index];
+    if (index > 0U) {
+      out << ",";
+    }
+    out << bin.bin_id << ":" << bin.placements.size();
+  }
+  out << " unplaced=";
+  for (std::size_t index = 0; index < result.layout.unplaced_piece_ids.size();
+       ++index) {
+    if (index > 0U) {
+      out << ",";
+    }
+    out << result.layout.unplaced_piece_ids[index];
+  }
+  return out.str();
 }
 
 // Asserts the per-bin geometric invariants (bin containment + pair-wise
@@ -123,8 +146,25 @@ candidate_strategy_name(const CandidateStrategy strategy) -> std::string_view {
   return "unknown";
 }
 
+[[nodiscard]] constexpr auto
+start_corner_name(const place::PlacementStartCorner corner)
+    -> std::string_view {
+  switch (corner) {
+  case place::PlacementStartCorner::bottom_left:
+    return "bottom_left";
+  case place::PlacementStartCorner::bottom_right:
+    return "bottom_right";
+  case place::PlacementStartCorner::top_left:
+    return "top_left";
+  case place::PlacementStartCorner::top_right:
+    return "top_right";
+  }
+  return "unknown";
+}
+
 [[nodiscard]] auto make_actual_polygon_constructive_options(
-    const CandidateStrategy candidate_strategy) -> MtgRequestOptions {
+    const CandidateStrategy candidate_strategy,
+    const place::PlacementStartCorner start_corner) -> MtgRequestOptions {
   MtgRequestOptions options{};
   options.strategy = StrategyKind::sequential_backtrack;
   options.placement_policy = place::PlacementPolicy::bottom_left;
@@ -132,19 +172,24 @@ candidate_strategy_name(const CandidateStrategy strategy) -> std::string_view {
   options.maintain_bed_assignment = false;
   options.allow_part_overflow = true;
   options.part_spacing_mm = 0.0;
+  options.bed1_start_corner = start_corner;
+  options.bed2_start_corner = start_corner;
   return options;
 }
 
 struct ActualPolygonSolveOutcome {
   std::optional<NestingResult> result{};
+  std::string summary{};
   std::string exception_message{};
 };
 
 [[nodiscard]] auto solve_actual_polygon_constructive_case(
-    const CandidateStrategy candidate_strategy) -> ActualPolygonSolveOutcome {
+    const CandidateStrategy candidate_strategy,
+    const place::PlacementStartCorner start_corner =
+        place::PlacementStartCorner::bottom_left) -> ActualPolygonSolveOutcome {
   const auto fixture = load_mtg_fixture_with_actual_polygons();
-  const auto options =
-      make_actual_polygon_constructive_options(candidate_strategy);
+  const auto options = make_actual_polygon_constructive_options(
+      candidate_strategy, start_corner);
   auto request = make_request(fixture, options);
   REQUIRE(request.is_valid());
 
@@ -160,23 +205,29 @@ struct ActualPolygonSolveOutcome {
     const auto placed = total_placed(result);
     const std::uint64_t slack =
         std::max<std::uint64_t>(500U, kActualPolygonTimeCapMs);
-    INFO("strategy=" << candidate_strategy_name(candidate_strategy)
-                     << " placed=" << placed << "/" << kBaselinePieceCount
-                     << " unplaced=" << result.layout.unplaced_piece_ids.size()
-                     << " stop_reason=" << stop_reason_name(result.stop_reason)
-                     << " elapsed_ms=" << result.budget.elapsed_milliseconds
-                     << " iterations=" << result.budget.operations_completed);
+    std::ostringstream summary;
+    summary << "strategy=" << candidate_strategy_name(candidate_strategy)
+            << " start_corner=" << start_corner_name(start_corner)
+            << " placed=" << placed << "/" << kBaselinePieceCount
+            << " unplaced=" << result.layout.unplaced_piece_ids.size()
+            << " stop_reason=" << stop_reason_name(result.stop_reason)
+            << " elapsed_ms=" << result.budget.elapsed_milliseconds
+            << " iterations=" << result.budget.operations_completed << " "
+            << actual_polygon_layout_summary(result);
     REQUIRE(result.budget.elapsed_milliseconds <=
             kActualPolygonTimeCapMs + slack);
     assert_placed_layout_invariants(result, options.part_spacing_mm);
     return ActualPolygonSolveOutcome{
         .result = result,
+        .summary = summary.str(),
     };
   } catch (const std::exception &ex) {
-    INFO("strategy=" << candidate_strategy_name(candidate_strategy)
-                     << " threw exception: " << ex.what());
+    std::ostringstream summary;
+    summary << "strategy=" << candidate_strategy_name(candidate_strategy)
+            << " threw exception: " << ex.what();
     return ActualPolygonSolveOutcome{
         .result = std::nullopt,
+        .summary = summary.str(),
         .exception_message = ex.what(),
     };
   }
@@ -411,11 +462,13 @@ TEST_CASE(
     "[mtg][engine-bug-repro][actual-polygons][anchor-vertex]") {
   const auto outcome =
       solve_actual_polygon_constructive_case(CandidateStrategy::anchor_vertex);
+  INFO(outcome.summary);
   REQUIRE(outcome.result.has_value());
   const auto &result = *outcome.result;
   const auto placed = total_placed(result);
 
   REQUIRE(result.stop_reason == StopReason::completed);
+  REQUIRE(result.layout.unplaced_piece_ids.empty());
   REQUIRE(placed == static_cast<std::size_t>(kBaselinePieceCount));
 }
 
@@ -435,10 +488,32 @@ TEST_CASE(
 
   const auto outcome =
       solve_actual_polygon_constructive_case(candidate_strategy);
+  INFO(outcome.summary);
   REQUIRE(outcome.result.has_value());
   const auto &result = *outcome.result;
   const auto placed = total_placed(result);
 
   REQUIRE(result.stop_reason == StopReason::completed);
+  REQUIRE(result.layout.unplaced_piece_ids.empty());
+  REQUIRE(placed == static_cast<std::size_t>(kBaselinePieceCount));
+}
+
+TEST_CASE("REGRESSION: actual-polygon anchor and hybrid placement stay "
+          "complete across opposite start corners",
+          "[mtg][engine-bug-repro][actual-polygons][start-corner][slow]") {
+  const auto candidate_strategy =
+      GENERATE(CandidateStrategy::anchor_vertex, CandidateStrategy::nfp_hybrid);
+  const auto start_corner = GENERATE(place::PlacementStartCorner::bottom_left,
+                                     place::PlacementStartCorner::top_right);
+
+  const auto outcome =
+      solve_actual_polygon_constructive_case(candidate_strategy, start_corner);
+  INFO(outcome.summary);
+  REQUIRE(outcome.result.has_value());
+  const auto &result = *outcome.result;
+  const auto placed = total_placed(result);
+
+  REQUIRE(result.stop_reason == StopReason::completed);
+  REQUIRE(result.layout.unplaced_piece_ids.empty());
   REQUIRE(placed == static_cast<std::size_t>(kBaselinePieceCount));
 }

@@ -137,9 +137,9 @@ auto LahcSearch::solve(const NormalizedRequest &request,
   const auto &config = resolve_strategy_config(
       request.request.execution, StrategyKind::lahc,
       ProductionOptimizerKind::lahc, request.request.execution.lahc);
-  const std::size_t operation_limit = control.operation_limit > 0U
-                                          ? control.operation_limit
-                                          : config.max_refinements;
+  const auto operation_budget =
+      detail::make_operation_budget(control, config.max_refinements);
+  const std::size_t operation_limit = operation_budget.iteration_limit();
 
   SearchReplay replay{.optimizer = OptimizerKind::lahc};
   if (request.expanded_pieces.empty()) {
@@ -227,8 +227,8 @@ auto LahcSearch::solve(const NormalizedRequest &request,
       plateau = 0;
     }
     if (operations_completed >= operation_limit) {
-      hit_operation_limit = control.operation_limit > 0U ||
-                            iteration + 1U >= config.max_refinements;
+      hit_operation_limit =
+          operation_budget.external_limit_reached(operations_completed);
       break;
     }
   }

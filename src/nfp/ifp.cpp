@@ -7,7 +7,9 @@
 
 #include "geometry/normalize.hpp"
 #include "geometry/polygon.hpp"
+#include "geometry/sanitize.hpp"
 #include "geometry/validity.hpp"
+#include "logging/shiny_log.hpp"
 #include "nfp/nfp.hpp"
 #include "polygon_ops/boolean_ops.hpp"
 
@@ -21,7 +23,8 @@ constexpr double kMinimumRegionArea = 1e-12;
   return std::fabs(lhs - rhs) <= kAxisEpsilon;
 }
 
-[[nodiscard]] auto is_axis_aligned_rectangle(const geom::PolygonWithHoles &polygon)
+[[nodiscard]] auto
+is_axis_aligned_rectangle(const geom::PolygonWithHoles &polygon)
     -> std::optional<geom::Box2> {
   if (!polygon.holes.empty() || polygon.outer.size() != 4U) {
     return std::nullopt;
@@ -63,7 +66,8 @@ constexpr double kMinimumRegionArea = 1e-12;
   return geom::polygon_area(lhs) < geom::polygon_area(rhs);
 }
 
-[[nodiscard]] auto normalize_regions(std::vector<geom::PolygonWithHoles> regions)
+[[nodiscard]] auto
+normalize_regions(std::vector<geom::PolygonWithHoles> regions)
     -> std::vector<geom::PolygonWithHoles> {
   std::vector<geom::PolygonWithHoles> normalized;
   normalized.reserve(regions.size());
@@ -86,7 +90,8 @@ constexpr double kMinimumRegionArea = 1e-12;
     -> util::StatusOr<std::vector<geom::PolygonWithHoles>> {
   const auto container_bounds = geom::compute_bounds(container);
   const auto piece_bounds = geom::compute_bounds(piece);
-  const auto move_bounds = inner_fit_rectangle_bounds(container_bounds, piece_bounds);
+  const auto move_bounds =
+      inner_fit_rectangle_bounds(container_bounds, piece_bounds);
   if (move_bounds.max.x < move_bounds.min.x - kAxisEpsilon ||
       move_bounds.max.y < move_bounds.min.y - kAxisEpsilon) {
     return std::vector<geom::PolygonWithHoles>{};
@@ -94,15 +99,29 @@ constexpr double kMinimumRegionArea = 1e-12;
 
   std::vector<geom::PolygonWithHoles> feasible_regions{
       geom::normalize_polygon(geom::box_to_polygon(move_bounds))};
-  const auto container_bbox = geom::normalize_polygon(geom::box_to_polygon(container_bounds));
-  const auto obstacles = poly::difference_polygons(container_bbox, container);
-  for (const auto &obstacle : obstacles) {
+  const auto container_bbox =
+      geom::normalize_polygon(geom::box_to_polygon(container_bounds));
+  auto obstacles = poly::try_difference_polygons(container_bbox, container);
+  if (!obstacles.ok()) {
+    SHINY_DEBUG("ifp: container obstacle extraction failed status={}",
+                util::status_name(obstacles.status()));
+    return obstacles.status();
+  }
+  for (const auto &obstacle : obstacles.value()) {
     auto blocked = compute_nfp(obstacle, piece);
     if (!blocked.ok()) {
+      SHINY_DEBUG("ifp: blocked-region NFP failed status={}",
+                  util::status_name(blocked.status()));
       return blocked.status();
     }
     for (const auto &blocked_region : blocked.value()) {
-      poly::subtract_region_set(feasible_regions, blocked_region);
+      const auto subtract_status =
+          poly::try_subtract_region_set(feasible_regions, blocked_region);
+      if (subtract_status != util::Status::ok) {
+        SHINY_DEBUG("ifp: subtract blocked region failed status={}",
+                    util::status_name(subtract_status));
+        return subtract_status;
+      }
       if (feasible_regions.empty()) {
         return feasible_regions;
       }
@@ -139,11 +158,14 @@ auto inner_fit_rectangle_bounds(const geom::Box2 &container_bounds,
 auto compute_inner_fit_polygon(const geom::PolygonWithHoles &container,
                                const geom::PolygonWithHoles &piece)
     -> util::StatusOr<std::vector<geom::PolygonWithHoles>> {
-  const auto normalized_container = geom::normalize_polygon(container);
-  const auto normalized_piece = geom::normalize_polygon(piece);
+  const auto normalized_container = geom::sanitize_polygon(container).polygon;
+  const auto normalized_piece = geom::sanitize_polygon(piece).polygon;
 
   if (!geom::validate_polygon(normalized_container).is_valid() ||
       !geom::validate_polygon(normalized_piece).is_valid()) {
+    SHINY_DEBUG("ifp: invalid input container_outer={} piece_outer={}",
+                normalized_container.outer.size(),
+                normalized_piece.outer.size());
     return util::Status::invalid_input;
   }
 
@@ -166,7 +188,7 @@ auto compute_inner_fit_polygon(const geom::PolygonWithHoles &container,
                                  {.x = ifr.max.x, .y = ifr.min.y},
                                  ifr.max,
                                  {.x = ifr.min.x, .y = ifr.max.y},
-                              }})};
+                             }})};
 }
 
 auto compute_ifp(const geom::PolygonWithHoles &container,

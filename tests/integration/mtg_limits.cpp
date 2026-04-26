@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 #include "support/mtg_fixture.hpp"
 
@@ -163,12 +164,21 @@ TEST_CASE(
   control.random_seed = 5;
   control.operation_limit = 1;
 
+  std::vector<ProgressSnapshot> snapshots;
+  control.on_progress = [&](const ProgressSnapshot &snapshot) {
+    snapshots.push_back(snapshot);
+  };
+
   auto solved = solve(request, control);
   REQUIRE(solved.has_value());
   const auto &result = solved.value();
 
-  REQUIRE(result.budget.operations_completed <= 1);
+  REQUIRE(result.stop_reason == StopReason::operation_limit_reached);
+  REQUIRE(result.budget.operations_completed == 1);
   REQUIRE(result.search.progress.size() <= 2);
+  for (const auto &snapshot : snapshots) {
+    REQUIRE(snapshot.phase != ProgressPhase::refinement);
+  }
 }
 
 TEST_CASE("mtg time limit caps the search",

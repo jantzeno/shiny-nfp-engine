@@ -1,6 +1,30 @@
 #include "search/detail/driver_scaffolding.hpp"
 
+#include <algorithm>
+
 namespace shiny::nesting::search::detail {
+
+auto OperationBudget::iteration_limit() const noexcept -> std::size_t {
+  if (!external_limit_enabled) {
+    return internal_limit;
+  }
+  return std::min(external_limit, internal_limit);
+}
+
+auto OperationBudget::external_limit_reached(
+    const std::size_t operations_completed) const noexcept -> bool {
+  return external_limit_enabled && operations_completed >= external_limit;
+}
+
+auto make_operation_budget(const SolveControl &control,
+                           const std::size_t internal_limit) noexcept
+    -> OperationBudget {
+  return {
+      .external_limit_enabled = control.operation_limit > 0U,
+      .external_limit = control.operation_limit,
+      .internal_limit = internal_limit,
+  };
+}
 
 auto driver_interrupted(const SolveControl &control,
                         const runtime::TimeBudget &time_budget,
@@ -19,7 +43,7 @@ auto driver_stop_reason(const SolveControl &control,
   if (time_budget.expired(stopwatch)) {
     return StopReason::time_limit_reached;
   }
-  if (hit_operation_limit) {
+  if (control.operation_limit > 0U && hit_operation_limit) {
     return StopReason::operation_limit_reached;
   }
   return StopReason::completed;

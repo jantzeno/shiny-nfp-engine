@@ -25,7 +25,7 @@
 
 namespace shiny::nesting::pack::detail {
 
-constexpr double kAreaEpsilon = 1e-8;
+constexpr double kAreaEpsilon = 1e-6;
 constexpr double kDistanceEpsilon = 1e-8;
 constexpr std::size_t kInterruptCheckInterval = 256;
 constexpr std::uint64_t kDefaultPerPieceBudgetMs = 30'000;
