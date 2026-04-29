@@ -16,15 +16,14 @@ using shiny::nesting::StrategyKind;
 using shiny::nesting::place::PartGrainCompatibility;
 
 auto rectangle(const double min_x, const double min_y, const double max_x,
-               const double max_y)
-    -> shiny::nesting::geom::PolygonWithHoles {
+               const double max_y) -> shiny::nesting::geom::PolygonWithHoles {
   return shiny::nesting::geom::normalize_polygon(
       shiny::nesting::geom::PolygonWithHoles{.outer = {
-          {.x = min_x, .y = min_y},
-          {.x = max_x, .y = min_y},
-          {.x = max_x, .y = max_y},
-          {.x = min_x, .y = max_y},
-      }});
+                                                 {.x = min_x, .y = min_y},
+                                                 {.x = max_x, .y = min_y},
+                                                 {.x = max_x, .y = max_y},
+                                                 {.x = min_x, .y = max_y},
+                                             }});
 }
 
 } // namespace
@@ -41,6 +40,7 @@ TEST_CASE("normalized requests preserve engine-owned constraints",
       .strategy = StrategyKind::sequential_backtrack,
       .default_rotations = {{0.0, 90.0, 180.0, 270.0}},
       .part_spacing = 1.5,
+      .allow_part_overflow = false,
       .enable_part_in_part_placement = true,
       .selected_bin_ids = {20},
   };
@@ -56,12 +56,13 @@ TEST_CASE("normalized requests preserve engine-owned constraints",
           .stock = 2,
           .exclusion_zones = {{
               .zone_id = 7,
-              .region = {.outer = {
-                             {.x = 2.0, .y = 2.0},
-                             {.x = 4.0, .y = 2.0},
-                             {.x = 4.0, .y = 4.0},
-                             {.x = 2.0, .y = 4.0},
-                         }},
+              .region = {.outer =
+                             {
+                                 {.x = 2.0, .y = 2.0},
+                                 {.x = 4.0, .y = 2.0},
+                                 {.x = 4.0, .y = 4.0},
+                                 {.x = 2.0, .y = 4.0},
+                             }},
           }},
       },
   };
@@ -81,7 +82,14 @@ TEST_CASE("normalized requests preserve engine-owned constraints",
   REQUIRE(normalized.value().request.bins.front().bin_id == 20);
   REQUIRE(normalized.value().expanded_bins.size() == 2);
   REQUIRE(normalized.value().expanded_pieces.size() == 2);
-  REQUIRE(normalized.value().request.pieces.front().allowed_rotations.has_value());
+  REQUIRE_FALSE(normalized.value().request.execution.allow_part_overflow);
+  REQUIRE(
+      normalized.value().request.pieces.front().allowed_rotations.has_value());
+  REQUIRE(normalized.value().expanded_bins.front().identity.lifecycle ==
+          shiny::nesting::pack::BinLifecycle::user_created);
+  REQUIRE(
+      normalized.value().expanded_bins.front().identity.source_request_bin_id ==
+      20U);
 
   const auto piece_bounds = shiny::nesting::geom::compute_bounds(
       normalized.value().request.pieces.front().polygon);
@@ -182,15 +190,15 @@ TEST_CASE("normalized requests materialize type-erased strategy configs",
   REQUIRE(normalized.ok());
 
   const auto *alns =
-      normalized.value().request.execution.strategy_config.get_if<shiny::nesting::ALNSConfig>(
-          StrategyKind::alns);
+      shiny::nesting::primary_strategy_config_ptr<shiny::nesting::ALNSConfig>(
+          normalized.value().request.execution, StrategyKind::alns);
   REQUIRE(alns != nullptr);
   REQUIRE(alns->max_refinements == 23U);
 
-  const auto *lahc =
-      normalized.value().request.execution.production_strategy_config.get_if<
-          shiny::nesting::LAHCConfig>(
-          shiny::nesting::ProductionOptimizerKind::lahc);
+  const auto *lahc = shiny::nesting::production_strategy_config_ptr<
+      shiny::nesting::LAHCConfig>(
+      normalized.value().request.execution,
+      shiny::nesting::ProductionOptimizerKind::lahc);
   REQUIRE(lahc != nullptr);
   REQUIRE(lahc->max_refinements == 17U);
 }

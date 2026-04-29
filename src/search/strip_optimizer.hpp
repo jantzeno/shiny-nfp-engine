@@ -27,6 +27,8 @@ struct StripOptimizerResult {
   std::size_t exploration_iterations{0};
   std::size_t compression_iterations{0};
   std::size_t accepted_moves{0};
+  SearchPhaseMetrics phase_metrics{};
+  SeparatorReplayMetrics separator_metrics{};
 };
 
 class StripOptimizer {

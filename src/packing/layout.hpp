@@ -3,8 +3,10 @@
 #include <cstdint>
 #include <vector>
 
+#include "cache/nfp_cache.hpp"
 #include "geometry/transform.hpp"
 #include "geometry/types.hpp"
+#include "packing/bin_identity.hpp"
 #include "packing/config.hpp"
 #include "placement/types.hpp"
 #include "polygon_ops/merge_region.hpp"
@@ -30,6 +32,7 @@ struct PlacedPiece {
   geom::PolygonWithHoles polygon{};
   place::PlacementCandidateSource source{
       place::PlacementCandidateSource::constructive_boundary};
+  cache::NfpCacheAccuracy nfp_accuracy{cache::NfpCacheAccuracy::exact};
   bool inside_hole{false};
   std::int32_t hole_index{-1};
   double score{0.0};
@@ -50,13 +53,14 @@ struct PlacedPiece {
 struct PlacementTraceEntry {
   std::uint32_t piece_id{0};
   std::uint32_t bin_id{0};
-    std::uint64_t piece_geometry_revision{0};
+  std::uint64_t piece_geometry_revision{0};
   geom::RotationIndex rotation_index{};
   geom::ResolvedRotation resolved_rotation{};
   geom::Point2 translation{};
   bool mirrored{false};
   place::PlacementCandidateSource source{
       place::PlacementCandidateSource::constructive_boundary};
+  cache::NfpCacheAccuracy nfp_accuracy{cache::NfpCacheAccuracy::exact};
   bool opened_new_bin{false};
   bool inside_hole{false};
   std::int32_t hole_index{-1};
@@ -94,6 +98,7 @@ struct BinUtilizationSummary {
  */
 struct LayoutBin {
   std::uint32_t bin_id{0};
+  BinIdentity identity{};
   geom::PolygonWithHoles container{};
   poly::MergedRegion occupied{};
   std::vector<PlacedPiece> placements{};

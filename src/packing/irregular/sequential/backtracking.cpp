@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -41,10 +42,12 @@ namespace {
 //   pushed. The explicit counter avoids that ambiguity.
 class BinTrialGuard {
 public:
-  BinTrialGuard(std::vector<WorkingBin> &bins, std::vector<bool> &flags,
+  BinTrialGuard(std::vector<BinInstance> &bin_instances,
+                std::vector<WorkingBin> &bins, std::vector<bool> &flags,
                 std::vector<PlacementTraceEntry> &trace)
-      : bins_{bins}, flags_{flags}, trace_{trace},
-        original_bin_count_{bins.size()} {}
+      : bin_instances_{bin_instances}, bins_{bins}, flags_{flags},
+        trace_{trace}, original_bin_instance_count_{bin_instances.size()},
+        original_bin_count_{bins.size()}, original_flag_count_{flags.size()} {}
 
   ~BinTrialGuard() {
     if (!committed_) {
@@ -104,8 +107,12 @@ private:
                     it->entry);
     }
 
+    bin_instances_.resize(original_bin_instance_count_);
+    flags_.resize(original_flag_count_);
     for (const auto flag_index : opened_flag_indices_) {
-      flags_[flag_index] = false;
+      if (flag_index < flags_.size()) {
+        flags_[flag_index] = false;
+      }
     }
     bins_.resize(original_bin_count_);
     for (const auto &snapshot : snapshots_) {
@@ -113,10 +120,13 @@ private:
     }
   }
 
+  std::vector<BinInstance> &bin_instances_;
   std::vector<WorkingBin> &bins_;
   std::vector<bool> &flags_;
   std::vector<PlacementTraceEntry> &trace_;
+  std::size_t original_bin_instance_count_{0};
   std::size_t original_bin_count_{0};
+  std::size_t original_flag_count_{0};
   std::vector<BinSnapshot> snapshots_{};
   std::vector<std::size_t> opened_flag_indices_{};
   std::vector<RemovedTraceEntry> removed_trace_entries_{};
@@ -124,17 +134,62 @@ private:
   bool committed_{false};
 };
 
+[[nodiscard]] auto
+find_bin_instance_index(const std::vector<BinInstance> &bin_instances,
+                        const std::uint32_t bin_id)
+    -> std::optional<std::size_t> {
+  for (std::size_t index = 0; index < bin_instances.size(); ++index) {
+    if (bin_instances[index].expanded.expanded_bin_id == bin_id) {
+      return index;
+    }
+  }
+  return std::nullopt;
+}
+
+[[nodiscard]] auto
+next_overflow_bin_id(const std::vector<BinInstance> &bin_instances)
+    -> std::uint32_t {
+  std::uint32_t max_id = 0;
+  for (const auto &bin : bin_instances) {
+    max_id = std::max(max_id, bin.expanded.expanded_bin_id);
+  }
+  return max_id + 1U;
+}
+
+auto append_overflow_bin_instance(std::vector<BinInstance> &bin_instances,
+                                  std::vector<bool> &opened_flags,
+                                  const BinInstance &template_instance,
+                                  const std::uint32_t template_bin_id)
+    -> std::size_t {
+  BinInstance overflow_instance = template_instance;
+  overflow_instance.expanded.expanded_bin_id =
+      next_overflow_bin_id(bin_instances);
+  overflow_instance.expanded.stock_index =
+      static_cast<std::uint32_t>(bin_instances.size());
+  overflow_instance.expanded.identity = {
+      .lifecycle = pack::BinLifecycle::engine_overflow,
+      .source_request_bin_id =
+          template_instance.expanded.identity.source_request_bin_id != 0U
+              ? template_instance.expanded.identity.source_request_bin_id
+              : template_instance.expanded.source_bin_id,
+      .template_bin_id = template_bin_id,
+  };
+
+  bin_instances.push_back(std::move(overflow_instance));
+  opened_flags.push_back(false);
+  return bin_instances.size() - 1U;
+}
+
 } // namespace
 
 auto try_place_piece(
     const PieceInstance &piece, const NormalizedRequest &request,
-    const std::span<const BinInstance> bin_instances,
+    std::vector<BinInstance> &bin_instances,
     std::vector<WorkingBin> &opened_bins, std::vector<bool> &opened_flags,
-    std::vector<PlacementTraceEntry> &trace,
-    const runtime::TimeBudget &time_budget, const runtime::Stopwatch &stopwatch,
-    const SolveControl &control, ProgressThrottle &search_throttle,
-    const std::size_t placed_parts, const std::size_t total_parts,
-    PlacementAttemptContext &attempt_context, cache::NfpCache *nfp_cache,
+    std::vector<PlacementTraceEntry> &trace, const SolveControl &control,
+    ProgressThrottle &search_throttle, const std::size_t placed_parts,
+    const std::size_t total_parts, PlacementAttemptContext &attempt_context,
+    cache::NfpCache *nfp_cache, PackerSearchMetrics *search_metrics,
     runtime::DeterministicRng *rng_ptr,
     const TrialStateRecorder *trial_recorder) -> PlacementSearchStatus {
   // Shared per-bin candidate evaluator: both the existing-bin loop and
@@ -142,38 +197,74 @@ auto try_place_piece(
   // same long argument list. Capture once so the call sites stay short
   // and any future signature change happens in one place.
   const auto find_best = [&](WorkingBin &bin) {
-    return find_best_for_bin(bin, piece, request, time_budget, stopwatch,
-                             control, search_throttle, placed_parts,
-                             total_parts, attempt_context, nfp_cache, rng_ptr);
+    return find_best_for_bin(bin, piece, request, control, search_throttle,
+                             placed_parts, total_parts, attempt_context,
+                             nfp_cache, search_metrics, rng_ptr);
   };
 
-  std::optional<CandidatePlacement> best_existing;
-  std::size_t best_existing_index = 0;
-  for (std::size_t bin_index = 0; bin_index < opened_bins.size(); ++bin_index) {
-    auto result = find_best(opened_bins[bin_index]);
-    if (result.status == PlacementSearchStatus::interrupted ||
-        result.status == PlacementSearchStatus::placement_budget_exhausted) {
-      return result.status;
-    }
-    if (!result.candidate.has_value()) {
-      continue;
-    }
-    if (!best_existing.has_value() ||
-        better_candidate(opened_bins[best_existing_index],
-                         request.request.execution.placement_policy,
-                         *result.candidate, *best_existing)) {
-      best_existing = std::move(result.candidate);
-      best_existing_index = bin_index;
-    }
-  }
+  const bool use_strict_frontier = !piece.restricted_to_allowed_bins;
+  std::optional<std::size_t> overflow_template_index;
 
-  if (best_existing.has_value()) {
-    if (trial_recorder != nullptr && trial_recorder->snapshot_bin) {
-      trial_recorder->snapshot_bin(best_existing_index);
+  if (!opened_bins.empty()) {
+    if (use_strict_frontier) {
+      const std::size_t frontier_index = opened_bins.size() - 1U;
+      overflow_template_index = find_bin_instance_index(
+          bin_instances, opened_bins[frontier_index].state.bin_id);
+      auto result = find_best(opened_bins[frontier_index]);
+      if (result.status == PlacementSearchStatus::interrupted) {
+        return result.status;
+      }
+      if (result.candidate.has_value()) {
+        if (trial_recorder != nullptr && trial_recorder->snapshot_bin) {
+          trial_recorder->snapshot_bin(frontier_index);
+        }
+        apply_candidate(opened_bins[frontier_index], *result.candidate, trace,
+                        false, request.request.execution, trial_recorder);
+        return PlacementSearchStatus::found;
+      }
+
+      PlacementAttemptContext exact_fit_attempt{};
+      auto exact_fit_result =
+          try_exact_fit_candidate(opened_bins[frontier_index], piece, request,
+                                  control, exact_fit_attempt);
+      attempt_context.candidate_evaluations_completed +=
+          exact_fit_attempt.candidate_evaluations_completed;
+      if (exact_fit_result.status == PlacementSearchStatus::interrupted) {
+        return exact_fit_result.status;
+      }
+      if (exact_fit_result.candidate.has_value()) {
+        if (trial_recorder != nullptr && trial_recorder->snapshot_bin) {
+          trial_recorder->snapshot_bin(frontier_index);
+        }
+        apply_candidate(opened_bins[frontier_index],
+                        *exact_fit_result.candidate, trace, false,
+                        request.request.execution, trial_recorder);
+        return PlacementSearchStatus::found;
+      }
+
+      const auto frontier_status = frontier_exhaustion_status_for_piece(
+          opened_bins[frontier_index], piece, request.request.execution);
+      if (frontier_status != FrontierExhaustionStatus::exhausted) {
+        return PlacementSearchStatus::no_candidate;
+      }
+    } else {
+      for (std::size_t bin_index = 0; bin_index < opened_bins.size();
+           ++bin_index) {
+        auto result = find_best(opened_bins[bin_index]);
+        if (result.status == PlacementSearchStatus::interrupted) {
+          return result.status;
+        }
+        if (!result.candidate.has_value()) {
+          continue;
+        }
+        if (trial_recorder != nullptr && trial_recorder->snapshot_bin) {
+          trial_recorder->snapshot_bin(bin_index);
+        }
+        apply_candidate(opened_bins[bin_index], *result.candidate, trace, false,
+                        request.request.execution, trial_recorder);
+        return PlacementSearchStatus::found;
+      }
     }
-    apply_candidate(opened_bins[best_existing_index], *best_existing, trace,
-                    false, request.request.execution, trial_recorder);
-    return PlacementSearchStatus::found;
   }
 
   for (std::size_t bin_index = 0; bin_index < bin_instances.size();
@@ -184,11 +275,18 @@ auto try_place_piece(
     auto working_bin = make_working_bin(bin_instances[bin_index]);
     refresh_bin_state(working_bin, request.request.execution);
     auto result = find_best(working_bin);
-    if (result.status == PlacementSearchStatus::interrupted ||
-        result.status == PlacementSearchStatus::placement_budget_exhausted) {
+    if (result.status == PlacementSearchStatus::interrupted) {
       return result.status;
     }
     if (!result.candidate.has_value()) {
+      if (use_strict_frontier) {
+        const auto frontier_status = frontier_exhaustion_status_for_piece(
+            working_bin, piece, request.request.execution);
+        if (frontier_status != FrontierExhaustionStatus::exhausted) {
+          return PlacementSearchStatus::no_candidate;
+        }
+      }
+      overflow_template_index = bin_index;
       continue;
     }
 
@@ -202,25 +300,184 @@ auto try_place_piece(
     return PlacementSearchStatus::found;
   }
 
+  if (use_strict_frontier && request.request.execution.allow_part_overflow &&
+      overflow_template_index.has_value()) {
+    const auto new_bin_index = append_overflow_bin_instance(
+        bin_instances, opened_flags, bin_instances[*overflow_template_index],
+        bin_instances[*overflow_template_index].expanded.expanded_bin_id);
+    auto working_bin = make_working_bin(bin_instances[new_bin_index]);
+    refresh_bin_state(working_bin, request.request.execution);
+    auto result = find_best(working_bin);
+    if (result.status == PlacementSearchStatus::interrupted) {
+      return result.status;
+    }
+    if (result.candidate.has_value()) {
+      apply_candidate(working_bin, *result.candidate, trace, true,
+                      request.request.execution, trial_recorder);
+      opened_flags[new_bin_index] = true;
+      opened_bins.push_back(std::move(working_bin));
+      if (trial_recorder != nullptr && trial_recorder->record_opened_bin) {
+        trial_recorder->record_opened_bin(new_bin_index);
+      }
+      return PlacementSearchStatus::found;
+    }
+  }
+
   return PlacementSearchStatus::no_candidate;
 }
 
+// auto try_place_piece(
+//     const PieceInstance &piece, const NormalizedRequest &request,
+//     std::vector<BinInstance> &bin_instances,
+//     std::vector<WorkingBin> &opened_bins, std::vector<bool> &opened_flags,
+//     std::vector<PlacementTraceEntry> &trace,
+//     const runtime::TimeBudget &time_budget, const runtime::Stopwatch
+//     &stopwatch, const SolveControl &control, ProgressThrottle
+//     &search_throttle, const std::size_t placed_parts, const std::size_t
+//     total_parts, PlacementAttemptContext &attempt_context, cache::NfpCache
+//     *nfp_cache, PackerSearchMetrics *search_metrics,
+//     runtime::DeterministicRng *rng_ptr, const TrialStateRecorder
+//     *trial_recorder) -> PlacementSearchStatus {
+//   // Shared per-bin candidate evaluator: both the existing-bin loop and
+//   // the open-new-bin loop need to call `find_best_for_bin` with the
+//   // same long argument list. Capture once so the call sites stay short
+//   // and any future signature change happens in one place.
+//   const auto find_best = [&](WorkingBin &bin) {
+//     return find_best_for_bin(bin, piece, request, time_budget, stopwatch,
+//                              control, search_throttle, placed_parts,
+//                              total_parts, attempt_context, nfp_cache,
+//                              search_metrics, rng_ptr);
+//   };
+
+//   const bool use_strict_frontier = !piece.restricted_to_allowed_bins;
+//   std::optional<std::size_t> overflow_template_index;
+
+//   if (!opened_bins.empty()) {
+//     if (use_strict_frontier) {
+//       const std::size_t frontier_index = opened_bins.size() - 1U;
+//       overflow_template_index = find_bin_instance_index(
+//           bin_instances, opened_bins[frontier_index].state.bin_id);
+//       auto result = find_best(opened_bins[frontier_index]);
+//       if (result.status == PlacementSearchStatus::interrupted ||
+//           result.status == PlacementSearchStatus::placement_budget_exhausted)
+//           {
+//         return result.status;
+//       }
+//       if (result.candidate.has_value()) {
+//         if (trial_recorder != nullptr && trial_recorder->snapshot_bin) {
+//           trial_recorder->snapshot_bin(frontier_index);
+//         }
+//         apply_candidate(opened_bins[frontier_index], *result.candidate,
+//         trace,
+//                         false, request.request.execution, trial_recorder);
+//         return PlacementSearchStatus::found;
+//       }
+
+//       if (frontier_exhaustion_status_for_piece(
+//               opened_bins[frontier_index], piece, request.request.execution)
+//               !=
+//           FrontierExhaustionStatus::exhausted) {
+//         return PlacementSearchStatus::no_candidate;
+//       }
+//     } else {
+//       for (std::size_t bin_index = 0; bin_index < opened_bins.size();
+//            ++bin_index) {
+//         auto result = find_best(opened_bins[bin_index]);
+//         if (result.status == PlacementSearchStatus::interrupted ||
+//             result.status ==
+//                 PlacementSearchStatus::placement_budget_exhausted) {
+//           return result.status;
+//         }
+//         if (!result.candidate.has_value()) {
+//           continue;
+//         }
+//         if (trial_recorder != nullptr && trial_recorder->snapshot_bin) {
+//           trial_recorder->snapshot_bin(bin_index);
+//         }
+//         apply_candidate(opened_bins[bin_index], *result.candidate, trace,
+//         false,
+//                         request.request.execution, trial_recorder);
+//         return PlacementSearchStatus::found;
+//       }
+//     }
+//   }
+
+//   for (std::size_t bin_index = 0; bin_index < bin_instances.size();
+//        ++bin_index) {
+//     if (opened_flags[bin_index]) {
+//       continue;
+//     }
+//     auto working_bin = make_working_bin(bin_instances[bin_index]);
+//     refresh_bin_state(working_bin, request.request.execution);
+//     auto result = find_best(working_bin);
+//     if (result.status == PlacementSearchStatus::interrupted ||
+//         result.status == PlacementSearchStatus::placement_budget_exhausted) {
+//       return result.status;
+//     }
+//     if (!result.candidate.has_value()) {
+//       if (use_strict_frontier &&
+//           frontier_exhaustion_status_for_piece(working_bin, piece,
+//                                                request.request.execution) !=
+//               FrontierExhaustionStatus::exhausted) {
+//         return PlacementSearchStatus::no_candidate;
+//       }
+//       overflow_template_index = bin_index;
+//       continue;
+//     }
+
+//     apply_candidate(working_bin, *result.candidate, trace, true,
+//                     request.request.execution, trial_recorder);
+//     opened_flags[bin_index] = true;
+//     opened_bins.push_back(std::move(working_bin));
+//     if (trial_recorder != nullptr && trial_recorder->record_opened_bin) {
+//       trial_recorder->record_opened_bin(bin_index);
+//     }
+//     return PlacementSearchStatus::found;
+//   }
+
+//   if (use_strict_frontier && request.request.execution.allow_part_overflow &&
+//       overflow_template_index.has_value()) {
+//     const auto new_bin_index = append_overflow_bin_instance(
+//         bin_instances, opened_flags, bin_instances[*overflow_template_index],
+//         bin_instances[*overflow_template_index].expanded.expanded_bin_id);
+//     auto working_bin = make_working_bin(bin_instances[new_bin_index]);
+//     refresh_bin_state(working_bin, request.request.execution);
+//     auto result = find_best(working_bin);
+//     if (result.status == PlacementSearchStatus::interrupted ||
+//         result.status == PlacementSearchStatus::placement_budget_exhausted) {
+//       return result.status;
+//     }
+//     if (result.candidate.has_value()) {
+//       apply_candidate(working_bin, *result.candidate, trace, true,
+//                       request.request.execution, trial_recorder);
+//       opened_flags[new_bin_index] = true;
+//       opened_bins.push_back(std::move(working_bin));
+//       if (trial_recorder != nullptr && trial_recorder->record_opened_bin) {
+//         trial_recorder->record_opened_bin(new_bin_index);
+//       }
+//       return PlacementSearchStatus::found;
+//     }
+//   }
+
+//   return PlacementSearchStatus::no_candidate;
+// }
+
 auto try_backtrack_place_piece(
     const PieceInstance &piece, const NormalizedRequest &request,
-    const std::span<const BinInstance> bin_instances,
+    std::vector<BinInstance> &bin_instances,
     std::vector<WorkingBin> &opened_bins, std::vector<bool> &opened_flags,
     std::vector<PlacementTraceEntry> &trace,
     const std::unordered_map<std::uint32_t, const PieceInstance *> &piece_by_id,
-    const runtime::TimeBudget &time_budget, const runtime::Stopwatch &stopwatch,
     const SolveControl &control, ProgressThrottle &search_throttle,
     const std::size_t total_parts, PlacementAttemptContext &attempt_context,
-    cache::NfpCache *nfp_cache, runtime::DeterministicRng *rng_ptr,
+    cache::NfpCache *nfp_cache, PackerSearchMetrics *search_metrics,
+    runtime::DeterministicRng *rng_ptr,
     const std::uint32_t max_backtrack_pieces) -> PlacementSearchStatus {
   const auto recent_piece_ids =
       collect_recent_piece_ids(trace, max_backtrack_pieces);
   for (std::size_t removal_count = 1; removal_count <= recent_piece_ids.size();
        ++removal_count) {
-    BinTrialGuard trial_guard(opened_bins, opened_flags, trace);
+    BinTrialGuard trial_guard(bin_instances, opened_bins, opened_flags, trace);
     const TrialStateRecorder trial_recorder{
         .snapshot_bin =
             [&](const std::size_t bin_index) {
@@ -273,10 +530,9 @@ auto try_backtrack_place_piece(
     for (const auto *retry_piece : retry_order) {
       const auto status = try_place_piece(
           *retry_piece, request, bin_instances, opened_bins, opened_flags,
-          trace, time_budget, stopwatch, control, search_throttle, trace.size(),
-          total_parts, attempt_context, nfp_cache, rng_ptr, &trial_recorder);
-      if (status == PlacementSearchStatus::interrupted ||
-          status == PlacementSearchStatus::placement_budget_exhausted) {
+          trace, control, search_throttle, trace.size(), total_parts,
+          attempt_context, nfp_cache, search_metrics, rng_ptr, &trial_recorder);
+      if (status == PlacementSearchStatus::interrupted) {
         return status;
       }
       if (status != PlacementSearchStatus::found) {

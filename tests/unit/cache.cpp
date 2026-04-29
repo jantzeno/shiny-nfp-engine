@@ -71,26 +71,41 @@ TEST_CASE("LruCache clear resets storage and lru state", "[cache][lru]") {
   REQUIRE(*store.get(3) == "three");
 }
 
-TEST_CASE("NfpCache round-trips polygon vector payloads", "[cache][nfp]") {
+TEST_CASE("NfpCache round-trips polygon payloads with accuracy metadata",
+          "[cache][nfp]") {
   cn::NfpCache nfp_cache(
       {.policy = cn::CachePolicy::lru_bounded, .max_entries = 2});
   const auto key = cn::make_nfp_cache_key(1U, 2U, 0.0, 90.0);
   const cn::NfpCacheValue value{
-      shiny::nesting::geom::normalize_polygon(
-          shiny::nesting::geom::PolygonWithHoles{
-              .outer = {{0.0, 0.0}, {2.0, 0.0}, {2.0, 2.0}, {0.0, 2.0}},
-          }),
+      .polygons =
+          {shiny::nesting::geom::normalize_polygon(
+              shiny::nesting::geom::PolygonWithHoles{
+                  .outer = {{0.0, 0.0}, {2.0, 0.0}, {2.0, 2.0}, {0.0, 2.0}},
+              })},
+      .accuracy = cn::NfpCacheAccuracy::exact,
+      .status = shiny::nesting::util::Status::ok,
   };
   nfp_cache.put(key, value);
   const auto cached = nfp_cache.get(key);
   REQUIRE(cached != nullptr);
-  REQUIRE(cached->size() == 1U);
+  REQUIRE(cached->polygons.size() == 1U);
+  REQUIRE(cached->accuracy == cn::NfpCacheAccuracy::exact);
+  REQUIRE(cached->status == shiny::nesting::util::Status::ok);
 }
 
 TEST_CASE("NfpCache key construction normalises rotations", "[cache][nfp]") {
   const auto a = cn::make_nfp_cache_key(1U, 2U, 0.0, 90.0);
   const auto b = cn::make_nfp_cache_key(1U, 2U, 360.0, 450.0);
   REQUIRE(a == b);
+}
+
+TEST_CASE("NfpCache distinguishes exact and fallback entry kinds",
+          "[cache][nfp]") {
+  const auto exact =
+      cn::make_nfp_cache_key(1U, 2U, 0.0, 90.0, cn::NfpCacheEntryKind::exact);
+  const auto fallback = cn::make_nfp_cache_key(
+      1U, 2U, 0.0, 90.0, cn::NfpCacheEntryKind::conservative_bbox_fallback);
+  REQUIRE(exact != fallback);
 }
 
 TEST_CASE("PenetrationDepthCache round-trips scalar payloads",

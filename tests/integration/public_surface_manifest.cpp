@@ -53,7 +53,8 @@ TEST_CASE("public request surface ownership manifest stays visible",
           .surface = "metaheuristic-search algorithm breadth",
           .relative_path = "tests/integration/metaheuristic_search.cpp",
           .required_substrings = {
-              "mtg metaheuristic-search positive matrix places every part on the asymmetric synthetic fixture",
+              "mtg metaheuristic-search positive matrix places every part on the ",
+              "asymmetric synthetic fixture",
           },
       },
       {
@@ -125,7 +126,8 @@ TEST_CASE("public request surface ownership manifest stays visible",
           .surface = "maintain-bed-assignment behavior",
           .relative_path = "tests/integration/metaheuristic_search.cpp",
           .required_substrings = {
-              "mtg metaheuristic-search maintain_bed_assignment pins pieces to source beds",
+              "mtg metaheuristic-search maintain_bed_assignment pins pieces to source ",
+              "beds",
           },
       },
       {
@@ -177,7 +179,8 @@ TEST_CASE("public request surface ownership manifest stays visible",
           .surface = "concave-candidate exploration",
           .relative_path = "tests/integration/metaheuristic_search.cpp",
           .required_substrings = {
-              "mtg metaheuristic-search explore_concave_candidates still places every part on the asymmetric synthetic fixture",
+              "mtg metaheuristic-search explore_concave_candidates still places ",
+              "every part on the asymmetric synthetic fixture",
           },
       },
       {

@@ -25,6 +25,7 @@ namespace shiny::nesting::pack {
  */
 struct BinState {
   std::uint32_t bin_id{0};
+  BinIdentity identity{};
   geom::PolygonWithHoles container{};
   std::uint64_t container_geometry_revision{0};
   place::PlacementStartCorner start_corner{

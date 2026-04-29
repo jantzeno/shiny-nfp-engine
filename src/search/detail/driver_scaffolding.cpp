@@ -49,31 +49,28 @@ auto driver_stop_reason(const SolveControl &control,
   return StopReason::completed;
 }
 
-auto driver_make_budget(const SolveControl &control,
-                        const runtime::TimeBudget &time_budget,
-                        const runtime::Stopwatch &stopwatch,
-                        const std::size_t operations_completed) noexcept
-    -> BudgetState {
-  return {
-      .operation_limit_enabled = control.operation_limit > 0U,
-      .operation_limit = control.operation_limit,
-      .operations_completed = operations_completed,
-      .time_limit_enabled = time_budget.enabled(),
-      .time_limit_milliseconds = time_budget.limit_milliseconds(),
-      .elapsed_milliseconds = stopwatch.elapsed_milliseconds(),
-      .cancellation_requested = control.cancellation.stop_requested(),
-  };
-}
+// auto driver_make_budget(const SolveControl &control,
+//                         const runtime::TimeBudget &time_budget,
+//                         const runtime::Stopwatch &stopwatch,
+//                         const std::size_t operations_completed) noexcept
+//     -> BudgetState {
+//   return {
+//       .operation_limit_enabled = control.operation_limit > 0U,
+//       .operation_limit = control.operation_limit,
+//       .operations_completed = operations_completed,
+//       .time_limit_enabled = time_budget.enabled(),
+//       .time_limit_milliseconds = time_budget.limit_milliseconds(),
+//       .elapsed_milliseconds = stopwatch.elapsed_milliseconds(),
+//       .cancellation_requested = control.cancellation.stop_requested(),
+//   };
+// }
 
-auto driver_empty_result(StrategyKind strategy, SearchReplay replay,
-                         const SolveControl &control,
-                         const runtime::TimeBudget &time_budget,
-                         const runtime::Stopwatch &stopwatch) noexcept
+auto driver_empty_result(StrategyKind strategy, SearchReplay replay) noexcept
     -> NestingResult {
   return {
       .strategy = strategy,
       .total_parts = 0,
-      .budget = driver_make_budget(control, time_budget, stopwatch, 0),
+      // .budget = driver_make_budget(control, time_budget, stopwatch, 0),
       .stop_reason = StopReason::completed,
       .search = std::move(replay),
   };

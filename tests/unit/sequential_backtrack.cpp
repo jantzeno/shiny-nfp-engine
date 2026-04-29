@@ -308,6 +308,38 @@ TEST_CASE("irregular constructive solver honors configured piece ordering",
   REQUIRE(result_or.value().layout.placement_trace.front().piece_id == 11U);
 }
 
+TEST_CASE("irregular constructive solver defaults to largest-area-first "
+          "ordering",
+          "[solve][irregular][ordering][defaults]") {
+  NestingRequest request;
+  request.execution.strategy = StrategyKind::sequential_backtrack;
+  request.execution.default_rotations = {{0.0}};
+  request.execution.irregular.enable_backtracking = false;
+  request.execution.irregular.enable_compaction = false;
+
+  request.bins.push_back(BinRequest{
+      .bin_id = 45,
+      .polygon = rectangle(0.0, 0.0, 12.0, 12.0),
+  });
+  request.pieces.push_back(PieceRequest{
+      .piece_id = 21,
+      .polygon = rectangle(0.0, 0.0, 2.0, 2.0),
+  });
+  request.pieces.push_back(PieceRequest{
+      .piece_id = 22,
+      .polygon = rectangle(0.0, 0.0, 6.0, 6.0),
+  });
+
+  REQUIRE(request.execution.irregular.piece_ordering ==
+          PieceOrdering::largest_area_first);
+
+  const auto result_or = shiny::nesting::solve(request);
+
+  REQUIRE(result_or.ok());
+  REQUIRE(result_or.value().layout.placement_trace.size() == 2U);
+  REQUIRE(result_or.value().layout.placement_trace.front().piece_id == 22U);
+}
+
 TEST_CASE("irregular constructive shared workspace preserves repeated results",
           "[solve][irregular][workspace]") {
   NestingRequest request;

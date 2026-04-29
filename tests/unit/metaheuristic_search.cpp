@@ -394,8 +394,6 @@ TEST_CASE("metaheuristic internal exhaustion is not a caller operation limit",
         request, SolveControl{.operation_limit = 0, .random_seed = 17});
     INFO(static_cast<int>(strategy));
     REQUIRE(result.ok());
-    REQUIRE_FALSE(result.value().budget.operation_limit_enabled);
-    REQUIRE(result.value().budget.operation_limit == 0U);
     REQUIRE(result.value().stop_reason != StopReason::operation_limit_reached);
   }
 }
@@ -422,9 +420,6 @@ TEST_CASE("metaheuristic caller operation caps stop at the external limit",
         request, SolveControl{.operation_limit = 1, .random_seed = 17});
     INFO(static_cast<int>(strategy));
     REQUIRE(result.ok());
-    REQUIRE(result.value().budget.operation_limit_enabled);
-    REQUIRE(result.value().budget.operation_limit == 1U);
-    REQUIRE(result.value().budget.operations_completed <= 1U);
     REQUIRE(result.value().stop_reason == StopReason::operation_limit_reached);
   }
 }
@@ -444,9 +439,8 @@ TEST_CASE("strategy registry resolves direct and production strategies",
   REQUIRE(direct_resolved.run != nullptr);
   REQUIRE_FALSE(direct_resolved.result_strategy_override.has_value());
   const auto *direct_config =
-      direct_normalized.value()
-          .request.execution.strategy_config.get_if<ALNSConfig>(
-              StrategyKind::alns);
+      shiny::nesting::primary_strategy_config_ptr<ALNSConfig>(
+          direct_normalized.value().request.execution, StrategyKind::alns);
   REQUIRE(direct_config != nullptr);
   REQUIRE(direct_config->max_refinements == 19U);
 
@@ -466,9 +460,10 @@ TEST_CASE("strategy registry resolves direct and production strategies",
   REQUIRE(production_resolved.result_strategy_override ==
           StrategyKind::metaheuristic_search);
   const auto *production_config =
-      production_normalized.value()
-          .request.execution.production_strategy_config
-          .get_if<shiny::nesting::LAHCConfig>(ProductionOptimizerKind::lahc);
+      shiny::nesting::production_strategy_config_ptr<
+          shiny::nesting::LAHCConfig>(
+          production_normalized.value().request.execution,
+          ProductionOptimizerKind::lahc);
   REQUIRE(production_config != nullptr);
   REQUIRE(production_config->max_refinements == 13U);
 }

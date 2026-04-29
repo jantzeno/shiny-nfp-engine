@@ -1,0 +1,38 @@
+{
+    "schema_version": "1",
+    "cases": {
+        "or-strip-dataset": {
+            "min_placed_parts": "3",
+            "min_utilization": "11.212121212121213",
+            "max_runtime_ms": "1173",
+            "max_fallback_candidates": "1",
+            "max_selected_fallback_placements": "1",
+            "expected_stop_reason": "completed",
+            "require_full_success": "true",
+            "require_layout_valid": "true",
+            "max_validation_issues": "0"
+        },
+        "or-explicit-bins": {
+            "min_placed_parts": "3",
+            "min_utilization": "31.25",
+            "max_runtime_ms": "1141",
+            "max_fallback_candidates": "1",
+            "max_selected_fallback_placements": "1",
+            "expected_stop_reason": "completed",
+            "require_full_success": "true",
+            "require_layout_valid": "true",
+            "max_validation_issues": "0"
+        },
+        "svg-full-irregular-set": {
+            "min_placed_parts": "4",
+            "min_utilization": "30.924479166666668",
+            "max_runtime_ms": "3013",
+            "max_fallback_candidates": "1",
+            "max_selected_fallback_placements": "1",
+            "expected_stop_reason": "completed",
+            "require_full_success": "true",
+            "require_layout_valid": "true",
+            "max_validation_issues": "0"
+        }
+    }
+}

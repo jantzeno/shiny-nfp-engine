@@ -26,28 +26,31 @@ using namespace shiny::nesting::test::mtg;
 
 namespace {
 
-[[nodiscard]] auto rectangle(double min_x, double min_y, double max_x, double max_y)
-    -> geom::PolygonWithHoles {
+[[nodiscard]] auto rectangle(double min_x, double min_y, double max_x,
+                             double max_y) -> geom::PolygonWithHoles {
   return {
-      .outer = {
-          {min_x, min_y},
-          {max_x, min_y},
-          {max_x, max_y},
-          {min_x, max_y},
-      },
+      .outer =
+          {
+              {min_x, min_y},
+              {max_x, min_y},
+              {max_x, max_y},
+              {min_x, max_y},
+          },
   };
 }
 
 [[nodiscard]] auto frame(double min_x, double min_y, double max_x, double max_y,
-                         double hole_min_x, double hole_min_y, double hole_max_x,
-                         double hole_max_y) -> geom::PolygonWithHoles {
+                         double hole_min_x, double hole_min_y,
+                         double hole_max_x, double hole_max_y)
+    -> geom::PolygonWithHoles {
   return {
-      .outer = {
-          {min_x, min_y},
-          {max_x, min_y},
-          {max_x, max_y},
-          {min_x, max_y},
-      },
+      .outer =
+          {
+              {min_x, min_y},
+              {max_x, min_y},
+              {max_x, max_y},
+              {min_x, max_y},
+          },
       .holes = {{
           {hole_min_x, hole_min_y},
           {hole_min_x, hole_max_y},
@@ -93,11 +96,12 @@ namespace {
   return nullptr;
 }
 
-[[nodiscard]] auto resolve_piece_rotation_degrees(
-    const NestingRequest &request, const pack::PlacedPiece &placed)
+[[nodiscard]] auto
+resolve_piece_rotation_degrees(const NestingRequest &request,
+                               const pack::PlacedPiece &placed)
     -> std::optional<double> {
-  const auto piece_it =
-      std::find_if(request.pieces.begin(), request.pieces.end(), [&](const auto &piece) {
+  const auto piece_it = std::find_if(
+      request.pieces.begin(), request.pieces.end(), [&](const auto &piece) {
         return piece.piece_id == placed.placement.piece_id;
       });
   if (piece_it == request.pieces.end()) {
@@ -122,6 +126,27 @@ namespace {
     total += bin.placements.size();
   }
   return total;
+}
+
+[[nodiscard]] auto find_layout_bin(const NestingResult &result,
+                                   std::uint32_t bin_id)
+    -> const pack::LayoutBin * {
+  for (const auto &bin : result.layout.bins) {
+    if (bin.bin_id == bin_id) {
+      return &bin;
+    }
+  }
+  return nullptr;
+}
+
+[[nodiscard]] auto count_bins_with_lifecycle(const NestingResult &result,
+                                             pack::BinLifecycle lifecycle)
+    -> std::size_t {
+  return static_cast<std::size_t>(
+      std::count_if(result.layout.bins.begin(), result.layout.bins.end(),
+                    [lifecycle](const pack::LayoutBin &bin) {
+                      return bin.identity.lifecycle == lifecycle;
+                    }));
 }
 
 auto seed_priority_values(NestingRequest &request,
@@ -172,24 +197,241 @@ auto seed_priority_values(NestingRequest &request,
   return request;
 }
 
-}  // namespace
+[[nodiscard]] auto
+make_fill_first_bin_request(const CandidateStrategy candidate_strategy)
+    -> NestingRequest {
+  NestingRequest request;
+  request.execution.strategy = StrategyKind::sequential_backtrack;
+  request.execution.default_rotations = {{0.0}};
+  request.execution.irregular.candidate_strategy = candidate_strategy;
 
-TEST_CASE("mtg sequential-backtrack positive matrix places every part on the asymmetric synthetic fixture",
+  request.bins.push_back(BinRequest{
+      .bin_id = 1,
+      .polygon = rectangle(0.0, 0.0, 10.0, 10.0),
+      .start_corner = place::PlacementStartCorner::bottom_left,
+  });
+  request.bins.push_back(BinRequest{
+      .bin_id = 2,
+      .polygon = rectangle(0.0, 0.0, 10.0, 10.0),
+      .start_corner = place::PlacementStartCorner::bottom_left,
+  });
+
+  request.pieces.push_back(PieceRequest{
+      .piece_id = 101,
+      .polygon = rectangle(0.0, 0.0, 7.0, 10.0),
+  });
+  request.pieces.push_back(PieceRequest{
+      .piece_id = 102,
+      .polygon = rectangle(0.0, 0.0, 7.0, 10.0),
+  });
+  request.pieces.push_back(PieceRequest{
+      .piece_id = 103,
+      .polygon = rectangle(0.0, 0.0, 3.0, 10.0),
+  });
+
+  return request;
+}
+
+[[nodiscard]] auto make_single_bin_overflow_request() -> NestingRequest {
+  NestingRequest request;
+  request.execution.strategy = StrategyKind::sequential_backtrack;
+  request.execution.default_rotations = {{0.0}};
+  request.execution.irregular.piece_ordering = PieceOrdering::input;
+
+  request.bins.push_back(BinRequest{
+      .bin_id = 1,
+      .polygon = rectangle(0.0, 0.0, 4.0, 4.0),
+      .stock = 1,
+  });
+  request.pieces.push_back(PieceRequest{
+      .piece_id = 1,
+      .polygon = rectangle(0.0, 0.0, 4.0, 4.0),
+      .quantity = 1,
+  });
+  request.pieces.push_back(PieceRequest{
+      .piece_id = 2,
+      .polygon = rectangle(0.0, 0.0, 4.0, 4.0),
+      .quantity = 1,
+  });
+
+  return request;
+}
+
+[[nodiscard]] auto make_template_overflow_request() -> NestingRequest {
+  NestingRequest request;
+  request.execution.strategy = StrategyKind::sequential_backtrack;
+  request.execution.default_rotations = {{0.0}};
+  request.execution.irregular.piece_ordering = PieceOrdering::input;
+
+  request.bins.push_back(BinRequest{
+      .bin_id = 1,
+      .polygon = rectangle(0.0, 0.0, 4.0, 4.0),
+      .stock = 1,
+  });
+  request.bins.push_back(BinRequest{
+      .bin_id = 2,
+      .polygon = rectangle(0.0, 0.0, 6.0, 3.0),
+      .stock = 1,
+  });
+  request.pieces.push_back(PieceRequest{
+      .piece_id = 1,
+      .polygon = rectangle(0.0, 0.0, 4.0, 4.0),
+      .quantity = 1,
+  });
+  request.pieces.push_back(PieceRequest{
+      .piece_id = 2,
+      .polygon = rectangle(0.0, 0.0, 6.0, 3.0),
+      .quantity = 1,
+  });
+  request.pieces.push_back(PieceRequest{
+      .piece_id = 3,
+      .polygon = rectangle(0.0, 0.0, 6.0, 3.0),
+      .quantity = 1,
+  });
+
+  return request;
+}
+
+} // namespace
+
+TEST_CASE("sequential-backtrack advances to the next bin once overflow opens "
+          "a later bin",
+          "[sequential-backtrack][bin-order][regression]") {
+  const auto candidate_strategy = GENERATE(CandidateStrategy::anchor_vertex,
+                                           CandidateStrategy::nfp_perfect);
+
+  auto request = make_fill_first_bin_request(candidate_strategy);
+  REQUIRE(request.is_valid());
+
+  const auto solved = solve(request, SolveControl{.random_seed = 0});
+  REQUIRE(solved.has_value());
+  REQUIRE(solved.value().layout.unplaced_piece_ids.empty());
+
+  const auto *first = find_piece_placement(solved.value(), 101U);
+  const auto *second = find_piece_placement(solved.value(), 102U);
+  const auto *third = find_piece_placement(solved.value(), 103U);
+  REQUIRE(first != nullptr);
+  REQUIRE(second != nullptr);
+  REQUIRE(third != nullptr);
+
+  REQUIRE(first->placement.bin_id == 1U);
+  REQUIRE(second->placement.bin_id == 2U);
+  REQUIRE(third->placement.bin_id == 2U);
+}
+
+TEST_CASE("sequential-backtrack creates overflow bins after exhausting the "
+          "configured frontier",
+          "[sequential-backtrack][overflow][regression]") {
+  auto request = make_single_bin_overflow_request();
+  REQUIRE(request.is_valid());
+
+  const auto solved = solve(request, SolveControl{.random_seed = 0});
+  REQUIRE(solved.has_value());
+  REQUIRE(solved.value().validation.valid);
+  REQUIRE(solved.value().layout.unplaced_piece_ids.empty());
+  REQUIRE(count_total_placements(solved.value()) == 2U);
+  REQUIRE(solved.value().layout.bins.size() == 2U);
+  REQUIRE(count_bins_with_lifecycle(solved.value(),
+                                    pack::BinLifecycle::user_created) == 1U);
+  REQUIRE(count_bins_with_lifecycle(solved.value(),
+                                    pack::BinLifecycle::engine_overflow) == 1U);
+
+  const auto *source_bin = find_layout_bin(solved.value(), 1U);
+  REQUIRE(source_bin != nullptr);
+
+  const pack::LayoutBin *overflow_bin = nullptr;
+  for (const auto &bin : solved.value().layout.bins) {
+    if (bin.identity.lifecycle == pack::BinLifecycle::engine_overflow) {
+      overflow_bin = &bin;
+      break;
+    }
+  }
+  REQUIRE(overflow_bin != nullptr);
+  REQUIRE(overflow_bin->bin_id != 1U);
+  REQUIRE(overflow_bin->identity.source_request_bin_id == 1U);
+  REQUIRE(overflow_bin->identity.template_bin_id.has_value());
+  REQUIRE(*overflow_bin->identity.template_bin_id == 1U);
+
+  const auto source_bounds = geom::compute_bounds(source_bin->container);
+  const auto overflow_bounds = geom::compute_bounds(overflow_bin->container);
+  REQUIRE(source_bounds.min.x == overflow_bounds.min.x);
+  REQUIRE(source_bounds.min.y == overflow_bounds.min.y);
+  REQUIRE(source_bounds.max.x == overflow_bounds.max.x);
+  REQUIRE(source_bounds.max.y == overflow_bounds.max.y);
+}
+
+TEST_CASE("sequential-backtrack leaves pieces unplaced when overflow is "
+          "disabled",
+          "[sequential-backtrack][overflow][regression]") {
+  auto request = make_single_bin_overflow_request();
+  request.execution.allow_part_overflow = false;
+  REQUIRE(request.is_valid());
+
+  const auto solved = solve(request, SolveControl{.random_seed = 0});
+  REQUIRE(solved.has_value());
+  REQUIRE(solved.value().validation.valid);
+  REQUIRE(count_total_placements(solved.value()) == 1U);
+  REQUIRE(solved.value().layout.unplaced_piece_ids.size() == 1U);
+  REQUIRE(solved.value().layout.bins.size() == 1U);
+  REQUIRE(count_bins_with_lifecycle(solved.value(),
+                                    pack::BinLifecycle::engine_overflow) == 0U);
+}
+
+TEST_CASE("sequential-backtrack overflow bins clone the exhausted template "
+          "bin metadata",
+          "[sequential-backtrack][overflow][regression]") {
+  auto request = make_template_overflow_request();
+  REQUIRE(request.is_valid());
+
+  const auto solved = solve(request, SolveControl{.random_seed = 0});
+  REQUIRE(solved.has_value());
+  REQUIRE(solved.value().validation.valid);
+  REQUIRE(solved.value().layout.unplaced_piece_ids.empty());
+  REQUIRE(count_total_placements(solved.value()) == 3U);
+  REQUIRE(solved.value().layout.bins.size() == 3U);
+
+  const auto *template_bin = find_layout_bin(solved.value(), 2U);
+  REQUIRE(template_bin != nullptr);
+
+  const pack::LayoutBin *overflow_bin = nullptr;
+  for (const auto &bin : solved.value().layout.bins) {
+    if (bin.identity.lifecycle == pack::BinLifecycle::engine_overflow) {
+      overflow_bin = &bin;
+      break;
+    }
+  }
+  REQUIRE(overflow_bin != nullptr);
+  REQUIRE(overflow_bin->identity.source_request_bin_id == 2U);
+  REQUIRE(overflow_bin->identity.template_bin_id.has_value());
+  REQUIRE(*overflow_bin->identity.template_bin_id == 2U);
+
+  const auto template_bounds = geom::compute_bounds(template_bin->container);
+  const auto overflow_bounds = geom::compute_bounds(overflow_bin->container);
+  REQUIRE(template_bounds.min.x == overflow_bounds.min.x);
+  REQUIRE(template_bounds.min.y == overflow_bounds.min.y);
+  REQUIRE(template_bounds.max.x == overflow_bounds.max.x);
+  REQUIRE(template_bounds.max.y == overflow_bounds.max.y);
+
+  const auto *third_piece = find_piece_placement(solved.value(), 3U);
+  REQUIRE(third_piece != nullptr);
+  REQUIRE(third_piece->placement.bin_id == overflow_bin->bin_id);
+}
+
+TEST_CASE("mtg sequential-backtrack positive matrix places every part on the "
+          "asymmetric synthetic fixture",
           "[mtg][nesting-matrix][sequential-backtrack][slow]") {
-  // This breadth matrix intentionally stays on the small synthetic fixture so it
-  // remains fast and shape-independent. Real-silhouette underplacement on the
-  // MTG artwork is characterized separately in mtg_engine_bug_repros.cpp.
+  // This breadth matrix intentionally stays on the small synthetic fixture so
+  // it remains fast and shape-independent. Real-silhouette underplacement on
+  // the MTG artwork is characterized separately in mtg_engine_bug_repros.cpp.
   const auto fixture = make_asymmetric_engine_surface_fixture();
 
   const double spacing_mm = GENERATE(0.0, 1.0);
-  const auto candidate_strategy = GENERATE(CandidateStrategy::anchor_vertex,
-                                           CandidateStrategy::nfp_perfect,
-                                           CandidateStrategy::nfp_arrangement,
-                                           CandidateStrategy::nfp_hybrid);
-  const auto piece_ordering = GENERATE(PieceOrdering::input,
-                                       PieceOrdering::largest_area_first,
-                                       PieceOrdering::hull_diameter_first,
-                                       PieceOrdering::priority);
+  const auto candidate_strategy = GENERATE(
+      CandidateStrategy::anchor_vertex, CandidateStrategy::nfp_perfect,
+      CandidateStrategy::nfp_arrangement, CandidateStrategy::nfp_hybrid);
+  const auto piece_ordering =
+      GENERATE(PieceOrdering::input, PieceOrdering::largest_area_first,
+               PieceOrdering::hull_diameter_first, PieceOrdering::priority);
   const bool enable_direct_overlap_check = GENERATE(false, true);
   const bool enable_backtracking = GENERATE(false, true);
   const bool enable_compaction = GENERATE(false, true);
@@ -211,6 +453,8 @@ TEST_CASE("mtg sequential-backtrack positive matrix places every part on the asy
 
   const auto solved = solve(request, SolveControl{.random_seed = 0});
   REQUIRE(solved.has_value());
+  REQUIRE(solved.value().layout.bins.size() == 1U);
+  REQUIRE(solved.value().layout.bins.front().bin_id == fixture.bed1.bed_id);
 
   ExpectedOutcome expected{};
   expected.expected_placed_count = fixture.pieces.size();
@@ -248,8 +492,9 @@ TEST_CASE("mtg sequential-backtrack honors per-piece allowed_rotations",
   REQUIRE(std::fabs(*rotation - 90.0) <= 1e-9);
 }
 
-TEST_CASE("mtg sequential-backtrack allow_mirror toggle preserves full placement",
-          "[mtg][nesting-matrix][sequential-backtrack][mirror]") {
+TEST_CASE(
+    "mtg sequential-backtrack allow_mirror toggle preserves full placement",
+    "[mtg][nesting-matrix][sequential-backtrack][mirror]") {
   const auto fixture = load_mtg_fixture();
   const auto options = baseline_constructive_options();
 
@@ -296,7 +541,8 @@ TEST_CASE("mtg sequential-backtrack expands quantity>1 instances",
   REQUIRE(solved.value().layout.unplaced_piece_ids.empty());
   REQUIRE(count_total_placements(solved.value()) == fixture.pieces.size() + 2U);
 
-  const auto expanded_ids = expanded_piece_ids_for_source(request, target_piece_id);
+  const auto expanded_ids =
+      expanded_piece_ids_for_source(request, target_piece_id);
   REQUIRE(expanded_ids.size() == 3U);
 
   std::size_t placed_target_instances = 0;
@@ -338,7 +584,8 @@ TEST_CASE("mtg sequential-backtrack enforces allowed_bin_ids",
     validate_layout(fixture, request, options, solved.value(), expected);
   }
 
-  SECTION("selected beds conflicting with allowed_bin_ids keep the piece unplaced") {
+  SECTION("selected beds conflicting with allowed_bin_ids keep the piece "
+          "unplaced") {
     auto fixture = make_asymmetric_engine_surface_fixture();
     const auto selected_bed_id = GENERATE(kBed1Id, kBed2Id);
     const auto other_bed_id = selected_bed_id == kBed1Id ? kBed2Id : kBed1Id;
@@ -362,16 +609,20 @@ TEST_CASE("mtg sequential-backtrack enforces allowed_bin_ids",
     ExpectedOutcome expected{};
     expected.expected_placed_count = 1;
     expected.per_bed_counts = {{selected_bed_id, 1}};
-    expected.required_assignments = {{fixture.pieces[1].piece_id, selected_bed_id}};
+    expected.required_assignments = {
+        {fixture.pieces[1].piece_id, selected_bed_id}};
     expected.require_allowed_bin_admissibility = true;
     validate_layout(fixture, request, options, solved.value(), expected);
 
-    REQUIRE(find_piece_placement(solved.value(), fixture.pieces[0].piece_id) == nullptr);
+    REQUIRE(find_piece_placement(solved.value(), fixture.pieces[0].piece_id) ==
+            nullptr);
   }
 }
 
-TEST_CASE("mtg sequential-backtrack maintain_bed_assignment pins pieces to source beds",
-          "[mtg][nesting-matrix][sequential-backtrack][maintain-bed-assignment]") {
+TEST_CASE(
+    "mtg sequential-backtrack maintain_bed_assignment pins pieces to source "
+    "beds",
+    "[mtg][nesting-matrix][sequential-backtrack][maintain-bed-assignment]") {
   const auto fixture = make_asymmetric_engine_surface_fixture();
 
   auto options = baseline_constructive_options();
@@ -395,8 +646,9 @@ TEST_CASE("mtg sequential-backtrack maintain_bed_assignment pins pieces to sourc
   validate_layout(fixture, request, options, solved.value(), expected);
 }
 
-TEST_CASE("mtg sequential-backtrack multi-start observer keeps the best full layout",
-          "[mtg][nesting-matrix][sequential-backtrack][observer][cancellation]") {
+TEST_CASE(
+    "mtg sequential-backtrack multi-start observer keeps the best full layout",
+    "[mtg][nesting-matrix][sequential-backtrack][observer][cancellation]") {
   const auto fixture = load_mtg_fixture();
 
   auto options = baseline_constructive_options();
@@ -442,8 +694,6 @@ TEST_CASE("mtg sequential-backtrack multi-start observer keeps the best full lay
   REQUIRE(solved.value().layout.placement_trace.size() == best_observed_layout);
   REQUIRE(observed.back().layout.placement_trace.size() <
           solved.value().layout.placement_trace.size());
-  REQUIRE(solved.value().budget.cancellation_requested);
-  REQUIRE(solved.value().budget.operations_completed >= 2U);
 }
 
 TEST_CASE("sequential-backtrack enable_part_in_part_placement fills the hole",
@@ -461,12 +711,13 @@ TEST_CASE("sequential-backtrack enable_part_in_part_placement fills the hole",
   const auto &placements = solved.value().layout.bins.front().placements;
   REQUIRE(placements[1].inside_hole);
 
-  const auto overlap = poly::intersection_polygons(placements[0].polygon,
-                                                   placements[1].polygon);
+  const auto overlap =
+      poly::intersection_polygons(placements[0].polygon, placements[1].polygon);
   REQUIRE(overlap.empty());
 }
 
-TEST_CASE("mtg sequential-backtrack explore_concave_candidates still places every part on the asymmetric synthetic fixture",
+TEST_CASE("mtg sequential-backtrack explore_concave_candidates still places "
+          "every part on the asymmetric synthetic fixture",
           "[mtg][nesting-matrix][sequential-backtrack][concave-candidates]") {
   const auto fixture = make_asymmetric_engine_surface_fixture();
 

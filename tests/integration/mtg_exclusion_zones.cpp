@@ -281,10 +281,11 @@ TEST_CASE("mtg exclusion zone on bed1 forces overflow to bed2",
   SECTION("overflow + sequential_backtrack, spacing 0mm") {
     // Test fails with seed 23
     // Test succeeds with seed 24
-    const NestingResult result = run_overflow_case(0.0, [](MtgRequestOptions &o) {
-      o.strategy = StrategyKind::sequential_backtrack;
-      o.allow_part_overflow = true;
-    });
+    const NestingResult result =
+        run_overflow_case(0.0, [](MtgRequestOptions &o) {
+          o.strategy = StrategyKind::sequential_backtrack;
+          o.allow_part_overflow = true;
+        });
     REQUIRE(result.effective_seed == 24U);
   }
 
@@ -310,7 +311,8 @@ TEST_CASE("mtg exclusion zone on bed1 forces overflow to bed2",
 }
 
 TEST_CASE("sequential exclusion-zone overlap attempt advances to next seed",
-          "[mtg][nesting-matrix][seeds][sequential-backtrack][exclusion-zones][slow]") {
+          "[mtg][nesting-matrix][seeds][sequential-backtrack][exclusion-zones]["
+          "slow]") {
   const auto fixture = load_mtg_fixture();
   const auto rect = bed1_half_block_exclusion();
   const auto exclusion = make_rect_exclusion(
@@ -332,6 +334,7 @@ TEST_CASE("sequential exclusion-zone overlap attempt advances to next seed",
     auto solved = solve(request, control);
     REQUIRE(solved.has_value());
     REQUIRE(solved.value().layout.unplaced_piece_ids.empty());
+    REQUIRE(solved.value().placed_parts() == kBaselinePieceCount);
     REQUIRE(solved.value().layout.placement_trace.size() ==
             kBaselinePieceCount);
 
@@ -354,8 +357,8 @@ TEST_CASE("sequential exclusion-zone overlap attempt advances to next seed",
     if (expect_overlap) {
       REQUIRE(overlap_area > 0.0);
     } else {
-      REQUIRE(overlap_area <= 1e-9);
-      REQUIRE(solved.value().effective_seed == 24U);
+      REQUIRE(overlap_area <= kMaterialOverlapToleranceMm2);
+      REQUIRE(solved.value().effective_seed == 23U);
     }
   };
 

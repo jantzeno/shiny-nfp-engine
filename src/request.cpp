@@ -13,13 +13,14 @@
 namespace shiny::nesting {
 namespace detail {
 
-template <typename T> auto hash_value(std::uint64_t &hash, const T &value) -> void {
+template <typename T>
+auto hash_value(std::uint64_t &hash, const T &value) -> void {
   runtime::hash::fnv1a_mix_value(hash, value);
 }
 
-[[nodiscard]] auto derive_expanded_id(const std::uint32_t base_id,
-                                      const std::uint32_t ordinal,
-                                      std::unordered_set<std::uint32_t> &used_ids)
+[[nodiscard]] auto
+derive_expanded_id(const std::uint32_t base_id, const std::uint32_t ordinal,
+                   std::unordered_set<std::uint32_t> &used_ids)
     -> std::uint32_t {
   if (ordinal == 0U && !used_ids.contains(base_id)) {
     used_ids.insert(base_id);
@@ -38,28 +39,27 @@ template <typename T> auto hash_value(std::uint64_t &hash, const T &value) -> vo
   return candidate;
 }
 
-[[nodiscard]] auto rotation_set_is_valid(const geom::DiscreteRotationSet &rotations)
-    -> bool {
+[[nodiscard]] auto
+rotation_set_is_valid(const geom::DiscreteRotationSet &rotations) -> bool {
   place::PlacementConfig config;
   config.allowed_rotations = rotations;
   return config.is_valid();
 }
 
-[[nodiscard]] auto rotation_set_is_subset(const geom::DiscreteRotationSet &subset,
-                                          const geom::DiscreteRotationSet &superset)
-    -> bool {
+[[nodiscard]] auto
+rotation_set_is_subset(const geom::DiscreteRotationSet &subset,
+                       const geom::DiscreteRotationSet &superset) -> bool {
   const auto subset_angles = geom::materialize_rotations(subset);
   const auto superset_angles = geom::materialize_rotations(superset);
-  return std::all_of(subset_angles.begin(), subset_angles.end(),
-                     [&](const double angle) {
-                       return std::find(superset_angles.begin(),
-                                        superset_angles.end(),
-                                        angle) != superset_angles.end();
-                     });
+  return std::all_of(
+      subset_angles.begin(), subset_angles.end(), [&](const double angle) {
+        return std::find(superset_angles.begin(), superset_angles.end(),
+                         angle) != superset_angles.end();
+      });
 }
 
 [[nodiscard]] auto normalize_piece_polygon(const PieceRequest &piece,
-                                          const PreprocessPolicy &policy)
+                                           const PreprocessPolicy &policy)
     -> geom::PolygonWithHoles {
   auto polygon = geom::normalize_polygon(piece.polygon);
   if (policy.simplify_epsilon > 0.0) {
@@ -71,8 +71,8 @@ template <typename T> auto hash_value(std::uint64_t &hash, const T &value) -> vo
 
   if (policy.normalize_piece_origins) {
     const auto bounds = geom::compute_bounds(polygon);
-    polygon = geom::translate(
-        polygon, {.x = -bounds.min.x, .y = -bounds.min.y});
+    polygon =
+        geom::translate(polygon, {.x = -bounds.min.x, .y = -bounds.min.y});
   }
 
   return geom::normalize_polygon(polygon);
@@ -98,8 +98,8 @@ template <typename T> auto hash_value(std::uint64_t &hash, const T &value) -> vo
   return ids;
 }
 
-[[nodiscard]] auto production_optimizer_is_valid(
-    const ProductionOptimizerKind optimizer) -> bool {
+[[nodiscard]] auto
+production_optimizer_is_valid(const ProductionOptimizerKind optimizer) -> bool {
   switch (optimizer) {
   case ProductionOptimizerKind::brkga:
   case ProductionOptimizerKind::simulated_annealing:
@@ -128,28 +128,31 @@ template <typename T> auto hash_value(std::uint64_t &hash, const T &value) -> vo
 void synchronize_strategy_configs(ExecutionPolicy &execution) {
   switch (execution.strategy) {
   case StrategyKind::simulated_annealing:
-    if (execution.strategy_config.get_if<SAConfig>(StrategyKind::simulated_annealing) ==
-        nullptr) {
-      execution.strategy_config = StrategyConfig::make(
-          StrategyKind::simulated_annealing, execution.simulated_annealing);
+    if (!has_primary_strategy_config<SAConfig>(
+            execution, StrategyKind::simulated_annealing)) {
+      set_primary_strategy_config(execution, StrategyKind::simulated_annealing,
+                                  execution.simulated_annealing);
     }
     break;
   case StrategyKind::alns:
-    if (execution.strategy_config.get_if<ALNSConfig>(StrategyKind::alns) == nullptr) {
-      execution.strategy_config =
-          StrategyConfig::make(StrategyKind::alns, execution.alns);
+    if (!has_primary_strategy_config<ALNSConfig>(execution,
+                                                 StrategyKind::alns)) {
+      set_primary_strategy_config(execution, StrategyKind::alns,
+                                  execution.alns);
     }
     break;
   case StrategyKind::gdrr:
-    if (execution.strategy_config.get_if<GDRRConfig>(StrategyKind::gdrr) == nullptr) {
-      execution.strategy_config =
-          StrategyConfig::make(StrategyKind::gdrr, execution.gdrr);
+    if (!has_primary_strategy_config<GDRRConfig>(execution,
+                                                 StrategyKind::gdrr)) {
+      set_primary_strategy_config(execution, StrategyKind::gdrr,
+                                  execution.gdrr);
     }
     break;
   case StrategyKind::lahc:
-    if (execution.strategy_config.get_if<LAHCConfig>(StrategyKind::lahc) == nullptr) {
-      execution.strategy_config =
-          StrategyConfig::make(StrategyKind::lahc, execution.lahc);
+    if (!has_primary_strategy_config<LAHCConfig>(execution,
+                                                 StrategyKind::lahc)) {
+      set_primary_strategy_config(execution, StrategyKind::lahc,
+                                  execution.lahc);
     }
     break;
   case StrategyKind::bounding_box:
@@ -160,51 +163,51 @@ void synchronize_strategy_configs(ExecutionPolicy &execution) {
 
   switch (execution.production_optimizer) {
   case ProductionOptimizerKind::brkga:
-    if (execution.production_strategy_config.get_if<ProductionSearchConfig>(
-            ProductionOptimizerKind::brkga) == nullptr) {
-      execution.production_strategy_config = ProductionStrategyConfig::make(
-          ProductionOptimizerKind::brkga, execution.production);
+    if (!has_production_strategy_config<ProductionSearchConfig>(
+            execution, ProductionOptimizerKind::brkga)) {
+      set_production_strategy_config(execution, ProductionOptimizerKind::brkga,
+                                     execution.production);
     }
     break;
   case ProductionOptimizerKind::simulated_annealing:
-    if (execution.production_strategy_config.get_if<SAConfig>(
-            ProductionOptimizerKind::simulated_annealing) == nullptr) {
-      execution.production_strategy_config = ProductionStrategyConfig::make(
-          ProductionOptimizerKind::simulated_annealing,
+    if (!has_production_strategy_config<SAConfig>(
+            execution, ProductionOptimizerKind::simulated_annealing)) {
+      set_production_strategy_config(
+          execution, ProductionOptimizerKind::simulated_annealing,
           execution.simulated_annealing);
     }
     break;
   case ProductionOptimizerKind::alns:
-    if (execution.production_strategy_config.get_if<ALNSConfig>(
-            ProductionOptimizerKind::alns) == nullptr) {
-      execution.production_strategy_config = ProductionStrategyConfig::make(
-          ProductionOptimizerKind::alns, execution.alns);
+    if (!has_production_strategy_config<ALNSConfig>(
+            execution, ProductionOptimizerKind::alns)) {
+      set_production_strategy_config(execution, ProductionOptimizerKind::alns,
+                                     execution.alns);
     }
     break;
   case ProductionOptimizerKind::gdrr:
-    if (execution.production_strategy_config.get_if<GDRRConfig>(
-            ProductionOptimizerKind::gdrr) == nullptr) {
-      execution.production_strategy_config = ProductionStrategyConfig::make(
-          ProductionOptimizerKind::gdrr, execution.gdrr);
+    if (!has_production_strategy_config<GDRRConfig>(
+            execution, ProductionOptimizerKind::gdrr)) {
+      set_production_strategy_config(execution, ProductionOptimizerKind::gdrr,
+                                     execution.gdrr);
     }
     break;
   case ProductionOptimizerKind::lahc:
-    if (execution.production_strategy_config.get_if<LAHCConfig>(
-            ProductionOptimizerKind::lahc) == nullptr) {
-      execution.production_strategy_config = ProductionStrategyConfig::make(
-          ProductionOptimizerKind::lahc, execution.lahc);
+    if (!has_production_strategy_config<LAHCConfig>(
+            execution, ProductionOptimizerKind::lahc)) {
+      set_production_strategy_config(execution, ProductionOptimizerKind::lahc,
+                                     execution.lahc);
     }
     break;
   }
 }
 
-[[nodiscard]] auto active_strategy_config_is_valid(const ExecutionPolicy &execution)
-    -> bool {
+[[nodiscard]] auto
+active_strategy_config_is_valid(const ExecutionPolicy &execution) -> bool {
   switch (execution.strategy) {
   case StrategyKind::simulated_annealing:
-    return resolve_primary_strategy_config(
-               execution, StrategyKind::simulated_annealing,
-               execution.simulated_annealing)
+    return resolve_primary_strategy_config(execution,
+                                           StrategyKind::simulated_annealing,
+                                           execution.simulated_annealing)
         .is_valid();
   case StrategyKind::alns:
     return resolve_primary_strategy_config(execution, StrategyKind::alns,
@@ -226,8 +229,9 @@ void synchronize_strategy_configs(ExecutionPolicy &execution) {
   return false;
 }
 
-[[nodiscard]] auto active_production_strategy_config_is_valid(
-    const ExecutionPolicy &execution) -> bool {
+[[nodiscard]] auto
+active_production_strategy_config_is_valid(const ExecutionPolicy &execution)
+    -> bool {
   switch (execution.production_optimizer) {
   case ProductionOptimizerKind::brkga:
     return resolve_production_strategy_config(
@@ -239,19 +243,16 @@ void synchronize_strategy_configs(ExecutionPolicy &execution) {
                execution.simulated_annealing)
         .is_valid();
   case ProductionOptimizerKind::alns:
-    return resolve_production_strategy_config(execution,
-                                              ProductionOptimizerKind::alns,
-                                              execution.alns)
+    return resolve_production_strategy_config(
+               execution, ProductionOptimizerKind::alns, execution.alns)
         .is_valid();
   case ProductionOptimizerKind::gdrr:
-    return resolve_production_strategy_config(execution,
-                                              ProductionOptimizerKind::gdrr,
-                                              execution.gdrr)
+    return resolve_production_strategy_config(
+               execution, ProductionOptimizerKind::gdrr, execution.gdrr)
         .is_valid();
   case ProductionOptimizerKind::lahc:
-    return resolve_production_strategy_config(execution,
-                                              ProductionOptimizerKind::lahc,
-                                              execution.lahc)
+    return resolve_production_strategy_config(
+               execution, ProductionOptimizerKind::lahc, execution.lahc)
         .is_valid();
   }
   return false;
@@ -262,10 +263,28 @@ void synchronize_strategy_configs(ExecutionPolicy &execution) {
 auto ProductionSearchConfig::is_valid() const -> bool {
   return population_size >= 2U && elite_count >= 1U &&
          elite_count < population_size && mutant_count < population_size &&
-         elite_count + mutant_count < population_size &&
-         max_iterations >= 1U && std::isfinite(elite_bias) && elite_bias > 0.0 &&
-         elite_bias < 1.0 && std::isfinite(gls_weight_cap) &&
-         gls_weight_cap >= 1.0;
+         elite_count + mutant_count < population_size && max_iterations >= 1U &&
+         std::isfinite(elite_bias) && elite_bias > 0.0 && elite_bias < 1.0 &&
+         std::isfinite(strip_exploration_ratio) &&
+         strip_exploration_ratio > 0.0 && strip_exploration_ratio < 1.0 &&
+         std::isfinite(strip_exploration_shrink_max_ratio) &&
+         std::isfinite(strip_exploration_shrink_min_ratio) &&
+         strip_exploration_shrink_max_ratio >=
+             strip_exploration_shrink_min_ratio &&
+         strip_exploration_shrink_min_ratio >= 0.0 &&
+         std::isfinite(strip_compression_shrink_max_ratio) &&
+         std::isfinite(strip_compression_shrink_min_ratio) &&
+         strip_compression_shrink_max_ratio >=
+             strip_compression_shrink_min_ratio &&
+         strip_compression_shrink_min_ratio >= 0.0 &&
+         infeasible_pool_capacity <= population_size &&
+         infeasible_rollback_after <= max_iterations &&
+         separator_worker_count >= 1U && separator_max_iterations >= 1U &&
+         separator_iter_no_improvement_limit >= 1U &&
+         separator_strike_limit >= 1U && separator_global_samples >= 1U &&
+         separator_focused_samples >= 1U &&
+         separator_coordinate_descent_iterations >= 1U &&
+         std::isfinite(gls_weight_cap) && gls_weight_cap >= 1.0;
 }
 
 auto SAConfig::is_valid() const -> bool {
@@ -282,10 +301,10 @@ auto SAConfig::is_valid() const -> bool {
   return max_refinements >= 1U && restart_count >= 1U &&
          std::isfinite(initial_temperature) && initial_temperature > 0.0 &&
          std::isfinite(final_temperature) && final_temperature > 0.0 &&
-         initial_temperature >= final_temperature && std::isfinite(lundy_beta) &&
-         lundy_beta > 0.0 && plateau_window <= 1024U &&
-         std::isfinite(reheating_factor) && reheating_factor >= 1.0 &&
-         perturbation_swaps <= 32U;
+         initial_temperature >= final_temperature &&
+         std::isfinite(lundy_beta) && lundy_beta > 0.0 &&
+         plateau_window <= 1024U && std::isfinite(reheating_factor) &&
+         reheating_factor >= 1.0 && perturbation_swaps <= 32U;
 }
 
 auto ALNSConfig::is_valid() const -> bool {
@@ -423,7 +442,8 @@ auto normalize_request(const NestingRequest &request)
     }
 
     BinRequest normalized_bin = bin;
-    normalized_bin.polygon = detail::normalize_bin_polygon(bin, request.preprocess);
+    normalized_bin.polygon =
+        detail::normalize_bin_polygon(bin, request.preprocess);
     if (geom::validate_polygon(normalized_bin.polygon).is_valid() == false) {
       return util::Status::invalid_input;
     }
@@ -461,12 +481,18 @@ auto normalize_request(const NestingRequest &request)
 
   std::unordered_set<std::uint32_t> used_bin_ids;
   for (const auto &bin : normalized.request.bins) {
-    for (std::uint32_t stock_index = 0; stock_index < bin.stock; ++stock_index) {
+    for (std::uint32_t stock_index = 0; stock_index < bin.stock;
+         ++stock_index) {
       normalized.expanded_bins.push_back({
           .source_bin_id = bin.bin_id,
           .expanded_bin_id =
               detail::derive_expanded_id(bin.bin_id, stock_index, used_bin_ids),
           .stock_index = stock_index,
+          .identity =
+              {
+                  .lifecycle = pack::BinLifecycle::user_created,
+                  .source_request_bin_id = bin.bin_id,
+              },
       });
     }
   }
@@ -477,9 +503,8 @@ auto normalize_request(const NestingRequest &request)
          ++instance_index) {
       normalized.expanded_pieces.push_back({
           .source_piece_id = piece.piece_id,
-          .expanded_piece_id = detail::derive_expanded_id(piece.piece_id,
-                                                          instance_index,
-                                                          used_piece_ids),
+          .expanded_piece_id = detail::derive_expanded_id(
+              piece.piece_id, instance_index, used_piece_ids),
           .instance_index = instance_index,
       });
       normalized.forced_rotations.push_back(std::nullopt);
@@ -542,8 +567,8 @@ auto to_bounding_box_decoder_request(const NormalizedRequest &request)
 
   for (const auto &expanded_piece : request.expanded_pieces) {
     const auto source_it =
-        std::find_if(request.request.pieces.begin(), request.request.pieces.end(),
-                     [&](const auto &piece) {
+        std::find_if(request.request.pieces.begin(),
+                     request.request.pieces.end(), [&](const auto &piece) {
                        return piece.piece_id == expanded_piece.source_piece_id;
                      });
     if (source_it == request.request.pieces.end()) {
@@ -567,7 +592,8 @@ auto to_bounding_box_decoder_request(const NormalizedRequest &request)
           continue;
         }
         piece.allowed_bin_ids.insert(piece.allowed_bin_ids.end(),
-                                     bins_it->second.begin(), bins_it->second.end());
+                                     bins_it->second.begin(),
+                                     bins_it->second.end());
       }
       piece.allowed_bin_ids = detail::sort_unique_ids(piece.allowed_bin_ids);
     }

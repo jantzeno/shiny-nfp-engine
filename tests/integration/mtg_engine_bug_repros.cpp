@@ -28,12 +28,20 @@
 #include <catch2/generators/catch_generators.hpp>
 
 #include "geometry/types.hpp"
+#include "packing/irregular/sequential/packer.hpp"
+#include "polygon_ops/boolean_ops.hpp"
 #include "support/mtg_fixture.hpp"
 
 using namespace shiny::nesting;
 using namespace shiny::nesting::test::mtg;
 
 namespace {
+
+[[nodiscard]] auto rect_polygon(const double width, const double height)
+    -> geom::PolygonWithHoles {
+  return geom::PolygonWithHoles{
+      .outer = {{0.0, 0.0}, {width, 0.0}, {width, height}, {0.0, height}}};
+}
 
 [[nodiscard]] auto aabb_of(const geom::PolygonWithHoles &p) -> geom::Box2 {
   geom::Box2 box{};
@@ -81,8 +89,44 @@ namespace {
   return out.str();
 }
 
+[[nodiscard]] auto placement_trace_bin_summary(const NestingResult &result)
+    -> std::string {
+  std::ostringstream out;
+  for (std::size_t index = 0; index < result.layout.placement_trace.size();
+       ++index) {
+    const auto &entry = result.layout.placement_trace[index];
+    if (index > 0U) {
+      out << " -> ";
+    }
+    out << entry.piece_id << "@" << entry.bin_id;
+    if (entry.opened_new_bin) {
+      out << "*";
+    }
+  }
+  return out.str();
+}
+
+auto require_monotonic_frontier_progression(const NestingResult &result)
+    -> void {
+  REQUIRE_FALSE(result.layout.placement_trace.empty());
+  REQUIRE(result.layout.placement_trace.front().bin_id == kBed1Id);
+
+  const auto first_bin2 =
+      std::find_if(result.layout.placement_trace.begin(),
+                   result.layout.placement_trace.end(),
+                   [](const auto &entry) { return entry.bin_id == kBed2Id; });
+  if (first_bin2 == result.layout.placement_trace.end()) {
+    return;
+  }
+
+  const auto later_bin1 =
+      std::find_if(std::next(first_bin2), result.layout.placement_trace.end(),
+                   [](const auto &entry) { return entry.bin_id == kBed1Id; });
+  REQUIRE(later_bin1 == result.layout.placement_trace.end());
+}
+
 // Asserts the per-bin geometric invariants (bin containment + pair-wise
-// AABB spacing) without requiring full conservation. Used by the
+// exact spacing/overlap) without requiring full conservation. Used by the
 // time-limited actual-polygon repros, where engine-level conservation
 // under `stop_reason=time_limit_reached` is a separately-tracked finding
 // (the engine occasionally drops a piece from `unplaced_piece_ids` when
@@ -90,18 +134,20 @@ namespace {
 auto assert_placed_layout_invariants(const NestingResult &result,
                                      double spacing_mm) -> void {
   for (const auto &bin : result.layout.bins) {
-    std::vector<geom::Box2> boxes;
-    boxes.reserve(bin.placements.size());
-    for (const auto &p : bin.placements) {
-      boxes.push_back(aabb_of(p.polygon));
-    }
-    for (std::size_t i = 0; i < boxes.size(); ++i) {
-      for (std::size_t j = i + 1; j < boxes.size(); ++j) {
+    for (std::size_t i = 0; i < bin.placements.size(); ++i) {
+      for (std::size_t j = i + 1; j < bin.placements.size(); ++j) {
         INFO("bin " << bin.bin_id << " spacing-violation pair "
                     << bin.placements[i].placement.piece_id << " vs "
                     << bin.placements[j].placement.piece_id);
-        REQUIRE_FALSE(
-            boxes_violate_spacing(boxes[i], boxes[j], spacing_mm, 1e-3));
+        const auto overlap_area =
+            geom::polygon_area_sum(poly::intersection_polygons(
+                bin.placements[i].polygon, bin.placements[j].polygon));
+        REQUIRE(overlap_area <= 1e-6);
+        if (spacing_mm > 0.0) {
+          const auto clearance = poly::polygon_distance(
+              bin.placements[i].polygon, bin.placements[j].polygon);
+          REQUIRE(clearance + 1e-3 >= spacing_mm);
+        }
       }
     }
   }
@@ -109,6 +155,8 @@ auto assert_placed_layout_invariants(const NestingResult &result,
 
 inline constexpr std::uint64_t kActualPolygonTimeCapMs = 60'000U;
 inline constexpr std::uint32_t kActualPolygonSeed = 1234U;
+inline constexpr std::size_t kBed1Parts = 13;
+inline constexpr std::size_t kBed2Parts = 5;
 
 [[nodiscard]] constexpr auto
 candidate_strategy_name(const CandidateStrategy strategy) -> std::string_view {
@@ -164,16 +212,46 @@ start_corner_name(const place::PlacementStartCorner corner)
 
 [[nodiscard]] auto make_actual_polygon_constructive_options(
     const CandidateStrategy candidate_strategy,
+    const std::size_t max_candidate_points,
     const place::PlacementStartCorner start_corner) -> MtgRequestOptions {
   MtgRequestOptions options{};
   options.strategy = StrategyKind::sequential_backtrack;
   options.placement_policy = place::PlacementPolicy::bottom_left;
   options.irregular.candidate_strategy = candidate_strategy;
+  options.irregular.max_candidate_points = max_candidate_points;
   options.maintain_bed_assignment = false;
   options.allow_part_overflow = true;
   options.part_spacing_mm = 0.0;
   options.bed1_start_corner = start_corner;
   options.bed2_start_corner = start_corner;
+  return options;
+}
+
+[[nodiscard]] auto make_actual_polygon_metaheuristic_options(
+    const CandidateStrategy candidate_strategy,
+    const ProductionOptimizerKind optimizer,
+    const place::PlacementStartCorner start_corner) -> MtgRequestOptions {
+  MtgRequestOptions options{};
+  options.strategy = StrategyKind::metaheuristic_search;
+  options.production_optimizer = optimizer;
+  options.placement_policy = place::PlacementPolicy::bottom_left;
+  options.irregular.candidate_strategy = candidate_strategy;
+  options.irregular.piece_ordering = PieceOrdering::largest_area_first;
+  options.irregular.enable_backtracking = true;
+  options.irregular.max_backtrack_pieces = 3;
+  options.irregular.enable_compaction = true;
+  options.irregular.compaction_passes = 2;
+  options.maintain_bed_assignment = false;
+  options.allow_part_overflow = true;
+  options.part_spacing_mm = 0.0;
+  options.bed1_start_corner = start_corner;
+  options.bed2_start_corner = start_corner;
+
+  options.production.population_size = 24;
+  options.production.elite_count = 6;
+  options.production.mutant_count = 4;
+  options.production.max_iterations = 24;
+  options.production.polishing_passes = 1;
   return options;
 }
 
@@ -185,17 +263,19 @@ struct ActualPolygonSolveOutcome {
 
 [[nodiscard]] auto solve_actual_polygon_constructive_case(
     const CandidateStrategy candidate_strategy,
+    const std::size_t max_candidate_points = 1200U,
+    const std::uint64_t time_limit_milliseconds = kActualPolygonTimeCapMs,
     const place::PlacementStartCorner start_corner =
         place::PlacementStartCorner::bottom_left) -> ActualPolygonSolveOutcome {
   const auto fixture = load_mtg_fixture_with_actual_polygons();
   const auto options = make_actual_polygon_constructive_options(
-      candidate_strategy, start_corner);
+      candidate_strategy, max_candidate_points, start_corner);
   auto request = make_request(fixture, options);
   REQUIRE(request.is_valid());
 
   try {
     SolveControl control{};
-    control.time_limit_milliseconds = kActualPolygonTimeCapMs;
+    control.time_limit_milliseconds = time_limit_milliseconds;
     control.random_seed = 0;
 
     const auto solved = solve(request, control);
@@ -203,19 +283,14 @@ struct ActualPolygonSolveOutcome {
 
     const auto &result = solved.value();
     const auto placed = total_placed(result);
-    const std::uint64_t slack =
-        std::max<std::uint64_t>(500U, kActualPolygonTimeCapMs);
     std::ostringstream summary;
     summary << "strategy=" << candidate_strategy_name(candidate_strategy)
+            << " max_candidate_points=" << max_candidate_points
             << " start_corner=" << start_corner_name(start_corner)
             << " placed=" << placed << "/" << kBaselinePieceCount
             << " unplaced=" << result.layout.unplaced_piece_ids.size()
             << " stop_reason=" << stop_reason_name(result.stop_reason)
-            << " elapsed_ms=" << result.budget.elapsed_milliseconds
-            << " iterations=" << result.budget.operations_completed << " "
             << actual_polygon_layout_summary(result);
-    REQUIRE(result.budget.elapsed_milliseconds <=
-            kActualPolygonTimeCapMs + slack);
     assert_placed_layout_invariants(result, options.part_spacing_mm);
     return ActualPolygonSolveOutcome{
         .result = result,
@@ -224,6 +299,7 @@ struct ActualPolygonSolveOutcome {
   } catch (const std::exception &ex) {
     std::ostringstream summary;
     summary << "strategy=" << candidate_strategy_name(candidate_strategy)
+            << " max_candidate_points=" << max_candidate_points
             << " threw exception: " << ex.what();
     return ActualPolygonSolveOutcome{
         .result = std::nullopt,
@@ -233,15 +309,98 @@ struct ActualPolygonSolveOutcome {
   }
 }
 
+[[nodiscard]] auto make_aspect_ratio_exhaustion_request() -> NestingRequest {
+  NestingRequest request{};
+  request.execution.strategy = StrategyKind::sequential_backtrack;
+  request.execution.placement_policy = place::PlacementPolicy::bottom_left;
+  request.execution.irregular = {};
+  request.execution.irregular.candidate_strategy =
+      CandidateStrategy::anchor_vertex;
+  request.execution.irregular.piece_ordering =
+      PieceOrdering::largest_area_first;
+  request.execution.part_spacing = 0.0;
+
+  request.bins = {
+      BinRequest{
+          .bin_id = kBed1Id,
+          .polygon = rect_polygon(6.0, 8.0),
+          .stock = 1,
+          .geometry_revision = 1,
+      },
+      BinRequest{
+          .bin_id = kBed2Id,
+          .polygon = rect_polygon(6.0, 8.0),
+          .stock = 1,
+          .geometry_revision = 2,
+      },
+  };
+  request.pieces = {
+      PieceRequest{
+          .piece_id = 1,
+          .polygon = rect_polygon(4.0, 8.0),
+          .quantity = 1,
+          .geometry_revision = 11,
+      },
+      PieceRequest{
+          .piece_id = 2,
+          .polygon = rect_polygon(4.0, 4.0),
+          .quantity = 1,
+          .geometry_revision = 12,
+      },
+  };
+  return request;
+}
+
+[[nodiscard]] auto make_skipped_exhausted_bed_request() -> NestingRequest {
+  NestingRequest request{};
+  request.execution.strategy = StrategyKind::sequential_backtrack;
+  request.execution.placement_policy = place::PlacementPolicy::bottom_left;
+  request.execution.irregular = {};
+  request.execution.irregular.candidate_strategy =
+      CandidateStrategy::anchor_vertex;
+  request.execution.irregular.piece_ordering =
+      PieceOrdering::largest_area_first;
+
+  request.bins = {
+      BinRequest{
+          .bin_id = kBed1Id,
+          .polygon = rect_polygon(6.0, 8.0),
+          .stock = 1,
+      },
+      BinRequest{
+          .bin_id = kBed2Id,
+          .polygon = rect_polygon(6.0, 4.0),
+          .stock = 1,
+          .exclusion_zones = {make_rect_exclusion(1, kBed2Id, 2.0, 0.0, 4.0,
+                                                  4.0)},
+      },
+      BinRequest{
+          .bin_id = 3,
+          .polygon = rect_polygon(4.0, 4.0),
+          .stock = 1,
+      },
+  };
+  request.pieces = {
+      PieceRequest{
+          .piece_id = 1,
+          .polygon = rect_polygon(4.0, 8.0),
+          .quantity = 1,
+      },
+      PieceRequest{
+          .piece_id = 2,
+          .polygon = rect_polygon(4.0, 4.0),
+          .quantity = 1,
+      },
+  };
+  return request;
+}
+
 } // namespace
 
 // -----------------------------------------------------------------------------
-// Repro 1: bb-shelf with pinned-to-source-bed model leaves one piece unplaced.
-//
-// Engine model: maintain_bed_assignment=false + allow_part_overflow=false
-// pins each piece to its source bed (per nesting_adapter.cpp). Each MTG
-// fixture piece individually fits its source bed, yet bb-shelf ends with
-// 17/18 placed.
+// Repro 1: bb-shelf with explicit maintain-bed-assignment pinning leaves one
+// piece unplaced. Each MTG fixture piece individually fits its source bed, yet
+// bb-shelf historically ended with 17/18 placed.
 // -----------------------------------------------------------------------------
 TEST_CASE(
     "REGRESSION: bb-shelf pinned packing places every source-pinned piece",
@@ -253,7 +412,7 @@ TEST_CASE(
   options.bounding_box.heuristic = pack::BoundingBoxHeuristic::shelf;
   options.placement_policy = place::PlacementPolicy::bottom_left;
   options.part_spacing_mm = 0.0;
-  options.maintain_bed_assignment = false;
+  options.maintain_bed_assignment = true;
   options.allow_part_overflow = false;
   options.selected_bin_ids = {};
 
@@ -270,6 +429,7 @@ TEST_CASE(
   INFO("bb-shelf pinned placed "
        << placed << " of " << kBaselinePieceCount << " (unplaced "
        << solved.value().layout.unplaced_piece_ids.size() << ")");
+  REQUIRE(solved.value().placed_parts() == kBaselinePieceCount);
   REQUIRE(placed == static_cast<std::size_t>(kBaselinePieceCount));
 }
 
@@ -319,6 +479,7 @@ TEST_CASE("REGRESSION: allowed_bin_ids remains enforced under selected_bin_ids",
     control.random_seed = 1234;
     auto solved = solve(request, control);
     REQUIRE(solved.has_value());
+    REQUIRE(solved.value().placed_parts() == kBed1Parts);
 
     INFO("Target piece " << target_piece_id
                          << " has allowed_bin_ids={bed2} but selected={bed1}; "
@@ -368,7 +529,7 @@ TEST_CASE("REGRESSION: allowed_bin_ids remains enforced under selected_bin_ids",
     control.random_seed = 1234;
     auto solved = solve(request, control);
     REQUIRE(solved.has_value());
-
+    REQUIRE(solved.value().placed_parts() == kBed2Parts);
     INFO("Target piece " << target_piece_id
                          << " has allowed_bin_ids={bed1} but selected={bed2}; "
                             "engine must NOT place it on bed2.");
@@ -428,6 +589,7 @@ TEST_CASE("REGRESSION: bb heuristic honors requested spacing",
 
   auto solved = solve(request, control);
   REQUIRE(solved.has_value());
+  REQUIRE(solved.value().placed_parts() == kBaselinePieceCount);
 
   for (const auto &bin : solved.value().layout.bins) {
     if (bin.bin_id != kBed1Id) {
@@ -467,9 +629,220 @@ TEST_CASE(
   const auto &result = *outcome.result;
   const auto placed = total_placed(result);
 
+  REQUIRE(result.placed_parts() == kBaselinePieceCount);
+  REQUIRE(placed == static_cast<std::size_t>(kBaselinePieceCount));
+  REQUIRE(result.stop_reason == StopReason::completed);
+  REQUIRE(result.layout.unplaced_piece_ids.empty());
+}
+
+TEST_CASE("REGRESSION: actual-polygon MTG candidate-point coverage plateaus "
+          "at 1200",
+          "[mtg][engine-bug-repro][actual-polygons][max-candidate-points]"
+          "[slow]") {
+  const auto strategy = GENERATE(CandidateStrategy::anchor_vertex,
+                                 CandidateStrategy::nfp_perfect);
+
+  // BUG: 6/18 parts placed
+  const auto low_coverage =
+      solve_actual_polygon_constructive_case(strategy, 640U, 20'000U);
+  // BUG: 7/18 parts placed
+  const auto default_coverage =
+      solve_actual_polygon_constructive_case(strategy, 1200U, 20'000U);
+
+  INFO(low_coverage.summary);
+  INFO(default_coverage.summary);
+
+  REQUIRE(low_coverage.result.has_value());
+  REQUIRE(default_coverage.result.has_value());
+
+  const auto low_placed = total_placed(*low_coverage.result);
+  const auto default_placed = total_placed(*default_coverage.result);
+
+  REQUIRE(default_placed > low_placed);
+  REQUIRE(default_coverage.result->placed_parts() == kBaselinePieceCount);
+  REQUIRE(default_placed == static_cast<std::size_t>(kBaselinePieceCount));
+}
+
+TEST_CASE("REGRESSION: actual-polygon MTG constructive does not return to bed1 "
+          "after bed2 opens",
+          "[mtg][engine-bug-repro][actual-polygons][anchor-vertex][bin-order]"
+          "[strict-fill-first]") {
+  const auto fixture = load_mtg_fixture_with_actual_polygons();
+  const auto options = make_actual_polygon_constructive_options(
+      CandidateStrategy::anchor_vertex, 1200U,
+      place::PlacementStartCorner::bottom_left);
+  auto request = make_request(fixture, options);
+  REQUIRE(request.is_valid());
+  request.execution.irregular.piece_ordering =
+      PieceOrdering::largest_area_first;
+
+  auto normalized = normalize_request(request);
+  REQUIRE(normalized.ok());
+
+  pack::SequentialBacktrackPacker packer;
+  const auto solved =
+      packer.solve(normalized.value(),
+                   SolveControl{
+                       .time_limit_milliseconds = kActualPolygonTimeCapMs,
+                       .random_seed = 0,
+                   });
+  REQUIRE(solved.ok());
+  const auto &result = solved.value();
+
+  INFO(actual_polygon_layout_summary(result));
+  INFO(placement_trace_bin_summary(result));
+  require_monotonic_frontier_progression(result);
+
+  REQUIRE(result.placed_parts() == kBaselinePieceCount);
+  const auto bed1_placements = static_cast<std::size_t>(
+      std::count_if(result.layout.placement_trace.begin(),
+                    result.layout.placement_trace.end(),
+                    [](const auto &entry) { return entry.bin_id == kBed1Id; }));
+  const auto bed2_placements = static_cast<std::size_t>(
+      std::count_if(result.layout.placement_trace.begin(),
+                    result.layout.placement_trace.end(),
+                    [](const auto &entry) { return entry.bin_id == kBed2Id; }));
+  REQUIRE(bed1_placements >= bed2_placements);
+  REQUIRE(bed1_placements + bed2_placements ==
+          static_cast<std::size_t>(kBaselinePieceCount));
+}
+
+TEST_CASE("REGRESSION: actual-polygon MTG nfp_perfect does not return to bed1 "
+          "after bed2 opens",
+          "[mtg][engine-bug-repro][actual-polygons][nfp-perfect][bin-order]"
+          "[strict-fill-first]") {
+  const auto fixture = load_mtg_fixture_with_actual_polygons();
+  const auto options = make_actual_polygon_constructive_options(
+      CandidateStrategy::nfp_perfect, 1200U,
+      place::PlacementStartCorner::bottom_left);
+  auto request = make_request(fixture, options);
+  REQUIRE(request.is_valid());
+  request.execution.irregular.piece_ordering =
+      PieceOrdering::largest_area_first;
+
+  auto normalized = normalize_request(request);
+  REQUIRE(normalized.ok());
+
+  pack::SequentialBacktrackPacker packer;
+  const auto solved =
+      packer.solve(normalized.value(),
+                   SolveControl{
+                       .time_limit_milliseconds = kActualPolygonTimeCapMs,
+                       .random_seed = 0,
+                   });
+  REQUIRE(solved.ok());
+  const auto &result = solved.value();
+
+  INFO(actual_polygon_layout_summary(result));
+  INFO(placement_trace_bin_summary(result));
+  INFO(stop_reason_name(result.stop_reason));
+  REQUIRE(result.stop_reason != StopReason::time_limit_reached);
+  require_monotonic_frontier_progression(result);
+
+  REQUIRE(result.placed_parts() == kBaselinePieceCount);
+  const auto bed1_placements = static_cast<std::size_t>(
+      std::count_if(result.layout.placement_trace.begin(),
+                    result.layout.placement_trace.end(),
+                    [](const auto &entry) { return entry.bin_id == kBed1Id; }));
+  const auto bed2_placements = static_cast<std::size_t>(
+      std::count_if(result.layout.placement_trace.begin(),
+                    result.layout.placement_trace.end(),
+                    [](const auto &entry) { return entry.bin_id == kBed2Id; }));
+  REQUIRE(bed1_placements >= bed2_placements);
+  REQUIRE(bed1_placements + bed2_placements ==
+          static_cast<std::size_t>(kBaselinePieceCount));
+}
+
+TEST_CASE(
+    "REGRESSION: strict fill-first opens the next bed only after "
+    "geometry-aware frontier exhaustion",
+    "[engine-bug-repro][synthetic][strict-fill-first][frontier-exhaustion]") {
+  const auto request = make_aspect_ratio_exhaustion_request();
+  REQUIRE(request.is_valid());
+
+  const auto solved = solve(request, SolveControl{.random_seed = 0U});
+  REQUIRE(solved.has_value());
+
+  const auto &result = solved.value();
+  INFO(placement_trace_bin_summary(result));
+
+  REQUIRE(result.stop_reason == StopReason::completed);
+  REQUIRE(result.layout.unplaced_piece_ids.empty());
+  REQUIRE(result.layout.bins.size() == 2U);
+  REQUIRE(result.layout.placement_trace.size() == 2U);
+  REQUIRE(result.layout.placement_trace[0].bin_id == kBed1Id);
+  REQUIRE(result.layout.placement_trace[1].bin_id == kBed2Id);
+  REQUIRE(solved.value().placed_parts() == request.pieces.size());
+
+  require_monotonic_frontier_progression(result);
+}
+
+TEST_CASE("REGRESSION: strict fill-first skips an exhausted unopened bed "
+          "before opening the next one",
+          "[engine-bug-repro][synthetic][strict-fill-first][unopened-bed-"
+          "exhaustion]") {
+  const auto request = make_skipped_exhausted_bed_request();
+  REQUIRE(request.is_valid());
+
+  const auto solved = solve(request, SolveControl{.random_seed = 0U});
+  REQUIRE(solved.has_value());
+
+  const auto &result = solved.value();
+  INFO(placement_trace_bin_summary(result));
+
+  REQUIRE(result.stop_reason == StopReason::completed);
+  REQUIRE(result.layout.unplaced_piece_ids.empty());
+  REQUIRE(result.layout.placement_trace.size() == 2U);
+  REQUIRE(result.layout.placement_trace[0].bin_id == kBed1Id);
+  REQUIRE(result.layout.placement_trace[1].bin_id == 3U);
+  REQUIRE(solved.value().placed_parts() == request.pieces.size());
+}
+
+TEST_CASE("REGRESSION: BRKGA places every actual-polygon MTG silhouette with "
+          "strict fill-first ordering",
+          "[mtg][engine-bug-repro][actual-polygons][metaheuristic-search]"
+          "[strict-fill-first][slow]") {
+  const auto fixture = load_mtg_fixture_with_actual_polygons();
+  const auto options = make_actual_polygon_metaheuristic_options(
+      CandidateStrategy::anchor_vertex, ProductionOptimizerKind::brkga,
+      place::PlacementStartCorner::bottom_left);
+  auto request = make_request(fixture, options);
+  REQUIRE(request.is_valid());
+
+  const auto solved =
+      solve(request, SolveControl{
+                         .time_limit_milliseconds = kActualPolygonTimeCapMs,
+                         .random_seed = kActualPolygonSeed,
+                     });
+  REQUIRE(solved.has_value());
+
+  const auto &result = solved.value();
+  const auto placed = total_placed(result);
+  INFO(actual_polygon_layout_summary(result));
+  INFO(placement_trace_bin_summary(result));
+  INFO(stop_reason_name(result.stop_reason));
+
+  REQUIRE(result.placed_parts() == kBaselinePieceCount);
+  REQUIRE(placed == static_cast<std::size_t>(kBaselinePieceCount));
+  REQUIRE(result.strategy == StrategyKind::metaheuristic_search);
   REQUIRE(result.stop_reason == StopReason::completed);
   REQUIRE(result.layout.unplaced_piece_ids.empty());
   REQUIRE(placed == static_cast<std::size_t>(kBaselinePieceCount));
+  REQUIRE(result.layout.bins.size() == 2U);
+  REQUIRE_FALSE(result.layout.placement_trace.empty());
+  REQUIRE(result.layout.placement_trace.front().bin_id == kBed1Id);
+
+  const auto first_bin2 =
+      std::find_if(result.layout.placement_trace.begin(),
+                   result.layout.placement_trace.end(),
+                   [](const auto &entry) { return entry.bin_id == kBed2Id; });
+  REQUIRE(first_bin2 != result.layout.placement_trace.end());
+  REQUIRE(first_bin2->opened_new_bin);
+
+  const auto later_bin1 =
+      std::find_if(std::next(first_bin2), result.layout.placement_trace.end(),
+                   [](const auto &entry) { return entry.bin_id == kBed1Id; });
+  REQUIRE(later_bin1 == result.layout.placement_trace.end());
 }
 
 // -----------------------------------------------------------------------------
@@ -495,6 +868,7 @@ TEST_CASE(
 
   REQUIRE(result.stop_reason == StopReason::completed);
   REQUIRE(result.layout.unplaced_piece_ids.empty());
+  REQUIRE(result.placed_parts() == kBaselinePieceCount);
   REQUIRE(placed == static_cast<std::size_t>(kBaselinePieceCount));
 }
 
@@ -506,8 +880,8 @@ TEST_CASE("REGRESSION: actual-polygon anchor and hybrid placement stay "
   const auto start_corner = GENERATE(place::PlacementStartCorner::bottom_left,
                                      place::PlacementStartCorner::top_right);
 
-  const auto outcome =
-      solve_actual_polygon_constructive_case(candidate_strategy, start_corner);
+  const auto outcome = solve_actual_polygon_constructive_case(
+      candidate_strategy, 1200U, kActualPolygonTimeCapMs, start_corner);
   INFO(outcome.summary);
   REQUIRE(outcome.result.has_value());
   const auto &result = *outcome.result;
@@ -515,5 +889,6 @@ TEST_CASE("REGRESSION: actual-polygon anchor and hybrid placement stay "
 
   REQUIRE(result.stop_reason == StopReason::completed);
   REQUIRE(result.layout.unplaced_piece_ids.empty());
+  REQUIRE(result.placed_parts() == kBaselinePieceCount);
   REQUIRE(placed == static_cast<std::size_t>(kBaselinePieceCount));
 }

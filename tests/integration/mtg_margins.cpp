@@ -4,6 +4,10 @@
 // shrinking the bed polygon in `make_request`) still admit full placement
 // and visibly affect placed-piece coordinates.
 
+#include <algorithm>
+#include <stdexcept>
+
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
@@ -40,6 +44,7 @@ void apply_algorithm(MtgRequestOptions &options, AlgorithmKind kind) {
     options.production.population_size = 4;
     options.production.elite_count = 1;
     options.production.mutant_count = 1;
+    options.production.infeasible_rollback_after = 1;
     break;
   }
 }
@@ -55,6 +60,43 @@ SolveControl base_solve_control(AlgorithmKind algorithm) {
 }
 
 } // namespace
+
+TEST_CASE("mtg bed margin request polygons shrink as expected",
+          "[mtg][nesting-matrix][margins][request]") {
+  const auto fixture = load_mtg_fixture();
+
+  MtgRequestOptions options{};
+  options.strategy = StrategyKind::bounding_box;
+  options.bed1_margins_mm = {5.0, 15.0, 25.0, 35.0};
+  options.bed2_margins_mm = {0.0, 10.0, 20.0, 30.0};
+
+  const auto request = make_request(fixture, options);
+  REQUIRE(request.is_valid());
+
+  const auto bed1 = std::find_if(
+      request.bins.begin(), request.bins.end(),
+      [](const BinRequest &bin) { return bin.bin_id == kBed1Id; });
+  const auto bed2 = std::find_if(
+      request.bins.begin(), request.bins.end(),
+      [](const BinRequest &bin) { return bin.bin_id == kBed2Id; });
+  REQUIRE(bed1 != request.bins.end());
+  REQUIRE(bed2 != request.bins.end());
+
+  const auto bed1_box = geom::compute_bounds(bed1->polygon);
+  REQUIRE(bed1_box.min.x == Catch::Approx(5.0));
+  REQUIRE(bed1_box.min.y == Catch::Approx(35.0));
+  REQUIRE(bed1_box.max.x == Catch::Approx(fixture.bed1.width_mm - 15.0));
+  REQUIRE(bed1_box.max.y == Catch::Approx(fixture.bed1.height_mm - 25.0));
+
+  const auto bed2_box = geom::compute_bounds(bed2->polygon);
+  REQUIRE(bed2_box.min.x == Catch::Approx(0.0));
+  REQUIRE(bed2_box.min.y == Catch::Approx(30.0));
+  REQUIRE(bed2_box.max.x == Catch::Approx(fixture.bed2.width_mm - 10.0));
+  REQUIRE(bed2_box.max.y == Catch::Approx(fixture.bed2.height_mm - 20.0));
+
+  options.bed1_margins_mm = {fixture.bed1.width_mm, 1.0, 0.0, 0.0};
+  REQUIRE_THROWS_AS(make_request(fixture, options), std::runtime_error);
+}
 
 TEST_CASE("mtg uniform bed margins still place every part",
           "[mtg][nesting-matrix][margins][uniform-margins][slow]") {

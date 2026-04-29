@@ -1,0 +1,129 @@
+{
+  "fixtures": [
+    {
+      "id": "convex-convex-rectangles",
+      "kind": "candidate_geometry_family",
+      "inputs": {
+        "container": {
+          "outer": [[0, 0], [10, 0], [10, 10], [0, 10]]
+        },
+        "moving": {
+          "outer": [[0, 0], [2, 0], [2, 2], [0, 2]]
+        },
+        "obstacles": [
+          {
+            "revision": 101,
+            "translation": [4, 4],
+            "polygon": {
+              "outer": [[0, 0], [2, 0], [2, 2], [0, 2]]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "min_candidates": 4,
+        "requires_exact_nfp": true
+      }
+    },
+    {
+      "id": "convex-concave-obstacle",
+      "kind": "candidate_geometry_family",
+      "inputs": {
+        "container": {
+          "outer": [[0, 0], [12, 0], [12, 8], [0, 8]]
+        },
+        "moving": {
+          "outer": [[0, 0], [2, 0], [2, 2], [0, 2]]
+        },
+        "obstacles": [
+          {
+            "revision": 102,
+            "translation": [4, 2],
+            "polygon": {
+              "outer": [[0, 0], [4, 0], [4, 1], [1, 1], [1, 4], [0, 4]]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "min_candidates": 4,
+        "requires_exact_nfp": true
+      }
+    },
+    {
+      "id": "concave-concave-pair",
+      "kind": "candidate_geometry_family",
+      "inputs": {
+        "container": {
+          "outer": [[0, 0], [12, 0], [12, 12], [0, 12]]
+        },
+        "moving": {
+          "outer": [[0, 0], [3, 0], [3, 1], [1, 1], [1, 3], [0, 3]]
+        },
+        "obstacles": [
+          {
+            "revision": 103,
+            "translation": [5, 5],
+            "polygon": {
+              "outer": [[0, 0], [4, 0], [4, 1], [2, 1], [2, 4], [0, 4]]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "min_candidates": 4,
+        "requires_exact_nfp": true
+      }
+    },
+    {
+      "id": "collinear-touching-edges",
+      "kind": "candidate_geometry_family",
+      "inputs": {
+        "container": {
+          "outer": [[0, 0], [8, 0], [8, 4], [0, 4]]
+        },
+        "moving": {
+          "outer": [[0, 0], [2, 0], [2, 4], [0, 4]]
+        },
+        "obstacles": [
+          {
+            "revision": 104,
+            "translation": [3, 0],
+            "polygon": {
+              "outer": [[0, 0], [2, 0], [2, 4], [0, 4]]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "min_candidates": 2,
+        "requires_exact_nfp": true
+      }
+    },
+    {
+      "id": "perfect-fit-with-sliding-contact",
+      "kind": "candidate_geometry_family",
+      "inputs": {
+        "container": {
+          "outer": [[0, 0], [6, 0], [6, 4], [0, 4]]
+        },
+        "moving": {
+          "outer": [[0, 0], [3, 0], [3, 4], [0, 4]]
+        },
+        "obstacles": [
+          {
+            "revision": 105,
+            "translation": [3, 0],
+            "polygon": {
+              "outer": [[0, 0], [3, 0], [3, 4], [0, 4]]
+            }
+          }
+        ]
+      },
+      "expected": {
+        "min_candidates": 2,
+        "requires_exact_nfp": true
+      }
+    }
+  ]
+}

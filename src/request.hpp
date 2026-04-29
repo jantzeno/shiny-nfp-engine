@@ -1,13 +1,14 @@
 #pragma once
 
-#include <any>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "geometry/polygon.hpp"
+#include "packing/bin_identity.hpp"
 #include "packing/config.hpp"
 #include "packing/decoder.hpp"
 #include "placement/config.hpp"
@@ -43,9 +44,20 @@ enum class CoolingScheduleKind : std::uint8_t {
 };
 
 enum class CandidateStrategy : std::uint8_t {
+  // Uses constructive anchors, skyline points, and container/exclusion-domain
+  // vertices only; obstacle overlap rejection stays in the placement evaluator,
+  // so this path avoids expensive obstacle NFPs by default.
   anchor_vertex = 0,
+  // Uses exact IFP/domain vertices plus exact blocked-region vertices when NFP
+  // computation succeeds. Conservative bbox fallback entries stay explicitly
+  // marked as fallback.
   nfp_perfect = 1,
+  // Extends `nfp_perfect` with blocked/domain boundary intersections to capture
+  // sliding placements, again with explicit fallback labelling when bbox NFP
+  // approximation was required.
   nfp_arrangement = 2,
+  // Unions constructive anchors/skyline with the NFP-driven candidates above so
+  // robust fallback remains visible without hiding exact-vs-fallback semantics.
   nfp_hybrid = 3,
   count = 4,
 };
@@ -97,6 +109,20 @@ struct ProductionSearchConfig {
   double elite_bias{0.7};
   std::size_t diversification_swaps{2};
   std::size_t polishing_passes{1};
+  double strip_exploration_ratio{0.8};
+  double strip_exploration_shrink_max_ratio{0.25};
+  double strip_exploration_shrink_min_ratio{0.02};
+  double strip_compression_shrink_max_ratio{0.01};
+  double strip_compression_shrink_min_ratio{0.001};
+  std::size_t infeasible_pool_capacity{4};
+  std::size_t infeasible_rollback_after{2};
+  std::size_t separator_worker_count{1};
+  std::size_t separator_max_iterations{48};
+  std::size_t separator_iter_no_improvement_limit{8};
+  std::size_t separator_strike_limit{3};
+  std::size_t separator_global_samples{32};
+  std::size_t separator_focused_samples{16};
+  std::size_t separator_coordinate_descent_iterations{24};
   // Upper bound applied by `CollisionTracker::update_gls_weights` to the
   // multiplicative GLS weight per pair/container constraint. Chosen
   // (1e6) as the practical ceiling from Sparrow's reference; raising
@@ -155,13 +181,13 @@ struct LAHCConfig {
 
 struct IrregularOptions {
   CandidateStrategy candidate_strategy{CandidateStrategy::nfp_hybrid};
-  std::size_t max_candidate_points{300};
+  std::size_t max_candidate_points{1200};
   double candidate_gaussian_sigma{0.5};
-  PieceOrdering piece_ordering{PieceOrdering::input};
+  PieceOrdering piece_ordering{PieceOrdering::largest_area_first};
   bool merge_free_regions{true};
   bool enable_direct_overlap_check{true};
-  bool enable_compaction{false};
-  bool enable_backtracking{false};
+  bool enable_compaction{true};
+  bool enable_backtracking{true};
   std::uint32_t max_backtrack_pieces{3};
   std::uint32_t compaction_passes{2};
 
@@ -170,64 +196,16 @@ struct IrregularOptions {
 
 struct StrategyConfig {
   StrategyKind kind{StrategyKind::bounding_box};
-  std::any payload{};
-
-  template <typename Config>
-  static auto make(StrategyKind strategy_kind, Config config) -> StrategyConfig {
-    StrategyConfig strategy{};
-    strategy.set(strategy_kind, std::move(config));
-    return strategy;
-  }
-
-  template <typename Config>
-  void set(StrategyKind strategy_kind, Config config) {
-    kind = strategy_kind;
-    payload = std::move(config);
-  }
-
-  template <typename Config>
-  [[nodiscard]] auto get_if(StrategyKind expected_kind) const -> const Config * {
-    // No-throw dispatch path for type-erased payload retrieval. Returns
-    // nullptr both on `kind` mismatch and when the underlying `std::any`
-    // does not actually hold a `Config` (including the empty-payload case),
-    // so callers can branch on the pointer without any try/catch.
-    if (kind != expected_kind) {
-      return nullptr;
-    }
-    return std::any_cast<Config>(&payload);
-  }
-
-  [[nodiscard]] auto has_value() const -> bool { return payload.has_value(); }
+  using Payload = std::variant<std::monostate, SAConfig, ALNSConfig, GDRRConfig,
+                               LAHCConfig>;
+  Payload payload{};
 };
 
 struct ProductionStrategyConfig {
   ProductionOptimizerKind kind{ProductionOptimizerKind::brkga};
-  std::any payload{};
-
-  template <typename Config>
-  static auto make(ProductionOptimizerKind optimizer_kind, Config config)
-      -> ProductionStrategyConfig {
-    ProductionStrategyConfig strategy{};
-    strategy.set(optimizer_kind, std::move(config));
-    return strategy;
-  }
-
-  template <typename Config>
-  void set(ProductionOptimizerKind optimizer_kind, Config config) {
-    kind = optimizer_kind;
-    payload = std::move(config);
-  }
-
-  template <typename Config>
-  [[nodiscard]] auto get_if(ProductionOptimizerKind expected_kind) const
-      -> const Config * {
-    if (kind != expected_kind) {
-      return nullptr;
-    }
-    return std::any_cast<Config>(&payload);
-  }
-
-  [[nodiscard]] auto has_value() const -> bool { return payload.has_value(); }
+  using Payload = std::variant<std::monostate, ProductionSearchConfig, SAConfig,
+                               ALNSConfig, GDRRConfig, LAHCConfig>;
+  Payload payload{};
 };
 
 struct ExecutionPolicy {
@@ -238,6 +216,7 @@ struct ExecutionPolicy {
   place::PlacementPolicy placement_policy{place::PlacementPolicy::bottom_left};
   geom::DiscreteRotationSet default_rotations{{0.0, 90.0, 180.0, 270.0}};
   double part_spacing{0.0};
+  bool allow_part_overflow{true};
   bool enable_part_in_part_placement{false};
   bool explore_concave_candidates{false};
   std::vector<std::uint32_t> selected_bin_ids{};
@@ -252,16 +231,73 @@ struct ExecutionPolicy {
 };
 
 template <typename Config>
-[[nodiscard]] auto resolve_primary_strategy_config(const ExecutionPolicy &execution,
-                                                   StrategyKind direct_kind,
-                                                   const Config &legacy)
+[[nodiscard]] auto
+resolve_primary_strategy_config(const ExecutionPolicy &execution,
+                                StrategyKind direct_kind, const Config &legacy)
     -> const Config & {
-  if (const auto *config =
-          execution.strategy_config.template get_if<Config>(direct_kind);
-      config != nullptr) {
-    return *config;
+  if (execution.strategy_config.kind == direct_kind) {
+    if (const auto *config =
+            std::get_if<Config>(&execution.strategy_config.payload);
+        config != nullptr) {
+      return *config;
+    }
   }
   return legacy;
+}
+
+template <typename Config>
+[[nodiscard]] auto has_primary_strategy_config(const ExecutionPolicy &execution,
+                                               StrategyKind direct_kind)
+    -> bool {
+  return execution.strategy_config.kind == direct_kind &&
+         std::get_if<Config>(&execution.strategy_config.payload) != nullptr;
+}
+
+template <typename Config>
+auto set_primary_strategy_config(ExecutionPolicy &execution,
+                                 StrategyKind direct_kind, Config config)
+    -> void {
+  execution.strategy_config.kind = direct_kind;
+  execution.strategy_config.payload = std::move(config);
+}
+
+template <typename Config>
+[[nodiscard]] auto
+has_production_strategy_config(const ExecutionPolicy &execution,
+                               ProductionOptimizerKind production_kind)
+    -> bool {
+  return execution.production_strategy_config.kind == production_kind &&
+         std::get_if<Config>(&execution.production_strategy_config.payload) !=
+             nullptr;
+}
+
+template <typename Config>
+auto set_production_strategy_config(ExecutionPolicy &execution,
+                                    ProductionOptimizerKind production_kind,
+                                    Config config) -> void {
+  execution.production_strategy_config.kind = production_kind;
+  execution.production_strategy_config.payload = std::move(config);
+}
+
+template <typename Config>
+[[nodiscard]] auto primary_strategy_config_ptr(const ExecutionPolicy &execution,
+                                               StrategyKind direct_kind)
+    -> const Config * {
+  if (execution.strategy_config.kind == direct_kind) {
+    return std::get_if<Config>(&execution.strategy_config.payload);
+  }
+  return nullptr;
+}
+
+template <typename Config>
+[[nodiscard]] auto
+production_strategy_config_ptr(const ExecutionPolicy &execution,
+                               ProductionOptimizerKind production_kind)
+    -> const Config * {
+  if (execution.production_strategy_config.kind == production_kind) {
+    return std::get_if<Config>(&execution.production_strategy_config.payload);
+  }
+  return nullptr;
 }
 
 template <typename Config>
@@ -270,8 +306,7 @@ resolve_production_strategy_config(const ExecutionPolicy &execution,
                                    ProductionOptimizerKind production_kind,
                                    const Config &legacy) -> const Config & {
   if (const auto *config =
-          execution.production_strategy_config.template get_if<Config>(
-              production_kind);
+          production_strategy_config_ptr<Config>(execution, production_kind);
       config != nullptr) {
     return *config;
   }
@@ -279,14 +314,15 @@ resolve_production_strategy_config(const ExecutionPolicy &execution,
 }
 
 template <typename Config>
-[[nodiscard]] auto resolve_strategy_config(const ExecutionPolicy &execution,
-                                           StrategyKind direct_kind,
-                                           ProductionOptimizerKind production_kind,
-                                           const Config &legacy)
-    -> const Config & {
+[[nodiscard]] auto
+resolve_strategy_config(const ExecutionPolicy &execution,
+                        StrategyKind direct_kind,
+                        ProductionOptimizerKind production_kind,
+                        const Config &legacy) -> const Config & {
   if (execution.strategy == StrategyKind::metaheuristic_search &&
       execution.production_optimizer == production_kind) {
-    return resolve_production_strategy_config(execution, production_kind, legacy);
+    return resolve_production_strategy_config(execution, production_kind,
+                                              legacy);
   }
   return resolve_primary_strategy_config(execution, direct_kind, legacy);
 }
@@ -310,6 +346,7 @@ struct ExpandedBinInstance {
   std::uint32_t source_bin_id{0};
   std::uint32_t expanded_bin_id{0};
   std::uint32_t stock_index{0};
+  pack::BinIdentity identity{};
 };
 
 struct NormalizedRequest {

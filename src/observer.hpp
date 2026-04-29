@@ -26,15 +26,15 @@ enum class ProgressPhase : std::uint8_t {
   completed = 3,
 };
 
-struct BudgetState {
-  bool operation_limit_enabled{false};
-  std::size_t operation_limit{0};
-  std::size_t operations_completed{0};
-  bool time_limit_enabled{false};
-  std::uint64_t time_limit_milliseconds{0};
-  std::uint64_t elapsed_milliseconds{0};
-  bool cancellation_requested{false};
-};
+// struct BudgetState {
+//   bool operation_limit_enabled{false};
+//   std::size_t operation_limit{0};
+//   std::size_t operations_completed{0};
+//   bool time_limit_enabled{false};
+//   std::uint64_t time_limit_milliseconds{0};
+//   std::uint64_t elapsed_milliseconds{0};
+//   bool cancellation_requested{false};
+// };
 
 struct ProgressSnapshot {
   std::size_t sequence{0};
@@ -44,11 +44,12 @@ struct ProgressSnapshot {
   std::size_t refinement_steps_completed{0};
   std::size_t candidate_evaluations_completed{0};
   pack::Layout layout{};
-  BudgetState budget{};
   StopReason stop_reason{StopReason::none};
   ProgressPhase phase{ProgressPhase::none};
   std::string phase_detail{};
   double utilization_percent{0.0};
+  bool layout_valid{false};
+  std::size_t validation_issue_count{0};
   bool improved{false};
 };
 

@@ -7,8 +7,8 @@
 #include <string>
 #include <vector>
 
-#include "geometry/types.hpp"
 #include "geometry/transform.hpp"
+#include "geometry/types.hpp"
 #include "observer.hpp"
 #include "packing/config.hpp"
 #include "placement/config.hpp"
@@ -24,12 +24,14 @@ inline constexpr std::uint32_t kBed1Id = 1;
 inline constexpr std::uint32_t kBed2Id = 2;
 
 inline constexpr std::uint32_t kBaselinePieceCount = 18;
+inline constexpr double kMaterialOverlapToleranceMm2 = 1e-6;
 
 struct MtgPiece {
-  std::uint32_t piece_id{0};   // Sequential 1..N
-  std::string label{};         // SVG data-im2d-label (e.g. "Part 14")
+  std::uint32_t piece_id{0}; // Sequential 1..N
+  std::string label{};       // SVG data-im2d-label (e.g. "Part 14")
   std::uint32_t source_bed_id{0};
-  geom::PolygonWithHoles polygon{};  // Local-coord rectangle (origin-normalized AABB)
+  geom::PolygonWithHoles
+      polygon{}; // Local-coord rectangle (origin-normalized AABB)
   double width_mm{0.0};
   double height_mm{0.0};
 };
@@ -87,8 +89,7 @@ struct BedMargins {
 // defaults.
 struct MtgRequestOptions {
   StrategyKind strategy{StrategyKind::bounding_box};
-  ProductionOptimizerKind production_optimizer{
-      ProductionOptimizerKind::brkga};
+  ProductionOptimizerKind production_optimizer{ProductionOptimizerKind::brkga};
 
   pack::BoundingBoxPackingConfig bounding_box{};
   std::uint32_t bounding_box_deterministic_attempts{1};
@@ -106,8 +107,11 @@ struct MtgRequestOptions {
   // Engine-level model of the export_face flag pair (mirrors
   // `nesting_adapter.cpp:1174-1178`):
   //   maintain=true,  overflow=*     -> pinned to source bed
-  //   maintain=false, overflow=false -> pinned to source bed
-  //   maintain=false, overflow=true  -> free to move between beds
+  //   maintain=false, overflow=false -> free across configured beds, but the
+  //                                      engine may not synthesize overflow
+  //                                      beds
+  //   maintain=false, overflow=true  -> free across configured beds, including
+  //                                      engine-created overflow beds
   bool maintain_bed_assignment{false};
   bool allow_part_overflow{true};
 
@@ -152,7 +156,8 @@ struct ExpectedOutcome {
   // When true, every placed piece must resolve to an angle admitted by the
   // piece-local or run-level rotation contract.
   bool require_rotation_admissibility{false};
-  // When true, every placed piece must land in its explicit allowed_bin_ids set.
+  // When true, every placed piece must land in its explicit allowed_bin_ids
+  // set.
   bool require_allowed_bin_admissibility{false};
   // Tolerance for spacing / overlap checks (mm).
   double tolerance_mm{1e-4};
@@ -161,8 +166,8 @@ struct ExpectedOutcome {
 // Canonical AABB clearance model used by the MTG helpers and repro tests.
 // Returns true when the gap between two axis-aligned boxes is less than the
 // requested spacing after subtracting tolerance from the spacing request.
-[[nodiscard]] auto boxes_violate_spacing(const geom::Box2 &a, const geom::Box2 &b,
-                                         double spacing_mm,
+[[nodiscard]] auto boxes_violate_spacing(const geom::Box2 &a,
+                                         const geom::Box2 &b, double spacing_mm,
                                          double tolerance_mm = 1e-3) -> bool;
 
 // Asserts the shared MTG layout invariants against the result. This includes
@@ -188,4 +193,4 @@ struct ExclusionRect {
 };
 [[nodiscard]] auto bed1_half_block_exclusion() -> ExclusionRect;
 
-}  // namespace shiny::nesting::test::mtg
+} // namespace shiny::nesting::test::mtg

@@ -221,7 +221,7 @@ TEST_CASE("mtg seed sweep is non-degenerate",
   REQUIRE(distinct_hashes.size() >= 2);
 }
 
-TEST_CASE("mtg sequential failed attempt reports succeeding effective seed",
+TEST_CASE("mtg sequential multi-start reports accepted effective seed",
           "[mtg][nesting-matrix][seeds][sequential-backtrack][slow]") {
   const auto fixture = load_mtg_fixture();
   const auto rect = bed1_half_block_exclusion();
@@ -251,5 +251,5 @@ TEST_CASE("mtg sequential failed attempt reports succeeding effective seed",
   expected.expected_placed_count = kBaselinePieceCount;
   expected.exclusions_to_check = {exclusion};
   validate_layout(fixture, request, options, solved.value(), expected);
-  REQUIRE(solved.value().effective_seed == 24U);
+  REQUIRE(solved.value().effective_seed == 23U);
 }

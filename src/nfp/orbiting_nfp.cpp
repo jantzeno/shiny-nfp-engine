@@ -80,6 +80,7 @@ namespace {
 constexpr double kContactTolerance = 1e-6;
 constexpr double kMinTranslation = 1e-8;
 constexpr std::size_t kMaxIterations = 10'000U;
+constexpr std::size_t kMaxOrbitingVertexProduct = 512U;
 // `trace_nfp_boundary` may temporarily fail to advance — i.e. the
 // touching set yields no usable translation vectors — when contact
 // classification briefly degenerates (e.g. simultaneous edge-edge with
@@ -749,6 +750,89 @@ struct CollisionEvent {
           .y = stationary_it->y - orbiting_it->y};
 }
 
+enum class ExtremeAxis {
+  x,
+  y,
+};
+
+[[nodiscard]] auto collect_extreme_vertices(const geom::Ring &ring,
+                                            const ExtremeAxis axis,
+                                            const bool want_min)
+    -> std::vector<geom::Point2> {
+  std::vector<geom::Point2> extremes;
+  if (ring.empty()) {
+    return extremes;
+  }
+
+  auto primary = [&](const geom::Point2 &point) {
+    return axis == ExtremeAxis::x ? point.x : point.y;
+  };
+
+  double extreme_value = primary(ring.front());
+  for (const auto &point : ring) {
+    const double value = primary(point);
+    if ((want_min && value < extreme_value - kContactTolerance) ||
+        (!want_min && value > extreme_value + kContactTolerance)) {
+      extreme_value = value;
+    }
+  }
+
+  for (const auto &point : ring) {
+    if (std::abs(primary(point) - extreme_value) <= kContactTolerance) {
+      extremes.push_back(point);
+    }
+  }
+
+  return extremes;
+}
+
+auto append_start_positions(std::vector<geom::Point2> &start_positions,
+                            const std::vector<geom::Point2> &stationary_points,
+                            const std::vector<geom::Point2> &orbiting_points)
+    -> void {
+  for (const auto &stationary_point : stationary_points) {
+    for (const auto &orbiting_point : orbiting_points) {
+      const geom::Point2 candidate{.x = stationary_point.x - orbiting_point.x,
+                                   .y = stationary_point.y - orbiting_point.y};
+      const bool seen = std::any_of(
+          start_positions.begin(), start_positions.end(),
+          [&](const geom::Point2 &existing) {
+            return near_same_point(existing, candidate, kContactTolerance);
+          });
+      if (!seen) {
+        start_positions.push_back(candidate);
+      }
+    }
+  }
+}
+
+[[nodiscard]] auto candidate_start_positions(const geom::Ring &stationary_hull,
+                                             const geom::Ring &orbiting_hull)
+    -> std::vector<geom::Point2> {
+  std::vector<geom::Point2> start_positions;
+  start_positions.reserve(16U);
+  start_positions.push_back(
+      find_start_position(stationary_hull, orbiting_hull));
+
+  append_start_positions(
+      start_positions,
+      collect_extreme_vertices(stationary_hull, ExtremeAxis::y, true),
+      collect_extreme_vertices(orbiting_hull, ExtremeAxis::y, false));
+  append_start_positions(
+      start_positions,
+      collect_extreme_vertices(stationary_hull, ExtremeAxis::x, true),
+      collect_extreme_vertices(orbiting_hull, ExtremeAxis::x, false));
+  append_start_positions(
+      start_positions,
+      collect_extreme_vertices(stationary_hull, ExtremeAxis::y, false),
+      collect_extreme_vertices(orbiting_hull, ExtremeAxis::y, true));
+  append_start_positions(
+      start_positions,
+      collect_extreme_vertices(stationary_hull, ExtremeAxis::x, false),
+      collect_extreme_vertices(orbiting_hull, ExtremeAxis::x, true));
+  return start_positions;
+}
+
 [[nodiscard]] auto
 compute_simple_orbiting_nfp(const geom::PolygonWithHoles &fixed,
                             const geom::PolygonWithHoles &moving)
@@ -761,23 +845,32 @@ compute_simple_orbiting_nfp(const geom::PolygonWithHoles &fixed,
   const auto stationary_hull = ensure_ccw(
       poly::compute_convex_hull(geom::Polygon{.outer = stationary}).outer);
   const auto orbiting = ensure_ccw(moving.outer);
+  const auto orbiting_hull = ensure_ccw(
+      poly::compute_convex_hull(geom::Polygon{.outer = orbiting}).outer);
   if (stationary.size() < 3U || stationary_hull.size() < 3U ||
-      orbiting.size() < 3U) {
+      orbiting.size() < 3U || orbiting_hull.size() < 3U) {
     return util::Status::invalid_input;
   }
 
-  const auto start_position = find_start_position(stationary_hull, orbiting);
-  const auto orbiting_at_start =
-      translate_ring(orbiting, {.x = start_position.x, .y = start_position.y});
-  auto overlap = has_actual_overlap(stationary, orbiting_at_start);
-  if (!overlap.ok()) {
-    return overlap.status();
-  }
-  if (overlap.value()) {
-    return util::Status::computation_failed;
+  for (const auto &start_position :
+       candidate_start_positions(stationary_hull, orbiting_hull)) {
+    const auto orbiting_at_start = translate_ring(
+        orbiting, {.x = start_position.x, .y = start_position.y});
+    auto overlap = has_actual_overlap(stationary, orbiting_at_start);
+    if (!overlap.ok()) {
+      return overlap.status();
+    }
+    if (overlap.value()) {
+      continue;
+    }
+
+    if (auto traced = trace_nfp_boundary(stationary, orbiting, start_position);
+        traced.ok()) {
+      return traced;
+    }
   }
 
-  return trace_nfp_boundary(stationary, orbiting, start_position);
+  return util::Status::computation_failed;
 }
 
 } // namespace
@@ -793,6 +886,17 @@ auto compute_orbiting_nfp(const geom::PolygonWithHoles &fixed,
     SHINY_DEBUG("orbiting_nfp: invalid input fixed_outer={} moving_outer={}",
                 normalized_fixed.outer.size(), normalized_moving.outer.size());
     return util::Status::invalid_input;
+  }
+
+  const auto vertex_product =
+      normalized_fixed.outer.size() * normalized_moving.outer.size();
+  if (vertex_product > kMaxOrbitingVertexProduct) {
+    SHINY_DEBUG(
+        "orbiting_nfp: skipping high-complexity fallback fixed_outer={} "
+        "moving_outer={} vertex_product={}",
+        normalized_fixed.outer.size(), normalized_moving.outer.size(),
+        vertex_product);
+    return util::Status::computation_failed;
   }
 
   if (normalized_fixed.holes.empty() && normalized_moving.holes.empty() &&

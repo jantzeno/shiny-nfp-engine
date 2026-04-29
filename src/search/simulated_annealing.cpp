@@ -45,7 +45,7 @@ namespace {
 
 auto emit_improvement(const SolveControl &control, SearchReplay &replay,
                       const std::size_t sequence, const std::size_t iteration,
-                      const SolutionPoolEntry &best, const BudgetState &budget,
+                      const SolutionPoolEntry &best,
                       const std::size_t restart_index,
                       const detail::NeighborhoodSearch op,
                       const double temperature) -> void {
@@ -53,7 +53,8 @@ auto emit_improvement(const SolveControl &control, SearchReplay &replay,
       .iteration = iteration,
       .improved = true,
       .layout = best.result.layout,
-      .budget = budget,
+      .layout_valid = best.result.layout_valid(),
+      .validation_issue_count = best.result.validation.issues.size(),
   });
   if (!control.on_progress) {
     return;
@@ -64,13 +65,14 @@ auto emit_improvement(const SolveControl &control, SearchReplay &replay,
       .total_requested_parts = best.result.total_parts,
       .refinement_steps_completed = iteration,
       .layout = best.result.layout,
-      .budget = budget,
       .stop_reason = StopReason::none,
       .phase = ProgressPhase::refinement,
       .phase_detail = std::format("SA restart {} iter {} via {} @ T={:.3f}",
                                   restart_index + 1U, iteration,
                                   detail::operator_label(op), temperature),
       .utilization_percent = best.metrics.utilization * 100.0,
+      .layout_valid = best.result.layout_valid(),
+      .validation_issue_count = best.result.validation.issues.size(),
       .improved = true,
   });
 }
@@ -78,9 +80,8 @@ auto emit_improvement(const SolveControl &control, SearchReplay &replay,
 auto emit_iteration_progress(
     const SolveControl &control, ProgressThrottle &throttle,
     const std::size_t iteration, const SolutionPoolEntry &current,
-    const BudgetState &budget, const std::size_t restart_index,
-    const detail::NeighborhoodSearch op, const double temperature,
-    const bool accepted) -> void {
+    const std::size_t restart_index, const detail::NeighborhoodSearch op,
+    const double temperature, const bool accepted) -> void {
   if (!control.on_progress || !throttle.should_emit()) {
     return;
   }
@@ -90,7 +91,6 @@ auto emit_iteration_progress(
       .total_requested_parts = current.result.total_parts,
       .refinement_steps_completed = iteration,
       .layout = current.result.layout,
-      .budget = budget,
       .stop_reason = StopReason::none,
       .phase = ProgressPhase::refinement,
       .phase_detail = std::format("SA restart {} iter {} {} via {} @ T={:.3f}",
@@ -98,6 +98,8 @@ auto emit_iteration_progress(
                                   accepted ? "accepted" : "rejected",
                                   detail::operator_label(op), temperature),
       .utilization_percent = current.metrics.utilization * 100.0,
+      .layout_valid = current.result.layout_valid(),
+      .validation_issue_count = current.result.validation.issues.size(),
       .improved = false,
   });
 }
@@ -170,8 +172,7 @@ auto SimulatedAnnealingSearch::solve(const NormalizedRequest &request,
   SearchReplay replay{.optimizer = OptimizerKind::simulated_annealing};
   if (request.expanded_pieces.empty()) {
     return detail::driver_empty_result(StrategyKind::simulated_annealing,
-                                       std::move(replay), control, time_budget,
-                                       stopwatch);
+                                       std::move(replay));
   }
 
   detail::OrderEvaluator evaluator(request, control, time_budget, stopwatch);
@@ -199,8 +200,7 @@ auto SimulatedAnnealingSearch::solve(const NormalizedRequest &request,
       best = current;
       ++sequence;
       emit_improvement(control, replay, sequence, operations_completed, *best,
-                       evaluator.make_budget(operations_completed), restart,
-                       detail::NeighborhoodSearch::random_swap,
+                       restart, detail::NeighborhoodSearch::random_swap,
                        cooling.initial_temperature());
     }
 
@@ -217,7 +217,7 @@ auto SimulatedAnnealingSearch::solve(const NormalizedRequest &request,
 
       const auto op = detail::random_operator(rng, true);
       const auto move = detail::propose_move(
-          current.order, current.forced_rotations, request,
+          current.order, current.piece_indexed_forced_rotations, request,
           evaluator.piece_areas(), evaluator.piece_rotation_counts(), rng, op,
           1U + rng.uniform_index(
                    std::max<std::size_t>(config.perturbation_swaps, 1U)));
@@ -255,14 +255,11 @@ auto SimulatedAnnealingSearch::solve(const NormalizedRequest &request,
         plateau = 0;
         ++sequence;
         emit_improvement(control, replay, sequence, operations_completed, *best,
-                         evaluator.make_budget(operations_completed), restart,
-                         op, temperature);
+                         restart, op, temperature);
       } else {
         ++plateau;
         emit_iteration_progress(control, throttle, operations_completed,
-                                current,
-                                evaluator.make_budget(operations_completed),
-                                restart, op, temperature, accepted);
+                                current, restart, op, temperature, accepted);
       }
 
       temperature =
@@ -284,7 +281,6 @@ auto SimulatedAnnealingSearch::solve(const NormalizedRequest &request,
     return NestingResult{
         .strategy = StrategyKind::simulated_annealing,
         .total_parts = request.expanded_pieces.size(),
-        .budget = evaluator.make_budget(operations_completed),
         .stop_reason = detail::driver_stop_reason(
             control, time_budget, stopwatch, hit_operation_limit),
         .search = std::move(replay),
@@ -293,7 +289,6 @@ auto SimulatedAnnealingSearch::solve(const NormalizedRequest &request,
 
   NestingResult result = best->result;
   result.strategy = StrategyKind::simulated_annealing;
-  result.budget = evaluator.make_budget(operations_completed);
   result.stop_reason = detail::driver_stop_reason(
       control, time_budget, stopwatch, hit_operation_limit);
   result.search = std::move(replay);

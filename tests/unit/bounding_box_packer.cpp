@@ -295,11 +295,9 @@ TEST_CASE("bounding box solve selects the best deterministic attempt and emits "
   REQUIRE(result.ok());
   REQUIRE(result.value().layout.placement_trace.size() == 3U);
   REQUIRE(result.value().stop_reason == StopReason::completed);
-  REQUIRE(result.value().budget.operations_completed == 3U);
   REQUIRE(snapshots.size() == 3U);
   REQUIRE(snapshots.front().sequence == 1U);
   REQUIRE(snapshots.back().sequence == 3U);
-  REQUIRE(snapshots.back().budget.operations_completed == 3U);
 }
 
 TEST_CASE(
@@ -327,9 +325,7 @@ TEST_CASE(
 
   REQUIRE(result.ok());
   REQUIRE(result.value().stop_reason == StopReason::operation_limit_reached);
-  REQUIRE(result.value().budget.operations_completed == 1U);
   REQUIRE(snapshots.size() == 1U);
-  REQUIRE(snapshots.front().budget.operations_completed == 1U);
 }
 
 TEST_CASE("bounding box packer respects exclusion zones",

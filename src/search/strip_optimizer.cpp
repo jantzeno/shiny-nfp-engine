@@ -16,9 +16,9 @@
 #include "packing/separator.hpp"
 #include "polygon_ops/merge_region.hpp"
 #include "runtime/hash.hpp"
-#include "search/detail/layout_validation.hpp"
 #include "search/detail/neighborhood_search.hpp"
 #include "search/disruption.hpp"
+#include "validation/layout_validation.hpp"
 
 namespace shiny::nesting::search {
 namespace {
@@ -26,10 +26,6 @@ namespace {
 constexpr double kStripLengthTolerance = 1e-9;
 constexpr double kSeparatorWidthTolerance = 1e-6;
 constexpr std::uint64_t kStripBudgetSafetyDivisor = 10U;
-constexpr double kExplorationShrinkMaxRatio = 0.25;
-constexpr double kExplorationShrinkMinRatio = 0.02;
-constexpr double kCompressionShrinkMaxRatio = 0.01;
-constexpr double kCompressionShrinkMinRatio = 0.001;
 
 [[nodiscard]] auto
 strip_budget_exhausted(const SolveControl &control,
@@ -123,11 +119,9 @@ namespace {
   SolutionPoolEntry evaluated;
   evaluated.order.assign(order.begin(), order.end());
   if (request.forced_rotations.size() == request.expanded_pieces.size()) {
-    for (const auto index : order) {
-      evaluated.forced_rotations.push_back(request.forced_rotations[index]);
-    }
+    evaluated.piece_indexed_forced_rotations = request.forced_rotations;
   } else {
-    evaluated.forced_rotations.assign(order.size(), std::nullopt);
+    evaluated.piece_indexed_forced_rotations.assign(order.size(), std::nullopt);
   }
 
   pack::IrregularConstructivePacker packer;
@@ -145,9 +139,10 @@ namespace {
 
   const auto result_or =
       packer.solve(reordered_request_for(order, request), decode_control);
-  if (result_or.ok() && !detail::constructive_layout_has_geometry_violation(
-                            request, result_or.value())) {
+  if (result_or.ok() &&
+      !validation::layout_has_geometry_violation(request, result_or.value())) {
     evaluated.result = result_or.value();
+    validation::finalize_result(request, evaluated.result);
     evaluated.metrics = metrics_for_layout(evaluated.result.layout);
     return evaluated;
   }
@@ -249,7 +244,8 @@ auto refresh_layout_bin(pack::LayoutBin &bin) -> void {
                                             const NormalizedRequest &request,
                                             const double target_strip_length,
                                             const std::uint64_t base_seed,
-                                            const double gls_weight_cap)
+                                            const ProductionSearchConfig &config,
+                                            SeparatorReplayMetrics *metrics)
     -> std::optional<SolutionPoolEntry> {
   if (entry.result.layout.bins.empty() || entry.metrics.strip_length <= 0.0 ||
       target_strip_length <= 0.0 ||
@@ -265,16 +261,13 @@ auto refresh_layout_bin(pack::LayoutBin &bin) -> void {
   bool moved_any = false;
 
   std::unordered_map<std::uint32_t, bool> rotation_locked_by_piece;
-  if (entry.order.size() == request.expanded_pieces.size()) {
-    for (std::size_t position = 0; position < entry.order.size(); ++position) {
-      const auto piece_index = entry.order[position];
-      if (piece_index >= request.expanded_pieces.size()) {
-        continue;
-      }
+  if (entry.piece_indexed_forced_rotations.size() ==
+      request.expanded_pieces.size()) {
+    for (std::size_t piece_index = 0; piece_index < request.expanded_pieces.size();
+         ++piece_index) {
       rotation_locked_by_piece.emplace(
           request.expanded_pieces[piece_index].expanded_piece_id,
-          position < entry.forced_rotations.size() &&
-              entry.forced_rotations[position].has_value());
+          entry.piece_indexed_forced_rotations[piece_index].has_value());
     }
   }
 
@@ -330,11 +323,16 @@ auto refresh_layout_bin(pack::LayoutBin &bin) -> void {
     }
 
     pack::SeparatorConfig separator_config;
-    separator_config.max_iterations = 48U;
-    separator_config.iter_no_improvement_limit = 8U;
-    separator_config.strike_limit = 3U;
-    separator_config.worker_count = 1U;
-    separator_config.gls_weight_cap = gls_weight_cap;
+    separator_config.max_iterations = config.separator_max_iterations;
+    separator_config.iter_no_improvement_limit =
+        config.separator_iter_no_improvement_limit;
+    separator_config.strike_limit = config.separator_strike_limit;
+    separator_config.worker_count = config.separator_worker_count;
+    separator_config.gls_weight_cap = config.gls_weight_cap;
+    separator_config.mover.global_samples = config.separator_global_samples;
+    separator_config.mover.focused_samples = config.separator_focused_samples;
+    separator_config.mover.coordinate_descent_iterations =
+        config.separator_coordinate_descent_iterations;
     // Strip compaction only updates placement translations today. Keep
     // continuous separator rotation gated off here until the layout/IO
     // surfaces carry post-compaction orientations end-to-end.
@@ -351,6 +349,22 @@ auto refresh_layout_bin(pack::LayoutBin &bin) -> void {
     const auto separated = pack::run_separator(
         make_strip_container(envelope, target_width), items, separator_config,
         static_cast<std::uint64_t>(separator_seed));
+    if (metrics != nullptr) {
+      ++metrics->attempts;
+      metrics->total_iterations += separated.iterations;
+      metrics->worker_count = config.separator_worker_count;
+      metrics->max_iterations = config.separator_max_iterations;
+      metrics->iter_no_improvement_limit =
+          config.separator_iter_no_improvement_limit;
+      metrics->strike_limit = config.separator_strike_limit;
+      metrics->global_samples = config.separator_global_samples;
+      metrics->focused_samples = config.separator_focused_samples;
+      metrics->coordinate_descent_iterations =
+          config.separator_coordinate_descent_iterations;
+      if (separated.converged) {
+        ++metrics->converged_runs;
+      }
+    }
     if (!separated.converged ||
         separated.polygons.size() != bin.placements.size()) {
       for (const auto &placement : bin.placements) {
@@ -376,6 +390,10 @@ auto refresh_layout_bin(pack::LayoutBin &bin) -> void {
 
   if (!moved_any) {
     return std::nullopt;
+  }
+
+  if (metrics != nullptr) {
+    ++metrics->accepted_compactions;
   }
 
   for (auto &trace : layout.placement_trace) {
@@ -464,6 +482,15 @@ auto StripOptimizer::optimize(const NormalizedRequest &request,
                               const ProductionSearchConfig &config) const
     -> StripOptimizerResult {
   StripOptimizerResult result{.best_solution = seed};
+  result.separator_metrics.worker_count = config.separator_worker_count;
+  result.separator_metrics.max_iterations = config.separator_max_iterations;
+  result.separator_metrics.iter_no_improvement_limit =
+      config.separator_iter_no_improvement_limit;
+  result.separator_metrics.strike_limit = config.separator_strike_limit;
+  result.separator_metrics.global_samples = config.separator_global_samples;
+  result.separator_metrics.focused_samples = config.separator_focused_samples;
+  result.separator_metrics.coordinate_descent_iterations =
+      config.separator_coordinate_descent_iterations;
   if (request.expanded_pieces.size() < 2U) {
     return result;
   }
@@ -485,24 +512,34 @@ auto StripOptimizer::optimize(const NormalizedRequest &request,
   pack::PackerWorkspace &workspace =
       control.workspace != nullptr ? *control.workspace : local_workspace;
 
-  SolutionPool pool(pool_capacity_for(config));
+  SolutionPool pool(pool_capacity_for(config), &request);
   pool.insert(seed);
 
   auto best = seed;
   auto incumbent = seed;
-  // Phase budget split: 80% exploration, 20% compression. Sparrow §7.2
-  // shows the optimizer needs the bulk of its budget on the exploration
-  // (disrupt+decode+compact) phase to escape the basin of the seed
-  // sequence, then a smaller compression tail to polish the incumbent
-  // toward the shrink target. Empirically a 4:1 split keeps best_metrics
-  // monotone while still leaving meaningful compression headroom for
-  // the strip target reached at the end of exploration.
+  result.phase_metrics.exploration_iteration_budget =
+      std::max<std::size_t>(
+          1U, static_cast<std::size_t>(std::llround(
+                  static_cast<double>(total_iterations) *
+                  config.strip_exploration_ratio)));
+  result.phase_metrics.compression_iteration_budget =
+      total_iterations - result.phase_metrics.exploration_iteration_budget;
+  if (result.phase_metrics.compression_iteration_budget == 0U &&
+      total_iterations > 1U) {
+    --result.phase_metrics.exploration_iteration_budget;
+    result.phase_metrics.compression_iteration_budget = 1U;
+  }
+
   const auto exploration_limit =
-      std::max<std::size_t>(1U, (total_iterations * 4U) / 5U);
+      result.phase_metrics.exploration_iteration_budget;
   double target_strip_length = shrink_target(
       seed.metrics.strip_length,
-      detail::schedule_ratio(0U, exploration_limit, kExplorationShrinkMaxRatio,
-                             kExplorationShrinkMinRatio));
+      detail::schedule_ratio(0U, exploration_limit,
+                             config.strip_exploration_shrink_max_ratio,
+                             config.strip_exploration_shrink_min_ratio));
+  SolutionPool infeasible_pool(
+      std::max<std::size_t>(1U, config.infeasible_pool_capacity), &request);
+  std::size_t rejected_since_rollback = 0U;
 
   // Single phase loop. `generate_order` produces the candidate sequence
   // for this iteration; `compaction_target` returns the strip length
@@ -529,7 +566,7 @@ auto StripOptimizer::optimize(const NormalizedRequest &request,
                                       time_budget, stopwatch);
       if (const auto compacted = try_separator_compaction(
               candidate, request, compaction_target(shrink_ratio),
-              control.random_seed, config.gls_weight_cap);
+              control.random_seed, config, &result.separator_metrics);
           compacted.has_value()) {
         candidate = std::move(*compacted);
       }
@@ -548,72 +585,101 @@ auto StripOptimizer::optimize(const NormalizedRequest &request,
   };
 
   run_phase(
-      exploration_limit, kExplorationShrinkMaxRatio, kExplorationShrinkMinRatio,
+      exploration_limit, config.strip_exploration_shrink_max_ratio,
+      config.strip_exploration_shrink_min_ratio,
       result.exploration_iterations,
-      [&](std::size_t /*iteration*/, double /*shrink_ratio*/) {
-        const auto *base = pool.select(rng);
-        if (base == nullptr) {
-          base = &incumbent;
+       [&](std::size_t /*iteration*/, double /*shrink_ratio*/) {
+         const auto *base = pool.select(rng);
+         if (base == nullptr) {
+           base = &incumbent;
         }
         return disrupt_large_items(base->order, request, piece_areas, rng)
             .order;
       },
-      [&](double /*shrink_ratio*/) { return target_strip_length; },
-      [&](SolutionPoolEntry candidate, double shrink_ratio) -> bool {
-        pool.insert(candidate);
-        if (better_metrics(candidate.metrics, best.metrics)) {
-          best = candidate;
-          incumbent = std::move(candidate);
-          ++result.accepted_moves;
-          target_strip_length =
-              shrink_target(best.metrics.strip_length, shrink_ratio);
-          return true;
-        }
-        if (accepted_for_target(candidate.metrics, incumbent.metrics,
-                                target_strip_length)) {
-          incumbent = std::move(candidate);
-          ++result.accepted_moves;
-          target_strip_length =
-              shrink_target(incumbent.metrics.strip_length, shrink_ratio);
-        } else {
+       [&](double /*shrink_ratio*/) { return target_strip_length; },
+       [&](SolutionPoolEntry candidate, double shrink_ratio) -> bool {
+         pool.insert(candidate);
+         result.phase_metrics.exploration_iterations =
+             result.exploration_iterations;
+         if (better_metrics(candidate.metrics, best.metrics)) {
+           best = candidate;
+           incumbent = std::move(candidate);
+            ++result.accepted_moves;
+            ++result.phase_metrics.accepted_moves;
+            rejected_since_rollback = 0U;
+            target_strip_length =
+                shrink_target(best.metrics.strip_length, shrink_ratio);
+            return true;
+          }
+          if (accepted_for_target(candidate.metrics, incumbent.metrics,
+                                  target_strip_length)) {
+            incumbent = std::move(candidate);
+            ++result.accepted_moves;
+            ++result.phase_metrics.accepted_moves;
+            rejected_since_rollback = 0U;
+            target_strip_length =
+                shrink_target(incumbent.metrics.strip_length, shrink_ratio);
+            return false;
+          }
+          ++result.phase_metrics.infeasible_candidates;
+          ++rejected_since_rollback;
+          if (config.infeasible_pool_capacity > 0U) {
+            infeasible_pool.insert(candidate);
+          }
+          if (config.infeasible_pool_capacity > 0U &&
+              config.infeasible_rollback_after > 0U &&
+              rejected_since_rollback >= config.infeasible_rollback_after) {
+            if (const auto *rollback = infeasible_pool.select(rng);
+                rollback != nullptr) {
+              incumbent = *rollback;
+              ++result.phase_metrics.infeasible_rollbacks;
+              rejected_since_rollback = 0U;
+            }
+          }
           target_strip_length =
               expand_target(target_strip_length, best.metrics.strip_length,
                             shrink_ratio * 0.5);
-        }
-        return false;
-      });
+          return false;
+        });
 
   incumbent = best;
   const auto compression_limit =
-      total_iterations - result.exploration_iterations;
+      result.phase_metrics.compression_iteration_budget;
   run_phase(
-      compression_limit, kCompressionShrinkMaxRatio, kCompressionShrinkMinRatio,
+      compression_limit, config.strip_compression_shrink_max_ratio,
+      config.strip_compression_shrink_min_ratio,
       result.compression_iterations,
       [&](std::size_t iteration, double /*shrink_ratio*/) {
         return compression_neighbor(incumbent.order, piece_areas, iteration,
                                     rng);
       },
-      [&](double shrink_ratio) {
-        return shrink_target(incumbent.metrics.strip_length, shrink_ratio);
-      },
-      [&](SolutionPoolEntry candidate, double shrink_ratio) -> bool {
-        if (!accepted_for_target(
-                candidate.metrics, incumbent.metrics,
-                shrink_target(incumbent.metrics.strip_length, shrink_ratio))) {
-          return false;
-        }
-        const bool improved_best =
-            better_metrics(candidate.metrics, best.metrics);
-        incumbent = candidate;
-        pool.insert(candidate);
-        ++result.accepted_moves;
-        if (improved_best) {
-          best = std::move(candidate);
-        }
-        return improved_best;
-      });
+       [&](double shrink_ratio) {
+         return shrink_target(incumbent.metrics.strip_length, shrink_ratio);
+       },
+       [&](SolutionPoolEntry candidate, double shrink_ratio) -> bool {
+         result.phase_metrics.compression_iterations =
+             result.compression_iterations;
+         if (!accepted_for_target(
+                 candidate.metrics, incumbent.metrics,
+                 shrink_target(incumbent.metrics.strip_length, shrink_ratio))) {
+           ++result.phase_metrics.infeasible_candidates;
+           return false;
+         }
+         const bool improved_best =
+             better_metrics(candidate.metrics, best.metrics);
+         incumbent = candidate;
+         pool.insert(candidate);
+         ++result.accepted_moves;
+         ++result.phase_metrics.accepted_moves;
+         if (improved_best) {
+           best = std::move(candidate);
+         }
+         return improved_best;
+       });
 
   result.best_solution = best;
+  result.phase_metrics.exploration_iterations = result.exploration_iterations;
+  result.phase_metrics.compression_iterations = result.compression_iterations;
   return result;
 }
 

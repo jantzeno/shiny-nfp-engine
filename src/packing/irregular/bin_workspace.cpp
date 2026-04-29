@@ -17,12 +17,14 @@ auto subtract_region(std::vector<geom::PolygonWithHoles> &regions,
   std::vector<geom::PolygonWithHoles> next_regions;
   for (const auto &region : regions) {
     auto difference = poly::difference_polygons(region, obstacle);
-    next_regions.insert(next_regions.end(), difference.begin(), difference.end());
+    next_regions.insert(next_regions.end(), difference.begin(),
+                        difference.end());
   }
   regions = std::move(next_regions);
 }
 
-auto merge_touching_regions(std::vector<geom::PolygonWithHoles> &regions) -> void {
+auto merge_touching_regions(std::vector<geom::PolygonWithHoles> &regions)
+    -> void {
   poly::MergedRegion merged;
   for (const auto &region : regions) {
     merged = poly::merge_polygon_into_region(merged, region);
@@ -51,8 +53,8 @@ auto subtract_obstacle(std::vector<geom::PolygonWithHoles> &regions,
   }
 
   std::vector<geom::PolygonWithHoles> holes;
-  for (std::size_t placement_index = 0; placement_index < bin.state.placements.size();
-       ++placement_index) {
+  for (std::size_t placement_index = 0;
+       placement_index < bin.state.placements.size(); ++placement_index) {
     const auto &placement = bin.state.placements[placement_index];
     for (const auto &hole_ring : placement.polygon.holes) {
       if (hole_ring.size() < 3U) {
@@ -64,13 +66,14 @@ auto subtract_obstacle(std::vector<geom::PolygonWithHoles> &regions,
       for (const auto &zone : bin.exclusion_regions) {
         subtract_region(regions, zone);
       }
-      for (std::size_t other_index = 0; other_index < bin.state.placements.size();
-           ++other_index) {
+      for (std::size_t other_index = 0;
+           other_index < bin.state.placements.size(); ++other_index) {
         if (other_index == placement_index) {
           continue;
         }
-        subtract_region(regions,
-                        fill_polygon_holes(bin.state.placements[other_index].polygon));
+        subtract_region(
+            regions,
+            fill_polygon_holes(bin.state.placements[other_index].polygon));
       }
       holes.insert(holes.end(), regions.begin(), regions.end());
     }
@@ -88,20 +91,21 @@ auto fill_polygon_holes(const geom::PolygonWithHoles &polygon)
 auto make_working_bin(const BinInstance &instance) -> WorkingBin {
   WorkingBin bin;
   bin.state.bin_id = instance.expanded.expanded_bin_id;
+  bin.state.identity = instance.expanded.identity;
   bin.state.container = geom::normalize_polygon(instance.source->polygon);
   bin.state.container_geometry_revision = instance.source->geometry_revision;
   bin.state.start_corner = instance.source->start_corner;
   bin.state.utilization = summarize_bin(bin.state);
 
   for (const auto &zone : instance.source->exclusion_zones) {
-    bin.exclusion_regions.push_back(
-        geom::normalize_polygon(geom::PolygonWithHoles{.outer = zone.region.outer}));
+    bin.exclusion_regions.push_back(geom::normalize_polygon(
+        geom::PolygonWithHoles{.outer = zone.region.outer}));
   }
   return bin;
 }
 
-auto ensure_free_regions_cached(WorkingBin &bin, const ExecutionPolicy &execution)
-    -> void {
+auto ensure_free_regions_cached(WorkingBin &bin,
+                                const ExecutionPolicy &execution) -> void {
   if (bin.free_regions_valid &&
       bin.placements_at_cache == bin.state.placements.size()) {
     return;
@@ -132,13 +136,15 @@ auto ensure_free_regions_cached(WorkingBin &bin, const ExecutionPolicy &executio
   bin.free_regions_valid = true;
 }
 
-auto refresh_bin_state(WorkingBin &bin, const ExecutionPolicy &execution) -> void {
+auto refresh_bin_state(WorkingBin &bin, const ExecutionPolicy &execution)
+    -> void {
   bin.state.holes = compute_hole_regions(bin, execution);
   ++bin.state.hole_set_revision;
   bin.state.utilization = summarize_bin(bin.state);
 }
 
-auto rebuild_working_bin(WorkingBin &bin, const ExecutionPolicy &execution) -> void {
+auto rebuild_working_bin(WorkingBin &bin, const ExecutionPolicy &execution)
+    -> void {
   bin.state.occupied = {};
   bin.placement_bounds.clear();
   for (const auto &placement : bin.state.placements) {
@@ -146,8 +152,8 @@ auto rebuild_working_bin(WorkingBin &bin, const ExecutionPolicy &execution) -> v
     if (bin.state.occupied.regions.empty()) {
       bin.state.occupied = poly::make_merged_region(placement.polygon);
     } else {
-      bin.state.occupied =
-          poly::merge_polygon_into_region(bin.state.occupied, placement.polygon);
+      bin.state.occupied = poly::merge_polygon_into_region(bin.state.occupied,
+                                                           placement.polygon);
     }
   }
   ++bin.state.occupied_region_revision;
@@ -157,29 +163,32 @@ auto rebuild_working_bin(WorkingBin &bin, const ExecutionPolicy &execution) -> v
 
 auto remove_trace_entries_for_piece(std::vector<PlacementTraceEntry> &trace,
                                     const std::uint32_t piece_id,
-                                    const TrialStateRecorder *trial_recorder) -> void {
+                                    const TrialStateRecorder *trial_recorder)
+    -> void {
   for (std::size_t index = 0; index < trace.size();) {
     if (trace[index].piece_id != piece_id) {
       ++index;
       continue;
     }
-    if (trial_recorder != nullptr && trial_recorder->record_removed_trace_entry) {
+    if (trial_recorder != nullptr &&
+        trial_recorder->record_removed_trace_entry) {
       trial_recorder->record_removed_trace_entry(index, trace[index]);
     }
     trace.erase(trace.begin() + static_cast<std::ptrdiff_t>(index));
   }
 }
 
-auto remove_piece_from_bins(std::vector<WorkingBin> &bins, const std::uint32_t piece_id,
+auto remove_piece_from_bins(std::vector<WorkingBin> &bins,
+                            const std::uint32_t piece_id,
                             const ExecutionPolicy &execution,
                             const TrialStateRecorder *trial_recorder) -> bool {
   for (std::size_t bin_index = 0; bin_index < bins.size(); ++bin_index) {
     auto &bin = bins[bin_index];
-    const auto placement_it = std::find_if(
-        bin.state.placements.begin(), bin.state.placements.end(),
-        [&](const PlacedPiece &placement) {
-          return placement.placement.piece_id == piece_id;
-        });
+    const auto placement_it =
+        std::find_if(bin.state.placements.begin(), bin.state.placements.end(),
+                     [&](const PlacedPiece &placement) {
+                       return placement.placement.piece_id == piece_id;
+                     });
     if (placement_it == bin.state.placements.end()) {
       continue;
     }
@@ -188,12 +197,12 @@ auto remove_piece_from_bins(std::vector<WorkingBin> &bins, const std::uint32_t p
       trial_recorder->snapshot_bin(bin_index);
     }
 
-    const auto placement_index =
-        static_cast<std::size_t>(std::distance(bin.state.placements.begin(), placement_it));
+    const auto placement_index = static_cast<std::size_t>(
+        std::distance(bin.state.placements.begin(), placement_it));
     bin.state.placements.erase(placement_it);
     if (placement_index < bin.placement_bounds.size()) {
-      bin.placement_bounds.erase(
-          bin.placement_bounds.begin() + static_cast<std::ptrdiff_t>(placement_index));
+      bin.placement_bounds.erase(bin.placement_bounds.begin() +
+                                 static_cast<std::ptrdiff_t>(placement_index));
     }
     rebuild_working_bin(bin, execution);
     return true;
@@ -206,9 +215,10 @@ auto collect_recent_piece_ids(const std::vector<PlacementTraceEntry> &trace,
     -> std::vector<std::uint32_t> {
   std::vector<std::uint32_t> piece_ids;
   piece_ids.reserve(max_count);
-  for (auto it = trace.rbegin(); it != trace.rend() && piece_ids.size() < max_count;
-       ++it) {
-    if (std::find(piece_ids.begin(), piece_ids.end(), it->piece_id) == piece_ids.end()) {
+  for (auto it = trace.rbegin();
+       it != trace.rend() && piece_ids.size() < max_count; ++it) {
+    if (std::find(piece_ids.begin(), piece_ids.end(), it->piece_id) ==
+        piece_ids.end()) {
       piece_ids.push_back(it->piece_id);
     }
   }
@@ -217,7 +227,8 @@ auto collect_recent_piece_ids(const std::vector<PlacementTraceEntry> &trace,
 
 auto apply_candidate(WorkingBin &bin, const CandidatePlacement &candidate,
                      std::vector<PlacementTraceEntry> &trace,
-                     const bool opened_new_bin, const ExecutionPolicy &execution,
+                     const bool opened_new_bin,
+                     const ExecutionPolicy &execution,
                      const TrialStateRecorder *trial_recorder) -> void {
   bin.state.placements.push_back({
       .placement = candidate.placement,
@@ -225,6 +236,7 @@ auto apply_candidate(WorkingBin &bin, const CandidatePlacement &candidate,
       .resolved_rotation = candidate.resolved_rotation,
       .polygon = candidate.polygon,
       .source = candidate.source,
+      .nfp_accuracy = candidate.nfp_accuracy,
       .inside_hole = candidate.inside_hole,
       .hole_index = candidate.hole_index,
       .score = candidate.score,
@@ -249,12 +261,14 @@ auto apply_candidate(WorkingBin &bin, const CandidatePlacement &candidate,
       .translation = candidate.placement.translation,
       .mirrored = candidate.placement.mirrored,
       .source = candidate.source,
+      .nfp_accuracy = candidate.nfp_accuracy,
       .opened_new_bin = opened_new_bin,
       .inside_hole = candidate.inside_hole,
       .hole_index = candidate.hole_index,
       .score = candidate.score,
   });
-  if (trial_recorder != nullptr && trial_recorder->record_appended_trace_entry) {
+  if (trial_recorder != nullptr &&
+      trial_recorder->record_appended_trace_entry) {
     trial_recorder->record_appended_trace_entry();
   }
 }
@@ -269,6 +283,7 @@ auto build_layout(std::span<const WorkingBin> bins,
   for (const auto &bin : bins) {
     layout.bins.push_back({
         .bin_id = bin.state.bin_id,
+        .identity = bin.state.identity,
         .container = bin.state.container,
         .occupied = bin.state.occupied,
         .placements = bin.state.placements,
@@ -289,6 +304,7 @@ auto build_lightweight_layout(std::span<const WorkingBin> bins,
   for (const auto &bin : bins) {
     layout.bins.push_back({
         .bin_id = bin.state.bin_id,
+        .identity = bin.state.identity,
         .container = {},
         .occupied = {},
         .placements = bin.state.placements,

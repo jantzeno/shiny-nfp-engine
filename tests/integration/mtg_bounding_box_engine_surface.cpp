@@ -424,14 +424,8 @@ TEST_CASE("mtg ProgressObserver receives monotonic sequences",
     INFO("seq[" << i - 1 << "]=" << observed[i - 1].sequence << " seq[" << i
                 << "]=" << observed[i].sequence);
     REQUIRE(observed[i].sequence == observed[i - 1].sequence + 1U);
-    REQUIRE(observed[i].budget.operations_completed >=
-            observed[i - 1].budget.operations_completed);
   }
   REQUIRE(observed.front().sequence == 1U);
-  REQUIRE(observed.back().budget.operations_completed ==
-          solved.value().budget.operations_completed);
-  REQUIRE(observed.back().budget.operations_completed <=
-          request.execution.deterministic_attempts.max_attempts);
   REQUIRE(solved.value().stop_reason == StopReason::completed);
 }
 

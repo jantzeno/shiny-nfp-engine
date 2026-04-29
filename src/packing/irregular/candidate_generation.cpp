@@ -1,20 +1,20 @@
 #include "packing/irregular/candidate_generation.hpp"
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <cstdint>
 #include <limits>
 #include <span>
-#include <unordered_set>
+#include <tuple>
+#include <unordered_map>
 #include <vector>
 
 #include "cache/nfp_cache.hpp"
 #include "geometry/polygon.hpp"
 #include "logging/shiny_log.hpp"
 #include "nfp/ifp.hpp"
-#include "nfp/nfp.hpp"
 #include "packing/common.hpp"
+#include "packing/irregular/blocked_regions.hpp"
 #include "polygon_ops/boolean_ops.hpp"
 #include "predicates/point_location.hpp"
 #include "predicates/segment_intersection.hpp"
@@ -29,25 +29,9 @@ constexpr std::size_t kProtectedCandidatePrefixDivisor = 2U;
 constexpr std::size_t kCandidateStrategyCount =
     static_cast<std::size_t>(CandidateStrategy::count);
 
-struct CandidateAccumulator;
-
-using CandidateStrategyExecutor =
-    util::Status (*)(CandidateAccumulator &accumulator,
-                     const std::vector<geom::PolygonWithHoles> &domain,
-                     const std::vector<geom::PolygonWithHoles> &blocked);
-
-// O(1) duplicate-point detection for candidate accumulation.
-//
-// Replaces the previous O(N²) std::find_if scan over the points vector.
-// Coordinates are quantized to an integer lattice with cell width
-// kCandidateEpsilon; two candidates that map to the same (qx, qy, source)
-// triple are treated as duplicates. A point that lies within
-// epsilon/2 of a lattice boundary may fall into an adjacent cell (and
-// therefore not be deduped against a near-equal neighbour), but for NFP
-// outputs — which are deterministic — this is accurate enough and
-// preserves the historical "exact-match modulo float noise" semantics.
 struct CandidateAccumulator {
   std::vector<GeneratedCandidatePoint> points;
+
   struct KeyHash {
     auto operator()(const std::tuple<std::int64_t, std::int64_t, int> &key)
         const noexcept -> std::size_t {
@@ -57,17 +41,34 @@ struct CandidateAccumulator {
       return runtime::hash::combine(runtime::hash::combine(h1, h2), h3);
     }
   };
-  std::unordered_set<std::tuple<std::int64_t, std::int64_t, int>, KeyHash> seen;
+
+  std::unordered_map<std::tuple<std::int64_t, std::int64_t, int>, std::size_t,
+                     KeyHash>
+      seen;
 
   auto try_emplace(const geom::Point2 &translation,
-                   const place::PlacementCandidateSource source) -> void {
+                   const place::PlacementCandidateSource source,
+                   const cache::NfpCacheAccuracy nfp_accuracy) -> void {
     const auto qx = static_cast<std::int64_t>(
         std::llround(translation.x / kCandidateEpsilon));
     const auto qy = static_cast<std::int64_t>(
         std::llround(translation.y / kCandidateEpsilon));
-    if (seen.emplace(qx, qy, static_cast<int>(source)).second) {
-      points.push_back({.translation = translation, .source = source});
+    const auto key = std::make_tuple(qx, qy, static_cast<int>(source));
+    if (const auto it = seen.find(key); it != seen.end()) {
+      auto &existing = points[it->second];
+      if (existing.nfp_accuracy != cache::NfpCacheAccuracy::exact &&
+          nfp_accuracy == cache::NfpCacheAccuracy::exact) {
+        existing.nfp_accuracy = nfp_accuracy;
+      }
+      return;
     }
+
+    seen.emplace(key, points.size());
+    points.push_back({
+        .translation = translation,
+        .source = source,
+        .nfp_accuracy = nfp_accuracy,
+    });
   }
 };
 
@@ -143,26 +144,14 @@ candidate_point_priority(const geom::Point2 &translation,
   return selected;
 }
 
-auto append_unique_translation(CandidateAccumulator &accumulator,
-                               const geom::Point2 &translation,
-                               const place::PlacementCandidateSource source)
+auto append_unique_translation(
+    CandidateAccumulator &accumulator, const geom::Point2 &translation,
+    const place::PlacementCandidateSource source,
+    const cache::NfpCacheAccuracy nfp_accuracy = cache::NfpCacheAccuracy::exact)
     -> void {
-  accumulator.try_emplace(translation, source);
+  accumulator.try_emplace(translation, source, nfp_accuracy);
 }
 
-[[maybe_unused]] auto
-append_ring_vertices(CandidateAccumulator &accumulator,
-                     std::span<const geom::Point2> ring,
-                     const place::PlacementCandidateSource source) -> void {
-  for (const auto &point : ring) {
-    append_unique_translation(accumulator, point, source);
-  }
-}
-
-// Iterate every vertex (outer ring + each hole ring) of `polygon`, in
-// the order produced by `geom::for_each_ring`. Centralises the
-// "for each ring -> for each vertex" pattern shared by polygon-level
-// candidate accumulators.
 template <typename Fn>
 auto for_each_polygon_vertex(const geom::PolygonWithHoles &polygon, Fn &&fn)
     -> void {
@@ -175,21 +164,14 @@ auto for_each_polygon_vertex(const geom::PolygonWithHoles &polygon, Fn &&fn)
 
 auto append_polygon_vertices(CandidateAccumulator &accumulator,
                              const geom::PolygonWithHoles &polygon,
-                             const place::PlacementCandidateSource source)
+                             const place::PlacementCandidateSource source,
+                             const cache::NfpCacheAccuracy nfp_accuracy)
     -> void {
   for_each_polygon_vertex(polygon, [&](const geom::Point2 &vertex) {
-    append_unique_translation(accumulator, vertex, source);
+    append_unique_translation(accumulator, vertex, source, nfp_accuracy);
   });
 }
 
-// Build the feasible domain (IFP) for the moving piece.
-//   - Fast path: `compute_ifp` succeeds when container is an axis-aligned
-//     rectangle and returns the closed-form Inner-Fit Rectangle.
-//   - General path: `compute_ifp` returns one or more feasible regions for
-//     non-rectangular containers by subtracting obstacle NFPs from the
-//     container-bbox translation domain.
-//   - Final subtraction: remove the already-blocked regions contributed by
-//     placed obstacles.
 [[nodiscard]] auto
 build_base_domain(const geom::PolygonWithHoles &container,
                   std::span<const geom::PolygonWithHoles> exclusion_regions,
@@ -218,106 +200,6 @@ build_base_domain(const geom::PolygonWithHoles &container,
   return domain;
 }
 
-[[nodiscard]] auto
-obstacle_base_polygon(const CandidateGenerationObstacle &obstacle)
-    -> geom::PolygonWithHoles {
-  return geom::translate(obstacle.polygon, {.x = -obstacle.translation.x,
-                                            .y = -obstacle.translation.y});
-}
-
-[[nodiscard]] auto
-build_bbox_blocked_region_fallback(const geom::PolygonWithHoles &fixed_polygon,
-                                   const geom::PolygonWithHoles &moving_piece)
-    -> cache::NfpCacheValue {
-  const auto fixed_bounds = geom::compute_bounds(fixed_polygon);
-  const auto moving_bounds = geom::compute_bounds(moving_piece);
-  const geom::Box2 overlap_domain{
-      .min = {.x = fixed_bounds.min.x - moving_bounds.max.x,
-              .y = fixed_bounds.min.y - moving_bounds.max.y},
-      .max = {.x = fixed_bounds.max.x - moving_bounds.min.x,
-              .y = fixed_bounds.max.y - moving_bounds.min.y},
-  };
-  return {geom::box_to_polygon(overlap_domain)};
-}
-
-// For each placed piece (obstacle), retrieve or compute the NFP relative
-// to the moving piece, then translate it into world coordinates.
-//
-// IMPORTANT: NFP geometry is cached *un-translated* (in obstacle-local
-// frame) so the cache key only depends on geometry revisions and
-// rotations, not on world position. Multiple instances of the same piece
-// at different positions all share one cache entry.
-[[nodiscard]] auto
-build_blocked_regions(std::span<const CandidateGenerationObstacle> obstacles,
-                      const geom::PolygonWithHoles &moving_piece,
-                      const std::uint64_t moving_piece_revision,
-                      const geom::ResolvedRotation moving_rotation,
-                      cache::NfpCache *cache_ptr)
-    -> util::StatusOr<std::vector<geom::PolygonWithHoles>> {
-  std::vector<geom::PolygonWithHoles> blocked;
-
-  for (const auto &obstacle : obstacles) {
-    const auto fixed_polygon = obstacle_base_polygon(obstacle);
-    const auto fixed_revision = obstacle.geometry_revision != 0U
-                                    ? obstacle.geometry_revision
-                                    : geom::polygon_revision(fixed_polygon);
-    const auto key = cache::make_nfp_cache_key(
-        fixed_revision, moving_piece_revision, obstacle.rotation.degrees,
-        moving_rotation.degrees);
-
-    std::shared_ptr<const cache::NfpCacheValue> cached;
-    if (cache_ptr != nullptr) {
-      cached = cache_ptr->get(key);
-    }
-
-    const cache::NfpCacheValue *base_nfp_ptr = cached.get();
-    cache::NfpCacheValue computed_storage;
-    if (base_nfp_ptr == nullptr) {
-      auto computed = util::StatusOr<cache::NfpCacheValue>(
-          util::Status::computation_failed);
-      try {
-        computed = nfp::compute_nfp(fixed_polygon, moving_piece);
-      } catch (const std::exception &ex) {
-        SHINY_DEBUG("candidate_generation: build_blocked_regions NFP threw "
-                    "fixed_rev={} moving_rev={} fixed_rot={} moving_rot={} "
-                    "error={}",
-                    fixed_revision, moving_piece_revision,
-                    obstacle.rotation.degrees, moving_rotation.degrees,
-                    ex.what());
-      } catch (...) {
-        SHINY_DEBUG("candidate_generation: build_blocked_regions NFP threw "
-                    "fixed_rev={} moving_rev={} fixed_rot={} moving_rot={} "
-                    "with unknown exception",
-                    fixed_revision, moving_piece_revision,
-                    obstacle.rotation.degrees, moving_rotation.degrees);
-      }
-      if (!computed.ok()) {
-        SHINY_DEBUG("candidate_generation: build_blocked_regions falling "
-                    "back to bbox NFP status={} fixed_rev={} moving_rev={} "
-                    "fixed_rot={} moving_rot={}",
-                    util::status_name(computed.status()), fixed_revision,
-                    moving_piece_revision, obstacle.rotation.degrees,
-                    moving_rotation.degrees);
-        computed_storage =
-            build_bbox_blocked_region_fallback(fixed_polygon, moving_piece);
-      } else {
-        computed_storage = std::move(computed).value();
-      }
-      if (cache_ptr != nullptr) {
-        cache_ptr->put(key, computed_storage);
-      }
-      base_nfp_ptr = &computed_storage;
-    }
-
-    for (const auto &polygon : *base_nfp_ptr) {
-      blocked.push_back(geom::translate(
-          polygon, {.x = obstacle.translation.x, .y = obstacle.translation.y}));
-    }
-  }
-
-  return blocked;
-}
-
 [[nodiscard]] auto ring_edges(std::span<const geom::Point2> ring)
     -> std::vector<geom::Segment2> {
   std::vector<geom::Segment2> edges;
@@ -335,7 +217,8 @@ build_blocked_regions(std::span<const CandidateGenerationObstacle> obstacles,
 auto append_arrangement_intersections(
     CandidateAccumulator &accumulator,
     const std::vector<geom::PolygonWithHoles> &domain,
-    const std::vector<geom::PolygonWithHoles> &blocked) -> util::Status {
+    const std::vector<geom::PolygonWithHoles> &blocked,
+    const cache::NfpCacheAccuracy nfp_accuracy) -> util::Status {
   std::vector<geom::Segment2> domain_edges;
   for (const auto &polygon : domain) {
     const auto outer_edges = ring_edges(polygon.outer);
@@ -368,7 +251,7 @@ auto append_arrangement_intersections(
         for (std::size_t index = 0; index < contact.point_count; ++index) {
           append_unique_translation(
               accumulator, contact.points[index],
-              place::PlacementCandidateSource::perfect_slide);
+              place::PlacementCandidateSource::perfect_slide, nfp_accuracy);
         }
       }
     }
@@ -379,7 +262,8 @@ auto append_arrangement_intersections(
 auto append_points_inside_domain(
     CandidateAccumulator &accumulator,
     const std::vector<geom::PolygonWithHoles> &domain,
-    const std::vector<geom::PolygonWithHoles> &blocked) -> util::Status {
+    const std::vector<geom::PolygonWithHoles> &blocked,
+    const cache::NfpCacheAccuracy nfp_accuracy) -> util::Status {
   for (const auto &blocked_polygon : blocked) {
     for (const auto &vertex : blocked_polygon.outer) {
       const auto inside_domain =
@@ -389,8 +273,8 @@ auto append_points_inside_domain(
           });
       if (inside_domain) {
         append_unique_translation(
-            accumulator, vertex,
-            place::PlacementCandidateSource::perfect_slide);
+            accumulator, vertex, place::PlacementCandidateSource::perfect_slide,
+            nfp_accuracy);
       }
     }
   }
@@ -420,11 +304,12 @@ auto append_boundary_feasible_vertices(
     CandidateAccumulator &accumulator,
     const std::vector<geom::PolygonWithHoles> &domain,
     const std::vector<geom::PolygonWithHoles> &blocked,
-    const place::PlacementCandidateSource source) -> util::Status {
+    const place::PlacementCandidateSource source,
+    const cache::NfpCacheAccuracy nfp_accuracy) -> util::Status {
   for (const auto &region : domain) {
     for_each_polygon_vertex(region, [&](const geom::Point2 &vertex) {
       if (point_is_feasible(vertex, domain, blocked)) {
-        append_unique_translation(accumulator, vertex, source);
+        append_unique_translation(accumulator, vertex, source, nfp_accuracy);
       }
     });
   }
@@ -435,7 +320,21 @@ auto append_feasible_region_vertices(
     CandidateAccumulator &accumulator,
     const std::vector<geom::PolygonWithHoles> &domain,
     const std::vector<geom::PolygonWithHoles> &blocked,
-    const place::PlacementCandidateSource source) -> util::Status {
+    const place::PlacementCandidateSource source,
+    const cache::NfpCacheAccuracy nfp_accuracy) -> util::Status {
+  if (nfp_accuracy == cache::NfpCacheAccuracy::conservative_bbox_fallback) {
+    for (const auto &region : domain) {
+      append_polygon_vertices(accumulator, region, source, nfp_accuracy);
+    }
+    const auto inside_status =
+        append_points_inside_domain(accumulator, domain, blocked, nfp_accuracy);
+    if (inside_status != util::Status::ok) {
+      return inside_status;
+    }
+    return append_boundary_feasible_vertices(accumulator, domain, {}, source,
+                                             nfp_accuracy);
+  }
+
   std::vector<geom::PolygonWithHoles> feasible = domain;
   for (const auto &blocked_polygon : blocked) {
     const auto subtract_status =
@@ -445,10 +344,10 @@ auto append_feasible_region_vertices(
     }
   }
   for (const auto &region : feasible) {
-    append_polygon_vertices(accumulator, region, source);
+    append_polygon_vertices(accumulator, region, source, nfp_accuracy);
   }
-  return append_boundary_feasible_vertices(accumulator, domain, blocked,
-                                           source);
+  return append_boundary_feasible_vertices(accumulator, domain, blocked, source,
+                                           nfp_accuracy);
 }
 
 auto append_anchor_strategy(CandidateAccumulator &accumulator,
@@ -457,59 +356,109 @@ auto append_anchor_strategy(CandidateAccumulator &accumulator,
     -> util::Status {
   return append_feasible_region_vertices(
       accumulator, domain, blocked,
-      place::PlacementCandidateSource::constructive_boundary);
+      place::PlacementCandidateSource::constructive_boundary,
+      cache::NfpCacheAccuracy::exact);
 }
 
 auto append_arrangement_strategy(
     CandidateAccumulator &accumulator,
     const std::vector<geom::PolygonWithHoles> &domain,
-    const std::vector<geom::PolygonWithHoles> &blocked) -> util::Status {
+    const std::vector<geom::PolygonWithHoles> &blocked,
+    const cache::NfpCacheAccuracy nfp_accuracy) -> util::Status {
+  if (nfp_accuracy == cache::NfpCacheAccuracy::conservative_bbox_fallback) {
+    const auto perfect_status = append_feasible_region_vertices(
+        accumulator, domain, blocked,
+        place::PlacementCandidateSource::perfect_slide, nfp_accuracy);
+    if (perfect_status != util::Status::ok) {
+      return perfect_status;
+    }
+    return append_arrangement_intersections(accumulator, domain, blocked,
+                                            nfp_accuracy);
+  }
+
   for (const auto &region : domain) {
     append_polygon_vertices(accumulator, region,
-                            place::PlacementCandidateSource::perfect_slide);
+                            place::PlacementCandidateSource::perfect_slide,
+                            nfp_accuracy);
   }
   const auto inside_status =
-      append_points_inside_domain(accumulator, domain, blocked);
+      append_points_inside_domain(accumulator, domain, blocked, nfp_accuracy);
   if (inside_status != util::Status::ok) {
     return inside_status;
   }
-  return append_arrangement_intersections(accumulator, domain, blocked);
+  return append_arrangement_intersections(accumulator, domain, blocked,
+                                          nfp_accuracy);
 }
 
 auto append_perfect_strategy(CandidateAccumulator &accumulator,
                              const std::vector<geom::PolygonWithHoles> &domain,
-                             const std::vector<geom::PolygonWithHoles> &blocked)
+                             const std::vector<geom::PolygonWithHoles> &blocked,
+                             const cache::NfpCacheAccuracy nfp_accuracy)
     -> util::Status {
   return append_feasible_region_vertices(
       accumulator, domain, blocked,
-      place::PlacementCandidateSource::perfect_fit);
+      place::PlacementCandidateSource::perfect_fit, nfp_accuracy);
 }
 
 auto append_hybrid_strategy(CandidateAccumulator &accumulator,
                             const std::vector<geom::PolygonWithHoles> &domain,
-                            const std::vector<geom::PolygonWithHoles> &blocked)
+                            const std::vector<geom::PolygonWithHoles> &blocked,
+                            const cache::NfpCacheAccuracy nfp_accuracy)
     -> util::Status {
   const auto arrangement_status =
-      append_arrangement_strategy(accumulator, domain, blocked);
+      append_arrangement_strategy(accumulator, domain, blocked, nfp_accuracy);
   if (arrangement_status != util::Status::ok) {
     return arrangement_status;
   }
-  return append_perfect_strategy(accumulator, domain, blocked);
+  return append_perfect_strategy(accumulator, domain, blocked, nfp_accuracy);
 }
 
-const std::array<CandidateStrategyExecutor, kCandidateStrategyCount>
-    kCandidateStrategyExecutors{
-        &append_anchor_strategy,
-        &append_perfect_strategy,
-        &append_arrangement_strategy,
-        &append_hybrid_strategy,
-    };
+auto run_strategy(CandidateAccumulator &accumulator,
+                  const CandidateStrategy strategy,
+                  const std::vector<geom::PolygonWithHoles> &domain,
+                  const std::vector<geom::PolygonWithHoles> &blocked,
+                  const cache::NfpCacheAccuracy nfp_accuracy) -> util::Status {
+  switch (strategy) {
+  case CandidateStrategy::anchor_vertex:
+    return append_anchor_strategy(accumulator, domain, blocked);
+  case CandidateStrategy::nfp_perfect:
+    return append_perfect_strategy(accumulator, domain, blocked, nfp_accuracy);
+  case CandidateStrategy::nfp_arrangement:
+    return append_arrangement_strategy(accumulator, domain, blocked,
+                                       nfp_accuracy);
+  case CandidateStrategy::nfp_hybrid:
+    return append_hybrid_strategy(accumulator, domain, blocked, nfp_accuracy);
+  case CandidateStrategy::count:
+    break;
+  }
+  return util::Status::invalid_input;
+}
 
-static_assert(kCandidateStrategyCount == 4U);
-static_assert(strategy_index(CandidateStrategy::anchor_vertex) == 0U);
-static_assert(strategy_index(CandidateStrategy::nfp_perfect) == 1U);
-static_assert(strategy_index(CandidateStrategy::nfp_arrangement) == 2U);
-static_assert(strategy_index(CandidateStrategy::nfp_hybrid) == 3U);
+auto populate_candidate_generation_diagnostics(
+    const std::vector<GeneratedCandidatePoint> &points,
+    CandidateGenerationDiagnostics &diagnostics) -> void {
+  for (const auto &point : points) {
+    switch (point.source) {
+    case place::PlacementCandidateSource::perfect_fit:
+      ++diagnostics.perfect_fit_candidates;
+      break;
+    case place::PlacementCandidateSource::perfect_slide:
+      ++diagnostics.perfect_slide_candidates;
+      break;
+    case place::PlacementCandidateSource::constructive_boundary:
+    case place::PlacementCandidateSource::bin_boundary:
+    case place::PlacementCandidateSource::hole_boundary:
+    case place::PlacementCandidateSource::concave_boundary:
+      ++diagnostics.constructive_boundary_candidates;
+      break;
+    }
+
+    if (point.nfp_accuracy ==
+        cache::NfpCacheAccuracy::conservative_bbox_fallback) {
+      ++diagnostics.conservative_bbox_fallback_candidates;
+    }
+  }
+}
 
 } // namespace
 
@@ -529,6 +478,10 @@ auto limit_candidate_points(std::vector<GeneratedCandidatePoint> &points,
               }
               if (!almost_equal(lhs_priority.second, rhs_priority.second)) {
                 return lhs_priority.second < rhs_priority.second;
+              }
+              if (lhs.nfp_accuracy != rhs.nfp_accuracy) {
+                return static_cast<int>(lhs.nfp_accuracy) <
+                       static_cast<int>(rhs.nfp_accuracy);
               }
               return static_cast<int>(lhs.source) <
                      static_cast<int>(rhs.source);
@@ -576,33 +529,25 @@ auto limit_candidate_points(std::vector<GeneratedCandidatePoint> &points,
 
 // NFP-driven candidate point generation for piece placement.
 //
-// Two strategies (and their hybrid) implement the candidate-point
-// approaches from the literature:
+// Candidate strategies deliberately separate "cheap constructive anchors" from
+// "obstacle-aware NFP geometry":
 //
-//   * nfp_perfect    — "perfect-fit" candidates: vertices of the feasible
-//     region (IFP minus union of NFPs of placed pieces). Each such vertex
-//     is a position where the moving piece touches AT LEAST TWO existing
-//     constraints (container boundary and/or other pieces) — i.e. a
-//     locally-tight placement. Reference: 2DNesting `perfectCandidate
-//     Points()`.
+//   * anchor_vertex  — uses container/exclusion feasible-domain vertices only
+//     and skips obstacle NFP generation. Placement search can still add legacy
+//     anchors and skyline points on top of this domain-only seed set.
 //
-//   * nfp_arrangement — "arrangement" candidates: every vertex of an NFP
-//     plus every intersection point between an NFP boundary and the IFP
-//     boundary. Larger candidate set, includes single-edge slides as
-//     well as perfect fits. Reference: 2DNesting `arrangement
-//     CandidatePoints()`.
+//   * nfp_perfect    — uses feasible-region vertices after subtracting exact
+//     obstacle NFPs when available. If exact NFP fails, conservative bbox
+//     fallback geometry is cached and labelled explicitly as fallback.
 //
-//   * nfp_hybrid     — union of the above (with vertex-position-only
-//     dedup; same coordinate from different sources is intentionally
-//     kept twice so downstream evaluators can prefer perfect-fit).
+//   * nfp_arrangement — extends `nfp_perfect` with blocked-vertex and boundary
+//     intersection candidates to capture single-edge slide placements.
 //
-//   * anchor_vertex  — emits boundary-style candidates from the same
-//     feasible-domain model used by the NFP strategies (IFP/domain minus
-//     blocked NFP regions), labelled as constructive-boundary points. The
-//     constructive packer still layers its legacy anchor enumeration on top.
-// The constructive packer later orders these candidates and caps them via
-// `limit_candidate_points`, which preserves a protected high-priority prefix
-// and applies a half-normal weighted tail sample when truncation is needed.
+//   * nfp_hybrid     — unions the robust constructive anchors used by the
+//     packer with the exact/fallback-labelled NFP candidates above.
+//
+// Exact NFP cache entries and conservative bbox fallback entries use separate
+// cache keys so a fallback value is never returned as if it were exact.
 auto generate_nfp_candidate_points(
     const geom::PolygonWithHoles &container,
     const std::span<const geom::PolygonWithHoles> exclusion_regions,
@@ -610,35 +555,51 @@ auto generate_nfp_candidate_points(
     const geom::PolygonWithHoles &moving_piece,
     const std::uint64_t moving_piece_revision,
     const geom::ResolvedRotation moving_rotation,
-    const CandidateStrategy strategy, cache::NfpCache *cache)
+    const CandidateStrategy strategy, cache::NfpCache *cache,
+    CandidateGenerationDiagnostics *diagnostics)
     -> util::StatusOr<std::vector<GeneratedCandidatePoint>> {
   try {
     const auto strategy_id = strategy_index(strategy);
-    if (strategy_id >= kCandidateStrategyExecutors.size()) {
+    if (strategy_id >= kCandidateStrategyCount) {
       return util::Status::invalid_input;
+    }
+    if (diagnostics != nullptr) {
+      *diagnostics = {};
+      diagnostics->strategy = strategy;
     }
 
     auto domain = build_base_domain(container, exclusion_regions, moving_piece);
     if (!domain.ok()) {
       return domain.status();
     }
-    auto blocked_or = build_blocked_regions(
-        obstacles, moving_piece, moving_piece_revision, moving_rotation, cache);
-    if (!blocked_or.ok()) {
-      return blocked_or.status();
+
+    BlockedRegions blocked;
+    if (strategy != CandidateStrategy::anchor_vertex) {
+      auto blocked_or =
+          build_blocked_regions(obstacles, moving_piece, moving_piece_revision,
+                                moving_rotation, cache, diagnostics);
+      if (!blocked_or.ok()) {
+        return blocked_or.status();
+      }
+      blocked = std::move(blocked_or).value();
     }
-    const auto &blocked = blocked_or.value();
 
     CandidateAccumulator accumulator;
-    const auto strategy_status = kCandidateStrategyExecutors[strategy_id](
-        accumulator, domain.value(), blocked);
+    const auto strategy_status =
+        run_strategy(accumulator, strategy, domain.value(), blocked.polygons,
+                     blocked.accuracy);
     if (strategy_status != util::Status::ok) {
       SHINY_DEBUG("candidate_generation: strategy execution failed status={} "
                   "strategy={} domain={} blocked={}",
                   util::status_name(strategy_status),
                   static_cast<int>(strategy), domain.value().size(),
-                  blocked.size());
+                  blocked.polygons.size());
       return strategy_status;
+    }
+
+    if (diagnostics != nullptr) {
+      populate_candidate_generation_diagnostics(accumulator.points,
+                                                *diagnostics);
     }
 
     return std::move(accumulator.points);

@@ -206,6 +206,105 @@ TEST_CASE("strip optimizer improves a constructive seed on a strip-style case",
   REQUIRE(optimized.best_solution.metrics.placed_parts == 3U);
 }
 
+TEST_CASE("strip optimizer reports configurable phase and separator replay",
+          "[search][strip-optimizer]") {
+  auto request = strip_case_request();
+  request.execution.production.max_iterations = 6;
+  request.execution.production.polishing_passes = 2;
+  request.execution.production.strip_exploration_ratio = 0.5;
+  request.execution.production.separator_worker_count = 2;
+  request.execution.production.separator_max_iterations = 24;
+  request.execution.production.separator_iter_no_improvement_limit = 5;
+  request.execution.production.separator_strike_limit = 2;
+  request.execution.production.separator_global_samples = 20;
+  request.execution.production.separator_focused_samples = 10;
+  request.execution.production.separator_coordinate_descent_iterations = 12;
+  request.execution.production.infeasible_pool_capacity = 2;
+  request.execution.production.infeasible_rollback_after = 1;
+
+  auto normalized = shiny::nesting::normalize_request(request);
+  REQUIRE(normalized.ok());
+
+  SequentialBacktrackPacker packer;
+  const auto seed = packer.solve(normalized.value(), SolveControl{.random_seed = 3});
+  REQUIRE(seed.ok());
+
+  shiny::nesting::runtime::Stopwatch stopwatch;
+  const shiny::nesting::runtime::TimeBudget budget(0);
+  shiny::nesting::search::StripOptimizer optimizer;
+  const auto optimized = optimizer.optimize(
+      normalized.value(), SolveControl{.random_seed = 7}, budget, stopwatch,
+      SolutionPoolEntry{
+          .order = {0U, 1U, 2U},
+          .metrics = shiny::nesting::search::metrics_for_layout(seed.value().layout),
+          .result = seed.value(),
+      },
+      request.execution.production);
+
+  REQUIRE(optimized.phase_metrics.exploration_iteration_budget > 0U);
+  REQUIRE(optimized.phase_metrics.compression_iteration_budget > 0U);
+  REQUIRE(optimized.phase_metrics.exploration_iterations ==
+          optimized.exploration_iterations);
+  REQUIRE(optimized.phase_metrics.compression_iterations ==
+          optimized.compression_iterations);
+  REQUIRE(optimized.phase_metrics.accepted_moves == optimized.accepted_moves);
+  REQUIRE(optimized.separator_metrics.worker_count == 2U);
+  REQUIRE(optimized.separator_metrics.max_iterations == 24U);
+  REQUIRE(optimized.separator_metrics.iter_no_improvement_limit == 5U);
+  REQUIRE(optimized.separator_metrics.strike_limit == 2U);
+  REQUIRE(optimized.separator_metrics.global_samples == 20U);
+  REQUIRE(optimized.separator_metrics.focused_samples == 10U);
+  REQUIRE(optimized.separator_metrics.coordinate_descent_iterations == 12U);
+}
+
+TEST_CASE("strip optimizer is deterministic for one worker and bounded for multiple",
+          "[search][strip-optimizer][deterministic][workers]") {
+  auto request = strip_case_request();
+  request.execution.production.max_iterations = 5;
+  request.execution.production.separator_worker_count = 1;
+  auto normalized = shiny::nesting::normalize_request(request);
+  REQUIRE(normalized.ok());
+
+  SequentialBacktrackPacker packer;
+  const auto seed = packer.solve(normalized.value(), SolveControl{.random_seed = 3});
+  REQUIRE(seed.ok());
+  const auto seed_entry = SolutionPoolEntry{
+      .order = {0U, 1U, 2U},
+      .metrics = shiny::nesting::search::metrics_for_layout(seed.value().layout),
+      .result = seed.value(),
+  };
+
+  shiny::nesting::search::StripOptimizer optimizer;
+  shiny::nesting::runtime::Stopwatch first_stopwatch;
+  const shiny::nesting::runtime::TimeBudget budget(0);
+  const auto first = optimizer.optimize(
+      normalized.value(), SolveControl{.random_seed = 13}, budget,
+      first_stopwatch, seed_entry, request.execution.production);
+
+  shiny::nesting::runtime::Stopwatch second_stopwatch;
+  const auto second = optimizer.optimize(
+      normalized.value(), SolveControl{.random_seed = 13}, budget,
+      second_stopwatch, seed_entry, request.execution.production);
+
+  REQUIRE(first.best_solution.metrics.placed_parts ==
+          second.best_solution.metrics.placed_parts);
+  REQUIRE(first.best_solution.metrics.bin_count ==
+          second.best_solution.metrics.bin_count);
+  REQUIRE(first.best_solution.metrics.strip_length ==
+          Catch::Approx(second.best_solution.metrics.strip_length));
+
+  request.execution.production.separator_worker_count = 2;
+  normalized = shiny::nesting::normalize_request(request);
+  REQUIRE(normalized.ok());
+  shiny::nesting::runtime::Stopwatch multi_stopwatch;
+  const auto multi = optimizer.optimize(
+      normalized.value(), SolveControl{.random_seed = 13}, budget,
+      multi_stopwatch, seed_entry, request.execution.production);
+  REQUIRE(multi.separator_metrics.worker_count == 2U);
+  REQUIRE(multi.best_solution.metrics.placed_parts >=
+          first.best_solution.metrics.placed_parts);
+}
+
 TEST_CASE("irregular production preserves or improves the constructive strip seed",
           "[solve][production][strip]") {
   auto constructive_request = strip_case_request();

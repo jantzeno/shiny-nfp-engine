@@ -39,14 +39,15 @@ namespace {
 
 auto emit_improvement(const SolveControl &control, SearchReplay &replay,
                       const std::size_t sequence, const std::size_t iteration,
-                      const SolutionPoolEntry &best, const BudgetState &budget,
+                      const SolutionPoolEntry &best,
                       const double goal_strip_length,
                       const detail::NeighborhoodSearch op) -> void {
   replay.progress.push_back({
       .iteration = iteration,
       .improved = true,
       .layout = best.result.layout,
-      .budget = budget,
+      .layout_valid = best.result.layout_valid(),
+      .validation_issue_count = best.result.validation.issues.size(),
   });
   if (!control.on_progress) {
     return;
@@ -57,20 +58,20 @@ auto emit_improvement(const SolveControl &control, SearchReplay &replay,
       .total_requested_parts = best.result.total_parts,
       .refinement_steps_completed = iteration,
       .layout = best.result.layout,
-      .budget = budget,
       .stop_reason = StopReason::none,
       .phase = ProgressPhase::refinement,
       .phase_detail =
           std::format("GDRR iter {} improved via {} (goal {:.3f})", iteration,
                       detail::operator_label(op), goal_strip_length),
       .utilization_percent = best.metrics.utilization * 100.0,
+      .layout_valid = best.result.layout_valid(),
+      .validation_issue_count = best.result.validation.issues.size(),
       .improved = true,
   });
 }
 
 auto emit_initial_progress(const SolveControl &control,
                            const SolutionPoolEntry &best,
-                           const BudgetState &budget,
                            const double goal_strip_length) -> void {
   if (!control.on_progress) {
     return;
@@ -81,12 +82,13 @@ auto emit_initial_progress(const SolveControl &control,
       .total_requested_parts = best.result.total_parts,
       .refinement_steps_completed = 0U,
       .layout = best.result.layout,
-      .budget = budget,
       .stop_reason = StopReason::none,
       .phase = ProgressPhase::refinement,
       .phase_detail =
           std::format("GDRR initial seed (goal {:.3f})", goal_strip_length),
       .utilization_percent = best.metrics.utilization * 100.0,
+      .layout_valid = best.result.layout_valid(),
+      .validation_issue_count = best.result.validation.issues.size(),
       .improved = true,
   });
 }
@@ -94,7 +96,6 @@ auto emit_initial_progress(const SolveControl &control,
 auto emit_iteration_progress(const SolveControl &control,
                              const std::size_t iteration,
                              const SolutionPoolEntry &current,
-                             const BudgetState &budget,
                              const double goal_strip_length,
                              const detail::NeighborhoodSearch op,
                              const bool accepted) -> void {
@@ -107,7 +108,6 @@ auto emit_iteration_progress(const SolveControl &control,
       .total_requested_parts = current.result.total_parts,
       .refinement_steps_completed = iteration,
       .layout = current.result.layout,
-      .budget = budget,
       .stop_reason = StopReason::none,
       .phase = ProgressPhase::refinement,
       .phase_detail =
@@ -115,6 +115,8 @@ auto emit_iteration_progress(const SolveControl &control,
                       accepted ? "accepted" : "rejected",
                       detail::operator_label(op), goal_strip_length),
       .utilization_percent = current.metrics.utilization * 100.0,
+      .layout_valid = current.result.layout_valid(),
+      .validation_issue_count = current.result.validation.issues.size(),
       .improved = false,
   });
 }
@@ -149,8 +151,7 @@ auto GdrrSearch::solve(const NormalizedRequest &request,
 
   SearchReplay replay{.optimizer = OptimizerKind::gdrr};
   if (request.expanded_pieces.empty()) {
-    return detail::driver_empty_result(StrategyKind::gdrr, std::move(replay),
-                                       control, time_budget, stopwatch);
+    return detail::driver_empty_result(StrategyKind::gdrr, std::move(replay));
   }
 
   detail::OrderEvaluator evaluator(request, control, time_budget, stopwatch);
@@ -181,10 +182,8 @@ auto GdrrSearch::solve(const NormalizedRequest &request,
       .iteration = 0,
       .improved = true,
       .layout = best.result.layout,
-      .budget = evaluator.make_budget(0),
   });
-  emit_initial_progress(control, best, evaluator.make_budget(0),
-                        goal_strip_length);
+  emit_initial_progress(control, best, goal_strip_length);
 
   for (std::size_t iteration = 0; iteration < operation_limit; ++iteration) {
     if (evaluator.interrupted()) {
@@ -197,7 +196,7 @@ auto GdrrSearch::solve(const NormalizedRequest &request,
                         ? detail::NeighborhoodSearch::area_destroy_repair
                         : detail::random_operator(rng, false);
     const auto move = detail::propose_move(
-        current.order, current.forced_rotations, request,
+        current.order, current.piece_indexed_forced_rotations, request,
         evaluator.piece_areas(), evaluator.piece_rotation_counts(), rng, op,
         std::max<std::size_t>(1U, config.ruin_swap_count + pressure));
     if (!move.changed) {
@@ -233,12 +232,10 @@ auto GdrrSearch::solve(const NormalizedRequest &request,
       best = candidate;
       ++sequence;
       emit_improvement(control, replay, sequence, operations_completed, best,
-                       evaluator.make_budget(operations_completed),
                        goal_strip_length, op);
     }
 
     emit_iteration_progress(control, operations_completed, current,
-                            evaluator.make_budget(operations_completed),
                             goal_strip_length, op, accepted);
 
     goal_strip_length = std::max(goal_strip_length * config.goal_decay, 0.0);
@@ -255,7 +252,6 @@ auto GdrrSearch::solve(const NormalizedRequest &request,
 
   NestingResult result = best.result;
   result.strategy = StrategyKind::gdrr;
-  result.budget = evaluator.make_budget(operations_completed);
   result.stop_reason = detail::driver_stop_reason(
       control, time_budget, stopwatch, hit_operation_limit);
   result.search = std::move(replay);

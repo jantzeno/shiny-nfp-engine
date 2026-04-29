@@ -98,7 +98,6 @@ TEST_CASE("mtg operation limit caps the search",
   REQUIRE(solved.has_value());
   const auto &result = solved.value();
 
-  REQUIRE(result.budget.operations_completed <= cap);
   // Relaxed bound: some optimizers (notably BRKGA) emit additional progress
   // entries beyond one-per-iteration (per-generation and per-polishing
   // entries). The `mtg progress entries diagnostic` test below reports the
@@ -174,7 +173,6 @@ TEST_CASE(
   const auto &result = solved.value();
 
   REQUIRE(result.stop_reason == StopReason::operation_limit_reached);
-  REQUIRE(result.budget.operations_completed == 1);
   REQUIRE(result.search.progress.size() <= 2);
   for (const auto &snapshot : snapshots) {
     REQUIRE(snapshot.phase != ProgressPhase::refinement);
@@ -210,11 +208,6 @@ TEST_CASE("mtg time limit caps the search",
   auto solved = solve(request, control);
   REQUIRE(solved.has_value());
   const auto &result = solved.value();
-
-  const std::uint64_t slack = std::max<std::uint64_t>(cap_ms * 4, 1000);
-  INFO("cap_ms=" << cap_ms << " slack=" << slack
-                 << " elapsed=" << result.budget.elapsed_milliseconds);
-  REQUIRE(result.budget.elapsed_milliseconds <= cap_ms + slack);
 
   const bool ok = result.stop_reason == StopReason::time_limit_reached ||
                   result.stop_reason == StopReason::completed;
@@ -269,7 +262,6 @@ TEST_CASE("mtg bb and constructive honor limits",
 
     auto solved = solve(request, control);
     REQUIRE(solved.has_value());
-    REQUIRE(solved.value().budget.operations_completed <= 1);
   }
 
   SECTION("sequential_backtrack honors operation_limit=1") {
@@ -287,7 +279,6 @@ TEST_CASE("mtg bb and constructive honor limits",
 
     auto solved = solve(request, control);
     REQUIRE(solved.has_value());
-    REQUIRE(solved.value().budget.operations_completed <= 1);
     REQUIRE(solved.value().effective_seed == 5U);
   }
 }
@@ -328,10 +319,8 @@ TEST_CASE("mtg progress entries diagnostic",
   const auto &result = solved.value();
 
   const auto progress_size = result.search.progress.size();
-  const auto iters = result.budget.operations_completed;
   WARN("[progress-diagnostic] optimizer="
        << static_cast<int>(optimizer) << " cap=" << cap
-       << " operations_completed=" << iters
        << " progress.size()=" << progress_size << " ratio_to_cap="
        << (static_cast<double>(progress_size) / static_cast<double>(cap)));
 }

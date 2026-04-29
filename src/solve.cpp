@@ -23,11 +23,10 @@
 #include "search/lahc_search.hpp"
 #include "search/simulated_annealing.hpp"
 #include "search/strategy_registry.hpp"
+#include "validation/layout_validation.hpp"
 
 namespace shiny::nesting {
 namespace {
-
-constexpr double kConstructiveOverlapAreaEpsilon = 1e-6;
 
 [[nodiscard]] auto compute_efficiency_percent(const pack::Layout &layout)
     -> double {
@@ -178,96 +177,6 @@ private:
   std::optional<std::uint64_t> winning_seed_;
 };
 
-[[nodiscard]] auto exact_overlap_area(const geom::PolygonWithHoles &lhs,
-                                      const geom::PolygonWithHoles &rhs)
-    -> double {
-  return geom::polygon_area_sum(poly::intersection_polygons(lhs, rhs));
-}
-
-[[nodiscard]] auto
-source_bin_id_for_expanded_bin(const NormalizedRequest &request,
-                               const std::uint32_t expanded_bin_id)
-    -> std::optional<std::uint32_t> {
-  for (const auto &expanded_bin : request.expanded_bins) {
-    if (expanded_bin.expanded_bin_id == expanded_bin_id) {
-      return expanded_bin.source_bin_id;
-    }
-  }
-  return std::nullopt;
-}
-
-[[nodiscard]] auto
-source_bin_for_expanded_bin(const NormalizedRequest &request,
-                            const std::uint32_t expanded_bin_id)
-    -> const BinRequest * {
-  const auto source_bin_id =
-      source_bin_id_for_expanded_bin(request, expanded_bin_id);
-  if (!source_bin_id.has_value()) {
-    return nullptr;
-  }
-  const auto &bins = request.request.bins;
-  const auto it = std::find_if(bins.begin(), bins.end(),
-                               [source_bin_id](const BinRequest &bin) {
-                                 return bin.bin_id == *source_bin_id;
-                               });
-  return it == bins.end() ? nullptr : &*it;
-}
-
-[[nodiscard]] auto
-overlaps_configured_exclusion_zone(const NormalizedRequest &request,
-                                   const std::uint32_t expanded_bin_id,
-                                   const pack::PlacedPiece &placed) -> bool {
-  const auto *source_bin =
-      source_bin_for_expanded_bin(request, expanded_bin_id);
-  if (source_bin == nullptr || source_bin->exclusion_zones.empty()) {
-    return false;
-  }
-
-  const auto placed_bounds = pack::compute_bounds(placed.polygon);
-  for (const auto &zone : source_bin->exclusion_zones) {
-    if (pack::overlaps_exclusion_zone(placed.polygon, placed_bounds, zone)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-[[nodiscard]] auto
-has_constructive_geometry_violation(const NormalizedRequest &request,
-                                    const NestingResult &result) -> bool {
-  for (const auto &bin : result.layout.bins) {
-    for (const auto &placed : bin.placements) {
-      if (overlaps_configured_exclusion_zone(request, bin.bin_id, placed)) {
-        return true;
-      }
-    }
-
-    for (std::size_t lhs_index = 0; lhs_index < bin.placements.size();
-         ++lhs_index) {
-      const auto &lhs = bin.placements[lhs_index];
-      const auto lhs_bounds = pack::compute_bounds(lhs.polygon);
-      for (std::size_t rhs_index = lhs_index + 1;
-           rhs_index < bin.placements.size(); ++rhs_index) {
-        const auto &rhs = bin.placements[rhs_index];
-        const auto rhs_bounds = pack::compute_bounds(rhs.polygon);
-        if (pack::boxes_violate_spacing(
-                lhs_bounds, rhs_bounds,
-                request.request.execution.part_spacing)) {
-          return true;
-        }
-        if (!pack::boxes_overlap(lhs_bounds, rhs_bounds)) {
-          continue;
-        }
-        if (exact_overlap_area(lhs.polygon, rhs.polygon) >
-            kConstructiveOverlapAreaEpsilon) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
 [[nodiscard]] auto placed_parts(const NestingResult &result) -> std::size_t {
   return result.layout.placement_trace.size();
 }
@@ -279,7 +188,7 @@ has_constructive_geometry_violation(const NormalizedRequest &request,
   const bool baseline_complete = placed_parts(baseline) >= baseline.total_parts;
   const bool baseline_has_geometry_violation =
       baseline_complete &&
-      has_constructive_geometry_violation(request, baseline);
+      validation::layout_has_geometry_violation(request, baseline);
   if ((baseline_complete && !baseline_has_geometry_violation) ||
       control.cancellation.stop_requested() || time_budget.expired(stopwatch)) {
     return std::nullopt;
@@ -296,9 +205,7 @@ has_constructive_geometry_violation(const NormalizedRequest &request,
            time_budget.expired(stopwatch);
   });
   if (fallback_result.interrupted ||
-      (fallback_result.layout.placement_trace.size() <=
-           placed_parts(baseline) &&
-       !baseline_has_geometry_violation)) {
+      fallback_result.layout.placement_trace.size() <= placed_parts(baseline)) {
     return std::nullopt;
   }
 
@@ -307,17 +214,15 @@ has_constructive_geometry_violation(const NormalizedRequest &request,
       .layout = fallback_result.layout,
       .total_parts = baseline.total_parts,
       .effective_seed = baseline.effective_seed,
-      .budget = baseline.budget,
       .stop_reason = baseline.stop_reason,
       .search = baseline.search,
   };
-  candidate.budget.elapsed_milliseconds = stopwatch.elapsed_milliseconds();
-  if (candidate.layout.unplaced_piece_ids.empty() &&
-      placed_parts(candidate) == candidate.total_parts) {
+  validation::finalize_result(request, candidate);
+  if (candidate.all_parts_placed()) {
     candidate.stop_reason = StopReason::completed;
   }
 
-  if (has_constructive_geometry_violation(request, candidate)) {
+  if (!candidate.layout_valid()) {
     SHINY_DEBUG("solve: bounding-box completion fallback rejected by shared "
                 "layout validation placed={}/{}",
                 placed_parts(candidate), candidate.total_parts);
@@ -340,13 +245,12 @@ auto log_solve_finish(const NestingRequest &request,
   const auto placed = placed_parts(result);
   SHINY_DEBUG("solve: finish strategy={} dispatch={} runner={} stop_reason={} "
               "placed={}/{} bins={} unplaced={} requested_seed={} "
-              "effective_seed={} elapsed_ms={} operations={}",
+              "effective_seed={}",
               log::strategy_name(request.execution.strategy), dispatch_name,
               runner_class, log::stop_reason_name(result.stop_reason), placed,
               result.total_parts, result.layout.bins.size(),
               result.layout.unplaced_piece_ids.size(), control.random_seed,
-              result.effective_seed, result.budget.elapsed_milliseconds,
-              result.budget.operations_completed);
+              result.effective_seed);
 
   if (result.stop_reason == StopReason::completed &&
       placed < result.total_parts) {
@@ -412,15 +316,6 @@ auto solve(const NestingRequest &request, const SolveControl &control)
         decoder_request.value(), interruption_requested,
         [&](const std::size_t attempt_index,
             const pack::DecoderResult &result) {
-          const BudgetState budget{
-              .operation_limit_enabled = control.operation_limit > 0U,
-              .operation_limit = control.operation_limit,
-              .operations_completed = attempt_index + 1U,
-              .time_limit_enabled = time_budget.enabled(),
-              .time_limit_milliseconds = time_budget.limit_milliseconds(),
-              .elapsed_milliseconds = stopwatch.elapsed_milliseconds(),
-              .cancellation_requested = control.cancellation.stop_requested(),
-          };
           emit_snapshot(
               control,
               ProgressSnapshot{
@@ -429,7 +324,6 @@ auto solve(const NestingRequest &request, const SolveControl &control)
                   .total_requested_parts =
                       normalized_request.value().expanded_pieces.size(),
                   .layout = result.layout,
-                  .budget = budget,
                   .stop_reason = StopReason::none,
               });
         });
@@ -453,20 +347,11 @@ auto solve(const NestingRequest &request, const SolveControl &control)
         .layout = best_result.layout,
         .total_parts = normalized_request.value().expanded_pieces.size(),
         .effective_seed = control.random_seed,
-        .budget =
-            {
-                .operation_limit_enabled = control.operation_limit > 0U,
-                .operation_limit = control.operation_limit,
-                .operations_completed = results.size(),
-                .time_limit_enabled = time_budget.enabled(),
-                .time_limit_milliseconds = time_budget.limit_milliseconds(),
-                .elapsed_milliseconds = stopwatch.elapsed_milliseconds(),
-                .cancellation_requested = control.cancellation.stop_requested(),
-            },
         .stop_reason = stop_reason_for_bounding_box(
             control, time_budget, stopwatch, best_result.interrupted,
             hit_operation_limit),
     };
+    validation::finalize_result(normalized_request.value(), result);
     log_solve_finish(request, control,
                      log::strategy_name(request.execution.strategy),
                      runner_class, result);
@@ -507,11 +392,13 @@ auto solve(const NestingRequest &request, const SolveControl &control)
       pack::SequentialBacktrackPacker packer;
       auto result = packer.solve(normalized_request.value(), control);
       if (result.ok()) {
+        validation::finalize_result(normalized_request.value(), result.value());
         if (auto fallback = try_bounding_box_completion_fallback(
                 normalized_request.value(), control, time_budget, stopwatch,
                 result.value())) {
           result.value() = std::move(*fallback);
         }
+        validation::finalize_result(normalized_request.value(), result.value());
         log_solve_finish(request, control,
                          log::strategy_name(request.execution.strategy),
                          runner_class, result.value());
@@ -570,13 +457,14 @@ auto solve(const NestingRequest &request, const SolveControl &control)
             .placements_successful = inner.placements_successful,
             .total_requested_parts = inner.total_requested_parts,
             .layout = inner.layout,
-            .budget = inner.budget,
             .stop_reason = inner.stop_reason,
             .phase = ProgressPhase::placement,
             .phase_detail = std::format(
                 "Multi-start iteration {}: placing {}/{}", iteration + 1U,
                 inner.placements_successful, inner.total_requested_parts),
             .utilization_percent = inner.utilization_percent,
+            .layout_valid = inner.layout_valid,
+            .validation_issue_count = inner.validation_issue_count,
             .improved = inner.improved,
         });
       };
@@ -589,8 +477,9 @@ auto solve(const NestingRequest &request, const SolveControl &control)
         continue;
       }
 
-      if (has_constructive_geometry_violation(normalized_request.value(),
-                                              iter_result.value())) {
+      validation::finalize_result(normalized_request.value(),
+                                  iter_result.value());
+      if (!iter_result.value().layout_valid()) {
         SHINY_DEBUG("solve: rejecting invalid sequential_backtrack attempt "
                     "iteration={} seed={}",
                     attempt.iteration + 1U, attempt.seed);
@@ -608,28 +497,20 @@ auto solve(const NestingRequest &request, const SolveControl &control)
 
         // Emit improved snapshot
         if (control.on_progress) {
-          const BudgetState budget{
-              .operation_limit_enabled = control.operation_limit > 0U,
-              .operation_limit = control.operation_limit,
-              .operations_completed = operations_completed,
-              .time_limit_enabled = time_budget.enabled(),
-              .time_limit_milliseconds = time_budget.limit_milliseconds(),
-              .elapsed_milliseconds = stopwatch.elapsed_milliseconds(),
-              .cancellation_requested = control.cancellation.stop_requested(),
-          };
           control.on_progress(ProgressSnapshot{
               .sequence = operations_completed,
               .placements_successful =
                   best_result->layout.placement_trace.size(),
               .total_requested_parts = best_result->total_parts,
               .layout = best_result->layout,
-              .budget = budget,
               .stop_reason = StopReason::none,
               .phase = ProgressPhase::placement,
               .phase_detail = std::format("Multi-start iteration {} (improved)",
                                           operations_completed),
               .utilization_percent =
                   compute_efficiency_percent(best_result->layout),
+              .layout_valid = best_result->layout_valid(),
+              .validation_issue_count = best_result->validation.issues.size(),
               .improved = true,
           });
         }
@@ -646,18 +527,10 @@ auto solve(const NestingRequest &request, const SolveControl &control)
       return util::Status::invalid_input;
     }
 
-    best_result->budget = {
-        .operation_limit_enabled = control.operation_limit > 0U,
-        .operation_limit = control.operation_limit,
-        .operations_completed = operations_completed,
-        .time_limit_enabled = time_budget.enabled(),
-        .time_limit_milliseconds = time_budget.limit_milliseconds(),
-        .elapsed_milliseconds = stopwatch.elapsed_milliseconds(),
-        .cancellation_requested = control.cancellation.stop_requested(),
-    };
     best_result->stop_reason = final_stop_reason;
     best_result->effective_seed =
         seed_sequencer.winning_seed_or(best_result->effective_seed);
+    validation::finalize_result(normalized_request.value(), *best_result);
     log_solve_finish(request, control,
                      log::strategy_name(request.execution.strategy),
                      runner_class, *best_result);
@@ -697,6 +570,7 @@ auto solve(const NestingRequest &request, const SolveControl &control)
   }
   if (result.ok()) {
     result.value().effective_seed = control.random_seed;
+    validation::finalize_result(normalized_request.value(), result.value());
     log_solve_finish(request, control, resolved_strategy.name, runner_class,
                      result.value());
   }

@@ -8,6 +8,7 @@
 
 #include "geometry/polygon.hpp"
 #include "runtime/hash.hpp"
+#include "validation/layout_validation.hpp"
 
 namespace shiny::nesting::search {
 namespace {
@@ -107,7 +108,9 @@ auto better_metrics(const LayoutMetrics &lhs, const LayoutMetrics &rhs) -> bool 
   return false;
 }
 
-SolutionPool::SolutionPool(const std::size_t capacity) : capacity_(capacity) {}
+SolutionPool::SolutionPool(const std::size_t capacity,
+                           const NormalizedRequest *validation_request)
+    : capacity_(capacity), validation_request_(validation_request) {}
 
 // Bounded LRU-by-quality pool of layout decisions (order + per-piece
 // forced rotation). Used by GLS-driven strip search to maintain elites
@@ -125,9 +128,19 @@ auto SolutionPool::insert(SolutionPoolEntry entry) -> void {
   if (capacity_ == 0U) {
     return;
   }
+  if (entry.result.total_parts > 0U) {
+    if (validation_request_ != nullptr &&
+        !validation::validate_layout(*validation_request_, entry.result).valid) {
+      return;
+    }
+    if (validation_request_ == nullptr && !entry.result.layout_valid()) {
+      return;
+    }
+  }
 
   const std::uint64_t signature =
-      order_signature(entry.order) ^ (rotation_signature(entry.forced_rotations) << 1U);
+      order_signature(entry.order) ^
+      (rotation_signature(entry.piece_indexed_forced_rotations) << 1U);
   // Dedup against the parallel signatures_ vector first; full
   // order/forced_rotations equality is only checked on signature
   // collision (rare). This avoids the O(N²) FNV-1a-per-pair scan that
@@ -137,7 +150,8 @@ auto SolutionPool::insert(SolutionPoolEntry entry) -> void {
       continue;
     }
     if (entries_[i].order != entry.order ||
-        entries_[i].forced_rotations != entry.forced_rotations) {
+        entries_[i].piece_indexed_forced_rotations !=
+            entry.piece_indexed_forced_rotations) {
       continue;
     }
     if (better_metrics(entry.metrics, entries_[i].metrics)) {

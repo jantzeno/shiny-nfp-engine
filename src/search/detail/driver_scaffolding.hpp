@@ -65,17 +65,17 @@ driver_interrupted(const SolveControl &control,
     -> StopReason;
 
 // Build a BudgetState snapshot from the current timing and control state.
-[[nodiscard]] auto driver_make_budget(const SolveControl &control,
-                                      const runtime::TimeBudget &time_budget,
-                                      const runtime::Stopwatch &stopwatch,
-                                      std::size_t operations_completed) noexcept
-    -> BudgetState;
+// [[nodiscard]] auto driver_make_budget(const SolveControl &control,
+//                                       const runtime::TimeBudget &time_budget,
+//                                       const runtime::Stopwatch &stopwatch,
+//                                       std::size_t operations_completed)
+//                                       noexcept
+//     -> BudgetState;
 
 // Construct the zero-iteration NestingResult returned when a request
 // carries no expanded pieces.  Takes ownership of `replay`.
-[[nodiscard]] auto driver_empty_result(
-    StrategyKind strategy, SearchReplay replay, const SolveControl &control,
-    const runtime::TimeBudget &time_budget,
-    const runtime::Stopwatch &stopwatch) noexcept -> NestingResult;
+[[nodiscard]] auto driver_empty_result(StrategyKind strategy,
+                                       SearchReplay replay) noexcept
+    -> NestingResult;
 
 } // namespace shiny::nesting::search::detail

@@ -204,9 +204,22 @@ auto compute_nfp(const geom::PolygonWithHoles &fixed,
                     "moving_outer={}",
                     util::status_name(pair_nfp.status()),
                     fixed_part.outer.size(), moving_part.outer.size());
+        auto pair_orbiting = compute_orbiting_nfp(
+            geom::PolygonWithHoles{.outer = fixed_part.outer},
+            geom::PolygonWithHoles{.outer = moving_part.outer});
+        log_orbiting_fallback("convex_pair_failure_local",
+                              pair_orbiting.status());
+        if (pair_orbiting.ok()) {
+          auto &pair_polygons = pair_orbiting.value();
+          aggregate.insert(aggregate.end(),
+                           std::make_move_iterator(pair_polygons.begin()),
+                           std::make_move_iterator(pair_polygons.end()));
+          continue;
+        }
+
         auto orbiting =
             compute_orbiting_nfp(normalized_fixed, normalized_moving);
-        log_orbiting_fallback("convex_pair_failure", orbiting.status());
+        log_orbiting_fallback("convex_pair_failure_global", orbiting.status());
         if (orbiting.ok()) {
           return orbiting;
         }

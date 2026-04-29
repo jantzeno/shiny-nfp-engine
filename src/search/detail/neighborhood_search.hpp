@@ -54,9 +54,6 @@ public:
 
   [[nodiscard]] auto interrupted() const -> bool;
 
-  [[nodiscard]] auto make_budget(std::size_t operations_completed) const
-      -> BudgetState;
-
   [[nodiscard]] auto piece_areas() const -> std::span<const double>;
   [[nodiscard]] auto piece_rotation_counts() const
       -> std::span<const std::size_t>;

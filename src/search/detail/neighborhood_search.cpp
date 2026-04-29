@@ -13,8 +13,8 @@
 #include "geometry/polygon.hpp"
 #include "packing/irregular/constructive_packer.hpp"
 #include "runtime/hash.hpp"
-#include "search/detail/layout_validation.hpp"
 #include "search/disruption.hpp"
+#include "validation/layout_validation.hpp"
 
 namespace shiny::nesting::search::detail {
 
@@ -111,14 +111,12 @@ auto swap_positions(
     std::vector<std::size_t> &order,
     std::vector<std::optional<geom::RotationIndex>> &forced_rotations,
     const std::size_t lhs, const std::size_t rhs) -> bool {
+  (void)forced_rotations;
   if (order.size() < 2U || lhs >= order.size() || rhs >= order.size() ||
       lhs == rhs) {
     return false;
   }
   std::swap(order[lhs], order[rhs]);
-  if (forced_rotations.size() == order.size()) {
-    std::swap(forced_rotations[lhs], forced_rotations[rhs]);
-  }
   return true;
 }
 
@@ -255,13 +253,11 @@ void insert_removed_random(
     std::vector<std::size_t> &order,
     std::vector<std::optional<geom::RotationIndex>> &forced_rotations,
     std::span<const RemovedPiece> removed, runtime::DeterministicRng &rng) {
+  (void)forced_rotations;
   for (const auto &piece : removed) {
     const auto insert_pos = rng.uniform_index(order.size() + 1U);
     order.insert(order.begin() + static_cast<std::ptrdiff_t>(insert_pos),
                  piece.piece);
-    forced_rotations.insert(forced_rotations.begin() +
-                                static_cast<std::ptrdiff_t>(insert_pos),
-                            piece.forced_rotation);
   }
 }
 
@@ -269,6 +265,7 @@ void insert_removed_regret(
     std::vector<std::size_t> &order,
     std::vector<std::optional<geom::RotationIndex>> &forced_rotations,
     std::vector<RemovedPiece> removed, std::span<const double> piece_areas) {
+  (void)forced_rotations;
   while (!removed.empty()) {
     std::size_t best_index = 0U;
     InsertionChoice best_choice =
@@ -291,10 +288,6 @@ void insert_removed_regret(
     order.insert(order.begin() +
                      static_cast<std::ptrdiff_t>(best_choice.insert_pos),
                  piece.piece);
-    forced_rotations.insert(
-        forced_rotations.begin() +
-            static_cast<std::ptrdiff_t>(best_choice.insert_pos),
-        piece.forced_rotation);
     removed.erase(removed.begin() + static_cast<std::ptrdiff_t>(best_index));
   }
 }
@@ -327,11 +320,9 @@ void insert_removed_regret(
        ++it) {
     removed.push_back({
         .piece = move.order[*it],
-        .forced_rotation = move.forced_rotations[*it],
+        .forced_rotation = move.forced_rotations[move.order[*it]],
     });
     move.order.erase(move.order.begin() + static_cast<std::ptrdiff_t>(*it));
-    move.forced_rotations.erase(move.forced_rotations.begin() +
-                                static_cast<std::ptrdiff_t>(*it));
   }
 
   if (destroy_strategy == DestroyStrategy::area) {
@@ -377,17 +368,20 @@ auto OrderEvaluator::evaluate(
     const std::uint64_t seed_bias) const -> SolutionPoolEntry {
   SolutionPoolEntry evaluated;
   evaluated.order.assign(order.begin(), order.end());
-  evaluated.forced_rotations.assign(forced_rotations.begin(),
-                                    forced_rotations.end());
-  if (evaluated.forced_rotations.size() != evaluated.order.size()) {
-    evaluated.forced_rotations.assign(evaluated.order.size(), std::nullopt);
+  evaluated.piece_indexed_forced_rotations.assign(forced_rotations.begin(),
+                                                  forced_rotations.end());
+  if (evaluated.piece_indexed_forced_rotations.size() !=
+      evaluated.order.size()) {
+    evaluated.piece_indexed_forced_rotations.assign(evaluated.order.size(),
+                                                    std::nullopt);
   }
 
   pack::IrregularConstructivePacker packer;
   SolveControl decode_control{};
   decode_control.cancellation = control_.cancellation;
-  decode_control.random_seed = seed_from_order(
-      order, evaluated.forced_rotations, control_.random_seed, seed_bias);
+  decode_control.random_seed =
+      seed_from_order(order, evaluated.piece_indexed_forced_rotations,
+                      control_.random_seed, seed_bias);
   decode_control.workspace = workspace_;
   if (time_budget_.enabled()) {
     const auto remaining = time_budget_.remaining_milliseconds(stopwatch_);
@@ -401,11 +395,13 @@ auto OrderEvaluator::evaluate(
   }
 
   const auto result_or = packer.solve(
-      reordered_request_for(order, evaluated.forced_rotations, request_),
+      reordered_request_for(order, evaluated.piece_indexed_forced_rotations,
+                            request_),
       decode_control);
-  if (result_or.ok() && !constructive_layout_has_geometry_violation(
-                            request_, result_or.value())) {
+  if (result_or.ok() &&
+      !validation::layout_has_geometry_violation(request_, result_or.value())) {
     evaluated.result = result_or.value();
+    validation::finalize_result(request_, evaluated.result);
     evaluated.metrics = metrics_for_layout(evaluated.result.layout);
     return evaluated;
   }
@@ -419,19 +415,6 @@ auto OrderEvaluator::evaluate(
 auto OrderEvaluator::interrupted() const -> bool {
   return control_.cancellation.stop_requested() ||
          time_budget_.expired(stopwatch_);
-}
-
-auto OrderEvaluator::make_budget(const std::size_t operations_completed) const
-    -> BudgetState {
-  return {
-      .operation_limit_enabled = control_.operation_limit > 0U,
-      .operation_limit = control_.operation_limit,
-      .operations_completed = operations_completed,
-      .time_limit_enabled = time_budget_.enabled(),
-      .time_limit_milliseconds = time_budget_.limit_milliseconds(),
-      .elapsed_milliseconds = stopwatch_.elapsed_milliseconds(),
-      .cancellation_requested = control_.cancellation.stop_requested(),
-  };
 }
 
 auto OrderEvaluator::piece_areas() const -> std::span<const double> {
@@ -534,18 +517,12 @@ auto propose_move(
       to = (to + 1U) % order.size();
     }
     const auto value = move.order[from];
-    const auto forced_rotation = move.forced_rotations[from];
     move.order.erase(move.order.begin() + static_cast<std::ptrdiff_t>(from));
-    move.forced_rotations.erase(move.forced_rotations.begin() +
-                                static_cast<std::ptrdiff_t>(from));
     if (to > from) {
       --to;
     }
     move.order.insert(move.order.begin() + static_cast<std::ptrdiff_t>(to),
                       value);
-    move.forced_rotations.insert(move.forced_rotations.begin() +
-                                     static_cast<std::ptrdiff_t>(to),
-                                 forced_rotation);
     move.primary_index = from;
     move.secondary_index = to;
     move.changed =
@@ -563,9 +540,6 @@ auto propose_move(
     }
     std::reverse(move.order.begin() + static_cast<std::ptrdiff_t>(lhs),
                  move.order.begin() + static_cast<std::ptrdiff_t>(rhs + 1U));
-    std::reverse(
-        move.forced_rotations.begin() + static_cast<std::ptrdiff_t>(lhs),
-        move.forced_rotations.begin() + static_cast<std::ptrdiff_t>(rhs + 1U));
     move.primary_index = lhs;
     move.secondary_index = rhs;
     move.changed = lhs != rhs;
@@ -581,8 +555,6 @@ auto propose_move(
       move.forced_rotations.assign(move.order.size(), std::nullopt);
     }
     if (disrupted.applied) {
-      swap_positions(move.order, move.forced_rotations,
-                     disrupted.first_position, disrupted.second_position);
       move.order = disrupted.order;
     }
     move.primary_index = disrupted.first_position;
@@ -607,13 +579,14 @@ auto propose_move(
         rotatable_positions[rng.uniform_index(rotatable_positions.size())];
     const auto piece_index = order[position];
     const auto rotation_count = piece_rotation_counts[piece_index];
-    const auto current_rotation = move.forced_rotations[position].has_value()
-                                      ? move.forced_rotations[position]->value
-                                      : 0U;
+    const auto current_rotation =
+        move.forced_rotations[piece_index].has_value()
+            ? move.forced_rotations[piece_index]->value
+            : 0U;
     const auto delta = 1U + rng.uniform_index(rotation_count - 1U);
     const auto next_rotation =
         static_cast<std::uint16_t>((current_rotation + delta) % rotation_count);
-    move.forced_rotations[position] = geom::RotationIndex{next_rotation};
+    move.forced_rotations[piece_index] = geom::RotationIndex{next_rotation};
     move.primary_index = position;
     move.secondary_index = next_rotation;
     move.changed =

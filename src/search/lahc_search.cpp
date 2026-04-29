@@ -39,8 +39,7 @@ void register_lahc_strategy() {
 namespace {
 
 auto emit_initial_progress(const SolveControl &control,
-                           const SolutionPoolEntry &best,
-                           const BudgetState &budget) -> void {
+                           const SolutionPoolEntry &best) -> void {
   if (!control.on_progress) {
     return;
   }
@@ -50,24 +49,26 @@ auto emit_initial_progress(const SolveControl &control,
       .total_requested_parts = best.result.total_parts,
       .refinement_steps_completed = 0U,
       .layout = best.result.layout,
-      .budget = budget,
       .stop_reason = StopReason::none,
       .phase = ProgressPhase::refinement,
       .phase_detail = "LAHC initial seed",
       .utilization_percent = best.metrics.utilization * 100.0,
+      .layout_valid = best.result.layout_valid(),
+      .validation_issue_count = best.result.validation.issues.size(),
       .improved = true,
   });
 }
 
 auto emit_improvement(const SolveControl &control, SearchReplay &replay,
                       const std::size_t sequence, const std::size_t iteration,
-                      const SolutionPoolEntry &best, const BudgetState &budget,
+                      const SolutionPoolEntry &best,
                       const detail::NeighborhoodSearch op) -> void {
   replay.progress.push_back({
       .iteration = iteration,
       .improved = true,
       .layout = best.result.layout,
-      .budget = budget,
+      .layout_valid = best.result.layout_valid(),
+      .validation_issue_count = best.result.validation.issues.size(),
   });
   if (!control.on_progress) {
     return;
@@ -78,12 +79,13 @@ auto emit_improvement(const SolveControl &control, SearchReplay &replay,
       .total_requested_parts = best.result.total_parts,
       .refinement_steps_completed = iteration,
       .layout = best.result.layout,
-      .budget = budget,
       .stop_reason = StopReason::none,
       .phase = ProgressPhase::refinement,
       .phase_detail = std::format("LAHC iter {} improved via {}", iteration,
                                   detail::operator_label(op)),
       .utilization_percent = best.metrics.utilization * 100.0,
+      .layout_valid = best.result.layout_valid(),
+      .validation_issue_count = best.result.validation.issues.size(),
       .improved = true,
   });
 }
@@ -91,7 +93,6 @@ auto emit_improvement(const SolveControl &control, SearchReplay &replay,
 auto emit_iteration_progress(const SolveControl &control,
                              const std::size_t iteration,
                              const SolutionPoolEntry &current,
-                             const BudgetState &budget,
                              const detail::NeighborhoodSearch op,
                              const bool accepted) -> void {
   if (!control.on_progress) {
@@ -103,13 +104,14 @@ auto emit_iteration_progress(const SolveControl &control,
       .total_requested_parts = current.result.total_parts,
       .refinement_steps_completed = iteration,
       .layout = current.result.layout,
-      .budget = budget,
       .stop_reason = StopReason::none,
       .phase = ProgressPhase::refinement,
       .phase_detail = std::format("LAHC iter {} {} via {}", iteration,
                                   accepted ? "accepted" : "rejected",
                                   detail::operator_label(op)),
       .utilization_percent = current.metrics.utilization * 100.0,
+      .layout_valid = current.result.layout_valid(),
+      .validation_issue_count = current.result.validation.issues.size(),
       .improved = false,
   });
 }
@@ -143,8 +145,7 @@ auto LahcSearch::solve(const NormalizedRequest &request,
 
   SearchReplay replay{.optimizer = OptimizerKind::lahc};
   if (request.expanded_pieces.empty()) {
-    return detail::driver_empty_result(StrategyKind::lahc, std::move(replay),
-                                       control, time_budget, stopwatch);
+    return detail::driver_empty_result(StrategyKind::lahc, std::move(replay));
   }
 
   detail::OrderEvaluator evaluator(request, control, time_budget, stopwatch);
@@ -171,9 +172,8 @@ auto LahcSearch::solve(const NormalizedRequest &request,
       .iteration = 0,
       .improved = true,
       .layout = best.result.layout,
-      .budget = evaluator.make_budget(0),
   });
-  emit_initial_progress(control, best, evaluator.make_budget(0));
+  emit_initial_progress(control, best);
 
   for (std::size_t iteration = 0; iteration < operation_limit; ++iteration) {
     if (evaluator.interrupted()) {
@@ -182,7 +182,7 @@ auto LahcSearch::solve(const NormalizedRequest &request,
 
     const auto op = detail::random_operator(rng, true);
     const auto move = detail::propose_move(
-        current.order, current.forced_rotations, request,
+        current.order, current.piece_indexed_forced_rotations, request,
         evaluator.piece_areas(), evaluator.piece_rotation_counts(), rng, op,
         1U + rng.uniform_index(
                  std::max<std::size_t>(config.perturbation_swaps, 1U)));
@@ -217,10 +217,9 @@ auto LahcSearch::solve(const NormalizedRequest &request,
       best = candidate;
       ++sequence;
       emit_improvement(control, replay, sequence, operations_completed, best,
-                       evaluator.make_budget(operations_completed), op);
+                       op);
     }
-    emit_iteration_progress(control, operations_completed, current,
-                            evaluator.make_budget(operations_completed), op,
+    emit_iteration_progress(control, operations_completed, current, op,
                             accepted);
     if (plateau >= config.plateau_limit) {
       current = best;
@@ -235,7 +234,6 @@ auto LahcSearch::solve(const NormalizedRequest &request,
 
   NestingResult result = best.result;
   result.strategy = StrategyKind::lahc;
-  result.budget = evaluator.make_budget(operations_completed);
   result.stop_reason = detail::driver_stop_reason(
       control, time_budget, stopwatch, hit_operation_limit);
   result.search = std::move(replay);

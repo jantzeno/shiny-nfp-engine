@@ -12,8 +12,10 @@
 #include "nfp/ifp.hpp"
 #include "nfp/nfp.hpp"
 #include "packing/irregular/candidate_generation.hpp"
+#include "packing/irregular/blocked_regions.hpp"
 #include "predicates/point_location.hpp"
 #include "runtime/deterministic_rng.hpp"
+#include "support/fixture_test_support.hpp"
 #include "support/mtg_fixture.hpp"
 
 namespace {
@@ -28,6 +30,10 @@ using shiny::nesting::pack::GeneratedCandidatePoint;
 using shiny::nesting::place::PlacementCandidateSource;
 using shiny::nesting::place::PlacementStartCorner;
 using shiny::nesting::runtime::DeterministicRng;
+using shiny::nesting::test::load_fixture_file;
+using shiny::nesting::test::parse_point;
+using shiny::nesting::test::parse_polygon;
+using shiny::nesting::test::require_fixture_metadata;
 using shiny::nesting::test::mtg::kBed1Id;
 using shiny::nesting::test::mtg::load_mtg_fixture_with_actual_polygons;
 using shiny::nesting::test::mtg::MtgRequestOptions;
@@ -173,6 +179,29 @@ auto raw_vertex_anchor_translations(const PolygonWithHoles &container,
     }
   }
   return normalize_translations(translations);
+}
+
+auto parse_obstacles(const shiny::nesting::test::pt::ptree &inputs)
+    -> std::vector<CandidateGenerationObstacle> {
+  std::vector<CandidateGenerationObstacle> obstacles;
+  const auto obstacle_nodes = inputs.get_child_optional("obstacles");
+  if (!obstacle_nodes.has_value()) {
+    return obstacles;
+  }
+
+  for (const auto &obstacle_node : *obstacle_nodes) {
+    const auto &obstacle = obstacle_node.second;
+    const auto translation = parse_point(obstacle.get_child("translation"));
+    const auto base_polygon = parse_polygon(obstacle.get_child("polygon"));
+    obstacles.push_back({
+        .geometry_revision = obstacle.get<std::uint64_t>("revision"),
+        .polygon = shiny::nesting::geom::translate(
+            base_polygon, {.x = translation.x, .y = translation.y}),
+        .translation = {.x = translation.x, .y = translation.y},
+        .rotation = {.degrees = 0.0},
+    });
+  }
+  return obstacles;
 }
 
 } // namespace
@@ -395,6 +424,56 @@ TEST_CASE("NFP perfect-fit candidates stay inside the feasible domain",
   }
 }
 
+TEST_CASE("fixture-backed NFP candidate generation covers synthetic geometry families",
+          "[packing][candidate-generation][nfp][fixtures]") {
+  const auto root = load_fixture_file("nfp/candidate_geometry_families.json");
+
+  for (const auto &fixture_node : root.get_child("fixtures")) {
+    const auto &fixture = fixture_node.second;
+    const auto id = fixture.get<std::string>("id");
+
+    DYNAMIC_SECTION(id) {
+      require_fixture_metadata(fixture, "candidate_geometry_family");
+      const auto inputs = fixture.get_child("inputs");
+      const auto expected = fixture.get_child("expected");
+      const auto container = parse_polygon(inputs.get_child("container"));
+      const auto moving_piece = parse_polygon(inputs.get_child("moving"));
+      const auto obstacles = parse_obstacles(inputs);
+      const std::span<const PolygonWithHoles> exclusion_regions{};
+      const std::span<const CandidateGenerationObstacle> obstacle_span{obstacles};
+
+      shiny::nesting::cache::NfpCache cache(
+          shiny::nesting::cache::default_nfp_cache_config());
+      shiny::nesting::pack::CandidateGenerationDiagnostics diagnostics{};
+
+      const auto points = shiny::nesting::pack::generate_nfp_candidate_points(
+          container, exclusion_regions, obstacle_span, moving_piece,
+          shiny::nesting::geom::polygon_revision(moving_piece),
+          {.degrees = 0.0}, CandidateStrategy::nfp_hybrid, &cache,
+          &diagnostics);
+
+      REQUIRE(points.ok());
+      REQUIRE(points.value().size() >=
+              expected.get<std::size_t>("min_candidates"));
+      REQUIRE_FALSE(diagnostics.used_conservative_bbox_fallback());
+      if (expected.get<bool>("requires_exact_nfp")) {
+        REQUIRE(diagnostics.exact_nfp_computations > 0U);
+      }
+      REQUIRE(diagnostics.perfect_fit_candidates > 0U);
+      REQUIRE(diagnostics.perfect_slide_candidates > 0U);
+
+      const auto blocked = shiny::nesting::pack::build_blocked_regions(
+          obstacle_span, moving_piece,
+          shiny::nesting::geom::polygon_revision(moving_piece),
+          {.degrees = 0.0}, &cache, &diagnostics);
+      REQUIRE(blocked.ok());
+      REQUIRE_FALSE(blocked.value().polygons.empty());
+      REQUIRE(blocked.value().accuracy ==
+              shiny::nesting::cache::NfpCacheAccuracy::exact);
+    }
+  }
+}
+
 TEST_CASE("actual-polygon pair 7 -> 4 returns candidates directly after NFP "
           "fallback",
           "[packing][candidate-generation][actual-polygons][repro]") {
@@ -429,6 +508,159 @@ TEST_CASE("actual-polygon pair 7 -> 4 returns candidates directly after NFP "
     REQUIRE(status_or.ok());
     REQUIRE_FALSE(status_or.value().empty());
   }
+}
+
+TEST_CASE("anchor strategy skips obstacle NFP generation by default",
+          "[packing][candidate-generation][anchor][contract]") {
+  const auto container = rectangle(0.0, 0.0, 10.0, 10.0);
+  const auto moving_piece = rectangle(0.0, 0.0, 2.0, 2.0);
+  const std::vector<CandidateGenerationObstacle> obstacles{{
+      .geometry_revision = 2U,
+      .polygon = rectangle(0.0, 0.0, 3.0, 3.0),
+      .translation = {.x = 4.0, .y = 4.0},
+      .rotation = {.degrees = 0.0},
+  }};
+  const std::span<const PolygonWithHoles> exclusion_regions{};
+  shiny::nesting::cache::NfpCache cache(
+      shiny::nesting::cache::default_nfp_cache_config());
+  shiny::nesting::pack::CandidateGenerationDiagnostics diagnostics{};
+
+  const auto points = shiny::nesting::pack::generate_nfp_candidate_points(
+      container, exclusion_regions, obstacles, moving_piece, 17U,
+      {.degrees = 0.0}, CandidateStrategy::anchor_vertex, &cache,
+      &diagnostics);
+
+  REQUIRE(points.ok());
+  REQUIRE_FALSE(points.value().empty());
+  REQUIRE(diagnostics.exact_nfp_cache_hits == 0U);
+  REQUIRE(diagnostics.conservative_bbox_cache_hits == 0U);
+  REQUIRE(diagnostics.exact_nfp_computations == 0U);
+  REQUIRE(diagnostics.conservative_bbox_fallbacks == 0U);
+  REQUIRE_FALSE(diagnostics.used_conservative_bbox_fallback());
+
+  const auto exact_key = shiny::nesting::cache::make_nfp_cache_key(
+      2U, 17U, 0.0, 0.0, shiny::nesting::cache::NfpCacheEntryKind::exact);
+  const auto fallback_key = shiny::nesting::cache::make_nfp_cache_key(
+      2U, 17U, 0.0, 0.0,
+      shiny::nesting::cache::NfpCacheEntryKind::conservative_bbox_fallback);
+  REQUIRE(cache.get(exact_key) == nullptr);
+  REQUIRE(cache.get(fallback_key) == nullptr);
+}
+
+TEST_CASE("exact NFP cache entries stay separate from fallback entries",
+          "[packing][candidate-generation][cache][contract]") {
+  const auto container = rectangle(0.0, 0.0, 10.0, 10.0);
+  const auto moving_piece = rectangle(0.0, 0.0, 4.0, 4.0);
+  const std::vector<CandidateGenerationObstacle> obstacles{{
+      .geometry_revision = 2U,
+      .polygon = rectangle(0.0, 0.0, 6.0, 6.0),
+      .translation = {.x = 0.0, .y = 0.0},
+      .rotation = {.degrees = 0.0},
+  }};
+  const std::span<const PolygonWithHoles> exclusion_regions{};
+  shiny::nesting::cache::NfpCache cache(
+      shiny::nesting::cache::default_nfp_cache_config());
+  shiny::nesting::pack::CandidateGenerationDiagnostics diagnostics{};
+
+  const auto points = shiny::nesting::pack::generate_nfp_candidate_points(
+      container, exclusion_regions, obstacles, moving_piece, 17U,
+      {.degrees = 0.0}, CandidateStrategy::nfp_perfect, &cache, &diagnostics);
+
+  REQUIRE(points.ok());
+  REQUIRE_FALSE(points.value().empty());
+  REQUIRE(diagnostics.exact_nfp_computations > 0U);
+  REQUIRE(diagnostics.conservative_bbox_fallbacks == 0U);
+  REQUIRE(diagnostics.perfect_fit_candidates > 0U);
+  REQUIRE(std::all_of(points.value().begin(), points.value().end(),
+                      [](const GeneratedCandidatePoint &point) {
+                        return point.nfp_accuracy ==
+                               shiny::nesting::cache::NfpCacheAccuracy::exact;
+                      }));
+
+  const auto exact_key = shiny::nesting::cache::make_nfp_cache_key(
+      2U, 17U, 0.0, 0.0, shiny::nesting::cache::NfpCacheEntryKind::exact);
+  const auto fallback_key = shiny::nesting::cache::make_nfp_cache_key(
+      2U, 17U, 0.0, 0.0,
+      shiny::nesting::cache::NfpCacheEntryKind::conservative_bbox_fallback);
+  const auto exact_entry = cache.get(exact_key);
+  REQUIRE(exact_entry != nullptr);
+  REQUIRE(exact_entry->accuracy ==
+          shiny::nesting::cache::NfpCacheAccuracy::exact);
+  REQUIRE(exact_entry->status == shiny::nesting::util::Status::ok);
+  REQUIRE(cache.get(fallback_key) == nullptr);
+}
+
+TEST_CASE("bbox fallback cache entries are labeled separately from exact NFPs",
+          "[packing][candidate-generation][fallback][cache]") {
+  const auto fixture = load_mtg_fixture_with_actual_polygons();
+  const auto result = solve_baseline_actual_polygon_layout(fixture);
+  const auto *fixed = find_placed_piece(result, kBed1Id, 7U);
+  const auto *moving = find_placed_piece(result, kBed1Id, 4U);
+  REQUIRE(fixed != nullptr);
+  REQUIRE(moving != nullptr);
+
+  const CandidateGenerationObstacle obstacle{
+      .geometry_revision = fixed->piece_geometry_revision,
+      .polygon = fixed->polygon,
+      .translation = {.x = fixed->placement.translation.x,
+                      .y = fixed->placement.translation.y},
+      .rotation = fixed->resolved_rotation,
+  };
+  const std::array<CandidateGenerationObstacle, 1U> obstacles{obstacle};
+  const auto moving_local = shiny::nesting::geom::translate(
+      moving->polygon, {.x = -moving->placement.translation.x,
+                        .y = -moving->placement.translation.y});
+  const std::span<const PolygonWithHoles> exclusion_regions{};
+  shiny::nesting::cache::NfpCache cache(
+      shiny::nesting::cache::default_nfp_cache_config());
+
+  shiny::nesting::pack::CandidateGenerationDiagnostics first_diagnostics{};
+  const auto first = shiny::nesting::pack::generate_nfp_candidate_points(
+      fixture.bed1.polygon, exclusion_regions, obstacles, moving_local,
+      moving->piece_geometry_revision, moving->resolved_rotation,
+      CandidateStrategy::nfp_perfect, &cache, &first_diagnostics);
+
+  REQUIRE(first.ok());
+  REQUIRE_FALSE(first.value().empty());
+  REQUIRE(first_diagnostics.conservative_bbox_fallbacks > 0U);
+  REQUIRE(first_diagnostics.exact_nfp_cache_hits == 0U);
+  REQUIRE(first_diagnostics.conservative_bbox_cache_hits == 0U);
+  REQUIRE(first_diagnostics.used_conservative_bbox_fallback());
+  REQUIRE(std::all_of(first.value().begin(), first.value().end(),
+                      [](const GeneratedCandidatePoint &point) {
+                        return point.nfp_accuracy ==
+                               shiny::nesting::cache::NfpCacheAccuracy::
+                                   conservative_bbox_fallback;
+                      }));
+
+  const auto exact_key = shiny::nesting::cache::make_nfp_cache_key(
+      fixed->piece_geometry_revision, moving->piece_geometry_revision,
+      fixed->resolved_rotation.degrees, moving->resolved_rotation.degrees,
+      shiny::nesting::cache::NfpCacheEntryKind::exact);
+  const auto fallback_key = shiny::nesting::cache::make_nfp_cache_key(
+      fixed->piece_geometry_revision, moving->piece_geometry_revision,
+      fixed->resolved_rotation.degrees, moving->resolved_rotation.degrees,
+      shiny::nesting::cache::NfpCacheEntryKind::conservative_bbox_fallback);
+
+  REQUIRE(cache.get(exact_key) == nullptr);
+  const auto fallback_entry = cache.get(fallback_key);
+  REQUIRE(fallback_entry != nullptr);
+  REQUIRE(fallback_entry->accuracy ==
+          shiny::nesting::cache::NfpCacheAccuracy::
+              conservative_bbox_fallback);
+  REQUIRE_FALSE(fallback_entry->polygons.empty());
+  REQUIRE(fallback_entry->status != shiny::nesting::util::Status::ok);
+
+  shiny::nesting::pack::CandidateGenerationDiagnostics second_diagnostics{};
+  const auto second = shiny::nesting::pack::generate_nfp_candidate_points(
+      fixture.bed1.polygon, exclusion_regions, obstacles, moving_local,
+      moving->piece_geometry_revision, moving->resolved_rotation,
+      CandidateStrategy::nfp_perfect, &cache, &second_diagnostics);
+
+  REQUIRE(second.ok());
+  REQUIRE(second_diagnostics.conservative_bbox_cache_hits > 0U);
+  REQUIRE(second_diagnostics.exact_nfp_cache_hits == 0U);
+  REQUIRE(second_diagnostics.conservative_bbox_fallbacks == 0U);
 }
 
 TEST_CASE(
@@ -498,4 +730,31 @@ TEST_CASE("concave piece produces feasible candidate beyond raw vertex anchors",
   REQUIRE(std::find(vertex_only_translations.begin(),
                     vertex_only_translations.end(),
                     bottom_left_translation) == vertex_only_translations.end());
+}
+
+TEST_CASE("candidate diagnostics recorder aggregates reusable totals",
+          "[packing][candidate-generation][diagnostics]") {
+  shiny::nesting::pack::CandidateDiagnosticsRecorder recorder;
+  shiny::nesting::pack::CandidateGenerationDiagnostics first;
+  first.exact_nfp_cache_hits = 2;
+  first.conservative_bbox_cache_hits = 1;
+  first.exact_nfp_computations = 3;
+  first.conservative_bbox_fallbacks = 4;
+  first.conservative_bbox_fallback_candidates = 5;
+  recorder.record(first);
+
+  shiny::nesting::pack::CandidateGenerationDiagnostics second;
+  second.exact_nfp_cache_hits = 7;
+  second.conservative_bbox_fallback_candidates = 11;
+  recorder.record(second);
+
+  const auto &totals = recorder.totals();
+  REQUIRE(totals.exact_nfp_cache_hits == 9U);
+  REQUIRE(totals.conservative_bbox_cache_hits == 1U);
+  REQUIRE(totals.exact_nfp_computations == 3U);
+  REQUIRE(totals.conservative_bbox_fallbacks == 4U);
+  REQUIRE(totals.conservative_bbox_candidate_points == 16U);
+
+  recorder.reset();
+  REQUIRE(recorder.totals().exact_nfp_cache_hits == 0U);
 }

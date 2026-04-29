@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <numeric>
 #include <vector>
@@ -9,6 +10,7 @@
 #include "geometry/normalize.hpp"
 #include "geometry/polygon.hpp"
 #include "geometry/sanitize.hpp"
+#include "geometry/transform.hpp"
 #include "geometry/validity.hpp"
 #include "nfp/convex_nfp.hpp"
 #include "nfp/ifp.hpp"
@@ -62,6 +64,16 @@ auto point_in_region_set(const shiny::nesting::geom::Point2 &point,
     return shiny::nesting::pred::locate_point_in_polygon(point, region)
                .location != shiny::nesting::pred::PointLocation::exterior;
   });
+}
+
+auto mtg_piece_polygon(const shiny::nesting::test::mtg::MtgFixture &fixture,
+                       const std::uint32_t piece_id)
+    -> const PolygonWithHoles & {
+  const auto it = std::find_if(
+      fixture.pieces.begin(), fixture.pieces.end(),
+      [piece_id](const auto &piece) { return piece.piece_id == piece_id; });
+  REQUIRE(it != fixture.pieces.end());
+  return it->polygon;
 }
 
 } // namespace
@@ -212,6 +224,68 @@ TEST_CASE("general IFP excludes concave container notches", "[nfp][ifp]") {
   REQUIRE_FALSE(point_in_region_set({.x = 2.0, .y = 2.0}, ifp.value()));
 }
 
+TEST_CASE("MTG actual-polygon CGAL regression pairs return typed NFP outcomes",
+          "[nfp][actual-polygons][regression]") {
+  struct PairCase {
+    std::uint32_t fixed_piece_id;
+    std::uint32_t moving_piece_id;
+    double moving_rotation_degrees;
+  };
+
+  const auto fixture =
+      shiny::nesting::test::mtg::load_mtg_fixture_with_actual_polygons();
+  const std::vector<PairCase> cases{
+      {.fixed_piece_id = 7U,
+       .moving_piece_id = 4U,
+       .moving_rotation_degrees = 90.0},
+      {.fixed_piece_id = 4U,
+       .moving_piece_id = 10U,
+       .moving_rotation_degrees = 180.0},
+      {.fixed_piece_id = 4U,
+       .moving_piece_id = 16U,
+       .moving_rotation_degrees = 270.0},
+  };
+
+  for (const auto &case_data : cases) {
+    const auto &fixed = mtg_piece_polygon(fixture, case_data.fixed_piece_id);
+    const auto moving = shiny::nesting::geom::rotate(
+        mtg_piece_polygon(fixture, case_data.moving_piece_id),
+        {.degrees = case_data.moving_rotation_degrees});
+
+    INFO("fixed=" << case_data.fixed_piece_id
+                  << " moving=" << case_data.moving_piece_id
+                  << " moving_rot=" << case_data.moving_rotation_degrees);
+    REQUIRE(shiny::nesting::geom::validate_polygon(fixed).is_valid());
+    REQUIRE(shiny::nesting::geom::validate_polygon(moving).is_valid());
+
+    const auto nfp = shiny::nesting::nfp::compute_nfp(fixed, moving);
+    REQUIRE((nfp.ok() ||
+             nfp.status() == shiny::nesting::util::Status::computation_failed));
+    if (nfp.ok()) {
+      REQUIRE_FALSE(nfp.value().empty());
+      for (const auto &polygon : nfp.value()) {
+        REQUIRE(shiny::nesting::geom::validate_polygon(polygon).is_valid());
+      }
+    }
+  }
+}
+
+TEST_CASE("MTG actual-polygon regression pair computes exact NFP",
+          "[nfp][actual-polygons][regression]") {
+  const auto fixture =
+      shiny::nesting::test::mtg::load_mtg_fixture_with_actual_polygons();
+  const auto fixed = mtg_piece_polygon(fixture, 4U);
+  const auto moving = shiny::nesting::geom::rotate(
+      mtg_piece_polygon(fixture, 16U), {.degrees = 270.0});
+
+  const auto nfp = shiny::nesting::nfp::compute_nfp(fixed, moving);
+  REQUIRE(nfp.ok());
+  REQUIRE_FALSE(nfp.value().empty());
+  for (const auto &polygon : nfp.value()) {
+    REQUIRE(shiny::nesting::geom::validate_polygon(polygon).is_valid());
+  }
+}
+
 TEST_CASE("nfp cache stores hits and evicts least recently used entries",
           "[nfp][cache]") {
   shiny::nesting::cache::NfpCache cache(
@@ -227,19 +301,29 @@ TEST_CASE("nfp cache stores hits and evicts least recently used entries",
   const auto first_value = shiny::nesting::nfp::compute_ifp(
       rectangle(8.0, 5.0), rectangle(2.0, 1.0));
   REQUIRE(first_value.ok());
-  cache.put(first_key, first_value.value());
+  cache.put(first_key,
+            shiny::nesting::cache::NfpCacheValue{
+                .polygons = first_value.value(),
+                .accuracy = shiny::nesting::cache::NfpCacheAccuracy::exact,
+                .status = shiny::nesting::util::Status::ok,
+            });
   REQUIRE(cache.size() == 1U);
 
   auto cached = cache.get(first_key);
   REQUIRE(cached != nullptr);
-  REQUIRE(cached->size() == 1U);
-  REQUIRE(shiny::nesting::geom::compute_bounds(cached->front()) ==
+  REQUIRE(cached->polygons.size() == 1U);
+  REQUIRE(shiny::nesting::geom::compute_bounds(cached->polygons.front()) ==
           Box2{.min = {.x = 0.0, .y = 0.0}, .max = {.x = 6.0, .y = 4.0}});
 
   const auto second_value = shiny::nesting::nfp::compute_ifp(
       rectangle(6.0, 4.0), rectangle(1.0, 1.0));
   REQUIRE(second_value.ok());
-  cache.put(second_key, second_value.value());
+  cache.put(second_key,
+            shiny::nesting::cache::NfpCacheValue{
+                .polygons = second_value.value(),
+                .accuracy = shiny::nesting::cache::NfpCacheAccuracy::exact,
+                .status = shiny::nesting::util::Status::ok,
+            });
   REQUIRE(cache.size() == 1U);
   REQUIRE(cache.get(first_key) == nullptr);
   REQUIRE(cache.get(second_key) != nullptr);

@@ -55,6 +55,6 @@ build/
 # benchmarks/results/latest.jsonl
 
 vendor/
-docs/
+artifacts/
 benchmarks/
 *.log

@@ -26,14 +26,17 @@ struct LayoutMetrics {
 
 struct SolutionPoolEntry {
   std::vector<std::size_t> order{};
-  std::vector<std::optional<geom::RotationIndex>> forced_rotations{};
+  // Piece-indexed: piece_indexed_forced_rotations[piece_index] describes the expanded piece
+  // with the same index in the original normalized request.
+  std::vector<std::optional<geom::RotationIndex>> piece_indexed_forced_rotations{};
   LayoutMetrics metrics{};
   NestingResult result{};
 };
 
 class SolutionPool {
 public:
-  explicit SolutionPool(std::size_t capacity = 8U);
+  explicit SolutionPool(std::size_t capacity = 8U,
+                        const NormalizedRequest *validation_request = nullptr);
 
   auto insert(SolutionPoolEntry entry) -> void;
 
@@ -50,6 +53,7 @@ public:
 
 private:
   std::size_t capacity_{0};
+  const NormalizedRequest *validation_request_{nullptr};
   std::vector<SolutionPoolEntry> entries_{};
   // Parallel vector of pre-computed (order ⊕ rotation) signatures for
   // O(1) prefilter during dedup. Kept strictly in sync with `entries_`

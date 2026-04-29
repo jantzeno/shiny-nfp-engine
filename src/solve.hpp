@@ -27,6 +27,7 @@ struct SolveControl {
   std::size_t operation_limit{0};
   std::uint64_t time_limit_milliseconds{0};
   std::uint64_t random_seed{0};
+  bool cancellation_requested{false};
   SeedProgressionMode seed_mode{SeedProgressionMode::increment};
   pack::PackerWorkspace *workspace{nullptr};
 };

@@ -16,9 +16,18 @@ namespace {
   return layout.placement_trace.size();
 }
 
-}  // namespace
+void require_summary_consistency(const NestingResult &result) {
+  const auto summary = result.summary();
+  REQUIRE(summary.placed_parts == result.placed_parts());
+  REQUIRE(summary.unplaced_parts == result.unplaced_parts());
+  REQUIRE(summary.layout_valid == result.layout_valid());
+  REQUIRE(summary.placed_parts + summary.unplaced_parts == result.total_parts);
+}
 
-TEST_CASE("irregular constructive multi-start keeps the best layout after cancellation",
+} // namespace
+
+TEST_CASE("irregular constructive multi-start keeps the best layout after "
+          "cancellation",
           "[solve][irregular][multi-start][observer][cancellation]") {
   const auto fixture = load_mtg_fixture();
 
@@ -68,9 +77,10 @@ TEST_CASE("irregular constructive multi-start keeps the best layout after cancel
   REQUIRE(saw_full_layout_snapshot);
   REQUIRE(best_observed_layout == fixture.pieces.size());
   REQUIRE(placed_parts(solved.value().layout) == best_observed_layout);
-  REQUIRE(placed_parts(observed.back().layout) < placed_parts(solved.value().layout));
-  REQUIRE(solved.value().budget.cancellation_requested);
-  REQUIRE(solved.value().budget.operations_completed >= 2U);
+  REQUIRE(placed_parts(observed.back().layout) <
+          placed_parts(solved.value().layout));
+  REQUIRE(solved.value().layout_valid());
+  require_summary_consistency(solved.value());
 }
 
 TEST_CASE("irregular constructive multi-start rejects unbounded solve control",

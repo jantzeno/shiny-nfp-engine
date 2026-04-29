@@ -14,6 +14,7 @@
 #include "geometry/rotation_refinement.hpp"
 #include "observer.hpp"
 #include "packing/bin_state.hpp"
+#include "packing/irregular/workspace.hpp"
 #include "packing/layout.hpp"
 #include "request.hpp"
 #include "result.hpp"
@@ -28,7 +29,6 @@ namespace shiny::nesting::pack::detail {
 constexpr double kAreaEpsilon = 1e-6;
 constexpr double kDistanceEpsilon = 1e-8;
 constexpr std::size_t kInterruptCheckInterval = 256;
-constexpr std::uint64_t kDefaultPerPieceBudgetMs = 30'000;
 constexpr std::size_t kTopKCandidates = 3;
 
 struct PieceInstance {
@@ -58,6 +58,7 @@ struct CandidatePlacement {
   geom::Box2 bounds{};
   place::PlacementCandidateSource source{
       place::PlacementCandidateSource::constructive_boundary};
+  cache::NfpCacheAccuracy nfp_accuracy{cache::NfpCacheAccuracy::exact};
   bool inside_hole{false};
   std::int32_t hole_index{-1};
   double score{0.0};
@@ -162,13 +163,18 @@ compute_candidate_score(const WorkingBin &bin, const ExecutionPolicy &execution,
 enum class PlacementSearchStatus : std::uint8_t {
   found = 0,
   no_candidate = 1,
-  placement_budget_exhausted = 2,
-  interrupted = 3,
+  interrupted = 2,
+};
+
+// Canonical fill-first contract for unrestricted irregular placement: evaluate
+// one eligible frontier bed at a time and only advance after the current piece
+// is proven not to fit that frontier bed.
+enum class FrontierExhaustionStatus : std::uint8_t {
+  exhausted = 0,
+  fit_may_exist = 1,
 };
 
 struct PlacementAttemptContext {
-  std::uint64_t started_milliseconds{0};
-  std::uint64_t budget_milliseconds{0};
   std::size_t candidate_evaluations_completed{0};
 };
 
@@ -179,37 +185,44 @@ struct PlacementSearchResult {
 
 [[nodiscard]] auto find_best_for_bin(
     WorkingBin &bin, const PieceInstance &piece,
-    const NormalizedRequest &request, const runtime::TimeBudget &time_budget,
-    const runtime::Stopwatch &stopwatch, const SolveControl &control,
+    const NormalizedRequest &request, const SolveControl &control,
     ProgressThrottle &search_throttle, std::size_t placed_parts,
     std::size_t total_parts, PlacementAttemptContext &attempt_context,
-    cache::NfpCache *nfp_cache, runtime::DeterministicRng *rng)
-    -> PlacementSearchResult;
+    cache::NfpCache *nfp_cache, PackerSearchMetrics *search_metrics,
+    runtime::DeterministicRng *rng) -> PlacementSearchResult;
+
+[[nodiscard]] auto frontier_exhaustion_status_for_piece(
+    WorkingBin &bin, const PieceInstance &piece,
+    const ExecutionPolicy &execution) -> FrontierExhaustionStatus;
+
+[[nodiscard]] auto try_exact_fit_candidate(
+    WorkingBin &bin, const PieceInstance &piece,
+    const NormalizedRequest &request, const SolveControl &control,
+    PlacementAttemptContext &attempt_context) -> PlacementSearchResult;
 
 [[nodiscard]] auto try_place_piece(
     const PieceInstance &piece, const NormalizedRequest &request,
-    std::span<const BinInstance> bin_instances,
+    std::vector<BinInstance> &bin_instances,
     std::vector<WorkingBin> &opened_bins, std::vector<bool> &opened_flags,
-    std::vector<PlacementTraceEntry> &trace,
-    const runtime::TimeBudget &time_budget, const runtime::Stopwatch &stopwatch,
-    const SolveControl &control, ProgressThrottle &search_throttle,
-    std::size_t placed_parts, std::size_t total_parts,
-    PlacementAttemptContext &attempt_context, cache::NfpCache *nfp_cache,
+    std::vector<PlacementTraceEntry> &trace, const SolveControl &control,
+    ProgressThrottle &search_throttle, std::size_t placed_parts,
+    std::size_t total_parts, PlacementAttemptContext &attempt_context,
+    cache::NfpCache *nfp_cache, PackerSearchMetrics *search_metrics,
     runtime::DeterministicRng *rng_ptr,
     const TrialStateRecorder *trial_recorder = nullptr)
     -> PlacementSearchStatus;
 
 [[nodiscard]] auto try_backtrack_place_piece(
     const PieceInstance &piece, const NormalizedRequest &request,
-    std::span<const BinInstance> bin_instances,
+    std::vector<BinInstance> &bin_instances,
     std::vector<WorkingBin> &opened_bins, std::vector<bool> &opened_flags,
     std::vector<PlacementTraceEntry> &trace,
     const std::unordered_map<std::uint32_t, const PieceInstance *> &piece_by_id,
-    const runtime::TimeBudget &time_budget, const runtime::Stopwatch &stopwatch,
     const SolveControl &control, ProgressThrottle &search_throttle,
     std::size_t total_parts, PlacementAttemptContext &attempt_context,
-    cache::NfpCache *nfp_cache, runtime::DeterministicRng *rng_ptr,
-    std::uint32_t max_backtrack_pieces) -> PlacementSearchStatus;
+    cache::NfpCache *nfp_cache, PackerSearchMetrics *search_metrics,
+    runtime::DeterministicRng *rng_ptr, std::uint32_t max_backtrack_pieces)
+    -> PlacementSearchStatus;
 
 [[nodiscard]] auto build_layout(std::span<const WorkingBin> bins,
                                 const std::vector<PlacementTraceEntry> &trace,
@@ -222,10 +235,11 @@ build_lightweight_layout(std::span<const WorkingBin> bins,
 [[nodiscard]] auto compute_utilization_percent(std::span<const WorkingBin> bins)
     -> double;
 
-[[nodiscard]] auto make_budget(const SolveControl &control,
-                               const runtime::TimeBudget &time_budget,
-                               const runtime::Stopwatch &stopwatch,
-                               std::size_t operations_completed) -> BudgetState;
+// [[nodiscard]] auto make_budget(const SolveControl &control,
+//                                const runtime::TimeBudget &time_budget,
+//                                const runtime::Stopwatch &stopwatch,
+//                                std::size_t operations_completed) ->
+//                                BudgetState;
 auto emit_progress(const SolveControl &control, std::size_t sequence,
                    std::size_t placement_attempts_completed,
                    std::size_t placements_successful,
@@ -234,18 +248,15 @@ auto emit_progress(const SolveControl &control, std::size_t sequence,
                    std::span<const WorkingBin> bins,
                    const std::vector<PlacementTraceEntry> &trace,
                    const std::vector<std::uint32_t> &unplaced,
-                   const BudgetState &budget, StopReason stop_reason,
-                   const std::string &phase_detail, bool lightweight) -> void;
+                   StopReason stop_reason, const std::string &phase_detail,
+                   bool lightweight) -> void;
 auto emit_search_progress(const SolveControl &control,
                           std::size_t placements_successful,
                           std::size_t total_requested_parts,
                           std::size_t candidate_evaluations_completed,
-                          const BudgetState &budget,
                           const std::string &phase_detail) -> void;
 
-[[nodiscard]] auto interrupted(const SolveControl &control,
-                               const runtime::TimeBudget &time_budget,
-                               const runtime::Stopwatch &stopwatch) -> bool;
+[[nodiscard]] auto interrupted(const SolveControl &control) -> bool;
 
 [[nodiscard]] auto build_piece_instances(const NormalizedRequest &request)
     -> std::vector<PieceInstance>;

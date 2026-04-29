@@ -16,11 +16,12 @@ using shiny::nesting::NestingRequest;
 using shiny::nesting::NestingResult;
 using shiny::nesting::PieceRequest;
 using shiny::nesting::SolveControl;
-using shiny::nesting::StrategyConfig;
 using shiny::nesting::StrategyKind;
 using shiny::nesting::geom::PolygonWithHoles;
+using shiny::nesting::primary_strategy_config_ptr;
 using shiny::nesting::search::StrategyDescriptor;
 using shiny::nesting::search::StrategyRegistry;
+using shiny::nesting::set_primary_strategy_config;
 using shiny::nesting::util::Status;
 using shiny::nesting::util::StatusOr;
 
@@ -136,30 +137,20 @@ TEST_CASE("solve returns invalid_input when the registry has no runner",
   REQUIRE(result.status() == Status::invalid_input);
 }
 
-TEST_CASE("StrategyConfig::get_if is a no-throw dispatch path",
+TEST_CASE("typed strategy config variant resolves without compatibility helpers",
           "[strategy-config][request]") {
-  // Default-constructed: kind=bounding_box, payload empty. A request for the
-  // matching kind must still return nullptr (empty `std::any`) and must not
-  // throw `std::bad_any_cast`.
-  StrategyConfig empty{};
-  REQUIRE(empty.kind == StrategyKind::bounding_box);
-  REQUIRE_FALSE(empty.has_value());
-  REQUIRE_NOTHROW(empty.get_if<ALNSConfig>(StrategyKind::bounding_box));
-  REQUIRE(empty.get_if<ALNSConfig>(StrategyKind::bounding_box) == nullptr);
+  ExecutionPolicy execution;
+  REQUIRE(primary_strategy_config_ptr<ALNSConfig>(execution, StrategyKind::alns) ==
+          nullptr);
 
-  // Kind mismatch: payload carries an ALNSConfig but caller asks under a
-  // different kind — must return nullptr without throwing.
-  auto populated = StrategyConfig::make(StrategyKind::alns, ALNSConfig{});
-  REQUIRE(populated.has_value());
-  REQUIRE_NOTHROW(populated.get_if<ALNSConfig>(StrategyKind::lahc));
-  REQUIRE(populated.get_if<ALNSConfig>(StrategyKind::lahc) == nullptr);
+  ALNSConfig alns_config;
+  alns_config.max_refinements = 31;
+  set_primary_strategy_config(execution, StrategyKind::alns, alns_config);
 
-  // Type mismatch under the right kind: `std::any` holds ALNSConfig but the
-  // caller asks for `int` — `any_cast` returns nullptr (no throw).
-  REQUIRE_NOTHROW(populated.get_if<int>(StrategyKind::alns));
-  REQUIRE(populated.get_if<int>(StrategyKind::alns) == nullptr);
-
-  // Sanity: matching kind + matching type yields the payload.
-  const auto *alns = populated.get_if<ALNSConfig>(StrategyKind::alns);
+  REQUIRE(primary_strategy_config_ptr<ALNSConfig>(execution, StrategyKind::lahc) ==
+          nullptr);
+  const auto *alns =
+      primary_strategy_config_ptr<ALNSConfig>(execution, StrategyKind::alns);
   REQUIRE(alns != nullptr);
+  REQUIRE(alns->max_refinements == 31U);
 }
