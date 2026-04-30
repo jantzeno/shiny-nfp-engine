@@ -53,28 +53,10 @@ option("sanitizer")
 option_end()
 
 local boost_root = "vendor/boost"
-local cgal_root = "vendor/cgal"
+local earcut_include_dir = "vendor/earcut.hpp/include"
 local spdlog_include_dir = "vendor/spdlog-1.17.0/include"
 local nanosvg_dir = "vendor/nanosvg/src"
 local fixture_root = path.translate(path.join(os.projectdir(), "tests", "fixtures"))
-
-local function collect_component_include_roots(root)
-    local include_roots = {}
-
-    if not os.isdir(root) then
-        return include_roots
-    end
-
-    for _, dir in ipairs(os.dirs(path.join(root, "*/include"))) do
-        table.insert(include_roots, dir)
-    end
-
-    table.sort(include_roots)
-    table.insert(include_roots, root)
-    return include_roots
-end
-
-local cgal_include_roots = collect_component_include_roots(cgal_root)
 
 local function selected_sanitizer()
     local sanitizer = os.getenv("SHINY_NESTING_SANITIZER")
@@ -138,15 +120,6 @@ package("vendored_boost")
     end)
 package_end()
 
-package("vendored_cgal")
-    set_kind("library", {headeronly = true})
-    on_fetch(function ()
-        return {
-            sysincludedirs = cgal_include_roots
-        }
-    end)
-package_end()
-
 add_requires("catch2")
 
 target("vendor_spdlog")
@@ -164,13 +137,10 @@ target("shiny_logging")
 
 target("shiny_nesting_engine")
     set_kind("static")
-    add_packages("vendored_boost", "vendored_cgal")
-    add_defines("CGAL_DO_NOT_USE_BOOST_MP=1", "CGAL_NO_GMP=1", "CGAL_NO_MPFR=1")
+    add_packages("vendored_boost", {public = true})
     add_includedirs("src", {public = true})
-    add_sysincludedirs(boost_root)
-    for _, dir in ipairs(cgal_include_roots) do
-        add_sysincludedirs(dir)
-    end
+    add_sysincludedirs(boost_root, {public = true})
+    add_sysincludedirs(earcut_include_dir)
     add_headerfiles(
         "src/algorithm_kind.hpp",
         "src/api/(**.hpp)",
@@ -226,6 +196,7 @@ target("shiny_nesting_engine_tests")
     add_defines('SHINY_NESTING_ENGINE_TEST_FIXTURE_ROOT="' .. fixture_root .. '"')
     add_includedirs("tests")
     add_sysincludedirs(boost_root)
+    add_sysincludedirs(earcut_include_dir)
     add_files("tests/unit/api_surface.cpp")
     add_files("tests/unit/aabb_prerejection.cpp")
     add_files("tests/unit/boost_geometry_smoke.cpp")
@@ -283,13 +254,3 @@ target("shiny_nesting_engine_tests")
     add_sanitizer_compile_flags()
     add_sanitizer_link_flags()
     add_tests("default")
-
-target("shiny_nesting_engine_bounding_box_example")
-    set_kind("binary")
-    add_deps("shiny_nesting_engine")
-    add_files("examples/bounding_box/main.cpp")
-    add_deps("shiny_logging")
-    add_vendor_warning_suppression_flags()
-    add_thread_support_flags()
-    add_sanitizer_compile_flags()
-    add_sanitizer_link_flags()

@@ -35,10 +35,10 @@ struct SegmentContact {
  * @brief Classifies how two segments intersect or overlap.
  *
  * @par Algorithm Detail
- * - **Strategy**: Exact-predicate segment intersection with canonicalized
+ * - **Strategy**: Determinant-based segment intersection with canonicalized
  *   output points.
  * - **Steps**:
- *   1. Evaluate the segment pair through the predicate kernel.
+ *   1. Evaluate line orientation and parametric overlap for the segment pair.
  *   2. Convert intersection geometry back into canonical model coordinates.
  *   3. Classify the contact kind and record vertex participation flags.
  *

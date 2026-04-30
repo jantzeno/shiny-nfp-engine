@@ -79,8 +79,8 @@ struct PolygonLocationResult {
  *   3. Return the location and the boundary feature indices when applicable.
  *
  * @par Mathematical Basis
- * - Uses exact point-on-segment predicates for boundary detection, then applies
- *   a parity-style point-in-ring test for interior versus exterior.
+ * - Uses point-on-segment checks for boundary detection, then applies a
+ *   parity-style point-in-ring test for interior versus exterior.
  * - Separating boundary and parity stages yields stable topological labels for
  *   vertices, edge interiors, and strict interiors.
  *

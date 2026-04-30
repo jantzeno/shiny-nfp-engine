@@ -41,7 +41,27 @@ constexpr double kAreaEpsilon = 1.0e-8;
   if (lhs_bounds.min.y() != rhs_bounds.min.y()) {
     return lhs_bounds.min.y() < rhs_bounds.min.y();
   }
-  return polygon_area(lhs) < polygon_area(rhs);
+
+  const auto lhs_area = polygon_area(lhs);
+  const auto rhs_area = polygon_area(rhs);
+  if (lhs_area != rhs_area) {
+    return lhs_area < rhs_area;
+  }
+
+  if (lhs.outer().size() != rhs.outer().size()) {
+    return lhs.outer().size() < rhs.outer().size();
+  }
+
+  for (std::size_t index = 0; index < lhs.outer().size(); ++index) {
+    if (lhs.outer()[index] < rhs.outer()[index]) {
+      return true;
+    }
+    if (rhs.outer()[index] < lhs.outer()[index]) {
+      return false;
+    }
+  }
+
+  return false;
 }
 
 [[nodiscard]] auto try_merge_polygons(const Polygon &lhs, const Polygon &rhs)
@@ -155,13 +175,17 @@ TEST_CASE("regression keeps the deterministic L-shape partition",
   auto pieces = std::move(pieces_or).value();
 
   REQUIRE(pieces.size() == 2U);
+  std::vector<Polygon> expected_pieces{
+      Polygon{shiny::nesting::geom::Ring{
+          {0.0, 0.0}, {4.0, 0.0}, {4.0, 1.0}, {1.0, 1.0}}},
+      Polygon{shiny::nesting::geom::Ring{
+          {0.0, 0.0}, {1.0, 1.0}, {1.0, 4.0}, {0.0, 4.0}}},
+  };
+
   std::sort(pieces.begin(), pieces.end(), polygon_less);
-  require_ring_equal(pieces[0].outer(),
-                     shiny::nesting::geom::Ring{
-                         {0.0, 0.0}, {4.0, 0.0}, {4.0, 1.0}, {1.0, 1.0}});
-  require_ring_equal(pieces[1].outer(),
-                     shiny::nesting::geom::Ring{
-                         {0.0, 0.0}, {1.0, 1.0}, {1.0, 4.0}, {0.0, 4.0}});
+  std::sort(expected_pieces.begin(), expected_pieces.end(), polygon_less);
+  require_ring_equal(pieces[0].outer(), expected_pieces[0].outer());
+  require_ring_equal(pieces[1].outer(), expected_pieces[1].outer());
 }
 
 TEST_CASE("adjacency-aware merge never uses more pieces than restart greedy",

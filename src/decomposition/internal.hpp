@@ -20,7 +20,29 @@ namespace shiny::nesting::decomp::detail {
   if (lhs_bounds.min.y() != rhs_bounds.min.y()) {
     return lhs_bounds.min.y() < rhs_bounds.min.y();
   }
-  return geom::polygon_area(lhs) < geom::polygon_area(rhs);
+
+  const auto lhs_area = geom::polygon_area(lhs);
+  const auto rhs_area = geom::polygon_area(rhs);
+  if (lhs_area != rhs_area) {
+    return lhs_area < rhs_area;
+  }
+
+  const auto &lhs_ring = lhs.outer();
+  const auto &rhs_ring = rhs.outer();
+  if (lhs_ring.size() != rhs_ring.size()) {
+    return lhs_ring.size() < rhs_ring.size();
+  }
+
+  for (std::size_t index = 0; index < lhs_ring.size(); ++index) {
+    if (lhs_ring[index] < rhs_ring[index]) {
+      return true;
+    }
+    if (rhs_ring[index] < lhs_ring[index]) {
+      return false;
+    }
+  }
+
+  return false;
 }
 
 } // namespace shiny::nesting::decomp::detail

@@ -1,28 +1,31 @@
 #include "predicates/point_location.hpp"
 
 #include <cmath>
-#include <vector>
 
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/Polygon_2_algorithms.h>
+#include "geometry/detail/point_compare.hpp"
+#include "predicates/orientation.hpp"
 
 namespace shiny::nesting::pred {
 namespace {
 
-using Kernel = CGAL::Exact_predicates_inexact_constructions_kernel;
+constexpr double kBoundaryEpsilon = 1e-12;
 
-[[nodiscard]] auto to_cgal_point(const geom::Point2 &point) -> Kernel::Point_2 {
-  return {point.x(), point.y()};
+[[nodiscard]] auto cross(const geom::Point2 &origin, const geom::Point2 &lhs,
+                         const geom::Point2 &rhs) -> double {
+  const auto lhs_x = lhs.x() - origin.x();
+  const auto lhs_y = lhs.y() - origin.y();
+  const auto rhs_x = rhs.x() - origin.x();
+  const auto rhs_y = rhs.y() - origin.y();
+  return lhs_x * rhs_y - lhs_y * rhs_x;
 }
 
-[[nodiscard]] auto ring_to_cgal_points(std::span<const geom::Point2> ring)
-    -> std::vector<Kernel::Point_2> {
-  std::vector<Kernel::Point_2> result;
-  result.reserve(ring.size());
-  for (const auto &point : ring) {
-    result.push_back(to_cgal_point(point));
-  }
-  return result;
+[[nodiscard]] auto boundary_tolerance(const geom::Segment2 &segment,
+                                      const geom::Point2 &point) -> double {
+  const auto dx = std::max({1.0, std::abs(segment.end.x() - segment.start.x()),
+                            std::abs(point.x() - segment.start.x())});
+  const auto dy = std::max({1.0, std::abs(segment.end.y() - segment.start.y()),
+                            std::abs(point.y() - segment.start.y())});
+  return kBoundaryEpsilon * dx * dy;
 }
 
 [[nodiscard]] auto compute_parametric_t(const geom::Point2 &point,
@@ -42,6 +45,35 @@ using Kernel = CGAL::Exact_predicates_inexact_constructions_kernel;
   return (point.y() - segment.start.y()) / dy;
 }
 
+[[nodiscard]] auto point_in_ring_parity(const geom::Point2 &point,
+                                        std::span<const geom::Point2> ring)
+    -> bool {
+  bool inside = false;
+  for (std::size_t index = 0; index < ring.size(); ++index) {
+    const auto &current = ring[index];
+    const auto &next = ring[(index + 1U) % ring.size()];
+
+    const bool straddles = (current.y() > point.y()) != (next.y() > point.y());
+    if (!straddles) {
+      continue;
+    }
+
+    const auto y_delta = next.y() - current.y();
+    if (y_delta == 0.0) {
+      continue;
+    }
+
+    const auto x_intersection = current.x() + (point.y() - current.y()) *
+                                                  (next.x() - current.x()) /
+                                                  y_delta;
+    if (x_intersection > point.x()) {
+      inside = !inside;
+    }
+  }
+
+  return inside;
+}
+
 } // namespace
 
 auto locate_point_on_segment(const geom::Point2 &point,
@@ -55,22 +87,21 @@ auto locate_point_on_segment(const geom::Point2 &point,
     return result;
   }
 
-  const auto cgal_start = to_cgal_point(segment.start);
-  const auto cgal_end = to_cgal_point(segment.end);
-  const auto cgal_point = to_cgal_point(point);
-
-  if (CGAL::orientation(cgal_start, cgal_end, cgal_point) != CGAL::COLLINEAR) {
+  if (std::abs(cross(segment.start, segment.end, point)) >
+      boundary_tolerance(segment, point)) {
     return {};
   }
 
-  if (!CGAL::collinear_are_ordered_along_line(cgal_start, cgal_point,
-                                              cgal_end)) {
+  const auto parametric_t = compute_parametric_t(point, segment);
+  if (parametric_t < -kBoundaryEpsilon ||
+      parametric_t > 1.0 + kBoundaryEpsilon) {
     return {};
   }
 
   PointOnSegmentResult result{};
-  result.parametric_t = compute_parametric_t(point, segment);
-  result.relation = point == segment.start || point == segment.end
+  result.parametric_t = detail::canonicalize_coordinate(parametric_t);
+  result.relation = detail::near_same_point(point, segment.start) ||
+                            detail::near_same_point(point, segment.end)
                         ? BoundaryRelation::on_vertex
                         : BoundaryRelation::on_edge_interior;
   return result;
@@ -109,14 +140,8 @@ auto locate_point_in_ring(const geom::Point2 &point,
     return result;
   }
 
-  const auto cgal_ring = ring_to_cgal_points(ring);
-  const auto bounded_side = CGAL::bounded_side_2(
-      cgal_ring.begin(), cgal_ring.end(), to_cgal_point(point), Kernel{});
-
-  if (bounded_side == CGAL::ON_BOUNDED_SIDE) {
+  if (point_in_ring_parity(point, ring)) {
     result.location = PointLocation::interior;
-  } else if (bounded_side == CGAL::ON_BOUNDARY) {
-    result.location = PointLocation::boundary;
   } else {
     result.location = PointLocation::exterior;
   }

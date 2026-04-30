@@ -1,29 +1,41 @@
 #include "predicates/orientation.hpp"
 
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <algorithm>
+#include <cmath>
 
 namespace shiny::nesting::pred {
 namespace {
 
-using Kernel = CGAL::Exact_predicates_inexact_constructions_kernel;
+constexpr double kOrientationEpsilon = 1e-12;
 
-[[nodiscard]] auto to_cgal_point(const geom::Point2 &point) -> Kernel::Point_2 {
-  return {point.x(), point.y()};
+[[nodiscard]] auto orientation_det(const OrientationQuery &query) -> double {
+  const auto ab_x = query.b.x() - query.a.x();
+  const auto ab_y = query.b.y() - query.a.y();
+  const auto ac_x = query.c.x() - query.a.x();
+  const auto ac_y = query.c.y() - query.a.y();
+  return ab_x * ac_y - ab_y * ac_x;
+}
+
+[[nodiscard]] auto orientation_tolerance(const OrientationQuery &query)
+    -> double {
+  const auto ab_x = std::abs(query.b.x() - query.a.x());
+  const auto ab_y = std::abs(query.b.y() - query.a.y());
+  const auto ac_x = std::abs(query.c.x() - query.a.x());
+  const auto ac_y = std::abs(query.c.y() - query.a.y());
+  const auto scale = std::max({1.0, ab_x, ab_y, ac_x, ac_y});
+  return kOrientationEpsilon * scale * scale;
 }
 
 } // namespace
 
 auto orient(const OrientationQuery &query) -> Orientation {
-  const auto cgal_orientation = CGAL::orientation(
-      to_cgal_point(query.a), to_cgal_point(query.b), to_cgal_point(query.c));
-
-  switch (cgal_orientation) {
-  case CGAL::LEFT_TURN:
+  const auto det = orientation_det(query);
+  const auto tolerance = orientation_tolerance(query);
+  if (det > tolerance) {
     return Orientation::left_turn;
-  case CGAL::RIGHT_TURN:
+  }
+  if (det < -tolerance) {
     return Orientation::right_turn;
-  case CGAL::COLLINEAR:
-    return Orientation::collinear;
   }
 
   return Orientation::collinear;

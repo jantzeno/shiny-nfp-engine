@@ -1,4 +1,3 @@
-#include "decomposition/convex_decomposition.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -6,6 +5,7 @@
 #include <optional>
 #include <vector>
 
+#include "decomposition/convex_decomposition.hpp"
 #include "decomposition/internal.hpp"
 #include "decomposition/triangulation.hpp"
 #include "geometry/normalize.hpp"

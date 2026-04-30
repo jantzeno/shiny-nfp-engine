@@ -1,158 +1,127 @@
-#include "decomposition/triangulation.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cstdint>
-#include <list>
+#include <map>
 #include <numeric>
 #include <span>
 #include <vector>
 
-#include <CGAL/Constrained_Delaunay_triangulation_2.h>
-#include <CGAL/Constrained_triangulation_face_base_2.h>
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/Triangulation_face_base_with_info_2.h>
+#include <mapbox/earcut.hpp>
 
 #include "decomposition/internal.hpp"
+#include "decomposition/triangulation.hpp"
 #include "geometry/normalize.hpp"
 #include "geometry/polygon.hpp"
 #include "geometry/validity.hpp"
 
-// Constrained Delaunay Triangulation (CDT) for polygons with holes.
+// Triangulation for polygons with holes via earcut.hpp.
 //
 // Pipeline:
-//   1. Insert every input ring as a *constrained* edge sequence into a CGAL
-//      CDT. Outer ring + holes are constrained identically; the kernel
-//      handles intersection-free polygons only — callers must normalize
-//      first via geom::normalize_polygon().
-//   2. Run mark_domains() — a flood-fill on the CDT face graph that assigns
-//      each face a "nesting level" (parity == in/out of the polygon
-//      domain). The infinite face starts at level 0 (outside); crossing a
-//      constrained edge bumps the level. Even => outside, odd => inside.
-//      This is the standard CGAL recipe documented in
-//      `CGAL_2D_Triangulations/Constrained_triangulation_2.html` (search
-//      "mark_domains").
-//   3. Emit only finite faces with `in_domain() == true`, sorted by bbox
-//      origin then area for deterministic output.
-//
-// Precision notes: uses Exact_predicates_inexact_constructions_kernel.
-// Predicates (orientation/in-circle) are exact; constructions (segment
-// intersection) are double precision. Sliver triangles below kAreaEpsilon
-// are dropped to keep downstream NFP/decomposition robust.
+//   1. Normalize the polygon and feed its outer ring plus holes into earcut.
+//   2. Reconstruct triangles from the returned index buffer.
+//   3. Drop tiny triangles below kAreaEpsilon.
+//   4. Recover triangle adjacency by matching shared undirected edges.
+//   5. Sort by bbox origin then area for deterministic output.
 
 namespace shiny::nesting::decomp {
 namespace {
 
-using Kernel = CGAL::Exact_predicates_inexact_constructions_kernel;
-using VertexBase = CGAL::Triangulation_vertex_base_2<Kernel>;
-
-struct FaceInfo {
-  int nesting_level{-1};
-  std::int32_t triangle_index{-1};
-
-  [[nodiscard]] auto in_domain() const -> bool {
-    return nesting_level % 2 == 1;
-  }
-};
-
-using FaceBaseInfo =
-    CGAL::Triangulation_face_base_with_info_2<FaceInfo, Kernel>;
-using FaceBase =
-    CGAL::Constrained_triangulation_face_base_2<Kernel, FaceBaseInfo>;
-using TriangulationData =
-    CGAL::Triangulation_data_structure_2<VertexBase, FaceBase>;
-using ConstrainedTriangulation =
-    CGAL::Constrained_Delaunay_triangulation_2<Kernel, TriangulationData>;
+using EarcutPoint = std::array<double, 2>;
+using EarcutRing = std::vector<EarcutPoint>;
+using EarcutPolygon = std::vector<EarcutRing>;
 
 constexpr double kAreaEpsilon = 1e-9;
 
-[[nodiscard]] auto to_cgal_point(const geom::Point2 &point) -> Kernel::Point_2 {
+struct EdgeKey {
+  geom::Point2 first{};
+  geom::Point2 second{};
+
+  auto operator<=>(const EdgeKey &) const = default;
+};
+
+struct EdgeRef {
+  std::int32_t triangle_index{-1};
+  std::int32_t edge_index{-1};
+};
+
+[[nodiscard]] auto to_earcut_point(const geom::Point2 &point) -> EarcutPoint {
   return {point.x(), point.y()};
 }
 
-auto insert_ring_constraints(ConstrainedTriangulation &triangulation,
-                             std::span<const geom::Point2> ring) -> void {
-  if (ring.size() < 2U) {
+auto append_ring(const geom::Ring &ring, EarcutPolygon &earcut_polygon,
+                 std::vector<geom::Point2> &flat_points) -> void {
+  if (ring.size() < 3U) {
     return;
   }
 
-  auto previous = triangulation.insert(to_cgal_point(ring.front()));
-  const auto first = previous;
-
-  for (std::size_t index = 1; index < ring.size(); ++index) {
-    auto current = triangulation.insert(to_cgal_point(ring[index]));
-    triangulation.insert_constraint(previous, current);
-    previous = current;
+  EarcutRing earcut_ring;
+  earcut_ring.reserve(ring.size());
+  for (const auto &point : ring) {
+    earcut_ring.push_back(to_earcut_point(point));
+    flat_points.push_back(point);
   }
 
-  triangulation.insert_constraint(previous, first);
+  earcut_polygon.push_back(std::move(earcut_ring));
 }
 
-template <typename Triangulation>
-auto mark_domain_faces(Triangulation &triangulation,
-                       typename Triangulation::Face_handle seed_face,
-                       const int nesting_level,
-                       std::list<typename Triangulation::Edge> &border)
-    -> void {
-  if (seed_face->info().nesting_level != -1) {
-    return;
+[[nodiscard]] auto build_earcut_polygon(const geom::PolygonWithHoles &polygon,
+                                        std::vector<geom::Point2> &flat_points)
+    -> EarcutPolygon {
+  EarcutPolygon earcut_polygon;
+  earcut_polygon.reserve(1U + polygon.holes().size());
+  flat_points.clear();
+
+  append_ring(polygon.outer(), earcut_polygon, flat_points);
+  for (const auto &hole : polygon.holes()) {
+    append_ring(hole, earcut_polygon, flat_points);
   }
 
-  std::list<typename Triangulation::Face_handle> queue;
-  queue.push_back(seed_face);
+  return earcut_polygon;
+}
 
-  while (!queue.empty()) {
-    const auto face = queue.front();
-    queue.pop_front();
+[[nodiscard]] auto make_triangle(const geom::Point2 &first,
+                                 const geom::Point2 &second,
+                                 const geom::Point2 &third) -> geom::Polygon {
+  return geom::normalize_polygon(
+      geom::Polygon(geom::Ring{first, second, third}));
+}
 
-    if (face->info().nesting_level != -1) {
+[[nodiscard]] auto canonical_edge(const geom::Point2 &first,
+                                  const geom::Point2 &second) -> EdgeKey {
+  if (second < first) {
+    return EdgeKey{second, first};
+  }
+  return EdgeKey{first, second};
+}
+
+auto populate_adjacency(const std::vector<geom::Polygon> &triangles,
+                        std::vector<std::array<std::int32_t, 3>> &neighbours)
+    -> void {
+  std::map<EdgeKey, EdgeRef> edge_refs;
+
+  for (std::size_t triangle_index = 0; triangle_index < triangles.size();
+       ++triangle_index) {
+    const auto &ring = triangles[triangle_index].outer();
+    if (ring.size() != 3U) {
       continue;
     }
 
-    face->info().nesting_level = nesting_level;
-    for (int index = 0; index < 3; ++index) {
-      const typename Triangulation::Edge edge(face, index);
-      const auto neighbor = face->neighbor(index);
+    for (std::int32_t edge_index = 0; edge_index < 3; ++edge_index) {
+      const auto next_index = (edge_index + 1) % 3;
+      const auto key =
+          canonical_edge(ring[static_cast<std::size_t>(edge_index)],
+                         ring[static_cast<std::size_t>(next_index)]);
 
-      if (neighbor->info().nesting_level != -1) {
-        continue;
+      const auto [it, inserted] = edge_refs.emplace(
+          key, EdgeRef{static_cast<std::int32_t>(triangle_index), edge_index});
+      if (!inserted) {
+        neighbours[triangle_index][static_cast<std::size_t>(edge_index)] =
+            it->second.triangle_index;
+        neighbours[static_cast<std::size_t>(it->second.triangle_index)]
+                  [static_cast<std::size_t>(it->second.edge_index)] =
+                      static_cast<std::int32_t>(triangle_index);
       }
-
-      if (triangulation.is_constrained(edge)) {
-        border.push_back(edge);
-      } else {
-        queue.push_back(neighbor);
-      }
-    }
-  }
-}
-
-// Two-pass nesting-level assignment:
-//   Pass 1: flood from the (single) infinite face at level 0, stopping at
-//           constrained edges; every face reachable without crossing a
-//           constraint is "outside" (level 0).
-//   Pass 2: drain `border` (constrained edges encountered during pass 1).
-//           Each constrained edge separates the just-marked region from a
-//           deeper region whose level = current + 1. Recurse until every
-//           face has a level. After this, face.in_domain() == (level % 2).
-auto mark_domains(ConstrainedTriangulation &triangulation) -> void {
-  for (auto face = triangulation.all_faces_begin();
-       face != triangulation.all_faces_end(); ++face) {
-    face->info().nesting_level = -1;
-    face->info().triangle_index = -1;
-  }
-
-  std::list<ConstrainedTriangulation::Edge> border;
-  mark_domain_faces(triangulation, triangulation.infinite_face(), 0, border);
-
-  while (!border.empty()) {
-    const auto edge = border.front();
-    border.pop_front();
-    const auto face = edge.first;
-    const auto neighbor = face->neighbor(edge.second);
-    if (neighbor->info().nesting_level == -1) {
-      mark_domain_faces(triangulation, neighbor, face->info().nesting_level + 1,
-                        border);
     }
   }
 }
@@ -176,36 +145,34 @@ auto triangulate_polygon(const geom::PolygonWithHoles &polygon)
     return util::Status::invalid_input;
   }
 
-  ConstrainedTriangulation triangulation;
-  insert_ring_constraints(triangulation, normalized.outer());
-  for (const auto &hole : normalized.holes()) {
-    insert_ring_constraints(triangulation, hole);
+  std::vector<geom::Point2> flat_points;
+  const auto earcut_polygon = build_earcut_polygon(normalized, flat_points);
+  if (earcut_polygon.empty() || flat_points.size() < 3U) {
+    return util::Status::computation_failed;
   }
-  mark_domains(triangulation);
+
+  const auto indices = mapbox::earcut<std::uint32_t>(earcut_polygon);
+  if (indices.size() < 3U || indices.size() % 3U != 0U) {
+    return util::Status::computation_failed;
+  }
 
   std::vector<geom::Polygon> triangles;
-  std::vector<std::array<std::int32_t, 3>> neighbours;
-  std::vector<ConstrainedTriangulation::Face_handle> kept_faces;
-  for (auto face = triangulation.finite_faces_begin();
-       face != triangulation.finite_faces_end(); ++face) {
-    if (!face->info().in_domain()) {
+  triangles.reserve(indices.size() / 3U);
+  for (std::size_t index = 0; index < indices.size(); index += 3U) {
+    const auto first_index = static_cast<std::size_t>(indices[index]);
+    const auto second_index = static_cast<std::size_t>(indices[index + 1U]);
+    const auto third_index = static_cast<std::size_t>(indices[index + 2U]);
+    if (first_index >= flat_points.size() ||
+        second_index >= flat_points.size() ||
+        third_index >= flat_points.size()) {
       continue;
     }
 
-    geom::Polygon triangle(geom::Ring{
-        geom::Point2(face->vertex(0)->point().x(),
-                     face->vertex(0)->point().y()),
-        geom::Point2(face->vertex(1)->point().x(),
-                     face->vertex(1)->point().y()),
-        geom::Point2(face->vertex(2)->point().x(),
-                     face->vertex(2)->point().y()),
-    });
-    triangle = geom::normalize_polygon(triangle);
+    auto triangle =
+        make_triangle(flat_points[first_index], flat_points[second_index],
+                      flat_points[third_index]);
     if (geom::polygon_area(triangle) > kAreaEpsilon) {
-      face->info().triangle_index = static_cast<std::int32_t>(triangles.size());
       triangles.push_back(std::move(triangle));
-      neighbours.push_back({-1, -1, -1});
-      kept_faces.push_back(face);
     }
   }
 
@@ -213,21 +180,9 @@ auto triangulate_polygon(const geom::PolygonWithHoles &polygon)
     return util::Status::computation_failed;
   }
 
-  for (std::size_t index = 0; index < kept_faces.size(); ++index) {
-    const auto face = kept_faces[index];
-    for (int edge_index = 0; edge_index < 3; ++edge_index) {
-      const ConstrainedTriangulation::Edge edge(face, edge_index);
-      if (triangulation.is_constrained(edge)) {
-        continue;
-      }
-
-      const auto neighbour = face->neighbor(edge_index);
-      const auto neighbour_index = neighbour->info().triangle_index;
-      if (neighbour_index >= 0 && neighbour->info().in_domain()) {
-        neighbours[index][edge_index] = neighbour_index;
-      }
-    }
-  }
+  std::vector<std::array<std::int32_t, 3>> neighbours(triangles.size(),
+                                                      {-1, -1, -1});
+  populate_adjacency(triangles, neighbours);
 
   std::vector<std::int32_t> order(triangles.size());
   std::iota(order.begin(), order.end(), 0);

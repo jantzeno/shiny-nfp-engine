@@ -1,13 +1,14 @@
 // Contract guard: compute_convex_nfp() must accept convex polygons that
 // contain exactly collinear consecutive vertices on their outer ring.
 //
-// Background: CGAL::minkowski_sum_2() with EPICK is sensitive to degenerate
+// Background: convex Minkowski implementations are sensitive to degenerate
 // edges in some configurations. Two upstream layers already simplify
-// collinear vertices before they reach the EPICK boundary:
+// collinear vertices before they reach the pairwise-sum hull path:
 //   - normalize_request() in src/request.cpp (lines ~64-70 / 84-90),
 //   - from_bg_polygon() in src/polygon_ops/boolean_ops.cpp (line ~68).
 // This test pins the contract independently of those upstream layers, so
-// future refactors that bypass them don't silently expose CGAL to
+// future refactors that bypass them don't silently regress the convex NFP
+// kernel on
 // collinear inputs again.
 
 #include <catch2/catch_test_macros.hpp>
@@ -39,13 +40,14 @@ TEST_CASE("compute_convex_nfp tolerates collinear vertices on the outer ring",
       shiny::nesting::geom::Point2(0.0, 2.0),
   });
 
-  const Polygon moving(Ring{shiny::nesting::geom::Point2(0.0, 0.0), shiny::nesting::geom::Point2(1.0, 0.0),
-                            shiny::nesting::geom::Point2(1.0, 1.0), shiny::nesting::geom::Point2(0.0, 1.0)});
+  const Polygon moving(Ring{shiny::nesting::geom::Point2(0.0, 0.0),
+                            shiny::nesting::geom::Point2(1.0, 0.0),
+                            shiny::nesting::geom::Point2(1.0, 1.0),
+                            shiny::nesting::geom::Point2(0.0, 1.0)});
 
   // Without upstream simplification (request normalization or boolean-op
-  // post-processing), this convex hexagon would reach EPICK
-  // CGAL::minkowski_sum_2() with a degenerate edge. The function must
-  // tolerate that input shape.
+  // post-processing), this convex hexagon still reaches the convex NFP kernel
+  // with a degenerate edge. The function must tolerate that input shape.
   const auto result = compute_convex_nfp(fixed_with_collinear, moving);
   REQUIRE(result.ok());
   REQUIRE_FALSE(result.value().outer().empty());
@@ -53,13 +55,19 @@ TEST_CASE("compute_convex_nfp tolerates collinear vertices on the outer ring",
 
 TEST_CASE("compute_convex_nfp tolerates collinear vertices on both inputs",
           "[nfp][convex-nfp][collinear-regression]") {
-  const Polygon fixed_with_collinear(Ring{shiny::nesting::geom::Point2(0.0, 0.0), shiny::nesting::geom::Point2(1.5, 0.0),
-                                          shiny::nesting::geom::Point2(3.0, 0.0), shiny::nesting::geom::Point2(3.0, 2.0),
-                                          shiny::nesting::geom::Point2(0.0, 2.0)});
+  const Polygon fixed_with_collinear(
+      Ring{shiny::nesting::geom::Point2(0.0, 0.0),
+           shiny::nesting::geom::Point2(1.5, 0.0),
+           shiny::nesting::geom::Point2(3.0, 0.0),
+           shiny::nesting::geom::Point2(3.0, 2.0),
+           shiny::nesting::geom::Point2(0.0, 2.0)});
 
-  const Polygon moving_with_collinear(Ring{shiny::nesting::geom::Point2(0.0, 0.0), shiny::nesting::geom::Point2(1.0, 0.0),
-                                           shiny::nesting::geom::Point2(1.0, 0.5), shiny::nesting::geom::Point2(1.0, 1.0),
-                                           shiny::nesting::geom::Point2(0.0, 1.0)});
+  const Polygon moving_with_collinear(
+      Ring{shiny::nesting::geom::Point2(0.0, 0.0),
+           shiny::nesting::geom::Point2(1.0, 0.0),
+           shiny::nesting::geom::Point2(1.0, 0.5),
+           shiny::nesting::geom::Point2(1.0, 1.0),
+           shiny::nesting::geom::Point2(0.0, 1.0)});
 
   const auto result =
       compute_convex_nfp(fixed_with_collinear, moving_with_collinear);

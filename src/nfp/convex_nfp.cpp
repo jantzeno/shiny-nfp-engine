@@ -1,41 +1,18 @@
 #include "nfp/convex_nfp.hpp"
 
-#include <exception>
-
 #include <algorithm>
 #include <vector>
-
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/Polygon_2.h>
-#include <CGAL/Polygon_with_holes_2.h>
-#include <CGAL/minkowski_sum_2.h>
 
 #include "geometry/normalize.hpp"
 #include "geometry/polygon.hpp"
 #include "geometry/sanitize.hpp"
 #include "geometry/validity.hpp"
 #include "logging/shiny_log.hpp"
+#include "polygon_ops/convex_hull.hpp"
 #include "polygon_ops/simplify.hpp"
 
 namespace shiny::nesting::nfp {
 namespace {
-
-using Kernel = CGAL::Exact_predicates_inexact_constructions_kernel;
-using CgalPolygon = CGAL::Polygon_2<Kernel>;
-using CgalPolygonWithHoles = CGAL::Polygon_with_holes_2<Kernel>;
-
-[[nodiscard]] auto to_cgal_polygon(const geom::Polygon &polygon)
-    -> CgalPolygon {
-  const auto normalized = geom::normalize_polygon(polygon);
-  CgalPolygon result;
-  for (const auto &point : normalized.outer()) {
-    result.push_back({point.x(), point.y()});
-  }
-  if (result.orientation() == CGAL::CLOCKWISE) {
-    result.reverse_orientation();
-  }
-  return result;
-}
 
 [[nodiscard]] auto reflect_polygon(const geom::Polygon &polygon)
     -> geom::Polygon {
@@ -47,74 +24,9 @@ using CgalPolygonWithHoles = CGAL::Polygon_with_holes_2<Kernel>;
   return geom::normalize_polygon(reflected);
 }
 
-[[nodiscard]] auto from_cgal_polygon(const CgalPolygon &polygon)
-    -> geom::PolygonWithHoles {
-  geom::PolygonWithHoles result;
-  result.outer().reserve(polygon.size());
-  for (auto vertex = polygon.vertices_begin(); vertex != polygon.vertices_end();
-       ++vertex) {
-    result.outer().emplace_back(vertex->x(), vertex->y());
-  }
-  return geom::normalize_polygon(result);
-}
-
-[[nodiscard]] auto
-from_cgal_polygon_with_holes(const CgalPolygonWithHoles &polygon)
-    -> geom::PolygonWithHoles {
-  geom::PolygonWithHoles result = from_cgal_polygon(polygon.outer_boundary());
-  for (auto hole = polygon.holes_begin(); hole != polygon.holes_end(); ++hole) {
-    geom::Ring converted_hole;
-    converted_hole.reserve(hole->size());
-    for (auto vertex = hole->vertices_begin(); vertex != hole->vertices_end();
-         ++vertex) {
-      converted_hole.emplace_back(vertex->x(), vertex->y());
-    }
-    result.holes().push_back(std::move(converted_hole));
-  }
-  return geom::normalize_polygon(result);
-}
-
-[[nodiscard]] auto lowest_leftmost_index(const geom::Ring &ring)
-    -> std::size_t {
-  return static_cast<std::size_t>(std::distance(
-      ring.begin(),
-      std::min_element(ring.begin(), ring.end(),
-                       [](const geom::Point2 &lhs, const geom::Point2 &rhs) {
-                         if (lhs.y() != rhs.y()) {
-                           return lhs.y() < rhs.y();
-                         }
-                         return lhs.x() < rhs.x();
-                       })));
-}
-
-[[nodiscard]] auto edge_vector(const geom::Ring &ring, const std::size_t index)
-    -> geom::Vector2 {
-  const auto next = (index + 1U) % ring.size();
-  return geom::Vector2(ring[next].x() - ring[index].x(),
-                       ring[next].y() - ring[index].y());
-}
-
-[[nodiscard]] auto add_point_vector(const geom::Point2 &point,
-                                    const geom::Vector2 &vector)
-    -> geom::Point2 {
-  return geom::Point2(point.x() + vector.x(), point.y() + vector.y());
-}
-
-[[nodiscard]] auto add_vectors(const geom::Vector2 &lhs,
-                               const geom::Vector2 &rhs) -> geom::Vector2 {
-  return geom::Vector2(lhs.x() + rhs.x(), lhs.y() + rhs.y());
-}
-
-[[nodiscard]] auto cross(const geom::Vector2 &lhs, const geom::Vector2 &rhs)
-    -> double {
-  return lhs.x() * rhs.y() - lhs.y() * rhs.x();
-}
-
-[[nodiscard]] auto manual_convex_nfp(const geom::Polygon &fixed,
-                                     const geom::Polygon &moving)
+[[nodiscard]] auto pairwise_sum_convex_nfp(const geom::Polygon &fixed,
+                                           const geom::Polygon &moving)
     -> util::StatusOr<geom::PolygonWithHoles> {
-  constexpr double kParallelTolerance = 1e-9;
-
   const auto reflected_moving = reflect_polygon(moving);
   const auto &fixed_ring = fixed.outer();
   const auto &moving_ring = reflected_moving.outer();
@@ -122,61 +34,18 @@ from_cgal_polygon_with_holes(const CgalPolygonWithHoles &polygon)
     return util::Status::invalid_input;
   }
 
-  const auto fixed_start = lowest_leftmost_index(fixed_ring);
-  const auto moving_start = lowest_leftmost_index(moving_ring);
-  const auto fixed_count = fixed_ring.size();
-  const auto moving_count = moving_ring.size();
-
-  std::vector<geom::Point2> sum_ring;
-  sum_ring.reserve(fixed_count + moving_count + 1U);
-  geom::Point2 current(
-      fixed_ring[fixed_start].x() + moving_ring[moving_start].x(),
-      fixed_ring[fixed_start].y() + moving_ring[moving_start].y());
-  sum_ring.push_back(current);
-
-  std::size_t fixed_steps = 0U;
-  std::size_t moving_steps = 0U;
-  while (fixed_steps < fixed_count || moving_steps < moving_count) {
-    geom::Vector2 step{};
-    const bool can_take_fixed = fixed_steps < fixed_count;
-    const bool can_take_moving = moving_steps < moving_count;
-    const auto fixed_index = (fixed_start + fixed_steps) % fixed_count;
-    const auto moving_index = (moving_start + moving_steps) % moving_count;
-
-    if (can_take_fixed && can_take_moving) {
-      const auto fixed_edge = edge_vector(fixed_ring, fixed_index);
-      const auto moving_edge = edge_vector(moving_ring, moving_index);
-      const double edge_cross = cross(fixed_edge, moving_edge);
-      if (edge_cross > kParallelTolerance) {
-        step = fixed_edge;
-        ++fixed_steps;
-      } else if (edge_cross < -kParallelTolerance) {
-        step = moving_edge;
-        ++moving_steps;
-      } else {
-        step = add_vectors(fixed_edge, moving_edge);
-        ++fixed_steps;
-        ++moving_steps;
-      }
-    } else if (can_take_fixed) {
-      step = edge_vector(fixed_ring, fixed_index);
-      ++fixed_steps;
-    } else {
-      step = edge_vector(moving_ring, moving_index);
-      ++moving_steps;
+  std::vector<geom::Point2> point_cloud;
+  point_cloud.reserve(fixed_ring.size() * moving_ring.size());
+  for (const auto &fixed_point : fixed_ring) {
+    for (const auto &moving_point : moving_ring) {
+      point_cloud.emplace_back(fixed_point.x() + moving_point.x(),
+                               fixed_point.y() + moving_point.y());
     }
-
-    current = add_point_vector(current, step);
-    sum_ring.push_back(current);
   }
 
-  if (sum_ring.size() > 1U &&
-      geom::point_distance(sum_ring.front(), sum_ring.back()) <=
-          kParallelTolerance) {
-    sum_ring.pop_back();
-  }
-
-  auto simplified = poly::simplify_collinear_ring(sum_ring);
+  const auto hull = poly::compute_convex_hull(
+      std::span<const geom::Point2>(point_cloud.data(), point_cloud.size()));
+  auto simplified = poly::simplify_collinear_ring(hull.outer());
   if (simplified.size() < 3U) {
     return util::Status::computation_failed;
   }
@@ -196,12 +65,9 @@ from_cgal_polygon_with_holes(const CgalPolygonWithHoles &polygon)
 // No-Fit Polygon for two convex pieces.
 //
 // Identity:  NFP(A, B) = A ⊕ (-B)   (Minkowski sum of A with reflection of B)
-// where -B = { -p : p ∈ B }. Reflecting B around the origin and convolving
-// with A yields the locus of B's reference point such that A and B touch
-// (boundary) or overlap (interior) — exactly the NFP. CGAL's
-// minkowski_sum_2 requires both operands to be CCW-oriented simple polygons
-// (preconditions enforced by `to_cgal_polygon` and `is_convex` checks
-// below).
+// where -B = { -p : p ∈ B }. For convex polygons, that Minkowski sum is the
+// convex hull of every pairwise vertex sum, which lets us stay entirely on the
+// engine's Boost.Geometry path without exact-kernel bookkeeping.
 //
 // Returns a single connected polygon (with holes possible only when the
 // input pieces themselves were not convex — guarded against above).
@@ -233,29 +99,19 @@ auto compute_convex_nfp(const geom::Polygon &fixed, const geom::Polygon &moving)
     return util::Status::invalid_input;
   }
 
-  try {
-    const auto minkowski = CGAL::minkowski_sum_2(
-        to_cgal_polygon(normalized_fixed), to_cgal_polygon(reflected_moving));
-    return from_cgal_polygon_with_holes(minkowski);
-  } catch (const std::exception &) {
-    SHINY_DEBUG("nfp: convex CGAL minkowski_sum_2 failed fixed_outer={} "
+  auto pairwise_sum_nfp =
+      pairwise_sum_convex_nfp(normalized_fixed, normalized_moving);
+  if (pairwise_sum_nfp.ok()) {
+    SHINY_DEBUG("nfp: convex pairwise-sum hull succeeded fixed_outer={} "
                 "moving_outer={}",
                 normalized_fixed.outer().size(),
                 normalized_moving.outer().size());
-  } catch (...) {
-    SHINY_DEBUG("nfp: convex CGAL minkowski_sum_2 failed fixed_outer={} "
-                "moving_outer={} with unknown exception",
-                normalized_fixed.outer().size(),
-                normalized_moving.outer().size());
+    return pairwise_sum_nfp;
   }
 
-  auto manual_nfp = manual_convex_nfp(normalized_fixed, normalized_moving);
-  if (manual_nfp.ok()) {
-    SHINY_DEBUG(
-        "nfp: convex manual fallback succeeded fixed_outer={} moving_outer={}",
-        normalized_fixed.outer().size(), normalized_moving.outer().size());
-    return manual_nfp;
-  }
+  SHINY_DEBUG(
+      "nfp: convex pairwise-sum hull failed fixed_outer={} moving_outer={}",
+      normalized_fixed.outer().size(), normalized_moving.outer().size());
   return util::Status::computation_failed;
 }
 
