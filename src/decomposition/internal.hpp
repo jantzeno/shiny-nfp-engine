@@ -9,7 +9,8 @@ namespace shiny::nesting::decomp::detail {
 // convex-merge to ensure identical inputs yield identical NFP cache keys
 // downstream.
 [[nodiscard]] inline auto polygon_origin_less(const geom::Polygon &lhs,
-                                              const geom::Polygon &rhs) -> bool {
+                                              const geom::Polygon &rhs)
+    -> bool {
   const auto lhs_bounds = geom::compute_bounds(lhs);
   const auto rhs_bounds = geom::compute_bounds(rhs);
 

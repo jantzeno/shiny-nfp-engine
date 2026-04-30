@@ -94,8 +94,7 @@ auto parse_bin_input(const shiny::nesting::test::pt::ptree &node) -> BinInput {
 }
 
 auto resolve_fixture_bin_count(const std::size_t max_bin_count,
-                               const std::size_t piece_count)
-    -> std::size_t {
+                               const std::size_t piece_count) -> std::size_t {
   if (max_bin_count != 0U) {
     return max_bin_count;
   }
@@ -106,7 +105,8 @@ auto expand_bins(BinInput base_bin, const std::size_t count)
     -> std::vector<BinInput> {
   std::vector<BinInput> bins;
   bins.reserve(std::max<std::size_t>(count, 1));
-  for (std::size_t index = 0; index < std::max<std::size_t>(count, 1); ++index) {
+  for (std::size_t index = 0; index < std::max<std::size_t>(count, 1);
+       ++index) {
     BinInput bin = base_bin;
     bin.bin_id = base_bin.bin_id + static_cast<std::uint32_t>(index);
     bins.push_back(std::move(bin));
@@ -126,12 +126,14 @@ auto parse_piece_inputs(const shiny::nesting::test::pt::ptree &node)
         .grain_compatibility =
             parse_part_grain_compatibility(child.second.get<std::string>(
                 "grain_compatibility", "unrestricted")),
-        .allowed_bin_ids = [&]() {
-          if (const auto ids = child.second.get_child_optional("allowed_bin_ids")) {
-            return parse_ids(*ids);
-          }
-          return std::vector<std::uint32_t>{};
-        }(),
+        .allowed_bin_ids =
+            [&]() {
+              if (const auto ids =
+                      child.second.get_child_optional("allowed_bin_ids")) {
+                return parse_ids(*ids);
+              }
+              return std::vector<std::uint32_t>{};
+            }(),
     });
   }
   return pieces;
@@ -277,9 +279,9 @@ TEST_CASE("genetic search observer regression fixtures",
         std::visit(
             [&](const auto &payload) {
               using Payload = std::decay_t<decltype(payload)>;
-              if constexpr (std::is_same_v<
-                                Payload,
-                                shiny::nesting::search::SearchStepProgressEvent>) {
+              if constexpr (std::is_same_v<Payload,
+                                           shiny::nesting::search::
+                                               SearchStepProgressEvent>) {
                 progress_iterations.push_back(payload.progress.iteration);
               } else if constexpr (std::is_same_v<
                                        Payload,

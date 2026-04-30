@@ -1,5 +1,5 @@
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
+#include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -21,8 +21,8 @@ using shiny::nesting::geom::Point2;
 using shiny::nesting::geom::PolygonWithHoles;
 using shiny::nesting::geom::Segment2;
 using shiny::nesting::pack::CutContour;
-using shiny::nesting::pack::CutPlan;
 using shiny::nesting::pack::CutContourOrder;
+using shiny::nesting::pack::CutPlan;
 using shiny::nesting::pack::Layout;
 using shiny::nesting::pack::PlacedPiece;
 using shiny::nesting::pack::SharedCutOptimizationMode;
@@ -41,7 +41,8 @@ auto make_frame_piece() -> PolygonWithHoles {
   });
 }
 
-auto make_piece(std::uint32_t piece_id, PolygonWithHoles polygon) -> PlacedPiece {
+auto make_piece(std::uint32_t piece_id, PolygonWithHoles polygon)
+    -> PlacedPiece {
   return {
       .placement = {.piece_id = piece_id},
       .polygon = std::move(polygon),
@@ -64,13 +65,16 @@ auto segment_matches(const Segment2 &lhs, const Segment2 &rhs) -> bool {
           lhs.end.x == rhs.start.x && lhs.end.y == rhs.start.y);
 }
 
-auto count_segment(const CutPlan &plan, const Segment2 &segment) -> std::size_t {
+auto count_segment(const CutPlan &plan, const Segment2 &segment)
+    -> std::size_t {
   return static_cast<std::size_t>(std::count_if(
-      plan.segments.begin(), plan.segments.end(),
-      [&](const auto &entry) { return segment_matches(entry.segment, segment); }));
+      plan.segments.begin(), plan.segments.end(), [&](const auto &entry) {
+        return segment_matches(entry.segment, segment);
+      }));
 }
 
-auto make_contour(std::uint32_t piece_id, PolygonWithHoles polygon) -> CutContour {
+auto make_contour(std::uint32_t piece_id, PolygonWithHoles polygon)
+    -> CutContour {
   auto normalized = shiny::nesting::geom::normalize_polygon(std::move(polygon));
   return {
       .bin_id = 1,
@@ -81,8 +85,10 @@ auto make_contour(std::uint32_t piece_id, PolygonWithHoles polygon) -> CutContou
 }
 
 auto sample_arc_midpoint(const CutContourOrder::LeadArc &arc) -> Point2 {
-  const auto start_angle = std::atan2(arc.start.y - arc.center.y, arc.start.x - arc.center.x);
-  const auto end_angle = std::atan2(arc.end.y - arc.center.y, arc.end.x - arc.center.x);
+  const auto start_angle =
+      std::atan2(arc.start.y - arc.center.y, arc.start.x - arc.center.x);
+  const auto end_angle =
+      std::atan2(arc.end.y - arc.center.y, arc.end.x - arc.center.x);
   auto delta = end_angle - start_angle;
   if (arc.clockwise) {
     if (delta >= 0.0) {
@@ -93,7 +99,8 @@ auto sample_arc_midpoint(const CutContourOrder::LeadArc &arc) -> Point2 {
   }
 
   const auto mid_angle = start_angle + delta * 0.5;
-  const auto radius = std::hypot(arc.start.x - arc.center.x, arc.start.y - arc.center.y);
+  const auto radius =
+      std::hypot(arc.start.x - arc.center.x, arc.start.y - arc.center.y);
   return {
       .x = arc.center.x + std::cos(mid_angle) * radius,
       .y = arc.center.y + std::sin(mid_angle) * radius,
@@ -114,13 +121,15 @@ TEST_CASE("cut plan sequences holes before exterior contours",
 
   REQUIRE(plan.contour_order.size() == 3U);
   const auto hole_it =
-      std::find_if(plan.contour_order.begin(), plan.contour_order.end(), [](const auto &entry) {
-        return entry.piece_id == 1U && entry.from_hole;
-      });
+      std::find_if(plan.contour_order.begin(), plan.contour_order.end(),
+                   [](const auto &entry) {
+                     return entry.piece_id == 1U && entry.from_hole;
+                   });
   const auto exterior_it =
-      std::find_if(plan.contour_order.begin(), plan.contour_order.end(), [](const auto &entry) {
-        return entry.piece_id == 1U && !entry.from_hole;
-      });
+      std::find_if(plan.contour_order.begin(), plan.contour_order.end(),
+                   [](const auto &entry) {
+                     return entry.piece_id == 1U && !entry.from_hole;
+                   });
   REQUIRE(hole_it != plan.contour_order.end());
   REQUIRE(exterior_it != plan.contour_order.end());
   REQUIRE(hole_it < exterior_it);
@@ -151,8 +160,8 @@ TEST_CASE("cut plan removes redundant common edges once",
   });
 
   const auto plan = shiny::nesting::pack::build_cut_plan(
-      layout,
-      {.mode = SharedCutOptimizationMode::remove_fully_covered_coincident_segments});
+      layout, {.mode = SharedCutOptimizationMode::
+                   remove_fully_covered_coincident_segments});
 
   REQUIRE(plan.raw_cut_length == 8.0);
   REQUIRE(plan.total_cut_length == 7.0);
@@ -160,8 +169,9 @@ TEST_CASE("cut plan removes redundant common edges once",
   REQUIRE(count_segment(plan, {{1.0, 0.0}, {1.0, 1.0}}) == 1U);
 }
 
-TEST_CASE("cutting sequence prefers nearer contours and emits matching pierce points",
-          "[packing][cut-plan][travel]") {
+TEST_CASE(
+    "cutting sequence prefers nearer contours and emits matching pierce points",
+    "[packing][cut-plan][travel]") {
   const auto layout = make_layout({
       make_piece(1, make_rectangle(0.0, 0.0, 1.0, 1.0)),
       make_piece(2, make_rectangle(10.0, 0.0, 11.0, 1.0)),
@@ -195,7 +205,8 @@ TEST_CASE("cutting sequence prefers nearer contours and emits matching pierce po
   REQUIRE(plan.contour_order[2].lead_out.enabled);
 }
 
-TEST_CASE("pierce plan can select an edge midpoint and keep lead arcs outside material",
+TEST_CASE("pierce plan can select an edge midpoint and keep lead arcs outside "
+          "material",
           "[packing][cut-plan][pierce]") {
   const auto polygon = make_rectangle(0.0, 0.0, 6.0, 1.0);
   const auto contour = make_contour(1U, polygon);
@@ -210,10 +221,12 @@ TEST_CASE("pierce plan can select an edge midpoint and keep lead arcs outside ma
 
   const auto lead_in_midpoint = sample_arc_midpoint(plan.lead_in);
   const auto lead_out_midpoint = sample_arc_midpoint(plan.lead_out);
-  REQUIRE(shiny::nesting::pred::locate_point_in_polygon(lead_in_midpoint, polygon).location ==
-          shiny::nesting::pred::PointLocation::exterior);
-  REQUIRE(shiny::nesting::pred::locate_point_in_polygon(lead_out_midpoint, polygon).location ==
-          shiny::nesting::pred::PointLocation::exterior);
+  REQUIRE(
+      shiny::nesting::pred::locate_point_in_polygon(lead_in_midpoint, polygon)
+          .location == shiny::nesting::pred::PointLocation::exterior);
+  REQUIRE(
+      shiny::nesting::pred::locate_point_in_polygon(lead_out_midpoint, polygon)
+          .location == shiny::nesting::pred::PointLocation::exterior);
 }
 
 TEST_CASE("common-edge detection merges adjacent collinear coverage",
@@ -227,7 +240,8 @@ TEST_CASE("common-edge detection merges adjacent collinear coverage",
   REQUIRE(segment_matches(merged.front().segment, {{0.0, 0.0}, {2.0, 0.0}}));
 }
 
-TEST_CASE("common-edge detection merges overlapping collinear coverage into one segment",
+TEST_CASE("common-edge detection merges overlapping collinear coverage into "
+          "one segment",
           "[packing][cut-plan][common-edge]") {
   const auto merged = shiny::nesting::pack::detect_common_edges({
       {.bin_id = 1, .piece_id = 1, .segment = {{0.0, 0.0}, {2.0, 0.0}}},
@@ -250,7 +264,8 @@ TEST_CASE("common-edge detection preserves disjoint collinear segments",
   REQUIRE(segment_matches(merged[1].segment, {{2.0, 0.0}, {3.0, 0.0}}));
 }
 
-TEST_CASE("pierce plan emits non-collapsed lead arcs for a degenerate (zero-area) ring",
+TEST_CASE("pierce plan emits non-collapsed lead arcs for a degenerate "
+          "(zero-area) ring",
           "[packing][cut-plan][pierce][pierce-degenerate]") {
   // Three collinear points along the x-axis: ring_signed_area == 0,
   // so outward_sign falls back to +1 (review Phase 12 §1). The lead

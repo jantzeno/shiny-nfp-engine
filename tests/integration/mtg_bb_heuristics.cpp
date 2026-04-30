@@ -17,15 +17,15 @@ TEST_CASE("mtg bounding-box heuristics place every part",
           "[mtg][nesting-matrix][bounding-box][bb-heuristics]") {
   const auto fixture = load_mtg_fixture();
 
-  const auto heuristic = GENERATE(pack::BoundingBoxHeuristic::shelf,
-                                  pack::BoundingBoxHeuristic::skyline,
-                                  pack::BoundingBoxHeuristic::free_rectangle_backfill);
+  const auto heuristic = GENERATE(
+      pack::BoundingBoxHeuristic::shelf, pack::BoundingBoxHeuristic::skyline,
+      pack::BoundingBoxHeuristic::free_rectangle_backfill);
   const auto spacing = GENERATE(0.0, 1.0);
   const auto policy = GENERATE(place::PlacementPolicy::bottom_left,
                                place::PlacementPolicy::minimum_length,
                                place::PlacementPolicy::maximum_utilization);
-  const std::uint32_t attempts = GENERATE(std::uint32_t{1}, std::uint32_t{4},
-                                          std::uint32_t{8});
+  const std::uint32_t attempts =
+      GENERATE(std::uint32_t{1}, std::uint32_t{4}, std::uint32_t{8});
 
   MtgRequestOptions options{};
   options.strategy = StrategyKind::bounding_box;

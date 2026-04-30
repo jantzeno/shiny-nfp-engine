@@ -52,11 +52,10 @@ auto overlaps_any_occupied_bounds(std::span<const geom::Box2> occupied_bounds,
                                   const geom::Box2 &candidate_bounds,
                                   const double spacing) -> bool {
   return std::any_of(occupied_bounds.begin(), occupied_bounds.end(),
-                      [&](const geom::Box2 &occupied_bounds_entry) {
-                        return boxes_violate_spacing(candidate_bounds,
-                                                    occupied_bounds_entry,
-                                                    spacing);
-                      });
+                     [&](const geom::Box2 &occupied_bounds_entry) {
+                       return boxes_violate_spacing(
+                           candidate_bounds, occupied_bounds_entry, spacing);
+                     });
 }
 
 auto split_free_rectangles(std::vector<geom::Box2> &free_rectangles,

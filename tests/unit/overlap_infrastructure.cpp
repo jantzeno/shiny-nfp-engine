@@ -23,13 +23,14 @@ using shiny::nesting::pack::PoleOfInaccessibility;
 auto rectangle(const double min_x, const double min_y, const double max_x,
                const double max_y) -> PolygonWithHoles {
   return shiny::nesting::geom::normalize_polygon(PolygonWithHoles{
-      .outer = {
-           {.x = min_x, .y = min_y},
-           {.x = max_x, .y = min_y},
-           {.x = max_x, .y = max_y},
-           {.x = min_x, .y = max_y},
-       },
-   });
+      .outer =
+          {
+              {.x = min_x, .y = min_y},
+              {.x = max_x, .y = min_y},
+              {.x = max_x, .y = max_y},
+              {.x = min_x, .y = max_y},
+          },
+  });
 }
 
 auto brute_force_pole(const PolygonWithHoles &polygon,
@@ -49,7 +50,8 @@ auto brute_force_pole(const PolygonWithHoles &polygon,
     }
 
     const auto distance_squared =
-        shiny::nesting::nfp::compute_penetration_depth_squared(polygon, candidate);
+        shiny::nesting::nfp::compute_penetration_depth_squared(polygon,
+                                                               candidate);
     const auto radius = std::sqrt(std::max(0.0, distance_squared));
     if (radius > best.radius) {
       best = {.center = candidate, .radius = radius};
@@ -58,10 +60,10 @@ auto brute_force_pole(const PolygonWithHoles &polygon,
 
   evaluate(best.center);
   const auto safe_resolution = std::max<std::size_t>(2U, resolution);
-  const auto step_x =
-      shiny::nesting::geom::box_width(bounds) / static_cast<double>(safe_resolution);
-  const auto step_y =
-      shiny::nesting::geom::box_height(bounds) / static_cast<double>(safe_resolution);
+  const auto step_x = shiny::nesting::geom::box_width(bounds) /
+                      static_cast<double>(safe_resolution);
+  const auto step_y = shiny::nesting::geom::box_height(bounds) /
+                      static_cast<double>(safe_resolution);
   for (std::size_t row = 0; row <= safe_resolution; ++row) {
     for (std::size_t column = 0; column <= safe_resolution; ++column) {
       evaluate({
@@ -100,10 +102,10 @@ TEST_CASE("overlap proxy distinguishes overlapping and separated shapes",
   shiny::nesting::cache::PoleCache pole_cache;
   shiny::nesting::cache::PenetrationDepthCache pd_cache;
 
-  const auto overlap_loss =
-      shiny::nesting::pack::overlap_proxy_loss(lhs, rhs_overlap, &pole_cache, &pd_cache);
-  const auto separated_loss =
-      shiny::nesting::pack::overlap_proxy_loss(lhs, rhs_separated, &pole_cache, &pd_cache);
+  const auto overlap_loss = shiny::nesting::pack::overlap_proxy_loss(
+      lhs, rhs_overlap, &pole_cache, &pd_cache);
+  const auto separated_loss = shiny::nesting::pack::overlap_proxy_loss(
+      lhs, rhs_separated, &pole_cache, &pd_cache);
   const auto uncached_overlap_loss =
       shiny::nesting::pack::overlap_proxy_loss(lhs, rhs_overlap);
 
@@ -117,14 +119,15 @@ TEST_CASE("overlap proxy distinguishes overlapping and separated shapes",
 TEST_CASE("pole of inaccessibility cache reuses cached result",
           "[packing][overlap-proxy]") {
   const auto polygon = shiny::nesting::geom::normalize_polygon(PolygonWithHoles{
-      .outer = {
-          {.x = 0.0, .y = 0.0},
-          {.x = 6.0, .y = 0.0},
-          {.x = 6.0, .y = 1.0},
-          {.x = 2.0, .y = 1.0},
-          {.x = 2.0, .y = 5.0},
-          {.x = 0.0, .y = 5.0},
-      },
+      .outer =
+          {
+              {.x = 0.0, .y = 0.0},
+              {.x = 6.0, .y = 0.0},
+              {.x = 6.0, .y = 1.0},
+              {.x = 2.0, .y = 1.0},
+              {.x = 2.0, .y = 5.0},
+              {.x = 0.0, .y = 5.0},
+          },
   });
   shiny::nesting::cache::PoleCache pole_cache;
   shiny::nesting::cache::PenetrationDepthCache pd_cache;
@@ -145,27 +148,28 @@ TEST_CASE("pole of inaccessibility cache reuses cached result",
   REQUIRE(second.radius == Catch::Approx(first.radius).margin(1e-12));
 }
 
-TEST_CASE("pole of inaccessibility matches high resolution reference on concave polygon",
+TEST_CASE("pole of inaccessibility matches high resolution reference on "
+          "concave polygon",
           "[packing][overlap-proxy]") {
   const auto polygon = shiny::nesting::geom::normalize_polygon(PolygonWithHoles{
-      .outer = {
-          {.x = 0.0, .y = 0.0},
-          {.x = 7.0, .y = 0.0},
-          {.x = 7.0, .y = 2.0},
-          {.x = 3.0, .y = 2.0},
-          {.x = 3.0, .y = 7.0},
-          {.x = 0.0, .y = 7.0},
-      },
+      .outer =
+          {
+              {.x = 0.0, .y = 0.0},
+              {.x = 7.0, .y = 0.0},
+              {.x = 7.0, .y = 2.0},
+              {.x = 3.0, .y = 2.0},
+              {.x = 3.0, .y = 7.0},
+              {.x = 0.0, .y = 7.0},
+          },
   });
 
   const auto reference = brute_force_pole(polygon, 256U);
   const auto polylabel =
       shiny::nesting::pack::compute_pole_of_inaccessibility(polygon);
 
-  REQUIRE(polylabel.radius ==
-          Catch::Approx(reference.radius).margin(2e-2));
-  REQUIRE(shiny::nesting::geom::point_distance(polylabel.center, reference.center) <=
-          5e-2);
+  REQUIRE(polylabel.radius == Catch::Approx(reference.radius).margin(2e-2));
+  REQUIRE(shiny::nesting::geom::point_distance(polylabel.center,
+                                               reference.center) <= 5e-2);
 }
 
 TEST_CASE("pole of inaccessibility respects hole boundaries",
@@ -175,7 +179,8 @@ TEST_CASE("pole of inaccessibility respects hole boundaries",
       .holes = {rectangle(2.0, 2.0, 4.0, 4.0).outer},
   });
 
-  const auto pole = shiny::nesting::pack::compute_pole_of_inaccessibility(polygon);
+  const auto pole =
+      shiny::nesting::pack::compute_pole_of_inaccessibility(polygon);
   const auto location =
       shiny::nesting::pred::locate_point_in_polygon(pole.center, polygon);
   const auto expected_radius = 2.0 / (1.0 + 1.0 / std::sqrt(2.0));
@@ -189,11 +194,14 @@ TEST_CASE("collision tracker incremental updates match full recompute",
           "[packing][collision-tracker]") {
   const auto container = rectangle(0.0, 0.0, 10.0, 10.0);
   std::vector<shiny::nesting::pack::CollisionTrackerItem> items{
-      {.item_id = 1, .geometry_revision = 1,
+      {.item_id = 1,
+       .geometry_revision = 1,
        .polygon = rectangle(0.0, 0.0, 4.0, 4.0)},
-      {.item_id = 2, .geometry_revision = 2,
+      {.item_id = 2,
+       .geometry_revision = 2,
        .polygon = rectangle(2.0, 0.0, 6.0, 4.0)},
-      {.item_id = 3, .geometry_revision = 3,
+      {.item_id = 3,
+       .geometry_revision = 3,
        .polygon = rectangle(7.0, 0.0, 9.0, 2.0)},
   };
 
@@ -224,7 +232,8 @@ TEST_CASE("collision tracker pair-loss cache reuses exact overlap states only",
   std::vector<shiny::nesting::pack::CollisionTrackerItem> items{
       {.item_id = 1, .geometry_revision = 1, .polygon = item_a},
       {.item_id = 2, .geometry_revision = 2, .polygon = item_b},
-      {.item_id = 3, .geometry_revision = 3,
+      {.item_id = 3,
+       .geometry_revision = 3,
        .polygon = rectangle(0.0, 6.0, 2.0, 8.0)},
   };
 

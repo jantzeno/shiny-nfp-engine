@@ -23,12 +23,13 @@ auto line(const double x1, const double y1, const double x2, const double y2)
 auto rectangle_ring(const double min_x, const double min_y, const double max_x,
                     const double max_y) -> ImportedRing {
   return {
-      .segments = {
-          line(min_x, min_y, max_x, min_y),
-          line(max_x, min_y, max_x, max_y),
-          line(max_x, max_y, min_x, max_y),
-          line(min_x, max_y, min_x, min_y),
-      },
+      .segments =
+          {
+              line(min_x, min_y, max_x, min_y),
+              line(max_x, min_y, max_x, max_y),
+              line(max_x, max_y, min_x, max_y),
+              line(min_x, max_y, min_x, min_y),
+          },
       .closed = true,
   };
 }
@@ -64,8 +65,12 @@ TEST_CASE("import preprocessing owns bin filtering and piece normalization",
   request.options.normalize_piece_origins = true;
   request.options.discard_empty_bins = true;
   request.bins = {
-      {.bin_id = 1, .stock = 0, .shape = {.outer = rectangle_ring(0, 0, 10, 10)}},
-      {.bin_id = 2, .stock = 1, .shape = {.outer = rectangle_ring(0, 0, 20, 20)}},
+      {.bin_id = 1,
+       .stock = 0,
+       .shape = {.outer = rectangle_ring(0, 0, 10, 10)}},
+      {.bin_id = 2,
+       .stock = 1,
+       .shape = {.outer = rectangle_ring(0, 0, 20, 20)}},
   };
   request.pieces = {{
       .piece_id = 9,
@@ -74,7 +79,8 @@ TEST_CASE("import preprocessing owns bin filtering and piece normalization",
       .allowed_bin_ids = {2},
   }};
 
-  const auto normalized = shiny::nesting::io::preprocess_import_request(request);
+  const auto normalized =
+      shiny::nesting::io::preprocess_import_request(request);
   REQUIRE(normalized.ok());
   REQUIRE(normalized.value().request.bins.size() == 1);
   REQUIRE(normalized.value().request.bins.front().bin_id == 2);

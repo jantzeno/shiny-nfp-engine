@@ -68,9 +68,9 @@ TEST_CASE("README public API examples compile and execute",
   REQUIRE(production_request.ok());
 
   runtime::CancellationSource cancel_source;
-  const auto timed = solve(
-      production_request.value(),
-      api::SolveControlBuilder{}.with_time_limit_ms(1).build());
+  const auto timed =
+      solve(production_request.value(),
+            api::SolveControlBuilder{}.with_time_limit_ms(1).build());
   REQUIRE(timed.ok());
 
   const auto request_dto = api::to_dto(request.value());

@@ -17,8 +17,7 @@ namespace detail {
 
 [[nodiscard]] auto schedule_ratio(std::size_t iteration,
                                   std::size_t total_iterations,
-                                  double max_ratio,
-                                  double min_ratio) -> double;
+                                  double max_ratio, double min_ratio) -> double;
 
 } // namespace detail
 
@@ -33,13 +32,11 @@ struct StripOptimizerResult {
 
 class StripOptimizer {
 public:
-  [[nodiscard]] auto optimize(const NormalizedRequest &request,
-                              const SolveControl &control,
-                              const runtime::TimeBudget &time_budget,
-                              const runtime::Stopwatch &stopwatch,
-                              const SolutionPoolEntry &seed,
-                              const ProductionSearchConfig &config) const
-      -> StripOptimizerResult;
+  [[nodiscard]] auto
+  optimize(const NormalizedRequest &request, const SolveControl &control,
+           const runtime::TimeBudget &time_budget,
+           const runtime::Stopwatch &stopwatch, const SolutionPoolEntry &seed,
+           const ProductionSearchConfig &config) const -> StripOptimizerResult;
 };
 
 } // namespace shiny::nesting::search

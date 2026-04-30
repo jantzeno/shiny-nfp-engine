@@ -240,12 +240,10 @@ auto refresh_layout_bin(pack::LayoutBin &bin) -> void {
           : 0.0;
 }
 
-[[nodiscard]] auto try_separator_compaction(const SolutionPoolEntry &entry,
-                                            const NormalizedRequest &request,
-                                            const double target_strip_length,
-                                            const std::uint64_t base_seed,
-                                            const ProductionSearchConfig &config,
-                                            SeparatorReplayMetrics *metrics)
+[[nodiscard]] auto try_separator_compaction(
+    const SolutionPoolEntry &entry, const NormalizedRequest &request,
+    const double target_strip_length, const std::uint64_t base_seed,
+    const ProductionSearchConfig &config, SeparatorReplayMetrics *metrics)
     -> std::optional<SolutionPoolEntry> {
   if (entry.result.layout.bins.empty() || entry.metrics.strip_length <= 0.0 ||
       target_strip_length <= 0.0 ||
@@ -263,8 +261,8 @@ auto refresh_layout_bin(pack::LayoutBin &bin) -> void {
   std::unordered_map<std::uint32_t, bool> rotation_locked_by_piece;
   if (entry.piece_indexed_forced_rotations.size() ==
       request.expanded_pieces.size()) {
-    for (std::size_t piece_index = 0; piece_index < request.expanded_pieces.size();
-         ++piece_index) {
+    for (std::size_t piece_index = 0;
+         piece_index < request.expanded_pieces.size(); ++piece_index) {
       rotation_locked_by_piece.emplace(
           request.expanded_pieces[piece_index].expanded_piece_id,
           entry.piece_indexed_forced_rotations[piece_index].has_value());
@@ -518,10 +516,9 @@ auto StripOptimizer::optimize(const NormalizedRequest &request,
   auto best = seed;
   auto incumbent = seed;
   result.phase_metrics.exploration_iteration_budget =
-      std::max<std::size_t>(
-          1U, static_cast<std::size_t>(std::llround(
-                  static_cast<double>(total_iterations) *
-                  config.strip_exploration_ratio)));
+      std::max<std::size_t>(1U, static_cast<std::size_t>(std::llround(
+                                    static_cast<double>(total_iterations) *
+                                    config.strip_exploration_ratio)));
   result.phase_metrics.compression_iteration_budget =
       total_iterations - result.phase_metrics.exploration_iteration_budget;
   if (result.phase_metrics.compression_iteration_budget == 0U &&
@@ -586,96 +583,93 @@ auto StripOptimizer::optimize(const NormalizedRequest &request,
 
   run_phase(
       exploration_limit, config.strip_exploration_shrink_max_ratio,
-      config.strip_exploration_shrink_min_ratio,
-      result.exploration_iterations,
-       [&](std::size_t /*iteration*/, double /*shrink_ratio*/) {
-         const auto *base = pool.select(rng);
-         if (base == nullptr) {
-           base = &incumbent;
+      config.strip_exploration_shrink_min_ratio, result.exploration_iterations,
+      [&](std::size_t /*iteration*/, double /*shrink_ratio*/) {
+        const auto *base = pool.select(rng);
+        if (base == nullptr) {
+          base = &incumbent;
         }
         return disrupt_large_items(base->order, request, piece_areas, rng)
             .order;
       },
-       [&](double /*shrink_ratio*/) { return target_strip_length; },
-       [&](SolutionPoolEntry candidate, double shrink_ratio) -> bool {
-         pool.insert(candidate);
-         result.phase_metrics.exploration_iterations =
-             result.exploration_iterations;
-         if (better_metrics(candidate.metrics, best.metrics)) {
-           best = candidate;
-           incumbent = std::move(candidate);
-            ++result.accepted_moves;
-            ++result.phase_metrics.accepted_moves;
-            rejected_since_rollback = 0U;
-            target_strip_length =
-                shrink_target(best.metrics.strip_length, shrink_ratio);
-            return true;
-          }
-          if (accepted_for_target(candidate.metrics, incumbent.metrics,
-                                  target_strip_length)) {
-            incumbent = std::move(candidate);
-            ++result.accepted_moves;
-            ++result.phase_metrics.accepted_moves;
-            rejected_since_rollback = 0U;
-            target_strip_length =
-                shrink_target(incumbent.metrics.strip_length, shrink_ratio);
-            return false;
-          }
-          ++result.phase_metrics.infeasible_candidates;
-          ++rejected_since_rollback;
-          if (config.infeasible_pool_capacity > 0U) {
-            infeasible_pool.insert(candidate);
-          }
-          if (config.infeasible_pool_capacity > 0U &&
-              config.infeasible_rollback_after > 0U &&
-              rejected_since_rollback >= config.infeasible_rollback_after) {
-            if (const auto *rollback = infeasible_pool.select(rng);
-                rollback != nullptr) {
-              incumbent = *rollback;
-              ++result.phase_metrics.infeasible_rollbacks;
-              rejected_since_rollback = 0U;
-            }
-          }
+      [&](double /*shrink_ratio*/) { return target_strip_length; },
+      [&](SolutionPoolEntry candidate, double shrink_ratio) -> bool {
+        pool.insert(candidate);
+        result.phase_metrics.exploration_iterations =
+            result.exploration_iterations;
+        if (better_metrics(candidate.metrics, best.metrics)) {
+          best = candidate;
+          incumbent = std::move(candidate);
+          ++result.accepted_moves;
+          ++result.phase_metrics.accepted_moves;
+          rejected_since_rollback = 0U;
           target_strip_length =
-              expand_target(target_strip_length, best.metrics.strip_length,
-                            shrink_ratio * 0.5);
+              shrink_target(best.metrics.strip_length, shrink_ratio);
+          return true;
+        }
+        if (accepted_for_target(candidate.metrics, incumbent.metrics,
+                                target_strip_length)) {
+          incumbent = std::move(candidate);
+          ++result.accepted_moves;
+          ++result.phase_metrics.accepted_moves;
+          rejected_since_rollback = 0U;
+          target_strip_length =
+              shrink_target(incumbent.metrics.strip_length, shrink_ratio);
           return false;
-        });
+        }
+        ++result.phase_metrics.infeasible_candidates;
+        ++rejected_since_rollback;
+        if (config.infeasible_pool_capacity > 0U) {
+          infeasible_pool.insert(candidate);
+        }
+        if (config.infeasible_pool_capacity > 0U &&
+            config.infeasible_rollback_after > 0U &&
+            rejected_since_rollback >= config.infeasible_rollback_after) {
+          if (const auto *rollback = infeasible_pool.select(rng);
+              rollback != nullptr) {
+            incumbent = *rollback;
+            ++result.phase_metrics.infeasible_rollbacks;
+            rejected_since_rollback = 0U;
+          }
+        }
+        target_strip_length = expand_target(
+            target_strip_length, best.metrics.strip_length, shrink_ratio * 0.5);
+        return false;
+      });
 
   incumbent = best;
   const auto compression_limit =
       result.phase_metrics.compression_iteration_budget;
   run_phase(
       compression_limit, config.strip_compression_shrink_max_ratio,
-      config.strip_compression_shrink_min_ratio,
-      result.compression_iterations,
+      config.strip_compression_shrink_min_ratio, result.compression_iterations,
       [&](std::size_t iteration, double /*shrink_ratio*/) {
         return compression_neighbor(incumbent.order, piece_areas, iteration,
                                     rng);
       },
-       [&](double shrink_ratio) {
-         return shrink_target(incumbent.metrics.strip_length, shrink_ratio);
-       },
-       [&](SolutionPoolEntry candidate, double shrink_ratio) -> bool {
-         result.phase_metrics.compression_iterations =
-             result.compression_iterations;
-         if (!accepted_for_target(
-                 candidate.metrics, incumbent.metrics,
-                 shrink_target(incumbent.metrics.strip_length, shrink_ratio))) {
-           ++result.phase_metrics.infeasible_candidates;
-           return false;
-         }
-         const bool improved_best =
-             better_metrics(candidate.metrics, best.metrics);
-         incumbent = candidate;
-         pool.insert(candidate);
-         ++result.accepted_moves;
-         ++result.phase_metrics.accepted_moves;
-         if (improved_best) {
-           best = std::move(candidate);
-         }
-         return improved_best;
-       });
+      [&](double shrink_ratio) {
+        return shrink_target(incumbent.metrics.strip_length, shrink_ratio);
+      },
+      [&](SolutionPoolEntry candidate, double shrink_ratio) -> bool {
+        result.phase_metrics.compression_iterations =
+            result.compression_iterations;
+        if (!accepted_for_target(
+                candidate.metrics, incumbent.metrics,
+                shrink_target(incumbent.metrics.strip_length, shrink_ratio))) {
+          ++result.phase_metrics.infeasible_candidates;
+          return false;
+        }
+        const bool improved_best =
+            better_metrics(candidate.metrics, best.metrics);
+        incumbent = candidate;
+        pool.insert(candidate);
+        ++result.accepted_moves;
+        ++result.phase_metrics.accepted_moves;
+        if (improved_best) {
+          best = std::move(candidate);
+        }
+        return improved_best;
+      });
 
   result.best_solution = best;
   result.phase_metrics.exploration_iterations = result.exploration_iterations;

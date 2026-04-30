@@ -7,7 +7,8 @@
 
 namespace {
 
-auto polygon_signed_area(const shiny::nesting::geom::Ring &ring) -> long double {
+auto polygon_signed_area(const shiny::nesting::geom::Ring &ring)
+    -> long double {
   long double area = 0.0L;
   for (std::size_t index = 0; index < ring.size(); ++index) {
     const auto next_index = (index + 1U) % ring.size();
@@ -21,7 +22,8 @@ auto polygon_signed_area(const shiny::nesting::geom::Ring &ring) -> long double 
 
 TEST_CASE("svg path polygonization covers line and curve commands",
           "[io][svg]") {
-  const auto root = shiny::nesting::test::load_fixture_file("io/svg_paths.json");
+  const auto root =
+      shiny::nesting::test::load_fixture_file("io/svg_paths.json");
 
   for (const auto &fixture_node : root.get_child("fixtures")) {
     const auto &fixture = fixture_node.second;
@@ -46,7 +48,8 @@ TEST_CASE("svg path polygonization covers line and curve commands",
       if (const auto expected_polygon =
               fixture.get_child_optional("expected.polygon")) {
         shiny::nesting::test::require_polygon_equal(
-            result.value(), shiny::nesting::test::parse_polygon(*expected_polygon));
+            result.value(),
+            shiny::nesting::test::parse_polygon(*expected_polygon));
       }
     }
   }

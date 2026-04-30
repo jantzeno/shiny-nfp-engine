@@ -17,7 +17,8 @@ namespace shiny::nesting::poly {
 namespace detail {
 
 [[nodiscard]] auto distance_to_segment(const geom::Point2 &point,
-                                       const geom::Segment2 &segment) -> double {
+                                       const geom::Segment2 &segment)
+    -> double {
   const auto edge = geom::vector_between(segment.start, segment.end);
   const auto length_squared = geom::dot(edge, edge);
   if (length_squared <= std::numeric_limits<double>::epsilon()) {
@@ -148,17 +149,16 @@ auto simplify_collinear_ring(std::span<const geom::Point2> ring) -> geom::Ring {
 
 auto simplify_polygon(const geom::Polygon &polygon) -> geom::Polygon {
   const auto normalized = geom::normalize_polygon(polygon);
-  return geom::normalize_polygon(
-      geom::Polygon{
-          .outer = detail::simplify_normalized_ring(normalized.outer)});
+  return geom::normalize_polygon(geom::Polygon{
+      .outer = detail::simplify_normalized_ring(normalized.outer)});
 }
 
 auto simplify_polygon_douglas_peucker(const geom::Polygon &polygon,
                                       double epsilon) -> geom::Polygon {
   const auto normalized = geom::normalize_polygon(polygon);
   return geom::normalize_polygon(geom::Polygon{
-      .outer = detail::simplify_ring_douglas_peucker(normalized.outer,
-                                                     epsilon)});
+      .outer =
+          detail::simplify_ring_douglas_peucker(normalized.outer, epsilon)});
 }
 
 auto simplify_polygon(const geom::PolygonWithHoles &polygon)

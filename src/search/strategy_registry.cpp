@@ -22,10 +22,10 @@ auto StrategyRegistry::instance() -> StrategyRegistry & {
 }
 
 void StrategyRegistry::register_strategy(StrategyDescriptor descriptor) {
-  const auto existing = std::find_if(
-      strategies_.begin(), strategies_.end(), [&](const StrategyDescriptor &entry) {
-        return entry.kind == descriptor.kind;
-      });
+  const auto existing = std::find_if(strategies_.begin(), strategies_.end(),
+                                     [&](const StrategyDescriptor &entry) {
+                                       return entry.kind == descriptor.kind;
+                                     });
   if (existing != strategies_.end()) {
     *existing = descriptor;
     return;
@@ -57,11 +57,9 @@ auto StrategyRegistry::find(const StrategyKind kind) const
 
 auto StrategyRegistry::find(const std::string_view name) const
     -> const StrategyDescriptor * {
-  const auto existing =
-      std::find_if(strategies_.begin(), strategies_.end(),
-                   [&](const StrategyDescriptor &entry) {
-                     return entry.name == name;
-                   });
+  const auto existing = std::find_if(
+      strategies_.begin(), strategies_.end(),
+      [&](const StrategyDescriptor &entry) { return entry.name == name; });
   return existing == strategies_.end() ? nullptr : &*existing;
 }
 

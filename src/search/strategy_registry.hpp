@@ -6,11 +6,12 @@
 //   * `StrategyDescriptor`           — top-level user-selectable strategies
 //                                      keyed by `StrategyKind` (bounding-box,
 //                                      sequential-backtrack, the four
-//                                      metaheuristics, and `metaheuristic_search`
-//                                      which delegates to a production optimizer).
+//                                      metaheuristics, and
+//                                      `metaheuristic_search` which delegates
+//                                      to a production optimizer).
 //   * `ProductionStrategyDescriptor` — production-side optimizers keyed by
-//                                      `ProductionOptimizerKind`, only consulted
-//                                      when the resolved strategy is
+//                                      `ProductionOptimizerKind`, only
+//                                      consulted when the resolved strategy is
 //                                      `metaheuristic_search`.
 //
 // Thread-safety: the singleton instance and its internal vectors are NOT
@@ -39,9 +40,8 @@
 
 namespace shiny::nesting::search {
 
-using StrategyRunner =
-    util::StatusOr<NestingResult> (*)(const NormalizedRequest &request,
-                                      const SolveControl &control);
+using StrategyRunner = util::StatusOr<NestingResult> (*)(
+    const NormalizedRequest &request, const SolveControl &control);
 
 struct StrategyDescriptor {
   std::string_view name{};
@@ -68,8 +68,10 @@ public:
   void register_strategy(StrategyDescriptor descriptor);
   void register_production_strategy(ProductionStrategyDescriptor descriptor);
 
-  [[nodiscard]] auto find(StrategyKind kind) const -> const StrategyDescriptor *;
-  [[nodiscard]] auto find(std::string_view name) const -> const StrategyDescriptor *;
+  [[nodiscard]] auto find(StrategyKind kind) const
+      -> const StrategyDescriptor *;
+  [[nodiscard]] auto find(std::string_view name) const
+      -> const StrategyDescriptor *;
   [[nodiscard]] auto find(ProductionOptimizerKind kind) const
       -> const ProductionStrategyDescriptor *;
 

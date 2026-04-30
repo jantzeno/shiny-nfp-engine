@@ -13,14 +13,15 @@ namespace shiny::nesting::pack {
 // running total exceeding `best_known_loss` aborts immediately and sets
 // `early_terminated = true`. Callers (item_mover) supply their current
 // best so this short-circuits most negative samples.
-auto evaluate_sample(const CollisionTracker &tracker, const std::size_t moving_index,
+auto evaluate_sample(const CollisionTracker &tracker,
+                     const std::size_t moving_index,
                      const geom::PolygonWithHoles &candidate_polygon,
                      const double best_known_loss) -> SampleEvaluation {
   SampleEvaluation result{};
   const auto candidate_revision = geom::polygon_revision(candidate_polygon);
 
-  const auto outside_loss =
-      geom::polygon_area_sum(poly::difference_polygons(candidate_polygon, tracker.container()));
+  const auto outside_loss = geom::polygon_area_sum(
+      poly::difference_polygons(candidate_polygon, tracker.container()));
   result.weighted_loss += tracker.container_weight(moving_index) * outside_loss;
   if (result.weighted_loss > best_known_loss) {
     result.early_terminated = true;
@@ -35,7 +36,8 @@ auto evaluate_sample(const CollisionTracker &tracker, const std::size_t moving_i
         candidate_polygon, candidate_revision, tracker.item(other).polygon,
         tracker.item_polygon_revision(other), tracker.pole_cache(),
         tracker.penetration_depth_cache());
-    result.weighted_loss += tracker.pair_weight(moving_index, other) * pair_loss;
+    result.weighted_loss +=
+        tracker.pair_weight(moving_index, other) * pair_loss;
     if (result.weighted_loss > best_known_loss) {
       result.early_terminated = true;
       return result;

@@ -129,7 +129,8 @@ auto parse_rotation_index_value(const shiny::nesting::test::pt::ptree &node,
   return {.value = node.get<std::uint16_t>(std::string{key})};
 }
 
-auto parse_bools(const shiny::nesting::test::pt::ptree &node) -> std::vector<bool> {
+auto parse_bools(const shiny::nesting::test::pt::ptree &node)
+    -> std::vector<bool> {
   std::vector<bool> values;
   for (const auto &child : node) {
     values.push_back(child.second.get_value<bool>());
@@ -146,7 +147,8 @@ auto parse_indices(const shiny::nesting::test::pt::ptree &node)
   return values;
 }
 
-auto parse_config(const shiny::nesting::test::pt::ptree &node) -> PlacementConfig {
+auto parse_config(const shiny::nesting::test::pt::ptree &node)
+    -> PlacementConfig {
   PlacementConfig config{};
   if (const auto part_clearance = node.get_optional<double>("part_clearance")) {
     config.part_clearance = *part_clearance;
@@ -172,7 +174,8 @@ auto parse_config(const shiny::nesting::test::pt::ptree &node) -> PlacementConfi
   return config;
 }
 
-auto parse_nfp_result(const shiny::nesting::test::pt::ptree &node) -> NfpResult {
+auto parse_nfp_result(const shiny::nesting::test::pt::ptree &node)
+    -> NfpResult {
   NfpResult result{};
 
   if (const auto outer_loops = node.get_child_optional("outer_loops")) {

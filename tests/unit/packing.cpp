@@ -176,22 +176,24 @@ auto parse_piece_inputs(const shiny::nesting::test::pt::ptree &node)
     -> std::vector<PieceInput> {
   std::vector<PieceInput> pieces;
   for (const auto &child : node) {
-      pieces.push_back({
-          .piece_id = child.second.get<std::uint32_t>("piece_id"),
-          .polygon = parse_polygon(child.second.get_child("polygon")),
-          .geometry_revision =
-              child.second.get<std::uint64_t>("geometry_revision", 0),
-          .grain_compatibility =
-              parse_part_grain_compatibility(child.second.get<std::string>(
-                  "grain_compatibility", "unrestricted")),
-          .allowed_bin_ids = [&]() {
-            if (const auto ids = child.second.get_child_optional("allowed_bin_ids")) {
-              return parse_ids(*ids);
-            }
-            return std::vector<std::uint32_t>{};
-          }(),
-      });
-    }
+    pieces.push_back({
+        .piece_id = child.second.get<std::uint32_t>("piece_id"),
+        .polygon = parse_polygon(child.second.get_child("polygon")),
+        .geometry_revision =
+            child.second.get<std::uint64_t>("geometry_revision", 0),
+        .grain_compatibility =
+            parse_part_grain_compatibility(child.second.get<std::string>(
+                "grain_compatibility", "unrestricted")),
+        .allowed_bin_ids =
+            [&]() {
+              if (const auto ids =
+                      child.second.get_child_optional("allowed_bin_ids")) {
+                return parse_ids(*ids);
+              }
+              return std::vector<std::uint32_t>{};
+            }(),
+    });
+  }
   return pieces;
 }
 
@@ -204,8 +206,7 @@ auto parse_bin_input(const shiny::nesting::test::pt::ptree &node) -> BinInput {
 }
 
 auto resolve_fixture_bin_count(const std::size_t max_bin_count,
-                               const std::size_t piece_count)
-    -> std::size_t {
+                               const std::size_t piece_count) -> std::size_t {
   if (max_bin_count != 0U) {
     return max_bin_count;
   }
@@ -216,7 +217,8 @@ auto expand_bins(BinInput base_bin, const std::size_t count)
     -> std::vector<BinInput> {
   std::vector<BinInput> bins;
   bins.reserve(std::max<std::size_t>(count, 1));
-  for (std::size_t index = 0; index < std::max<std::size_t>(count, 1); ++index) {
+  for (std::size_t index = 0; index < std::max<std::size_t>(count, 1);
+       ++index) {
     BinInput bin = base_bin;
     bin.bin_id = base_bin.bin_id + static_cast<std::uint32_t>(index);
     bins.push_back(std::move(bin));
@@ -241,7 +243,8 @@ auto parse_decoder_request(const shiny::nesting::test::pt::ptree &node)
   return request;
 }
 
-auto parse_layout_bin(const shiny::nesting::test::pt::ptree &node) -> LayoutBin {
+auto parse_layout_bin(const shiny::nesting::test::pt::ptree &node)
+    -> LayoutBin {
   LayoutBin bin{.bin_id = node.get<std::uint32_t>("bin_id")};
   if (const auto placements = node.get_child_optional("placements")) {
     for (const auto &child : *placements) {
@@ -257,8 +260,8 @@ auto parse_layout_bin(const shiny::nesting::test::pt::ptree &node) -> LayoutBin 
     if (bin.occupied.regions.empty()) {
       bin.occupied = shiny::nesting::poly::make_merged_region(piece.polygon);
     } else {
-      bin.occupied = shiny::nesting::poly::merge_polygon_into_region(bin.occupied,
-                                                                 piece.polygon);
+      bin.occupied = shiny::nesting::poly::merge_polygon_into_region(
+          bin.occupied, piece.polygon);
     }
   }
 
@@ -275,8 +278,9 @@ auto parse_layout(const shiny::nesting::test::pt::ptree &node) -> Layout {
   return layout;
 }
 
-void require_trace_matches(const shiny::nesting::test::pt::ptree &expected_trace,
-                           const Layout &layout) {
+void require_trace_matches(
+    const shiny::nesting::test::pt::ptree &expected_trace,
+    const Layout &layout) {
   REQUIRE(layout.placement_trace.size() == expected_trace.size());
   std::size_t index = 0;
   for (const auto &entry_node : expected_trace) {
@@ -825,7 +829,8 @@ TEST_CASE("packing decoder honors top-right start corner",
           .bin_id = 0,
           .polygon = make_rectangle(0.0, 0.0, 10.0, 10.0),
           .geometry_revision = 1,
-          .start_corner = shiny::nesting::place::PlacementStartCorner::top_right,
+          .start_corner =
+              shiny::nesting::place::PlacementStartCorner::top_right,
       }},
       .pieces = {{
           .piece_id = 1,
@@ -858,7 +863,8 @@ TEST_CASE("bounding box packer honors bottom-right start corner",
           .bin_id = 0,
           .polygon = make_rectangle(0.0, 0.0, 10.0, 10.0),
           .geometry_revision = 1,
-          .start_corner = shiny::nesting::place::PlacementStartCorner::bottom_right,
+          .start_corner =
+              shiny::nesting::place::PlacementStartCorner::bottom_right,
       }},
       .pieces = {{
           .piece_id = 1,

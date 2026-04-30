@@ -28,7 +28,8 @@ public:
 
   void insert(std::uint32_t item_id, const Box2 &bounds);
 
-  [[nodiscard]] auto query(const Box2 &bounds) const -> std::vector<std::uint32_t>;
+  [[nodiscard]] auto query(const Box2 &bounds) const
+      -> std::vector<std::uint32_t>;
 
   [[nodiscard]] auto size() const -> std::size_t;
 

@@ -48,12 +48,11 @@ constexpr double kAreaFloor = 1e-6;
 
 [[nodiscard]] auto dissimilarity_score(const PieceShapeProfile &lhs,
                                        const PieceShapeProfile &rhs) -> double {
-  const double area_ratio = std::abs(
-      std::log(std::max(lhs.area, kAreaFloor) / std::max(rhs.area, kAreaFloor)));
+  const double area_ratio = std::abs(std::log(std::max(lhs.area, kAreaFloor) /
+                                              std::max(rhs.area, kAreaFloor)));
   const double aspect_delta = std::abs(lhs.aspect_ratio - rhs.aspect_ratio);
-  const double diameter_delta =
-      std::abs(lhs.diameter - rhs.diameter) /
-      std::max({lhs.diameter, rhs.diameter, 1e-9});
+  const double diameter_delta = std::abs(lhs.diameter - rhs.diameter) /
+                                std::max({lhs.diameter, rhs.diameter, 1e-9});
   return area_ratio + aspect_delta + diameter_delta;
 }
 
@@ -87,11 +86,11 @@ auto disrupt_large_items(std::span<const std::size_t> order,
   }
   std::stable_sort(candidate_positions.begin(), candidate_positions.end(),
                    [&](const std::size_t lhs, const std::size_t rhs) {
-                      if (piece_areas[order[lhs]] != piece_areas[order[rhs]]) {
-                        return piece_areas[order[lhs]] > piece_areas[order[rhs]];
-                      }
-                      return lhs < rhs;
-                    });
+                     if (piece_areas[order[lhs]] != piece_areas[order[rhs]]) {
+                       return piece_areas[order[lhs]] > piece_areas[order[rhs]];
+                     }
+                     return lhs < rhs;
+                   });
 
   // Kahan-compensated mean over piece areas — large catalogues with
   // wide area dynamic range otherwise lose the contribution of the
@@ -118,7 +117,8 @@ auto disrupt_large_items(std::span<const std::size_t> order,
     // explicitly to avoid an out-of-range access on degenerate inputs.
     candidate_positions.clear();
     for (const auto position : ranked_positions) {
-      if (candidate_positions.empty() || candidate_positions.front() != position) {
+      if (candidate_positions.empty() ||
+          candidate_positions.front() != position) {
         candidate_positions.push_back(position);
       }
       if (candidate_positions.size() == 2U) {
@@ -137,12 +137,15 @@ auto disrupt_large_items(std::span<const std::size_t> order,
        ++lhs_index) {
     for (std::size_t rhs_index = lhs_index + 1U;
          rhs_index < candidate_positions.size(); ++rhs_index) {
-      const auto lhs_piece = request.expanded_pieces[order[candidate_positions[lhs_index]]];
-      const auto rhs_piece = request.expanded_pieces[order[candidate_positions[rhs_index]]];
+      const auto lhs_piece =
+          request.expanded_pieces[order[candidate_positions[lhs_index]]];
+      const auto rhs_piece =
+          request.expanded_pieces[order[candidate_positions[rhs_index]]];
       const auto lhs_profile = shape_profiles.find(lhs_piece.source_piece_id);
       const auto rhs_profile = shape_profiles.find(rhs_piece.source_piece_id);
       const double score =
-          lhs_profile == shape_profiles.end() || rhs_profile == shape_profiles.end()
+          lhs_profile == shape_profiles.end() ||
+                  rhs_profile == shape_profiles.end()
               ? std::abs(piece_areas[order[candidate_positions[lhs_index]]] -
                          piece_areas[order[candidate_positions[rhs_index]]])
               : dissimilarity_score(lhs_profile->second, rhs_profile->second);

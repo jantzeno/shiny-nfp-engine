@@ -104,43 +104,43 @@ TEST_CASE("request builder supports simple solve and full-success helpers",
   REQUIRE(result.value().summary().full_success);
 }
 
-TEST_CASE("request builder provides typed BRKGA config and rotation-range requests",
-          "[api][builder][config]") {
-  auto request =
-      NestingRequestBuilder{}
-          .with_strategy(StrategyKind::metaheuristic_search)
-          .with_production_optimizer(ProductionOptimizerKind::brkga)
-          .with_production_config(ProductionOptimizerKind::brkga,
-                                  ProductionSearchConfig{
-                                      .population_size = 12,
-                                      .elite_count = 3,
-                                      .mutant_count = 2,
-                                      .max_iterations = 5,
-                                  })
-          .with_default_rotations(DiscreteRotationSet{
-              .range_degrees = RotationRange{
-                  .min_degrees = 0.0,
-                  .max_degrees = 180.0,
-                  .step_degrees = 90.0,
-              },
-          })
-          .add_bin(BinRequest{
-              .bin_id = 15,
-              .polygon = rectangle(0.0, 0.0, 12.0, 12.0),
-          })
-          .add_piece(PieceRequest{
-              .piece_id = 42,
-              .polygon = trapezoid(),
-          })
-          .build();
+TEST_CASE(
+    "request builder provides typed BRKGA config and rotation-range requests",
+    "[api][builder][config]") {
+  auto request = NestingRequestBuilder{}
+                     .with_strategy(StrategyKind::metaheuristic_search)
+                     .with_production_optimizer(ProductionOptimizerKind::brkga)
+                     .with_production_config(ProductionOptimizerKind::brkga,
+                                             ProductionSearchConfig{
+                                                 .population_size = 12,
+                                                 .elite_count = 3,
+                                                 .mutant_count = 2,
+                                                 .max_iterations = 5,
+                                             })
+                     .with_default_rotations(DiscreteRotationSet{
+                         .range_degrees =
+                             RotationRange{
+                                 .min_degrees = 0.0,
+                                 .max_degrees = 180.0,
+                                 .step_degrees = 90.0,
+                             },
+                     })
+                     .add_bin(BinRequest{
+                         .bin_id = 15,
+                         .polygon = rectangle(0.0, 0.0, 12.0, 12.0),
+                     })
+                     .add_piece(PieceRequest{
+                         .piece_id = 42,
+                         .polygon = trapezoid(),
+                     })
+                     .build();
 
   REQUIRE(request.is_valid());
   const auto normalized = shiny::nesting::normalize_request(request);
   REQUIRE(normalized.ok());
 
-  const auto *config =
-      production_strategy_config_ptr<ProductionSearchConfig>(
-          normalized.value().request.execution, ProductionOptimizerKind::brkga);
+  const auto *config = production_strategy_config_ptr<ProductionSearchConfig>(
+      normalized.value().request.execution, ProductionOptimizerKind::brkga);
   REQUIRE(config != nullptr);
   REQUIRE(config->max_iterations == 5U);
   REQUIRE(shiny::nesting::geom::materialize_rotations(
@@ -212,10 +212,11 @@ TEST_CASE("solve control builder covers time limits and cancellation",
 TEST_CASE("stable DTO helpers round-trip requests and expose result summaries",
           "[api][dto]") {
   const auto request = simple_request();
-  const auto control = SolveControlBuilder{}
-                           .with_time_limit_ms(25)
-                           .with_seed_mode(shiny::nesting::SeedProgressionMode::decrement)
-                           .build();
+  const auto control =
+      SolveControlBuilder{}
+          .with_time_limit_ms(25)
+          .with_seed_mode(shiny::nesting::SeedProgressionMode::decrement)
+          .build();
 
   const auto request_dto = shiny::nesting::api::to_dto(request, control);
   const auto roundtrip_request = shiny::nesting::api::to_request(request_dto);
@@ -227,7 +228,8 @@ TEST_CASE("stable DTO helpers round-trip requests and expose result summaries",
   REQUIRE(roundtrip_control.seed_mode ==
           shiny::nesting::SeedProgressionMode::decrement);
 
-  const auto result = shiny::nesting::solve(roundtrip_request, roundtrip_control);
+  const auto result =
+      shiny::nesting::solve(roundtrip_request, roundtrip_control);
   REQUIRE(result.ok());
 
   const auto result_dto = shiny::nesting::api::to_dto(result.value());

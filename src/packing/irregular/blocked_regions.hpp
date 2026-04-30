@@ -17,13 +17,11 @@ struct BlockedRegions {
   cache::NfpCacheAccuracy accuracy{cache::NfpCacheAccuracy::exact};
 };
 
-[[nodiscard]] auto
-build_blocked_regions(std::span<const CandidateGenerationObstacle> obstacles,
-                      const geom::PolygonWithHoles &moving_piece,
-                      std::uint64_t moving_piece_revision,
-                      geom::ResolvedRotation moving_rotation,
-                      cache::NfpCache *cache_ptr,
-                      CandidateGenerationDiagnostics *diagnostics)
+[[nodiscard]] auto build_blocked_regions(
+    std::span<const CandidateGenerationObstacle> obstacles,
+    const geom::PolygonWithHoles &moving_piece,
+    std::uint64_t moving_piece_revision, geom::ResolvedRotation moving_rotation,
+    cache::NfpCache *cache_ptr, CandidateGenerationDiagnostics *diagnostics)
     -> util::StatusOr<BlockedRegions>;
 
 } // namespace shiny::nesting::pack

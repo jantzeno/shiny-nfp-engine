@@ -6,9 +6,9 @@
 #include <optional>
 #include <vector>
 
+#include "geometry/transform.hpp"
 #include "packing/bin_state.hpp"
 #include "packing/config.hpp"
-#include "geometry/transform.hpp"
 
 namespace shiny::nesting::pack {
 

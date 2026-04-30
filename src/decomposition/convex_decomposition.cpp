@@ -1,8 +1,8 @@
 #include "decomposition/convex_decomposition.hpp"
 
 #include <algorithm>
-#include <cstdint>
 #include <cmath>
+#include <cstdint>
 #include <optional>
 #include <vector>
 
@@ -73,8 +73,9 @@ struct PieceState {
 [[nodiscard]] auto try_merge_polygons(const geom::Polygon &lhs,
                                       const geom::Polygon &rhs)
     -> std::optional<geom::Polygon> {
-  const auto merged = poly::union_polygons(geom::PolygonWithHoles{.outer = lhs.outer},
-                                           geom::PolygonWithHoles{.outer = rhs.outer});
+  const auto merged =
+      poly::union_polygons(geom::PolygonWithHoles{.outer = lhs.outer},
+                           geom::PolygonWithHoles{.outer = rhs.outer});
   if (merged.size() != 1U || !merged.front().holes.empty()) {
     return std::nullopt;
   }
@@ -178,8 +179,7 @@ auto merge_pieces(std::vector<PieceState> &pieces, const std::int32_t lhs_index,
                          merged_neighbours);
 
   for (const auto neighbour : merged_neighbours) {
-    auto &adjacent =
-        pieces[static_cast<std::size_t>(neighbour)].neighbours;
+    auto &adjacent = pieces[static_cast<std::size_t>(neighbour)].neighbours;
     remove_neighbour(adjacent, rhs_index);
     add_unique_neighbour(adjacent, lhs_index);
   }
@@ -245,7 +245,8 @@ auto decompose_convex(const geom::PolygonWithHoles &polygon)
     return util::Status::invalid_input;
   }
 
-  if (normalized.holes.empty() && is_convex(geom::Polygon{.outer = normalized.outer})) {
+  if (normalized.holes.empty() &&
+      is_convex(geom::Polygon{.outer = normalized.outer})) {
     return std::vector<geom::Polygon>{geom::Polygon{.outer = normalized.outer}};
   }
 

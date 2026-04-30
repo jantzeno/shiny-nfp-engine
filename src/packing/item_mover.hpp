@@ -28,8 +28,9 @@ struct ItemMove {
   double weighted_loss{0.0};
 };
 
-[[nodiscard]] auto move_item(const CollisionTracker &tracker, std::size_t item_index,
-                             const ItemMoverConfig &config,
-                             runtime::DeterministicRng &rng) -> std::optional<ItemMove>;
+[[nodiscard]] auto
+move_item(const CollisionTracker &tracker, std::size_t item_index,
+          const ItemMoverConfig &config, runtime::DeterministicRng &rng)
+    -> std::optional<ItemMove>;
 
 } // namespace shiny::nesting::pack

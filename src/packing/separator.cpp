@@ -40,7 +40,8 @@ auto run_separator_worker(const geom::PolygonWithHoles &container,
         if (tracker.container_loss(item_index) <= 0.0) {
           bool colliding = false;
           for (std::size_t other = 0; other < tracker.item_count(); ++other) {
-            if (other != item_index && tracker.pair_loss(item_index, other) > 0.0) {
+            if (other != item_index &&
+                tracker.pair_loss(item_index, other) > 0.0) {
               colliding = true;
               break;
             }
@@ -136,13 +137,15 @@ auto run_separator(const geom::PolygonWithHoles &container,
   workers.reserve(worker_count);
   for (std::size_t worker = 0; worker < worker_count; ++worker) {
     workers.push_back(std::async(std::launch::async, [&, worker] {
-      return run_separator_worker(container, items, config, seed + worker, worker);
+      return run_separator_worker(container, items, config, seed + worker,
+                                  worker);
     }));
   }
 
   std::optional<SeparationResult> best;
   std::size_t best_worker_index = 0U;
-  for (std::size_t worker_index = 0; worker_index < workers.size(); ++worker_index) {
+  for (std::size_t worker_index = 0; worker_index < workers.size();
+       ++worker_index) {
     auto result = workers[worker_index].get();
     if (!best.has_value() ||
         std::tie(result.total_loss, worker_index) <

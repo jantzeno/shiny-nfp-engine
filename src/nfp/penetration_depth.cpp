@@ -35,7 +35,8 @@ namespace {
     min_distance =
         std::min(min_distance, point_segment_distance_squared(point, segment));
   }
-  return min_distance == std::numeric_limits<double>::max() ? 0.0 : min_distance;
+  return min_distance == std::numeric_limits<double>::max() ? 0.0
+                                                            : min_distance;
 }
 
 } // namespace
@@ -55,10 +56,9 @@ namespace {
 // hot-path repeats avoid redundant O(n) ring rewrites. The polygon
 // revision is read directly because it is invariant under our
 // `normalize_polygon` rotations.
-auto compute_penetration_depth_squared(const geom::PolygonWithHoles &nfp_polygon,
-                                       const geom::Point2 &point,
-                                       cache::PenetrationDepthCache *cache_ptr)
-    -> double {
+auto compute_penetration_depth_squared(
+    const geom::PolygonWithHoles &nfp_polygon, const geom::Point2 &point,
+    cache::PenetrationDepthCache *cache_ptr) -> double {
   const auto revision = geom::polygon_revision(nfp_polygon);
   const auto key = cache::make_penetration_depth_cache_key(revision, point);
   if (cache_ptr != nullptr) {
@@ -79,7 +79,8 @@ auto compute_penetration_depth_squared(const geom::PolygonWithHoles &nfp_polygon
 
   double distance_squared = ring_distance_squared(point, normalized.outer);
   for (const auto &hole : normalized.holes) {
-    distance_squared = std::min(distance_squared, ring_distance_squared(point, hole));
+    distance_squared =
+        std::min(distance_squared, ring_distance_squared(point, hole));
   }
 
   if (cache_ptr != nullptr) {

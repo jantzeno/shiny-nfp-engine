@@ -16,9 +16,9 @@ namespace shiny::nesting::nfp {
 //   * `pack::container_move_bounds` to clamp separation moves.
 // If the piece does not fit in either axis, max < min on that axis;
 // callers must check before consuming.
-[[nodiscard]] auto inner_fit_rectangle_bounds(const geom::Box2 &container_bounds,
-                                              const geom::Box2 &piece_bounds)
-    -> geom::Box2;
+[[nodiscard]] auto
+inner_fit_rectangle_bounds(const geom::Box2 &container_bounds,
+                           const geom::Box2 &piece_bounds) -> geom::Box2;
 
 // Inner-Fit Polygon: the locus of translation deltas that keep `piece`
 // inside `container`.

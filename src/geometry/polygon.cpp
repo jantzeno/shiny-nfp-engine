@@ -12,7 +12,8 @@ namespace detail {
 constexpr double kBoundsEpsilon = 1e-9;
 constexpr double kHashScale = 1'000'000.0;
 
-template <typename T> auto hash_value(std::uint64_t &hash, const T &value) -> void {
+template <typename T>
+auto hash_value(std::uint64_t &hash, const T &value) -> void {
   runtime::hash::fnv1a_mix_value(hash, value);
 }
 
@@ -121,12 +122,13 @@ auto box_height(const Box2 &box) -> double { return box.max.y - box.min.y; }
 
 auto box_to_polygon(const Box2 &box) -> PolygonWithHoles {
   return {
-      .outer = {
-          {box.min.x, box.min.y},
-          {box.max.x, box.min.y},
-          {box.max.x, box.max.y},
-          {box.min.x, box.max.y},
-      },
+      .outer =
+          {
+              {box.min.x, box.min.y},
+              {box.max.x, box.min.y},
+              {box.max.x, box.max.y},
+              {box.min.x, box.max.y},
+          },
   };
 }
 
@@ -134,12 +136,13 @@ auto box_to_polygon_clamped(const Box2 &box, const double max_width)
     -> PolygonWithHoles {
   const auto width = std::max(0.0, std::min(max_width, box_width(box)));
   return {
-      .outer = {
-          {box.min.x, box.min.y},
-          {box.min.x + width, box.min.y},
-          {box.min.x + width, box.max.y},
-          {box.min.x, box.max.y},
-      },
+      .outer =
+          {
+              {box.min.x, box.min.y},
+              {box.min.x + width, box.min.y},
+              {box.min.x + width, box.max.y},
+              {box.min.x, box.max.y},
+          },
   };
 }
 

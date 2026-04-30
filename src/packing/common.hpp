@@ -71,8 +71,8 @@ total_polygon_area(std::span<const geom::PolygonWithHoles> polygons) -> double;
                                               double spacing) -> geom::Box2;
 
 [[nodiscard]] auto boxes_violate_spacing(const geom::Box2 &lhs,
-                                         const geom::Box2 &rhs,
-                                         double spacing) -> bool;
+                                         const geom::Box2 &rhs, double spacing)
+    -> bool;
 
 [[nodiscard]] auto boxes_overlap(const geom::Box2 &lhs, const geom::Box2 &rhs)
     -> bool;
@@ -102,9 +102,9 @@ total_polygon_area(std::span<const geom::PolygonWithHoles> polygons) -> double;
 
 [[nodiscard]] auto piece_allows_bin(const PieceInput &piece,
                                     std::uint32_t bin_id) -> bool;
-[[nodiscard]] auto allowed_rotations_for(
-    const PieceInput &piece,
-    const place::PlacementConfig &config) -> const geom::DiscreteRotationSet &;
+[[nodiscard]] auto allowed_rotations_for(const PieceInput &piece,
+                                         const place::PlacementConfig &config)
+    -> const geom::DiscreteRotationSet &;
 
 auto mark_remaining_unplaced(std::span<const PieceInput> pieces,
                              std::size_t start_index,

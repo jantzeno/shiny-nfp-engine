@@ -31,12 +31,13 @@ using shiny::nesting::search::SolutionPoolEntry;
 auto rectangle(double min_x, double min_y, double max_x, double max_y)
     -> PolygonWithHoles {
   return {
-      .outer = {
-          {min_x, min_y},
-          {max_x, min_y},
-          {max_x, max_y},
-          {min_x, max_y},
-      },
+      .outer =
+          {
+              {min_x, min_y},
+              {max_x, min_y},
+              {max_x, max_y},
+              {min_x, max_y},
+          },
   };
 }
 
@@ -86,7 +87,8 @@ auto make_entry(std::vector<std::size_t> order, std::size_t placed_parts,
 
 } // namespace
 
-TEST_CASE("solution pool keeps the strongest recent candidates", "[search][pool]") {
+TEST_CASE("solution pool keeps the strongest recent candidates",
+          "[search][pool]") {
   SolutionPool pool(3);
   pool.insert(make_entry({0, 1, 2}, 2, 9.0, 0.55));
   pool.insert(make_entry({2, 0, 1}, 3, 8.0, 0.80));
@@ -175,9 +177,8 @@ TEST_CASE("strip optimizer iteration budget scales with piece count",
   config.polishing_passes = 2U;
   config.diversification_swaps = 3U;
 
-  REQUIRE(
-      shiny::nesting::search::detail::derive_iteration_budget(config, 200U) ==
-      219U);
+  REQUIRE(shiny::nesting::search::detail::derive_iteration_budget(
+              config, 200U) == 219U);
 }
 
 TEST_CASE("strip optimizer improves a constructive seed on a strip-style case",
@@ -186,7 +187,8 @@ TEST_CASE("strip optimizer improves a constructive seed on a strip-style case",
   REQUIRE(normalized.ok());
 
   SequentialBacktrackPacker packer;
-  const auto seed = packer.solve(normalized.value(), SolveControl{.random_seed = 3});
+  const auto seed =
+      packer.solve(normalized.value(), SolveControl{.random_seed = 3});
   REQUIRE(seed.ok());
   REQUIRE(seed.value().layout.placement_trace.size() == 2U);
 
@@ -197,7 +199,8 @@ TEST_CASE("strip optimizer improves a constructive seed on a strip-style case",
       normalized.value(), SolveControl{.random_seed = 7}, budget, stopwatch,
       SolutionPoolEntry{
           .order = {0U, 1U, 2U},
-          .metrics = shiny::nesting::search::metrics_for_layout(seed.value().layout),
+          .metrics =
+              shiny::nesting::search::metrics_for_layout(seed.value().layout),
           .result = seed.value(),
       },
       normalized.value().request.execution.production);
@@ -226,7 +229,8 @@ TEST_CASE("strip optimizer reports configurable phase and separator replay",
   REQUIRE(normalized.ok());
 
   SequentialBacktrackPacker packer;
-  const auto seed = packer.solve(normalized.value(), SolveControl{.random_seed = 3});
+  const auto seed =
+      packer.solve(normalized.value(), SolveControl{.random_seed = 3});
   REQUIRE(seed.ok());
 
   shiny::nesting::runtime::Stopwatch stopwatch;
@@ -236,7 +240,8 @@ TEST_CASE("strip optimizer reports configurable phase and separator replay",
       normalized.value(), SolveControl{.random_seed = 7}, budget, stopwatch,
       SolutionPoolEntry{
           .order = {0U, 1U, 2U},
-          .metrics = shiny::nesting::search::metrics_for_layout(seed.value().layout),
+          .metrics =
+              shiny::nesting::search::metrics_for_layout(seed.value().layout),
           .result = seed.value(),
       },
       request.execution.production);
@@ -257,8 +262,9 @@ TEST_CASE("strip optimizer reports configurable phase and separator replay",
   REQUIRE(optimized.separator_metrics.coordinate_descent_iterations == 12U);
 }
 
-TEST_CASE("strip optimizer is deterministic for one worker and bounded for multiple",
-          "[search][strip-optimizer][deterministic][workers]") {
+TEST_CASE(
+    "strip optimizer is deterministic for one worker and bounded for multiple",
+    "[search][strip-optimizer][deterministic][workers]") {
   auto request = strip_case_request();
   request.execution.production.max_iterations = 5;
   request.execution.production.separator_worker_count = 1;
@@ -266,11 +272,13 @@ TEST_CASE("strip optimizer is deterministic for one worker and bounded for multi
   REQUIRE(normalized.ok());
 
   SequentialBacktrackPacker packer;
-  const auto seed = packer.solve(normalized.value(), SolveControl{.random_seed = 3});
+  const auto seed =
+      packer.solve(normalized.value(), SolveControl{.random_seed = 3});
   REQUIRE(seed.ok());
   const auto seed_entry = SolutionPoolEntry{
       .order = {0U, 1U, 2U},
-      .metrics = shiny::nesting::search::metrics_for_layout(seed.value().layout),
+      .metrics =
+          shiny::nesting::search::metrics_for_layout(seed.value().layout),
       .result = seed.value(),
   };
 
@@ -305,8 +313,9 @@ TEST_CASE("strip optimizer is deterministic for one worker and bounded for multi
           first.best_solution.metrics.placed_parts);
 }
 
-TEST_CASE("irregular production preserves or improves the constructive strip seed",
-          "[solve][production][strip]") {
+TEST_CASE(
+    "irregular production preserves or improves the constructive strip seed",
+    "[solve][production][strip]") {
   auto constructive_request = strip_case_request();
   constructive_request.execution.strategy = StrategyKind::sequential_backtrack;
   const auto constructive = shiny::nesting::solve(constructive_request);

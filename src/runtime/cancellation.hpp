@@ -39,8 +39,9 @@ private:
   std::shared_ptr<std::atomic<bool>> flag_{};
 };
 
-[[nodiscard]] inline auto make_interruption_probe(
-    const CancellationToken &token) -> pack::InterruptionProbe {
+[[nodiscard]] inline auto
+make_interruption_probe(const CancellationToken &token)
+    -> pack::InterruptionProbe {
   return [token]() { return token.stop_requested(); };
 }
 

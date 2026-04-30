@@ -12,10 +12,9 @@ struct SampleEvaluation {
   bool early_terminated{false};
 };
 
-[[nodiscard]] auto evaluate_sample(const CollisionTracker &tracker,
-                                   std::size_t moving_index,
-                                   const geom::PolygonWithHoles &candidate_polygon,
-                                   double best_known_loss)
-    -> SampleEvaluation;
+[[nodiscard]] auto
+evaluate_sample(const CollisionTracker &tracker, std::size_t moving_index,
+                const geom::PolygonWithHoles &candidate_polygon,
+                double best_known_loss) -> SampleEvaluation;
 
 } // namespace shiny::nesting::pack

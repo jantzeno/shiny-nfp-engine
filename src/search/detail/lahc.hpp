@@ -14,7 +14,8 @@ public:
 
   [[nodiscard]] auto accepts(const double candidate_score,
                              const double current_score) const -> bool {
-    return candidate_score >= current_score || candidate_score >= history_[cursor_];
+    return candidate_score >= current_score ||
+           candidate_score >= history_[cursor_];
   }
 
   auto advance(const double score) -> void {

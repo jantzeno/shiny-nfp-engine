@@ -12,13 +12,15 @@ struct LayoutValidationOptions {
   double rotation_angle_tolerance{1e-9};
 };
 
-[[nodiscard]] auto validate_layout(
-    const NormalizedRequest &request, const NestingResult &result,
-    LayoutValidationOptions options = {}) -> LayoutValidationReport;
+[[nodiscard]] auto validate_layout(const NormalizedRequest &request,
+                                   const NestingResult &result,
+                                   LayoutValidationOptions options = {})
+    -> LayoutValidationReport;
 
-[[nodiscard]] auto layout_has_geometry_violation(
-    const NormalizedRequest &request, const NestingResult &result,
-    LayoutValidationOptions options = {}) -> bool;
+[[nodiscard]] auto
+layout_has_geometry_violation(const NormalizedRequest &request,
+                              const NestingResult &result,
+                              LayoutValidationOptions options = {}) -> bool;
 
 auto finalize_layout_conservation(const NormalizedRequest &request,
                                   NestingResult &result) -> void;

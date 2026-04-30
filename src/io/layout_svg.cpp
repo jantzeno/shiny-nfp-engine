@@ -60,7 +60,8 @@ namespace fs = std::filesystem;
   return path_data;
 }
 
-[[nodiscard]] auto color_for_index(const std::size_t index) -> std::string_view {
+[[nodiscard]] auto color_for_index(const std::size_t index)
+    -> std::string_view {
   constexpr std::string_view kPalette[]{
       "#ffd166", "#06d6a0", "#118ab2", "#ef476f",
       "#8ecae6", "#b5179e", "#fb8500", "#90be6d",

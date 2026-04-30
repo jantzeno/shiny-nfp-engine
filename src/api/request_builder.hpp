@@ -36,8 +36,8 @@ public:
     return *this;
   }
 
-  auto with_production_optimizer(
-      const ProductionOptimizerKind optimizer) -> NestingRequestBuilder & {
+  auto with_production_optimizer(const ProductionOptimizerKind optimizer)
+      -> NestingRequestBuilder & {
     request_.execution.production_optimizer = optimizer;
     return *this;
   }
@@ -79,7 +79,8 @@ public:
     return *this;
   }
 
-  auto with_strategy_config(const StrategyKind strategy, const ALNSConfig &config)
+  auto with_strategy_config(const StrategyKind strategy,
+                            const ALNSConfig &config)
       -> NestingRequestBuilder & {
     request_.execution.strategy = strategy;
     request_.execution.alns = config;
@@ -87,7 +88,8 @@ public:
     return *this;
   }
 
-  auto with_strategy_config(const StrategyKind strategy, const GDRRConfig &config)
+  auto with_strategy_config(const StrategyKind strategy,
+                            const GDRRConfig &config)
       -> NestingRequestBuilder & {
     request_.execution.strategy = strategy;
     request_.execution.gdrr = config;
@@ -95,7 +97,8 @@ public:
     return *this;
   }
 
-  auto with_strategy_config(const StrategyKind strategy, const LAHCConfig &config)
+  auto with_strategy_config(const StrategyKind strategy,
+                            const LAHCConfig &config)
       -> NestingRequestBuilder & {
     request_.execution.strategy = strategy;
     request_.execution.lahc = config;
@@ -113,7 +116,8 @@ public:
   }
 
   auto with_production_config(const ProductionOptimizerKind optimizer,
-                              const SAConfig &config) -> NestingRequestBuilder & {
+                              const SAConfig &config)
+      -> NestingRequestBuilder & {
     request_.execution.production_optimizer = optimizer;
     request_.execution.simulated_annealing = config;
     set_production_strategy_config(request_.execution, optimizer, config);
@@ -130,7 +134,8 @@ public:
   }
 
   auto with_production_config(const ProductionOptimizerKind optimizer,
-                              const GDRRConfig &config) -> NestingRequestBuilder & {
+                              const GDRRConfig &config)
+      -> NestingRequestBuilder & {
     request_.execution.production_optimizer = optimizer;
     request_.execution.gdrr = config;
     set_production_strategy_config(request_.execution, optimizer, config);
@@ -138,7 +143,8 @@ public:
   }
 
   auto with_production_config(const ProductionOptimizerKind optimizer,
-                              const LAHCConfig &config) -> NestingRequestBuilder & {
+                              const LAHCConfig &config)
+      -> NestingRequestBuilder & {
     request_.execution.production_optimizer = optimizer;
     request_.execution.lahc = config;
     set_production_strategy_config(request_.execution, optimizer, config);

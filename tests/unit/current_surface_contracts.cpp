@@ -46,12 +46,13 @@ using shiny::nesting::util::Status;
 
 auto rectangle(const double min_x, const double min_y, const double max_x,
                const double max_y) -> PolygonWithHoles {
-  return shiny::nesting::geom::normalize_polygon(PolygonWithHoles{.outer = {
-                                                 {.x = min_x, .y = min_y},
-                                                 {.x = max_x, .y = min_y},
-                                                 {.x = max_x, .y = max_y},
-                                                 {.x = min_x, .y = max_y},
-                                             }});
+  return shiny::nesting::geom::normalize_polygon(
+      PolygonWithHoles{.outer = {
+                           {.x = min_x, .y = min_y},
+                           {.x = max_x, .y = min_y},
+                           {.x = max_x, .y = max_y},
+                           {.x = min_x, .y = max_y},
+                       }});
 }
 
 auto base_request() -> NestingRequest {
@@ -122,7 +123,8 @@ TEST_CASE("api contracts reject invalid request families",
       DiscreteRotationSet{{90.0}};
 
   auto invalid_irregular_options = base_request();
-  invalid_irregular_options.execution.strategy = StrategyKind::sequential_backtrack;
+  invalid_irregular_options.execution.strategy =
+      StrategyKind::sequential_backtrack;
   invalid_irregular_options.execution.irregular.max_candidate_points = 0;
 
   auto empty_bins = base_request();
@@ -148,7 +150,8 @@ TEST_CASE("api contracts reject invalid request families",
       std::numeric_limits<double>::infinity();
 
   auto invalid_production_config = base_request();
-  invalid_production_config.execution.strategy = StrategyKind::metaheuristic_search;
+  invalid_production_config.execution.strategy =
+      StrategyKind::metaheuristic_search;
   invalid_production_config.execution.production.population_size = 2;
   invalid_production_config.execution.production.elite_count = 1;
   invalid_production_config.execution.production.mutant_count = 1;
@@ -213,8 +216,9 @@ TEST_CASE("api contracts accept edge-legal requests",
   }
 }
 
-TEST_CASE("request normalization preserves revisions, selected bins, and expansion",
-          "[contracts][api][normalize]") {
+TEST_CASE(
+    "request normalization preserves revisions, selected bins, and expansion",
+    "[contracts][api][normalize]") {
   auto request = base_request();
   request.execution.selected_bin_ids = {2, 2};
   request.bins = {
@@ -239,8 +243,12 @@ TEST_CASE("request normalization preserves revisions, selected bins, and expansi
 TEST_CASE("geometry invariants stay stable under normalization and transforms",
           "[contracts][geometry][property]") {
   const PolygonWithHoles noisy{
-      .outer = {{0.0, 0.0}, {0.0, 0.0}, {4.0, 0.0}, {4.0, 3.0},
-                {0.0, 3.0}, {0.0, 0.0}},
+      .outer = {{0.0, 0.0},
+                {0.0, 0.0},
+                {4.0, 0.0},
+                {4.0, 3.0},
+                {0.0, 3.0},
+                {0.0, 0.0}},
   };
 
   const auto sanitized = shiny::nesting::geom::sanitize_polygon(noisy);
@@ -277,7 +285,8 @@ TEST_CASE("boolean topology identities preserve area",
   const auto far = rectangle(10.0, 10.0, 11.0, 11.0);
 
   const auto union_ab = shiny::nesting::poly::union_polygons(a, b);
-  const auto intersection_ab = shiny::nesting::poly::intersection_polygons(a, b);
+  const auto intersection_ab =
+      shiny::nesting::poly::intersection_polygons(a, b);
   const auto difference_aa = shiny::nesting::poly::difference_polygons(a, a);
   const auto intersection_far =
       shiny::nesting::poly::intersection_polygons(a, far);
@@ -316,12 +325,15 @@ TEST_CASE("packing and search contracts preserve bins, seeds, and validity",
        .allowed_bin_ids = {22}},
   };
 
-  const auto first = shiny::nesting::solve(
-      request,
-      SolveControlBuilder{}.with_random_seed(17).with_operation_limit(4).build());
-  const auto second = shiny::nesting::solve(
-      request,
-      SolveControlBuilder{}.with_random_seed(17).with_operation_limit(4).build());
+  const auto first = shiny::nesting::solve(request, SolveControlBuilder{}
+                                                        .with_random_seed(17)
+                                                        .with_operation_limit(4)
+                                                        .build());
+  const auto second =
+      shiny::nesting::solve(request, SolveControlBuilder{}
+                                         .with_random_seed(17)
+                                         .with_operation_limit(4)
+                                         .build());
 
   REQUIRE(first.ok());
   REQUIRE(second.ok());
@@ -336,8 +348,9 @@ TEST_CASE("packing and search contracts preserve bins, seeds, and validity",
           layout_signature(second.value().layout));
 }
 
-TEST_CASE("partial placement contracts report unplaced pieces deterministically",
-          "[contracts][packing][negative]") {
+TEST_CASE(
+    "partial placement contracts report unplaced pieces deterministically",
+    "[contracts][packing][negative]") {
   auto request = base_request();
   request.execution.strategy = StrategyKind::sequential_backtrack;
   request.execution.default_rotations = DiscreteRotationSet{{0.0}};
@@ -368,10 +381,10 @@ TEST_CASE("IO artifacts expose deterministic IDs and reject unsafe paths",
   const auto svg_path = temp_path("layout.svg");
   REQUIRE(shiny::nesting::io::save_layout(layout_path, solved.value().layout) ==
           Status::ok);
-  REQUIRE(shiny::nesting::io::save_layout_svg(svg_path, solved.value().layout) ==
-          Status::ok);
+  REQUIRE(shiny::nesting::io::save_layout_svg(
+              svg_path, solved.value().layout) == Status::ok);
   REQUIRE(shiny::nesting::io::save_layout_svg(temp_path("layout.txt"),
-                                             solved.value().layout) ==
+                                              solved.value().layout) ==
           Status::invalid_input);
 
   const auto json = read_file(layout_path);

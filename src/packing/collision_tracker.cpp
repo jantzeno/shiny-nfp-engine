@@ -22,8 +22,7 @@ namespace {
 CollisionTracker::CollisionTracker(geom::PolygonWithHoles container,
                                    std::vector<CollisionTrackerItem> items)
     : container_(geom::normalize_polygon(std::move(container))),
-      items_(std::move(items)),
-      polygon_revisions_(items_.size(), 0U),
+      items_(std::move(items)), polygon_revisions_(items_.size(), 0U),
       // Triangle-number storage of strictly-upper pair entries:
       //   slots = N(N-1)/2 for N >= 2, else 0.
       // Explicit branch avoids relying on `0 * SIZE_MAX == 0` for N=0.
@@ -48,7 +47,9 @@ CollisionTracker::CollisionTracker(geom::PolygonWithHoles container,
   }
 }
 
-auto CollisionTracker::item_count() const -> std::size_t { return items_.size(); }
+auto CollisionTracker::item_count() const -> std::size_t {
+  return items_.size();
+}
 
 auto CollisionTracker::item(const std::size_t index) const
     -> const CollisionTrackerItem & {
@@ -91,8 +92,8 @@ auto CollisionTracker::pair_loss_cache_stats() const
 //   index(a, b) = a*n - a*(a+1)/2 + (b - a - 1)         for a < b
 // Self-pairs (a == b) MUST NOT be queried; callers ensure this. The
 // triangular layout halves storage vs an n×n matrix.
-auto CollisionTracker::pair_index(const std::size_t lhs, const std::size_t rhs) const
-    -> std::size_t {
+auto CollisionTracker::pair_index(const std::size_t lhs,
+                                  const std::size_t rhs) const -> std::size_t {
   const auto a = std::min(lhs, rhs);
   const auto b = std::max(lhs, rhs);
   return a * items_.size() - (a * (a + 1U)) / 2U + (b - a - 1U);
@@ -146,14 +147,14 @@ auto CollisionTracker::compute_pair_loss(const std::size_t lhs,
       polygon_revisions_[lhs], polygon_revisions_[rhs]);
   if (const auto cached = pair_loss_cache_.get(cache_key); cached != nullptr) {
     ++pair_loss_cache_hits_;
-    return PairEntry{.loss = cached->loss, .exact = cached->exact, .weight = 0.0};
+    return PairEntry{
+        .loss = cached->loss, .exact = cached->exact, .weight = 0.0};
   }
 
   ++pair_loss_cache_misses_;
-  const auto [loss, exact] =
-      compute_polygon_pair_loss(items_[lhs].polygon, polygon_revisions_[lhs],
-                                items_[rhs].polygon, polygon_revisions_[rhs],
-                                pole_cache(), penetration_depth_cache());
+  const auto [loss, exact] = compute_polygon_pair_loss(
+      items_[lhs].polygon, polygon_revisions_[lhs], items_[rhs].polygon,
+      polygon_revisions_[rhs], pole_cache(), penetration_depth_cache());
   // Cache only the exact-overlap branch. The proxy branch
   // (`exact == 0` but `loss > 0` from inscribed-circle pressure)
   // changes value as items are perturbed even when the polygon
@@ -161,16 +162,16 @@ auto CollisionTracker::compute_pair_loss(const std::size_t lhs,
   // serve stale soft pressures back to callers. Exact intersection
   // area, by contrast, is purely a function of the two revisions.
   if (exact > 0.0) {
-    pair_loss_cache_.put(cache_key,
-                         cache::CollisionPairLossCacheValue{
-                             .loss = loss,
-                             .exact = exact,
-                         });
+    pair_loss_cache_.put(cache_key, cache::CollisionPairLossCacheValue{
+                                        .loss = loss,
+                                        .exact = exact,
+                                    });
   }
   return PairEntry{.loss = loss, .exact = exact, .weight = 0.0};
 }
 
-auto CollisionTracker::compute_container_loss(const std::size_t index) const -> double {
+auto CollisionTracker::compute_container_loss(const std::size_t index) const
+    -> double {
   return geom::polygon_area_sum(
       poly::difference_polygons(items_[index].polygon, container_));
 }
@@ -192,13 +193,13 @@ auto CollisionTracker::register_item_move(const std::size_t index,
   }
 }
 
-auto CollisionTracker::pair_loss(const std::size_t lhs, const std::size_t rhs) const
-    -> double {
+auto CollisionTracker::pair_loss(const std::size_t lhs,
+                                 const std::size_t rhs) const -> double {
   return pair_entries_[pair_index(lhs, rhs)].loss;
 }
 
-auto CollisionTracker::pair_weight(const std::size_t lhs, const std::size_t rhs) const
-    -> double {
+auto CollisionTracker::pair_weight(const std::size_t lhs,
+                                   const std::size_t rhs) const -> double {
   return pair_entries_[pair_index(lhs, rhs)].weight;
 }
 
@@ -206,7 +207,8 @@ auto CollisionTracker::container_loss(const std::size_t index) const -> double {
   return container_losses_[index];
 }
 
-auto CollisionTracker::container_weight(const std::size_t index) const -> double {
+auto CollisionTracker::container_weight(const std::size_t index) const
+    -> double {
   return container_weights_[index];
 }
 
@@ -324,9 +326,8 @@ auto CollisionTracker::update_gls_weights(const double weight_cap) -> void {
   for (std::size_t index = 0; index < container_losses_.size(); ++index) {
     if (container_losses_[index] > 0.0) {
       container_weights_[index] = std::min(
-          weight_cap,
-          container_weights_[index] *
-              lerp(1.2, 2.0, container_losses_[index] / max_loss));
+          weight_cap, container_weights_[index] *
+                          lerp(1.2, 2.0, container_losses_[index] / max_loss));
     } else {
       container_weights_[index] = apply_decay(container_weights_[index]);
     }

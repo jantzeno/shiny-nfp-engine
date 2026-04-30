@@ -75,11 +75,12 @@ TEST_CASE("decomposition headers expose the planned milestone 4 surface",
                          std::declval<CacheStore<PieceRotationKey,
                                                  DecompositionResult> &>())),
                      DecompositionResult>);
-  STATIC_REQUIRE(std::is_same_v<
-                 decltype(shiny::nesting::decomp::validate_decomposition(
-                     std::declval<const shiny::nesting::geom::PolygonWithHoles &>(),
-                     std::declval<const DecompositionResult &>())),
-                 DecompositionValidity>);
+  STATIC_REQUIRE(
+      std::is_same_v<
+          decltype(shiny::nesting::decomp::validate_decomposition(
+              std::declval<const shiny::nesting::geom::PolygonWithHoles &>(),
+              std::declval<const DecompositionResult &>())),
+          DecompositionValidity>);
   STATIC_REQUIRE(
       std::is_same_v<decltype(decomposition_engine.decompose_polygon(
                          std::declval<const DecompositionRequest &>(),

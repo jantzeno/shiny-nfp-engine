@@ -21,12 +21,12 @@ inline constexpr std::uint64_t kGoldenRatio64 = 0x9e3779b97f4a7c15ULL;
 
 // Boost-style hash combiner (golden-ratio splash + bit-shift mixer).
 // Used to fold individual std::hash<T> outputs into a composite key
-// hash. See <https://www.boost.org/doc/libs/1_84_0/libs/container_hash/doc/html/hash.html>.
+// hash. See
+// <https://www.boost.org/doc/libs/1_84_0/libs/container_hash/doc/html/hash.html>.
 [[nodiscard]] constexpr auto combine(const std::size_t seed,
                                      const std::size_t value) noexcept
     -> std::size_t {
-  return seed ^
-         (value + kGoldenRatio64 + (seed << 6U) + (seed >> 2U));
+  return seed ^ (value + kGoldenRatio64 + (seed << 6U) + (seed >> 2U));
 }
 
 // Variadic helper that hashes each argument with std::hash<T> and folds
@@ -61,8 +61,8 @@ auto fnv1a_mix_value(std::uint64_t &hash, const T &value) noexcept -> void {
 // 64-bit FNV-1a over a byte range. Stable across runs and platforms;
 // suitable for seeding RNGs from chromosome data or signing layout
 // orderings.
-[[nodiscard]] constexpr auto fnv1a(const std::span<const std::byte> bytes) noexcept
-    -> std::uint64_t {
+[[nodiscard]] constexpr auto
+fnv1a(const std::span<const std::byte> bytes) noexcept -> std::uint64_t {
   std::uint64_t hash = kFnv1aOffsetBasis;
   fnv1a_mix(hash, bytes);
   return hash;

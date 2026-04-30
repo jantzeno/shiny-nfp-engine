@@ -97,8 +97,9 @@ auto rectangle(const double min_x, const double min_y, const double max_x,
 
 auto normalize_origin(const PolygonWithHoles &polygon) -> PolygonWithHoles {
   const auto bounds = shiny::nesting::geom::compute_bounds(polygon);
-  return shiny::nesting::geom::normalize_polygon(shiny::nesting::geom::translate(
-      polygon, {.x = -bounds.min.x, .y = -bounds.min.y}));
+  return shiny::nesting::geom::normalize_polygon(
+      shiny::nesting::geom::translate(
+          polygon, {.x = -bounds.min.x, .y = -bounds.min.y}));
 }
 
 auto readiness_request_base() -> NestingRequest {
@@ -106,8 +107,8 @@ auto readiness_request_base() -> NestingRequest {
   request.execution.strategy = StrategyKind::metaheuristic_search;
   request.execution.enable_part_in_part_placement = true;
   request.execution.irregular.enable_direct_overlap_check = true;
-  request.execution.default_rotations = DiscreteRotationSet{
-      .angles_degrees = {0.0, 90.0, 180.0, 270.0}};
+  request.execution.default_rotations =
+      DiscreteRotationSet{.angles_degrees = {0.0, 90.0, 180.0, 270.0}};
   request.execution.production_optimizer = ProductionOptimizerKind::brkga;
   request.execution.production = ProductionSearchConfig{};
   request.execution.production.population_size = 10;
@@ -181,10 +182,9 @@ auto request_from_svg_fixture(const fs::path &path) -> NestingRequest {
   REQUIRE(polygons.size() >= 2U);
 
   auto request = readiness_request_base();
-  const auto bed_it = std::find_if(polygons.begin(), polygons.end(),
-                                   [](const auto &entry) {
-                                     return entry.first == "bed";
-                                   });
+  const auto bed_it =
+      std::find_if(polygons.begin(), polygons.end(),
+                   [](const auto &entry) { return entry.first == "bed"; });
   REQUIRE(bed_it != polygons.end());
   request.bins.push_back(BinRequest{
       .bin_id = 1,
@@ -248,11 +248,12 @@ auto request_from_or_dataset(const OrDataset &dataset) -> NestingRequest {
         .piece_id = next_piece_id++,
         .polygon = normalize_origin(item.polygon),
         .quantity = item.demand,
-        .allowed_rotations = item.allowed_orientations.empty()
-                                 ? std::nullopt
-                                 : std::optional<DiscreteRotationSet>{
-                                       {.angles_degrees =
-                                            item.allowed_orientations}},
+        .allowed_rotations =
+            item.allowed_orientations.empty()
+                ? std::nullopt
+                : std::optional<
+                      DiscreteRotationSet>{{.angles_degrees =
+                                                item.allowed_orientations}},
     });
   }
 
@@ -284,8 +285,8 @@ auto request_from_or_dataset(const OrDataset &dataset) -> NestingRequest {
 auto readiness_cases() -> std::vector<ReadinessCase> {
   const auto fixtures = shiny::nesting::test::fixture_root();
   const auto svg_fixtures = fixtures.parent_path() / "files" / "tests";
-  const auto strip_dataset =
-      shiny::nesting::io::load_or_dataset(fixtures / "or_datasets/strip_dataset.json");
+  const auto strip_dataset = shiny::nesting::io::load_or_dataset(
+      fixtures / "or_datasets/strip_dataset.json");
   REQUIRE(strip_dataset.ok());
   const auto explicit_bins = shiny::nesting::io::load_or_dataset(
       fixtures / "or_datasets/explicit_bins_dataset.json");
@@ -302,8 +303,8 @@ auto readiness_cases() -> std::vector<ReadinessCase> {
       },
       {
           .id = "svg-full-irregular-set",
-          .request =
-              request_from_svg_fixture(svg_fixtures / "readiness_full_irregular_set.svg"),
+          .request = request_from_svg_fixture(
+              svg_fixtures / "readiness_full_irregular_set.svg"),
       },
   };
 }
@@ -364,9 +365,9 @@ auto env_flag(const char *name) -> bool {
 
 auto readiness_options() -> ReadinessOptions {
   ReadinessOptions options;
-  options.artifact_dir = shiny::nesting::test::fixture_root().parent_path()
-                             .parent_path() /
-                         "artifacts" / "readiness";
+  options.artifact_dir =
+      shiny::nesting::test::fixture_root().parent_path().parent_path() /
+      "artifacts" / "readiness";
   if (const auto *cases = std::getenv("SHINY_NESTING_ENGINE_READINESS_CASES");
       cases != nullptr) {
     options.case_ids = split_csv(cases);
@@ -377,9 +378,8 @@ auto readiness_options() -> ReadinessOptions {
     options.strategies = split_csv(strategies);
   }
   options.seed = env_u64("SHINY_NESTING_ENGINE_READINESS_SEED", options.seed);
-  options.repeat =
-      std::max<std::size_t>(1U, env_size("SHINY_NESTING_ENGINE_READINESS_REPEAT",
-                                         options.repeat));
+  options.repeat = std::max<std::size_t>(
+      1U, env_size("SHINY_NESTING_ENGINE_READINESS_REPEAT", options.repeat));
   if (const auto *output = std::getenv("SHINY_NESTING_ENGINE_READINESS_OUTPUT");
       output != nullptr) {
     options.artifact_dir = output;
@@ -413,8 +413,8 @@ auto observation_to_node(const ReadinessObservation &observation) -> pt::ptree {
   node.put("min_placed_parts", observation.placed_parts);
   node.put("min_utilization", observation.utilization);
   node.put("max_runtime_ms",
-           std::max<std::uint64_t>(50U,
-                                   observation.elapsed_milliseconds * 4U + 25U));
+           std::max<std::uint64_t>(50U, observation.elapsed_milliseconds * 4U +
+                                            25U));
   node.put("max_fallback_candidates", observation.fallback_candidates + 1U);
   node.put("max_selected_fallback_placements",
            observation.selected_fallback_placements + 1U);
@@ -465,24 +465,25 @@ void write_results_json(const std::vector<ReadinessObservation> &observations,
            << "      \"strategy\": \"" << observation.strategy << "\",\n"
            << "      \"seed\": " << observation.seed << ",\n"
            << "      \"placed_parts\": " << observation.placed_parts << ",\n"
-           << "      \"utilization_percent\": " << observation.utilization << ",\n"
+           << "      \"utilization_percent\": " << observation.utilization
+           << ",\n"
            << "      \"runtime_ms\": " << observation.elapsed_milliseconds
            << ",\n"
-           << "      \"fallback_candidates\": " << observation.fallback_candidates
-           << ",\n"
+           << "      \"fallback_candidates\": "
+           << observation.fallback_candidates << ",\n"
            << "      \"selected_fallback_placements\": "
            << observation.selected_fallback_placements << ",\n"
-            << "      \"stop_reason\": \""
-            << stop_reason_name(observation.stop_reason) << "\",\n"
-            << "      \"full_success\": " << observation.full_success << ",\n"
-            << "      \"layout_valid\": " << observation.layout_valid << ",\n"
-            << "      \"validation_issue_count\": "
-            << observation.validation_issue_count << ",\n"
-            << "      \"layout_json_artifact\": \""
-            << observation.layout_json_artifact << "\",\n"
-            << "      \"layout_svg_artifact\": \""
-            << observation.layout_svg_artifact << "\"\n"
-            << "    }" << (index + 1U == observations.size() ? "\n" : ",\n");
+           << "      \"stop_reason\": \""
+           << stop_reason_name(observation.stop_reason) << "\",\n"
+           << "      \"full_success\": " << observation.full_success << ",\n"
+           << "      \"layout_valid\": " << observation.layout_valid << ",\n"
+           << "      \"validation_issue_count\": "
+           << observation.validation_issue_count << ",\n"
+           << "      \"layout_json_artifact\": \""
+           << observation.layout_json_artifact << "\",\n"
+           << "      \"layout_svg_artifact\": \""
+           << observation.layout_svg_artifact << "\"\n"
+           << "    }" << (index + 1U == observations.size() ? "\n" : ",\n");
   }
   output << "  ]\n}\n";
 }
@@ -490,22 +491,24 @@ void write_results_json(const std::vector<ReadinessObservation> &observations,
 auto read_text_file(const fs::path &path) -> std::string {
   std::ifstream input(path);
   REQUIRE(input.is_open());
-  return {std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
+  return {std::istreambuf_iterator<char>(input),
+          std::istreambuf_iterator<char>()};
 }
 
-auto run_readiness_case(const ReadinessCase &test_case, std::string_view strategy,
-                        const std::uint64_t seed, const fs::path &artifact_dir)
-    -> ReadinessObservation {
+auto run_readiness_case(const ReadinessCase &test_case,
+                        std::string_view strategy, const std::uint64_t seed,
+                        const fs::path &artifact_dir) -> ReadinessObservation {
   CAPTURE(test_case.id);
   CAPTURE(strategy);
   CAPTURE(seed);
   auto request = test_case.request;
-  request.execution.production_optimizer = production_optimizer_from_name(strategy);
+  request.execution.production_optimizer =
+      production_optimizer_from_name(strategy);
   REQUIRE(request.is_valid());
 
   const auto started = std::chrono::steady_clock::now();
-  const auto result = shiny::nesting::solve(
-      request, SolveControl{.random_seed = seed});
+  const auto result =
+      shiny::nesting::solve(request, SolveControl{.random_seed = seed});
   const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::steady_clock::now() - started);
 
@@ -518,8 +521,9 @@ auto run_readiness_case(const ReadinessCase &test_case, std::string_view strateg
   const auto svg_path = artifact_dir / (artifact_stem + ".svg");
   REQUIRE(shiny::nesting::io::save_layout(json_path, result.value().layout) ==
           shiny::nesting::util::Status::ok);
-  REQUIRE(shiny::nesting::io::save_layout_svg(svg_path, result.value().layout) ==
-          shiny::nesting::util::Status::ok);
+  REQUIRE(
+      shiny::nesting::io::save_layout_svg(svg_path, result.value().layout) ==
+      shiny::nesting::util::Status::ok);
 
   const auto json_text = read_text_file(json_path);
   const auto svg_text = read_text_file(svg_path);
@@ -538,7 +542,8 @@ auto run_readiness_case(const ReadinessCase &test_case, std::string_view strateg
       .utilization = result.value().summary().utilization_percent,
       .elapsed_milliseconds = static_cast<std::uint64_t>(elapsed.count()),
       .fallback_candidates =
-          result.value().search.fallback_metrics.conservative_bbox_candidate_points,
+          result.value()
+              .search.fallback_metrics.conservative_bbox_candidate_points,
       .selected_fallback_placements =
           result.value().search.fallback_metrics.selected_fallback_placements,
       .stop_reason = result.value().stop_reason,
@@ -552,7 +557,8 @@ auto run_readiness_case(const ReadinessCase &test_case, std::string_view strateg
 
 void require_within_baseline(const ReadinessObservation &observation,
                              const pt::ptree &baseline_root) {
-  const auto baseline = baseline_root.get_child_optional("cases." + observation.id);
+  const auto baseline =
+      baseline_root.get_child_optional("cases." + observation.id);
   REQUIRE(baseline.has_value());
 
   REQUIRE(observation.placed_parts >=
@@ -580,7 +586,7 @@ void require_within_baseline(const ReadinessObservation &observation,
 } // namespace
 
 TEST_CASE("readiness matrix stays within baseline envelope",
-           "[readiness][benchmark-smoke]") {
+          "[readiness][benchmark-smoke]") {
   const auto options = readiness_options();
   fs::remove_all(options.artifact_dir);
   fs::create_directories(options.artifact_dir);
@@ -628,10 +634,10 @@ TEST_CASE("readiness matrix stays within baseline envelope",
     REQUIRE_FALSE(strategy.empty());
     REQUIRE(record.get<bool>("layout_valid"));
     REQUIRE(record.get<std::size_t>("validation_issue_count") == 0U);
-    REQUIRE(json_artifact == case_id + "-" + strategy + "-" +
-                                 std::to_string(seed) + ".json");
-    REQUIRE(svg_artifact == case_id + "-" + strategy + "-" +
-                                std::to_string(seed) + ".svg");
+    REQUIRE(json_artifact ==
+            case_id + "-" + strategy + "-" + std::to_string(seed) + ".json");
+    REQUIRE(svg_artifact ==
+            case_id + "-" + strategy + "-" + std::to_string(seed) + ".svg");
     REQUIRE(fs::path(json_artifact).is_relative());
     REQUIRE(fs::path(svg_artifact).is_relative());
     REQUIRE((options.artifact_dir / json_artifact).filename() == json_artifact);
@@ -639,8 +645,7 @@ TEST_CASE("readiness matrix stays within baseline envelope",
   }
 }
 
-TEST_CASE("svg readiness fixtures remain parseable",
-          "[readiness]") {
+TEST_CASE("svg readiness fixtures remain parseable", "[readiness]") {
   const auto svg_fixtures =
       shiny::nesting::test::fixture_root().parent_path() / "files" / "tests";
   for (const auto &file_name : {"readiness_full_irregular_set.svg",
@@ -649,9 +654,9 @@ TEST_CASE("svg readiness fixtures remain parseable",
     const auto polygons = parse_svg_fixture(svg_fixtures / file_name);
     CAPTURE(file_name);
     REQUIRE(polygons.size() >= 2U);
-    REQUIRE(std::any_of(polygons.begin(), polygons.end(), [](const auto &entry) {
-      return entry.first == "bed";
-    }));
+    REQUIRE(
+        std::any_of(polygons.begin(), polygons.end(),
+                    [](const auto &entry) { return entry.first == "bed"; }));
   }
 }
 
@@ -661,8 +666,8 @@ TEST_CASE("readiness sanitizer smoke exports representative layouts",
   const auto svg_fixtures = fixtures.parent_path() / "files" / "tests";
   const auto test_case = ReadinessCase{
       .id = "svg-full-irregular-set",
-      .request =
-          request_from_svg_fixture(svg_fixtures / "readiness_full_irregular_set.svg"),
+      .request = request_from_svg_fixture(svg_fixtures /
+                                          "readiness_full_irregular_set.svg"),
   };
 
   const auto artifact_dir =
@@ -671,6 +676,7 @@ TEST_CASE("readiness sanitizer smoke exports representative layouts",
   fs::remove_all(artifact_dir);
   fs::create_directories(artifact_dir);
 
-  const auto observation = run_readiness_case(test_case, "brkga", 17, artifact_dir);
+  const auto observation =
+      run_readiness_case(test_case, "brkga", 17, artifact_dir);
   REQUIRE(observation.placed_parts > 0U);
 }

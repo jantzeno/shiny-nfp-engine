@@ -74,7 +74,8 @@ auto materialize_rotations(const DiscreteRotationSet &rotations)
   const long double predicted_count =
       span / static_cast<long double>(range.step_degrees) + 1.0L;
   if (!(predicted_count >= 0.0L) ||
-      predicted_count > static_cast<long double>(detail::kMaxMaterializedRotations)) {
+      predicted_count >
+          static_cast<long double>(detail::kMaxMaterializedRotations)) {
     return {};
   }
 
@@ -94,15 +95,16 @@ auto rotation_count(const DiscreteRotationSet &rotations) -> std::size_t {
   return materialize_rotations(rotations).size();
 }
 
-auto detail::translate_geometry(const Point2 &point,
-                                const Vector2 translation) -> Point2 {
+auto detail::translate_geometry(const Point2 &point, const Vector2 translation)
+    -> Point2 {
   return {
       .x = point.x + translation.x,
       .y = point.y + translation.y,
   };
 }
 
-auto detail::translate_geometry(const Ring &ring, const Vector2 translation) -> Ring {
+auto detail::translate_geometry(const Ring &ring, const Vector2 translation)
+    -> Ring {
   Ring translated;
   translated.reserve(ring.size());
   for (const auto &point : ring) {
@@ -160,8 +162,8 @@ auto detail::mirror_geometry(const PolygonWithHoles &polygon)
 
 auto detail::rotate_geometry(const Point2 &point,
                              const ResolvedRotation rotation) -> Point2 {
-  const auto radians = normalize_angle_degrees(rotation.degrees) * detail::kPi /
-                       180.0;
+  const auto radians =
+      normalize_angle_degrees(rotation.degrees) * detail::kPi / 180.0;
   auto cosine = std::cos(radians);
   auto sine = std::sin(radians);
   cosine = detail::snap_coordinate(cosine);

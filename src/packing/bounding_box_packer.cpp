@@ -297,9 +297,8 @@ overlaps_any_occupied_bounds(std::span<const geom::Box2> occupied_bounds,
                              const double clearance = 0.0) -> bool {
   return std::any_of(occupied_bounds.begin(), occupied_bounds.end(),
                      [&](const geom::Box2 &occupied_bounds_entry) {
-                       return boxes_violate_spacing(candidate_bounds,
-                                                   occupied_bounds_entry,
-                                                   clearance);
+                       return boxes_violate_spacing(
+                           candidate_bounds, occupied_bounds_entry, clearance);
                      });
 }
 
@@ -751,8 +750,8 @@ find_best_shelf_candidate(const BinPackingState &state, const PieceInput &piece,
         .max = {.x = target_min_x + width, .y = target_min_y + height},
     };
     if (!contains_box(state.container_bounds, translated_bounds) ||
-        overlaps_any_occupied_bounds(state.occupied_bounds,
-                                     translated_bounds, clearance)) {
+        overlaps_any_occupied_bounds(state.occupied_bounds, translated_bounds,
+                                     clearance)) {
       return;
     }
 
@@ -868,12 +867,10 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
   std::vector<geom::Box2> canonical_occupied_bounds;
   canonical_occupied_bounds.reserve(state.occupied_bounds.size());
   for (const geom::Box2 &occupied_bounds_entry : state.occupied_bounds) {
-    canonical_occupied_bounds.push_back(
-        box_for_start_corner(spacing_reservation_bounds(occupied_bounds_entry,
-                                                       request.config.placement
-                                                           .part_clearance),
-                             state.container_bounds,
-                             state.bin_state.start_corner));
+    canonical_occupied_bounds.push_back(box_for_start_corner(
+        spacing_reservation_bounds(occupied_bounds_entry,
+                                   request.config.placement.part_clearance),
+        state.container_bounds, state.bin_state.start_corner));
   }
 
   const geom::Box2 canonical_rotated_bounds = box_for_start_corner(
@@ -1067,7 +1064,8 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
                                      const PieceInput &piece,
                                      const DecoderRequest &request)
     -> std::optional<PlacementCandidate> {
-  const auto &rotations = allowed_rotations_for(piece, request.config.placement);
+  const auto &rotations =
+      allowed_rotations_for(piece, request.config.placement);
   SHINY_DEBUG("BoundingBoxPacker::find_best_for_bin: piece_id={} bin_id={} "
               "shelves={} rotations={}",
               piece.piece_id, state.bin_state.bin_id, state.shelves.size(),
@@ -1075,12 +1073,12 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
   std::optional<PlacementCandidate> best;
 
   const auto rotation_count = geom::rotation_count(rotations);
-  for (std::size_t rotation_value = 0;
-       rotation_value < rotation_count;
+  for (std::size_t rotation_value = 0; rotation_value < rotation_count;
        ++rotation_value) {
     const geom::RotationIndex rotation_index{
         static_cast<std::uint16_t>(rotation_value)};
-    const auto resolved_rotation = geom::resolve_rotation(rotation_index, rotations);
+    const auto resolved_rotation =
+        geom::resolve_rotation(rotation_index, rotations);
     if (!resolved_rotation.has_value() ||
         !place::grain_compatibility_allows_rotation(
             *resolved_rotation, request.config.placement.bed_grain_direction,
@@ -1089,7 +1087,8 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
     }
 
     const auto mirror_count = piece.allow_mirror ? 2U : 1U;
-    for (std::size_t mirror_index = 0; mirror_index < mirror_count; ++mirror_index) {
+    for (std::size_t mirror_index = 0; mirror_index < mirror_count;
+         ++mirror_index) {
       const bool mirrored = mirror_index == 1U;
       const auto source_polygon =
           mirrored ? geom::mirror(piece.polygon) : piece.polygon;
@@ -1161,15 +1160,15 @@ void apply_selection(BinPackingState &state, const PieceInput &piece,
 
   state.bin_state.placements.push_back({
       .placement = selection.placement,
-      .piece_geometry_revision =
-          effective_geometry_revision(piece.geometry_revision, selection.placement.mirrored),
-       .resolved_rotation = selection.resolved_rotation,
-       .polygon = translated_piece,
-       .source = place::PlacementCandidateSource::bin_boundary,
-       .nfp_accuracy = cache::NfpCacheAccuracy::exact,
-       .inside_hole = false,
-       .hole_index = -1,
-       .score = selection.resulting_utilization,
+      .piece_geometry_revision = effective_geometry_revision(
+          piece.geometry_revision, selection.placement.mirrored),
+      .resolved_rotation = selection.resolved_rotation,
+      .polygon = translated_piece,
+      .source = place::PlacementCandidateSource::bin_boundary,
+      .nfp_accuracy = cache::NfpCacheAccuracy::exact,
+      .inside_hole = false,
+      .hole_index = -1,
+      .score = selection.resulting_utilization,
   });
 
   if (state.bin_state.occupied.regions.empty()) {
@@ -1216,17 +1215,17 @@ void apply_selection(BinPackingState &state, const PieceInput &piece,
   trace.push_back({
       .piece_id = piece.piece_id,
       .bin_id = state.bin_state.bin_id,
-      .piece_geometry_revision =
-          effective_geometry_revision(piece.geometry_revision, selection.placement.mirrored),
+      .piece_geometry_revision = effective_geometry_revision(
+          piece.geometry_revision, selection.placement.mirrored),
       .rotation_index = selection.placement.rotation_index,
       .resolved_rotation = selection.resolved_rotation,
-       .translation = selection.placement.translation,
-       .mirrored = selection.placement.mirrored,
-       .source = place::PlacementCandidateSource::bin_boundary,
-       .nfp_accuracy = cache::NfpCacheAccuracy::exact,
-       .opened_new_bin = opened_new_bin,
-       .inside_hole = false,
-       .hole_index = -1,
+      .translation = selection.placement.translation,
+      .mirrored = selection.placement.mirrored,
+      .source = place::PlacementCandidateSource::bin_boundary,
+      .nfp_accuracy = cache::NfpCacheAccuracy::exact,
+      .opened_new_bin = opened_new_bin,
+      .inside_hole = false,
+      .hole_index = -1,
       .score = selection.resulting_utilization,
   });
 }
@@ -1380,8 +1379,7 @@ decode_single(const DecoderRequest &request,
 auto BoundingBoxPacker::decode_attempts(
     const DecoderRequest &request,
     const InterruptionProbe &interruption_requested,
-    const AttemptObserver &on_attempt_complete)
-    -> std::vector<DecoderResult> {
+    const AttemptObserver &on_attempt_complete) -> std::vector<DecoderResult> {
   std::vector<DecoderResult> results;
   const std::vector<DecoderRequest> attempt_requests =
       build_attempt_requests(request);

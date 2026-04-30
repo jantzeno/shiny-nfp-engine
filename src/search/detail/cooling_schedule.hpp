@@ -26,13 +26,15 @@ public:
       : kind_{config.cooling_schedule},
         max_refinements_{std::max<std::size_t>(config.max_refinements, 1U)},
         initial_temperature_{std::max(config.initial_temperature, 1e-9)},
-        final_temperature_{std::clamp(config.final_temperature, 1e-9,
-                                      std::max(config.initial_temperature, 1e-9))},
+        final_temperature_{
+            std::clamp(config.final_temperature, 1e-9,
+                       std::max(config.initial_temperature, 1e-9))},
         lundy_beta_{config.lundy_beta},
-        geometric_alpha_{max_refinements_ <= 1U
-                             ? 1.0
-                             : std::pow(final_temperature_ / initial_temperature_,
-                                        1.0 / static_cast<double>(max_refinements_ - 1U))} {}
+        geometric_alpha_{
+            max_refinements_ <= 1U
+                ? 1.0
+                : std::pow(final_temperature_ / initial_temperature_,
+                           1.0 / static_cast<double>(max_refinements_ - 1U))} {}
 
   [[nodiscard]] auto initial_temperature() const -> double {
     return initial_temperature_;

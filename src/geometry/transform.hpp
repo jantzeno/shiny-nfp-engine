@@ -83,8 +83,8 @@ namespace detail {
 [[nodiscard]] auto mirror_geometry(const PolygonWithHoles &polygon)
     -> PolygonWithHoles;
 
-[[nodiscard]] auto rotate_geometry(const Point2 &point, ResolvedRotation rotation)
-    -> Point2;
+[[nodiscard]] auto rotate_geometry(const Point2 &point,
+                                   ResolvedRotation rotation) -> Point2;
 
 [[nodiscard]] auto rotate_geometry(const Ring &ring, ResolvedRotation rotation)
     -> Ring;
@@ -109,20 +109,19 @@ namespace detail {
                                             Vector2 translation)
     -> PolygonWithHoles;
 
-[[nodiscard]] auto apply_transform_geometry(const Point2 &point,
-                                            const Transform2 &transform,
-                                            const DiscreteRotationSet &rotations)
+[[nodiscard]] auto
+apply_transform_geometry(const Point2 &point, const Transform2 &transform,
+                         const DiscreteRotationSet &rotations)
     -> std::optional<Point2>;
 
-[[nodiscard]] auto apply_transform_geometry(const Polygon &polygon,
-                                            const Transform2 &transform,
-                                            const DiscreteRotationSet &rotations)
+[[nodiscard]] auto
+apply_transform_geometry(const Polygon &polygon, const Transform2 &transform,
+                         const DiscreteRotationSet &rotations)
     -> std::optional<Polygon>;
 
 [[nodiscard]] auto apply_transform_geometry(
     const PolygonWithHoles &polygon, const Transform2 &transform,
-    const DiscreteRotationSet &rotations)
-    -> std::optional<PolygonWithHoles>;
+    const DiscreteRotationSet &rotations) -> std::optional<PolygonWithHoles>;
 
 } // namespace detail
 

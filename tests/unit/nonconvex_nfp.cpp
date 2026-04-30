@@ -19,9 +19,11 @@ auto count_vertex_kind(const shiny::nesting::ArrangementGraph &graph,
 
 auto count_edge_kind(const shiny::nesting::ArrangementGraph &graph,
                      shiny::nesting::GraphEdgeKind kind) -> std::size_t {
-  return static_cast<std::size_t>(std::count_if(
-      graph.edges.begin(), graph.edges.end(),
-      [kind](const shiny::nesting::GraphEdge &edge) { return edge.kind == kind; }));
+  return static_cast<std::size_t>(
+      std::count_if(graph.edges.begin(), graph.edges.end(),
+                    [kind](const shiny::nesting::GraphEdge &edge) {
+                      return edge.kind == kind;
+                    }));
 }
 
 void require_valid_vertex_references(
@@ -77,9 +79,10 @@ TEST_CASE("arrangement graph inserts intersection and midpoint vertices",
   REQUIRE_FALSE(graph.vertices.empty());
   REQUIRE_FALSE(graph.edges.empty());
   REQUIRE(count_vertex_kind(
-              graph, shiny::nesting::GraphVertexKind::intersection_vertex) > 0U);
-  REQUIRE(count_vertex_kind(graph,
-                            shiny::nesting::GraphVertexKind::midpoint_vertex) > 0U);
+              graph, shiny::nesting::GraphVertexKind::intersection_vertex) >
+          0U);
+  REQUIRE(count_vertex_kind(
+              graph, shiny::nesting::GraphVertexKind::midpoint_vertex) > 0U);
   require_valid_vertex_references(graph);
 }
 
@@ -114,8 +117,8 @@ TEST_CASE("pruning suppresses duplicate geometric edges",
 
   const auto pruned = shiny::nesting::prune_arrangement_graph(graph);
   REQUIRE(pruned.pruned);
-  REQUIRE(count_edge_kind(pruned, shiny::nesting::GraphEdgeKind::duplicate_edge) ==
-          0U);
+  REQUIRE(count_edge_kind(pruned,
+                          shiny::nesting::GraphEdgeKind::duplicate_edge) == 0U);
   REQUIRE(count_edge_kind(pruned, shiny::nesting::GraphEdgeKind::pruned_edge) ==
           2U);
 }
@@ -189,8 +192,8 @@ TEST_CASE("pruning drops coincident spans with occupancy on both sides",
 
   const auto pruned = shiny::nesting::prune_arrangement_graph(graph);
   REQUIRE(pruned.pruned);
-  REQUIRE(count_edge_kind(pruned, shiny::nesting::GraphEdgeKind::boundary_edge) ==
-          0U);
+  REQUIRE(count_edge_kind(pruned,
+                          shiny::nesting::GraphEdgeKind::boundary_edge) == 0U);
   REQUIRE(count_edge_kind(pruned, shiny::nesting::GraphEdgeKind::pruned_edge) ==
           3U);
 }
@@ -290,7 +293,8 @@ TEST_CASE("extract_nfp_from_graph drops midpoint-only collinear artifacts",
   };
 
   const auto result = shiny::nesting::extract_nfp_from_graph(graph);
-  REQUIRE(result.algorithm == shiny::nesting::AlgorithmKind::nonconvex_graph_nfp);
+  REQUIRE(result.algorithm ==
+          shiny::nesting::AlgorithmKind::nonconvex_graph_nfp);
   REQUIRE(result.normalized);
   REQUIRE(result.loops.size() == 1U);
   REQUIRE(result.loops.front().vertices.size() == 4U);
@@ -336,7 +340,8 @@ TEST_CASE("extract_nfp_from_graph ignores pruned duplicate edges",
   };
 
   const auto result = shiny::nesting::extract_nfp_from_graph(graph);
-  REQUIRE(result.algorithm == shiny::nesting::AlgorithmKind::nonconvex_graph_nfp);
+  REQUIRE(result.algorithm ==
+          shiny::nesting::AlgorithmKind::nonconvex_graph_nfp);
   REQUIRE(result.normalized);
   REQUIRE(result.loops.size() == 1U);
   REQUIRE(result.loops.front().vertices.size() == 4U);

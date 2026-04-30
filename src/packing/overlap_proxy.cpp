@@ -72,13 +72,14 @@ struct PoleSearchCellOrder {
   return min_distance;
 }
 
-[[nodiscard]] auto polygon_boundary_distance_squared(
-    const geom::PolygonWithHoles &polygon, const geom::Point2 &point) -> double {
+[[nodiscard]] auto
+polygon_boundary_distance_squared(const geom::PolygonWithHoles &polygon,
+                                  const geom::Point2 &point) -> double {
   double min_distance = ring_distance_squared(point, polygon.outer);
   for (const auto &hole : polygon.holes) {
-    min_distance = std::min(min_distance,
-                            ring_distance_squared(point,
-                                                  std::span<const geom::Point2>(hole)));
+    min_distance = std::min(
+        min_distance,
+        ring_distance_squared(point, std::span<const geom::Point2>(hole)));
   }
   return min_distance;
 }
@@ -91,9 +92,10 @@ struct PoleSearchCellOrder {
 //   * negative  -> `point` is OUTSIDE; value is -distance-to-boundary.
 // The PoI search maximises this value, so positive interior distances
 // dominate negative exterior ones automatically.
-[[nodiscard]] auto signed_distance_to_polygon(
-    const geom::PolygonWithHoles &polygon, const geom::Point2 &point,
-    cache::PenetrationDepthCache *pd_cache) -> double {
+[[nodiscard]] auto
+signed_distance_to_polygon(const geom::PolygonWithHoles &polygon,
+                           const geom::Point2 &point,
+                           cache::PenetrationDepthCache *pd_cache) -> double {
   const auto location = pred::locate_point_in_polygon(point, polygon);
   if (location.location == pred::PointLocation::boundary) {
     return 0.0;
@@ -105,8 +107,8 @@ struct PoleSearchCellOrder {
     return std::sqrt(std::max(0.0, distance_squared));
   }
 
-  return -std::sqrt(std::max(0.0,
-                             polygon_boundary_distance_squared(polygon, point)));
+  return -std::sqrt(
+      std::max(0.0, polygon_boundary_distance_squared(polygon, point)));
 }
 
 [[nodiscard]] auto make_pole_search_cell(const geom::PolygonWithHoles &polygon,
@@ -139,18 +141,16 @@ struct PoleSearchCellOrder {
 // loop body stays in lock-step with the child-subdivision loop below
 // (both call `make_pole_search_cell` with the same conventions).
 auto compute_initial_cells(
-    const geom::PolygonWithHoles &normalized,
-    const geom::Box2 &bounds, const double cell_size,
-    cache::PenetrationDepthCache *pd_cache,
+    const geom::PolygonWithHoles &normalized, const geom::Box2 &bounds,
+    const double cell_size, cache::PenetrationDepthCache *pd_cache,
     std::priority_queue<PoleSearchCell, std::vector<PoleSearchCell>,
                         PoleSearchCellOrder> &queue) -> void {
   const auto half_size = cell_size / 2.0;
   for (double x = bounds.min.x; x < bounds.max.x; x += cell_size) {
     for (double y = bounds.min.y; y < bounds.max.y; y += cell_size) {
-      queue.push(make_pole_search_cell(
-          normalized,
-          {.x = x + half_size, .y = y + half_size},
-          half_size, pd_cache));
+      queue.push(make_pole_search_cell(normalized,
+                                       {.x = x + half_size, .y = y + half_size},
+                                       half_size, pd_cache));
     }
   }
 }
@@ -187,7 +187,8 @@ auto compute_pole_of_inaccessibility(const geom::PolygonWithHoles &polygon,
 
   const auto effective_epsilon = std::max(epsilon, 1e-9);
   if (pole_cache != nullptr) {
-    const auto key = cache::make_pole_cache_key(polygon_revision, effective_epsilon);
+    const auto key =
+        cache::make_pole_cache_key(polygon_revision, effective_epsilon);
     if (auto cached = pole_cache->get(key); cached != nullptr) {
       return *cached;
     }
@@ -199,14 +200,14 @@ auto compute_pole_of_inaccessibility(const geom::PolygonWithHoles &polygon,
   const auto height = geom::box_height(bounds);
   const auto initial_cell_size = std::max(0.0, std::min(width, height));
 
-  PoleSearchCell best = make_pole_search_cell(
-      normalized,
-      {.x = (bounds.min.x + bounds.max.x) / 2.0,
-       .y = (bounds.min.y + bounds.max.y) / 2.0},
-      0.0, pd_cache);
+  PoleSearchCell best =
+      make_pole_search_cell(normalized,
+                            {.x = (bounds.min.x + bounds.max.x) / 2.0,
+                             .y = (bounds.min.y + bounds.max.y) / 2.0},
+                            0.0, pd_cache);
   if (!normalized.outer.empty()) {
-    const auto vertex_candidate =
-        make_pole_search_cell(normalized, normalized.outer.front(), 0.0, pd_cache);
+    const auto vertex_candidate = make_pole_search_cell(
+        normalized, normalized.outer.front(), 0.0, pd_cache);
     if (better_pole_candidate(vertex_candidate, best)) {
       best = vertex_candidate;
     }
@@ -260,8 +261,9 @@ auto compute_pole_of_inaccessibility(const geom::PolygonWithHoles &polygon,
       .radius = std::max(0.0, best.distance),
   };
   if (pole_cache != nullptr) {
-    pole_cache->put(cache::make_pole_cache_key(polygon_revision, effective_epsilon),
-                    result);
+    pole_cache->put(
+        cache::make_pole_cache_key(polygon_revision, effective_epsilon),
+        result);
   }
   return result;
 }
@@ -299,7 +301,8 @@ auto overlap_proxy_loss(const geom::PolygonWithHoles &lhs,
       lhs, lhs_revision, pole_cache, pd_cache, epsilon);
   const auto rhs_pole = compute_pole_of_inaccessibility(
       rhs, rhs_revision, pole_cache, pd_cache, epsilon);
-  const auto center_distance = geom::point_distance(lhs_pole.center, rhs_pole.center);
+  const auto center_distance =
+      geom::point_distance(lhs_pole.center, rhs_pole.center);
   const auto penetration =
       std::max(0.0, lhs_pole.radius + rhs_pole.radius - center_distance);
   return penetration > 0.0 ? penetration / (1.0 + center_distance) : 0.0;

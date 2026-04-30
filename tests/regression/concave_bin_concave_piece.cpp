@@ -59,7 +59,7 @@ TEST_CASE("regression concave host and concave piece keep a single outer loop",
                                  shiny::nesting::NfpFeatureKind::outer_loop;
                         }) == 1);
   REQUIRE(shiny::nesting::pred::locate_point_in_ring(outer.vertices.front(),
-                                                 outer.vertices)
+                                                     outer.vertices)
               .location != shiny::nesting::pred::PointLocation::exterior);
   REQUIRE(signed_area(outer.vertices) > 1.0L);
   REQUIRE(signed_area(outer.vertices) < 400.0L);

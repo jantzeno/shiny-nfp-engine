@@ -23,7 +23,8 @@ struct PackerSearchMetrics {
     conservative_bbox_cache_hits += totals.conservative_bbox_cache_hits;
     exact_nfp_computations += totals.exact_nfp_computations;
     conservative_bbox_fallbacks += totals.conservative_bbox_fallbacks;
-    conservative_bbox_candidate_points += totals.conservative_bbox_candidate_points;
+    conservative_bbox_candidate_points +=
+        totals.conservative_bbox_candidate_points;
   }
 };
 

@@ -44,7 +44,9 @@ struct OrDataset {
     return strip_height.has_value();
   }
 
-  [[nodiscard]] auto uses_explicit_bins() const -> bool { return !bins.empty(); }
+  [[nodiscard]] auto uses_explicit_bins() const -> bool {
+    return !bins.empty();
+  }
 };
 
 [[nodiscard]] auto load_or_dataset(const std::filesystem::path &path)

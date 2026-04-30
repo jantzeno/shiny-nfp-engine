@@ -15,25 +15,26 @@ using shiny::nesting::ExecutionPolicy;
 using shiny::nesting::NestingRequest;
 using shiny::nesting::NestingResult;
 using shiny::nesting::PieceRequest;
+using shiny::nesting::primary_strategy_config_ptr;
+using shiny::nesting::set_primary_strategy_config;
 using shiny::nesting::SolveControl;
 using shiny::nesting::StrategyKind;
 using shiny::nesting::geom::PolygonWithHoles;
-using shiny::nesting::primary_strategy_config_ptr;
 using shiny::nesting::search::StrategyDescriptor;
 using shiny::nesting::search::StrategyRegistry;
-using shiny::nesting::set_primary_strategy_config;
 using shiny::nesting::util::Status;
 using shiny::nesting::util::StatusOr;
 
 auto rectangle(double min_x, double min_y, double max_x, double max_y)
     -> PolygonWithHoles {
   return {
-      .outer = {
-          {min_x, min_y},
-          {max_x, min_y},
-          {max_x, max_y},
-          {min_x, max_y},
-      },
+      .outer =
+          {
+              {min_x, min_y},
+              {max_x, min_y},
+              {max_x, max_y},
+              {min_x, max_y},
+          },
   };
 }
 
@@ -56,12 +57,14 @@ auto trivial_request() -> NestingRequest {
 }
 
 auto stub_runner_a(const shiny::nesting::NormalizedRequest & /*request*/,
-                   const SolveControl & /*control*/) -> StatusOr<NestingResult> {
+                   const SolveControl & /*control*/)
+    -> StatusOr<NestingResult> {
   return Status::invalid_input;
 }
 
 auto stub_runner_b(const shiny::nesting::NormalizedRequest & /*request*/,
-                   const SolveControl & /*control*/) -> StatusOr<NestingResult> {
+                   const SolveControl & /*control*/)
+    -> StatusOr<NestingResult> {
   return Status::invalid_input;
 }
 
@@ -80,9 +83,11 @@ public:
   }
 
   ScopedStrategyOverride(const ScopedStrategyOverride &) = delete;
-  auto operator=(const ScopedStrategyOverride &) -> ScopedStrategyOverride & = delete;
+  auto operator=(const ScopedStrategyOverride &)
+      -> ScopedStrategyOverride & = delete;
   ScopedStrategyOverride(ScopedStrategyOverride &&) = delete;
-  auto operator=(ScopedStrategyOverride &&) -> ScopedStrategyOverride & = delete;
+  auto operator=(ScopedStrategyOverride &&)
+      -> ScopedStrategyOverride & = delete;
 
   ~ScopedStrategyOverride() {
     StrategyRegistry::instance().register_strategy(original_);
@@ -137,18 +142,19 @@ TEST_CASE("solve returns invalid_input when the registry has no runner",
   REQUIRE(result.status() == Status::invalid_input);
 }
 
-TEST_CASE("typed strategy config variant resolves without compatibility helpers",
-          "[strategy-config][request]") {
+TEST_CASE(
+    "typed strategy config variant resolves without compatibility helpers",
+    "[strategy-config][request]") {
   ExecutionPolicy execution;
-  REQUIRE(primary_strategy_config_ptr<ALNSConfig>(execution, StrategyKind::alns) ==
-          nullptr);
+  REQUIRE(primary_strategy_config_ptr<ALNSConfig>(
+              execution, StrategyKind::alns) == nullptr);
 
   ALNSConfig alns_config;
   alns_config.max_refinements = 31;
   set_primary_strategy_config(execution, StrategyKind::alns, alns_config);
 
-  REQUIRE(primary_strategy_config_ptr<ALNSConfig>(execution, StrategyKind::lahc) ==
-          nullptr);
+  REQUIRE(primary_strategy_config_ptr<ALNSConfig>(
+              execution, StrategyKind::lahc) == nullptr);
   const auto *alns =
       primary_strategy_config_ptr<ALNSConfig>(execution, StrategyKind::alns);
   REQUIRE(alns != nullptr);

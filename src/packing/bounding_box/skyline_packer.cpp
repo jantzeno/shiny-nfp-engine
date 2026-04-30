@@ -60,8 +60,7 @@ auto find_best_skyline_candidate(
   for (const geom::Box2 &occupied_bounds_entry : state.occupied_bounds) {
     canonical_occupied_bounds.push_back(box_for_start_corner(
         spacing_reservation_bounds(occupied_bounds_entry, clearance),
-        state.container_bounds,
-        state.bin_state.start_corner));
+        state.container_bounds, state.bin_state.start_corner));
   }
 
   const geom::Box2 canonical_rotated_bounds = box_for_start_corner(

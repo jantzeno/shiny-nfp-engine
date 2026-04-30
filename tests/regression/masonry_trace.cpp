@@ -24,10 +24,8 @@ TEST_CASE("masonry observer events stay aligned with retained progress",
   request.masonry_request.decoder_request = {
       .bins = {{
           .bin_id = 70,
-          .polygon = {.outer = {{0.0, 0.0},
-                                {10.0, 0.0},
-                                {10.0, 10.0},
-                                {0.0, 10.0}}},
+          .polygon =
+              {.outer = {{0.0, 0.0}, {10.0, 0.0}, {10.0, 10.0}, {0.0, 10.0}}},
           .geometry_revision = 700,
       }},
       .pieces =
@@ -48,7 +46,7 @@ TEST_CASE("masonry observer events stay aligned with retained progress",
       .policy = shiny::nesting::place::PlacementPolicy::bottom_left,
       .config = {.placement =
                      {.allowed_rotations = {.angles_degrees = {0.0, 90.0, 180.0,
-                                                                270.0}}}},
+                                                               270.0}}}},
   };
   request.execution.control.capture_timestamps = false;
 

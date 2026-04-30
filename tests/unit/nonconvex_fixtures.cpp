@@ -156,9 +156,10 @@ void require_points_equal(
   }
 }
 
-void require_loops_equal(const std::vector<NfpLoop> &actual,
-                         const std::vector<shiny::nesting::geom::Ring> &expected,
-                         NfpFeatureKind kind) {
+void require_loops_equal(
+    const std::vector<NfpLoop> &actual,
+    const std::vector<shiny::nesting::geom::Ring> &expected,
+    NfpFeatureKind kind) {
   std::vector<shiny::nesting::geom::Ring> filtered_actual;
   for (const auto &loop : actual) {
     if (loop.kind == kind) {
@@ -197,7 +198,8 @@ void require_loops_equal(const std::vector<NfpLoop> &actual,
   }
 }
 
-auto parse_graph(const shiny::nesting::test::pt::ptree &node) -> ArrangementGraph {
+auto parse_graph(const shiny::nesting::test::pt::ptree &node)
+    -> ArrangementGraph {
   ArrangementGraph graph{};
 
   for (const auto &child : node.get_child("vertices")) {

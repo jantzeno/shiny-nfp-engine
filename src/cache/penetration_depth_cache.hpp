@@ -19,7 +19,8 @@ struct PenetrationDepthCacheKey {
 };
 
 struct PenetrationDepthCacheKeyHash {
-  [[nodiscard]] auto operator()(const PenetrationDepthCacheKey &key) const noexcept
+  [[nodiscard]] auto
+  operator()(const PenetrationDepthCacheKey &key) const noexcept
       -> std::size_t {
     return runtime::hash::combine_hashes(key.nfp_revision, key.x_quantized,
                                          key.y_quantized);

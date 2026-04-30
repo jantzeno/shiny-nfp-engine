@@ -42,13 +42,12 @@ namespace {
   const double u1 =
       std::max(rng.uniform_real(), std::numeric_limits<double>::min());
   const double u2 = rng.uniform_real();
-  const double gaussian =
-      std::sqrt(-2.0 * std::log(u1)) *
-      std::cos(2.0 * std::numbers::pi_v<double> * u2);
+  const double gaussian = std::sqrt(-2.0 * std::log(u1)) *
+                          std::cos(2.0 * std::numbers::pi_v<double> * u2);
   const double sigma = 0.25;
   const double normalized = std::clamp(std::abs(gaussian) * sigma, 0.0, 1.0);
-  return std::min(size - 1U,
-                  static_cast<std::size_t>(normalized * static_cast<double>(size)));
+  return std::min(size - 1U, static_cast<std::size_t>(
+                                 normalized * static_cast<double>(size)));
 }
 
 } // namespace
@@ -92,7 +91,8 @@ auto metrics_for_layout(const pack::Layout &layout) -> LayoutMetrics {
   return metrics;
 }
 
-auto better_metrics(const LayoutMetrics &lhs, const LayoutMetrics &rhs) -> bool {
+auto better_metrics(const LayoutMetrics &lhs, const LayoutMetrics &rhs)
+    -> bool {
   if (lhs.placed_parts != rhs.placed_parts) {
     return lhs.placed_parts > rhs.placed_parts;
   }
@@ -130,7 +130,8 @@ auto SolutionPool::insert(SolutionPoolEntry entry) -> void {
   }
   if (entry.result.total_parts > 0U) {
     if (validation_request_ != nullptr &&
-        !validation::validate_layout(*validation_request_, entry.result).valid) {
+        !validation::validate_layout(*validation_request_, entry.result)
+             .valid) {
       return;
     }
     if (validation_request_ == nullptr && !entry.result.layout_valid()) {

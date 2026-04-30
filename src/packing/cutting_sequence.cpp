@@ -15,7 +15,7 @@ namespace {
 
 [[nodiscard]] auto box_center(const geom::Box2 &bounds) -> geom::Point2 {
   return {.x = (bounds.min.x + bounds.max.x) / 2.0,
-           .y = (bounds.min.y + bounds.max.y) / 2.0};
+          .y = (bounds.min.y + bounds.max.y) / 2.0};
 }
 
 // 2-opt local search operating on indices into a precomputed centers
@@ -37,10 +37,10 @@ auto two_opt_indices(std::span<const geom::Point2> centers,
     improved = false;
     for (std::size_t i = 1; i + 2 < order.size(); ++i) {
       for (std::size_t k = i + 1; k + 1 < order.size(); ++k) {
-        const auto before = dist(order[i - 1], order[i]) +
-                            dist(order[k], order[k + 1]);
-        const auto after = dist(order[i - 1], order[k]) +
-                           dist(order[i], order[k + 1]);
+        const auto before =
+            dist(order[i - 1], order[i]) + dist(order[k], order[k + 1]);
+        const auto after =
+            dist(order[i - 1], order[k]) + dist(order[i], order[k + 1]);
         if (after + 1e-9 < before) {
           std::reverse(order.begin() + static_cast<std::ptrdiff_t>(i),
                        order.begin() + static_cast<std::ptrdiff_t>(k + 1U));
@@ -51,8 +51,9 @@ auto two_opt_indices(std::span<const geom::Point2> centers,
   }
 }
 
-[[nodiscard]] auto nearest_neighbor_indices(
-    std::span<const geom::Point2> centers, std::vector<std::size_t> pool)
+[[nodiscard]] auto
+nearest_neighbor_indices(std::span<const geom::Point2> centers,
+                         std::vector<std::size_t> pool)
     -> std::vector<std::size_t> {
   if (pool.size() < 2U) {
     return pool;
@@ -65,7 +66,8 @@ auto two_opt_indices(std::span<const geom::Point2> centers,
 
   while (!pool.empty()) {
     const auto best = std::min_element(
-        pool.begin(), pool.end(), [&](const std::size_t lhs, const std::size_t rhs) {
+        pool.begin(), pool.end(),
+        [&](const std::size_t lhs, const std::size_t rhs) {
           return geom::point_distance(centers[ordered.back()], centers[lhs]) <
                  geom::point_distance(centers[ordered.back()], centers[rhs]);
         });
@@ -83,16 +85,19 @@ struct ContourNode {
 };
 
 [[nodiscard]] auto is_contained_in_outer_ring(const CutContour &candidate,
-                                              const ContourNode &container) -> bool {
+                                              const ContourNode &container)
+    -> bool {
   if (candidate.bin_id != container.contour.bin_id ||
       candidate.piece_id == container.contour.piece_id) {
     return false;
   }
 
-  const geom::PolygonWithHoles outer_only{.outer = container.owner_polygon.outer};
+  const geom::PolygonWithHoles outer_only{.outer =
+                                              container.owner_polygon.outer};
   bool saw_strict_interior = false;
   for (const auto &point : candidate.ring) {
-    const auto location = pred::locate_point_in_polygon(point, outer_only).location;
+    const auto location =
+        pred::locate_point_in_polygon(point, outer_only).location;
     if (location == pred::PointLocation::exterior) {
       return false;
     }
@@ -107,10 +112,10 @@ struct ContourNode {
 // from a 2-opt-refined nearest-neighbour walk. Operating on indices
 // avoids the O(K · N · V) ring-equality scan that the old
 // CutContour-valued variant required to map results back to nodes.
-[[nodiscard]] auto order_ready_indices(
-    std::span<const geom::Point2> centers,
-    std::vector<std::size_t> ready,
-    const std::optional<geom::Point2> previous_center)
+[[nodiscard]] auto
+order_ready_indices(std::span<const geom::Point2> centers,
+                    std::vector<std::size_t> ready,
+                    const std::optional<geom::Point2> previous_center)
     -> std::vector<std::size_t> {
   if (ready.size() < 2U) {
     return ready;
@@ -175,8 +180,8 @@ auto build_cutting_sequence(const Layout &layout) -> std::vector<CutContour> {
                     .ring = hole,
                 },
             .owner_polygon = piece.polygon,
-            .bounds = geom::compute_bounds(std::span<const geom::Point2>(
-                hole.data(), hole.size())),
+            .bounds = geom::compute_bounds(
+                std::span<const geom::Point2>(hole.data(), hole.size())),
         });
       }
       nodes.push_back({
@@ -184,9 +189,9 @@ auto build_cutting_sequence(const Layout &layout) -> std::vector<CutContour> {
               {
                   .bin_id = bin.bin_id,
                   .piece_id = piece.placement.piece_id,
-                    .from_hole = false,
-                    .ring = piece.polygon.outer,
-               },
+                  .from_hole = false,
+                  .ring = piece.polygon.outer,
+              },
           .owner_polygon = piece.polygon,
           .bounds = geom::compute_bounds(std::span<const geom::Point2>(
               piece.polygon.outer.data(), piece.polygon.outer.size())),
@@ -203,10 +208,12 @@ auto build_cutting_sequence(const Layout &layout) -> std::vector<CutContour> {
         continue;
       }
       outer_node_by_piece.emplace(nodes[index].contour.piece_id, index);
-      outer_index.insert(static_cast<std::uint32_t>(index), nodes[index].bounds);
+      outer_index.insert(static_cast<std::uint32_t>(index),
+                         nodes[index].bounds);
     }
 
-    const auto add_dependency = [&](const std::size_t from, const std::size_t to) {
+    const auto add_dependency = [&](const std::size_t from,
+                                    const std::size_t to) {
       edges[from].push_back(to);
       ++indegree[to];
     };
@@ -223,7 +230,8 @@ auto build_cutting_sequence(const Layout &layout) -> std::vector<CutContour> {
 
       for (const auto candidate_id : outer_index.query(nodes[lhs].bounds)) {
         const auto rhs = static_cast<std::size_t>(candidate_id);
-        if (rhs == lhs || !geom::box_contains(nodes[rhs].bounds, nodes[lhs].bounds)) {
+        if (rhs == lhs ||
+            !geom::box_contains(nodes[rhs].bounds, nodes[lhs].bounds)) {
           continue;
         }
 
@@ -307,8 +315,8 @@ auto build_cutting_sequence(const Layout &layout) -> std::vector<CutContour> {
       // The drain unblocks dependents into the next ready_pool window.
       std::vector<std::size_t> ready_window;
       ready_window.swap(ready_pool);
-      const auto schedule_order =
-          order_ready_indices(centers, std::move(ready_window), previous_center);
+      const auto schedule_order = order_ready_indices(
+          centers, std::move(ready_window), previous_center);
       for (const auto node_index : schedule_order) {
         scheduled[node_index] = true;
         ++scheduled_count;

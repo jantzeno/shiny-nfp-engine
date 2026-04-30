@@ -18,9 +18,9 @@ using shiny::nesting::geom::Box2;
 using shiny::nesting::geom::DiscreteRotationSet;
 using shiny::nesting::geom::Point2;
 using shiny::nesting::geom::PolygonWithHoles;
-using shiny::nesting::geom::RTreeIndex;
 using shiny::nesting::geom::RotationIndex;
 using shiny::nesting::geom::RotationRange;
+using shiny::nesting::geom::RTreeIndex;
 
 auto rectangle(double width, double height) -> PolygonWithHoles {
   return shiny::nesting::geom::normalize_polygon(PolygonWithHoles{
@@ -30,8 +30,12 @@ auto rectangle(double width, double height) -> PolygonWithHoles {
 
 auto right_notch() -> PolygonWithHoles {
   return shiny::nesting::geom::normalize_polygon(PolygonWithHoles{
-      .outer = {{0.0, 0.0}, {3.0, 0.0}, {3.0, 3.0}, {2.0, 3.0},
-                {2.0, 1.0}, {0.0, 1.0}},
+      .outer = {{0.0, 0.0},
+                {3.0, 0.0},
+                {3.0, 3.0},
+                {2.0, 3.0},
+                {2.0, 1.0},
+                {0.0, 1.0}},
   });
 }
 
@@ -60,27 +64,31 @@ TEST_CASE("rotation ranges materialize evenly sampled angles",
 
 TEST_CASE("rotation refinement sampling stays discrete and explicit",
           "[geometry][rotation-range][refinement]") {
-  const auto sampled = shiny::nesting::geom::sample_refinement_range(
-      RotationRange{.min_degrees = 0.0, .max_degrees = 90.0, .step_degrees = 30.0});
+  const auto sampled =
+      shiny::nesting::geom::sample_refinement_range(RotationRange{
+          .min_degrees = 0.0, .max_degrees = 90.0, .step_degrees = 30.0});
 
   REQUIRE(sampled == std::vector<double>{0.0, 30.0, 60.0, 90.0});
 
   const auto refined = shiny::nesting::geom::local_refinement_angles(
-      RotationRange{.min_degrees = 0.0, .max_degrees = 90.0, .step_degrees = 30.0},
+      RotationRange{
+          .min_degrees = 0.0, .max_degrees = 90.0, .step_degrees = 30.0},
       30.0, 2U);
 
   REQUIRE(refined == std::vector<double>{30.0, 37.5, 45.0, 15.0, 22.5});
 }
 
-TEST_CASE("rotation refinement rejects wrap-around candidates outside the range",
-          "[geometry][rotation-range][refinement][wrap-around]") {
+TEST_CASE(
+    "rotation refinement rejects wrap-around candidates outside the range",
+    "[geometry][rotation-range][refinement][wrap-around]") {
   // Seed at 0° with a step that lands the lower probe at -1°, which
   // normalize_angle_degrees wraps to 359°. The configured window
   // [0°, 5°] does NOT include 359°, so the wrap-around candidate
   // must be rejected (regression for the bounds-check-before-normalize
   // bug noted in rotation_refinement.hpp).
   const auto refined = shiny::nesting::geom::local_refinement_angles(
-      RotationRange{.min_degrees = 0.0, .max_degrees = 5.0, .step_degrees = 2.0},
+      RotationRange{
+          .min_degrees = 0.0, .max_degrees = 5.0, .step_degrees = 2.0},
       0.0, 1U);
 
   REQUIRE_FALSE(refined.empty());
@@ -131,7 +139,8 @@ TEST_CASE("request normalization accepts rotation ranges",
 TEST_CASE("constructive solve refines sampled rotation ranges locally",
           "[geometry][rotation-range][refinement][solve]") {
   NestingRequest request;
-  request.execution.strategy = shiny::nesting::StrategyKind::sequential_backtrack;
+  request.execution.strategy =
+      shiny::nesting::StrategyKind::sequential_backtrack;
   request.execution.default_rotations = {
       .range_degrees = RotationRange{.min_degrees = 0.0,
                                      .max_degrees = 90.0,
@@ -155,14 +164,16 @@ TEST_CASE("constructive solve refines sampled rotation ranges locally",
   REQUIRE(refined_angle != 90.0);
 }
 
-TEST_CASE("rtree index queries overlapping bounds",
-          "[geometry][rtree]") {
+TEST_CASE("rtree index queries overlapping bounds", "[geometry][rtree]") {
   // TODO: add an rtree microbench (insert / query at scale) — see review
   // Phase 9 §4. Skipped here to keep the unit suite fast.
   RTreeIndex index;
-  index.insert(1, Box2{.min = {.x = 0.0, .y = 0.0}, .max = {.x = 4.0, .y = 4.0}});
-  index.insert(2, Box2{.min = {.x = 7.0, .y = 7.0}, .max = {.x = 9.0, .y = 9.0}});
-  index.insert(3, Box2{.min = {.x = 3.0, .y = 3.0}, .max = {.x = 8.0, .y = 8.0}});
+  index.insert(1,
+               Box2{.min = {.x = 0.0, .y = 0.0}, .max = {.x = 4.0, .y = 4.0}});
+  index.insert(2,
+               Box2{.min = {.x = 7.0, .y = 7.0}, .max = {.x = 9.0, .y = 9.0}});
+  index.insert(3,
+               Box2{.min = {.x = 3.0, .y = 3.0}, .max = {.x = 8.0, .y = 8.0}});
 
   REQUIRE(index.query(
               Box2{.min = {.x = 2.0, .y = 2.0}, .max = {.x = 6.0, .y = 6.0}}) ==
@@ -172,7 +183,8 @@ TEST_CASE("rtree index queries overlapping bounds",
 TEST_CASE("constructive solve can use mirrored placements when enabled",
           "[geometry][mirror][solve]") {
   shiny::nesting::NestingRequest baseline_request;
-  baseline_request.execution.strategy = shiny::nesting::StrategyKind::sequential_backtrack;
+  baseline_request.execution.strategy =
+      shiny::nesting::StrategyKind::sequential_backtrack;
   baseline_request.execution.default_rotations = {{0.0}};
   baseline_request.bins.push_back(
       shiny::nesting::BinRequest{.bin_id = 1, .polygon = left_notch()});
@@ -189,5 +201,8 @@ TEST_CASE("constructive solve can use mirrored placements when enabled",
   const auto mirrored = shiny::nesting::solve(mirrored_request);
   REQUIRE(mirrored.ok());
   REQUIRE(mirrored.value().layout.placement_trace.size() == 1U);
-  REQUIRE(mirrored.value().layout.bins.front().placements.front().placement.mirrored);
+  REQUIRE(mirrored.value()
+              .layout.bins.front()
+              .placements.front()
+              .placement.mirrored);
 }

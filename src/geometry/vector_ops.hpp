@@ -9,7 +9,8 @@
 namespace shiny::nesting::geom {
 
 [[nodiscard]] inline constexpr auto vector_between(const Point2 &start,
-                                                   const Point2 &end) -> Vector2 {
+                                                   const Point2 &end)
+    -> Vector2 {
   return {.x = end.x - start.x, .y = end.y - start.y};
 }
 
@@ -20,7 +21,8 @@ namespace shiny::nesting::geom {
 }
 
 [[nodiscard]] inline constexpr auto scale_vector(const Vector2 &vector,
-                                                 const double scale) -> Vector2 {
+                                                 const double scale)
+    -> Vector2 {
   return {.x = vector.x * scale, .y = vector.y * scale};
 }
 
@@ -29,8 +31,8 @@ namespace shiny::nesting::geom {
   return lhs.x * rhs.x + lhs.y * rhs.y;
 }
 
-[[nodiscard]] inline constexpr auto cross(const Vector2 &lhs, const Vector2 &rhs)
-    -> double {
+[[nodiscard]] inline constexpr auto cross(const Vector2 &lhs,
+                                          const Vector2 &rhs) -> double {
   return lhs.x * rhs.y - lhs.y * rhs.x;
 }
 
@@ -65,7 +67,8 @@ namespace shiny::nesting::geom {
     return 0.0;
   }
 
-  return std::clamp(dot(vector_between(segment.start, point), edge) / length_squared,
+  return std::clamp(dot(vector_between(segment.start, point), edge) /
+                        length_squared,
                     0.0, 1.0);
 }
 
@@ -75,9 +78,8 @@ namespace shiny::nesting::geom {
                                                    const Segment2 &segment)
     -> Point2 {
   return point_plus_vector(
-      segment.start,
-      scale_vector(vector_between(segment.start, segment.end),
-                   project_point_to_segment(point, segment)));
+      segment.start, scale_vector(vector_between(segment.start, segment.end),
+                                  project_point_to_segment(point, segment)));
 }
 
 [[nodiscard]] inline auto point_to_segment_distance(const Point2 &point,

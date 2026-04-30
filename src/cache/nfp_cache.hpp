@@ -65,12 +65,9 @@ using NfpCache = LruCache<NfpCacheKey, NfpCacheValue, NfpCacheKeyHash>;
                           .max_entries = 50'000U};
 }
 
-[[nodiscard]] auto make_nfp_cache_key(std::uint64_t fixed_revision,
-                                      std::uint64_t moving_revision,
-                                      double fixed_rotation_degrees,
-                                      double moving_rotation_degrees,
-                                      NfpCacheEntryKind entry_kind =
-                                          NfpCacheEntryKind::exact)
-    -> NfpCacheKey;
+[[nodiscard]] auto make_nfp_cache_key(
+    std::uint64_t fixed_revision, std::uint64_t moving_revision,
+    double fixed_rotation_degrees, double moving_rotation_degrees,
+    NfpCacheEntryKind entry_kind = NfpCacheEntryKind::exact) -> NfpCacheKey;
 
 } // namespace shiny::nesting::cache

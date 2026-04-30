@@ -19,16 +19,18 @@ struct LayoutMetrics {
   double utilization{0.0};
 };
 
-[[nodiscard]] auto metrics_for_layout(const pack::Layout &layout) -> LayoutMetrics;
+[[nodiscard]] auto metrics_for_layout(const pack::Layout &layout)
+    -> LayoutMetrics;
 
 [[nodiscard]] auto better_metrics(const LayoutMetrics &lhs,
                                   const LayoutMetrics &rhs) -> bool;
 
 struct SolutionPoolEntry {
   std::vector<std::size_t> order{};
-  // Piece-indexed: piece_indexed_forced_rotations[piece_index] describes the expanded piece
-  // with the same index in the original normalized request.
-  std::vector<std::optional<geom::RotationIndex>> piece_indexed_forced_rotations{};
+  // Piece-indexed: piece_indexed_forced_rotations[piece_index] describes the
+  // expanded piece with the same index in the original normalized request.
+  std::vector<std::optional<geom::RotationIndex>>
+      piece_indexed_forced_rotations{};
   LayoutMetrics metrics{};
   NestingResult result{};
 };

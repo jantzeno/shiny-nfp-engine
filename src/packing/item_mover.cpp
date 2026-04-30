@@ -90,16 +90,19 @@ struct RingCentroid {
   long double total_area = 0.0L;
 
   if (const auto outer = ring_centroid(polygon.outer); outer.has_value()) {
-    weighted_x += static_cast<long double>(outer->centroid.x) * outer->signed_area;
-    weighted_y += static_cast<long double>(outer->centroid.y) * outer->signed_area;
+    weighted_x +=
+        static_cast<long double>(outer->centroid.x) * outer->signed_area;
+    weighted_y +=
+        static_cast<long double>(outer->centroid.y) * outer->signed_area;
     total_area += outer->signed_area;
   }
   for (const auto &hole : polygon.holes) {
-    if (const auto contribution = ring_centroid(hole); contribution.has_value()) {
-      weighted_x +=
-          static_cast<long double>(contribution->centroid.x) * contribution->signed_area;
-      weighted_y +=
-          static_cast<long double>(contribution->centroid.y) * contribution->signed_area;
+    if (const auto contribution = ring_centroid(hole);
+        contribution.has_value()) {
+      weighted_x += static_cast<long double>(contribution->centroid.x) *
+                    contribution->signed_area;
+      weighted_y += static_cast<long double>(contribution->centroid.y) *
+                    contribution->signed_area;
       total_area += contribution->signed_area;
     }
   }
@@ -129,9 +132,8 @@ struct RingCentroid {
                                       const double degrees)
     -> geom::PolygonWithHoles {
   return geom::translate(
-      geom::rotate(
-          geom::translate(polygon, {.x = -center.x, .y = -center.y}),
-          geom::ResolvedRotation{.degrees = degrees}),
+      geom::rotate(geom::translate(polygon, {.x = -center.x, .y = -center.y}),
+                   geom::ResolvedRotation{.degrees = degrees}),
       {.x = center.x, .y = center.y});
 }
 
@@ -151,7 +153,8 @@ struct RingCentroid {
     return {1U, 0U};
   }
 
-  const auto coarse_iterations = std::max<std::size_t>(1U, total_iterations / 3U);
+  const auto coarse_iterations =
+      std::max<std::size_t>(1U, total_iterations / 3U);
   return {coarse_iterations, total_iterations - coarse_iterations};
 }
 
@@ -181,7 +184,8 @@ auto run_descent_pass(const std::span<const geom::Vector2> axes, ItemMove &best,
   while (iteration < iteration_budget) {
     const bool translation_active =
         translation_step > 0.0 && translation_step >= translation_min_step;
-    const bool rotation_active = enable_rotation_axis && angle_step_degrees > 0.0 &&
+    const bool rotation_active = enable_rotation_axis &&
+                                 angle_step_degrees > 0.0 &&
                                  angle_step_degrees >= min_angle_step_degrees;
     if (!translation_active && !rotation_active) {
       break;
@@ -191,12 +195,12 @@ auto run_descent_pass(const std::span<const geom::Vector2> axes, ItemMove &best,
     if (translation_active) {
       for (const auto &axis : axes) {
         const auto basis = best.polygon;
-        const auto forward = translate_by_delta(basis,
-                                                {.x = axis.x * translation_step,
-                                                 .y = axis.y * translation_step});
-        const auto backward = translate_by_delta(basis,
-                                                 {.x = -axis.x * translation_step,
-                                                  .y = -axis.y * translation_step});
+        const auto forward =
+            translate_by_delta(basis, {.x = axis.x * translation_step,
+                                       .y = axis.y * translation_step});
+        const auto backward =
+            translate_by_delta(basis, {.x = -axis.x * translation_step,
+                                       .y = -axis.y * translation_step});
         if (try_pair(forward, backward)) {
           improved_translation = true;
         }
@@ -208,8 +212,10 @@ auto run_descent_pass(const std::span<const geom::Vector2> axes, ItemMove &best,
     if (rotation_active) {
       const auto basis = best.polygon;
       const auto centroid = polygon_centroid(basis);
-      const auto forward = rotate_about_point(basis, centroid, angle_step_degrees);
-      const auto backward = rotate_about_point(basis, centroid, -angle_step_degrees);
+      const auto forward =
+          rotate_about_point(basis, centroid, angle_step_degrees);
+      const auto backward =
+          rotate_about_point(basis, centroid, -angle_step_degrees);
       if (try_pair(forward, backward)) {
         improved_rotation = true;
       }
@@ -249,8 +255,9 @@ auto run_descent_pass(const std::span<const geom::Vector2> axes, ItemMove &best,
   return std::nullopt;
 }
 
-[[nodiscard]] auto sample_target_from_regions(
-    const std::vector<geom::PolygonWithHoles> &regions, runtime::DeterministicRng &rng)
+[[nodiscard]] auto
+sample_target_from_regions(const std::vector<geom::PolygonWithHoles> &regions,
+                           runtime::DeterministicRng &rng)
     -> std::optional<geom::Point2> {
   if (regions.empty()) {
     return std::nullopt;
@@ -263,7 +270,8 @@ auto run_descent_pass(const std::span<const geom::Vector2> axes, ItemMove &best,
 
   if (total_area <= 0.0) {
     for (const auto &region : regions) {
-      if (const auto sample = sample_point_in_region(region, rng); sample.has_value()) {
+      if (const auto sample = sample_point_in_region(region, rng);
+          sample.has_value()) {
         return sample;
       }
     }
@@ -276,7 +284,8 @@ auto run_descent_pass(const std::span<const geom::Vector2> axes, ItemMove &best,
     if (remaining > 0.0) {
       continue;
     }
-    if (const auto sample = sample_point_in_region(region, rng); sample.has_value()) {
+    if (const auto sample = sample_point_in_region(region, rng);
+        sample.has_value()) {
       return sample;
     }
   }
@@ -297,7 +306,8 @@ auto run_descent_pass(const std::span<const geom::Vector2> axes, ItemMove &best,
 //      vector between bbox centres. Step size scales by container
 //      diameter × `coarse_step_ratio`.
 //   3. Coordinate descent in two passes:
-//      * coarse translation refinement `coarse_step_ratio → coarse_min_step_ratio`
+//      * coarse translation refinement `coarse_step_ratio →
+//      coarse_min_step_ratio`
 //      * fine translation refinement `fine_step_ratio → min_step_ratio`
 //      Both passes probe H, V, +diag, −diag and, when enabled, a
 //      centroid-preserving rotation axis (±`angle_step_degrees`).
@@ -315,9 +325,9 @@ auto move_item(const CollisionTracker &tracker, const std::size_t item_index,
   const auto &current_item = tracker.item(item_index);
   const auto current_bounds = geom::compute_bounds(current_item.polygon);
   const auto container_bounds = geom::compute_bounds(tracker.container());
-  const auto local_piece = geom::translate(
-      current_item.polygon,
-      {.x = -current_bounds.min.x, .y = -current_bounds.min.y});
+  const auto local_piece =
+      geom::translate(current_item.polygon,
+                      {.x = -current_bounds.min.x, .y = -current_bounds.min.y});
   auto move_regions_or =
       nfp::compute_inner_fit_polygon(tracker.container(), local_piece);
   if (!move_regions_or.ok()) {
@@ -349,8 +359,8 @@ auto move_item(const CollisionTracker &tracker, const std::size_t item_index,
       break;
     }
     evaluate_candidate(translate_by_delta(
-        current_item.polygon,
-        {.x = target->x - current_bounds.min.x, .y = target->y - current_bounds.min.y}));
+        current_item.polygon, {.x = target->x - current_bounds.min.x,
+                               .y = target->y - current_bounds.min.y}));
   }
 
   const auto current_center = geom::Point2{
@@ -369,19 +379,19 @@ auto move_item(const CollisionTracker &tracker, const std::size_t item_index,
         .x = (other_bounds.min.x + other_bounds.max.x) / 2.0,
         .y = (other_bounds.min.y + other_bounds.max.y) / 2.0,
     };
-    const auto direction =
-        geom::normalize_vector(geom::vector_between(other_center, current_center));
-    const auto resolved_direction =
-        direction == geom::Vector2{} ? geom::Vector2{.x = 1.0, .y = 0.0} : direction;
-    const auto step =
-        std::max(geom::box_width(container_bounds), geom::box_height(container_bounds)) *
-        config.coarse_step_ratio;
+    const auto direction = geom::normalize_vector(
+        geom::vector_between(other_center, current_center));
+    const auto resolved_direction = direction == geom::Vector2{}
+                                        ? geom::Vector2{.x = 1.0, .y = 0.0}
+                                        : direction;
+    const auto step = std::max(geom::box_width(container_bounds),
+                               geom::box_height(container_bounds)) *
+                      config.coarse_step_ratio;
     for (std::size_t sample = 0; sample < config.focused_samples; ++sample) {
       const auto scale =
           step * (0.5 + static_cast<double>(sample) / config.focused_samples);
       evaluate_candidate(translate_by_delta(
-          current_item.polygon,
-          geom::scale_vector(resolved_direction, scale)));
+          current_item.polygon, geom::scale_vector(resolved_direction, scale)));
     }
   }
 
@@ -402,22 +412,23 @@ auto move_item(const CollisionTracker &tracker, const std::size_t item_index,
       {.x = 1.0, .y = 1.0},
       {.x = 1.0, .y = -1.0},
   }};
-  const auto container_diameter =
-      std::max(geom::box_width(container_bounds), geom::box_height(container_bounds));
+  const auto container_diameter = std::max(geom::box_width(container_bounds),
+                                           geom::box_height(container_bounds));
   const auto [coarse_iterations, fine_iterations] =
       split_descent_budget(config.coordinate_descent_iterations);
-  const bool rotation_enabled = config.enable_rotation_axis &&
-                                !current_item.rotation_locked &&
-                                config.angle_step_degrees > 0.0 &&
-                                config.min_angle_step_degrees > 0.0;
-  run_descent_pass(
-      axes, best, evaluate_candidate, container_diameter * config.coarse_step_ratio,
-      container_diameter * config.coarse_min_step_ratio, rotation_enabled,
-      config.angle_step_degrees, config.min_angle_step_degrees, coarse_iterations);
-  run_descent_pass(
-      axes, best, evaluate_candidate, container_diameter * config.fine_step_ratio,
-      container_diameter * config.min_step_ratio, rotation_enabled,
-      config.angle_step_degrees, config.min_angle_step_degrees, fine_iterations);
+  const bool rotation_enabled =
+      config.enable_rotation_axis && !current_item.rotation_locked &&
+      config.angle_step_degrees > 0.0 && config.min_angle_step_degrees > 0.0;
+  run_descent_pass(axes, best, evaluate_candidate,
+                   container_diameter * config.coarse_step_ratio,
+                   container_diameter * config.coarse_min_step_ratio,
+                   rotation_enabled, config.angle_step_degrees,
+                   config.min_angle_step_degrees, coarse_iterations);
+  run_descent_pass(axes, best, evaluate_candidate,
+                   container_diameter * config.fine_step_ratio,
+                   container_diameter * config.min_step_ratio, rotation_enabled,
+                   config.angle_step_degrees, config.min_angle_step_degrees,
+                   fine_iterations);
 
   if (best.weighted_loss + 1e-9 < current_loss) {
     return best;

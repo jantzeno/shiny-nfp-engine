@@ -75,7 +75,8 @@ constexpr std::uintmax_t kMaxJsonInputBytes = 8U * 1024U * 1024U;
   return ring;
 }
 
-[[nodiscard]] auto parse_shape(const pt::ptree &node) -> geom::PolygonWithHoles {
+[[nodiscard]] auto parse_shape(const pt::ptree &node)
+    -> geom::PolygonWithHoles {
   const auto type = node.get<std::string>("type");
   if (type == "simple_polygon") {
     return geom::normalize_polygon(
@@ -96,7 +97,8 @@ constexpr std::uintmax_t kMaxJsonInputBytes = 8U * 1024U * 1024U;
   throw std::runtime_error("unsupported OR-Datasets shape type");
 }
 
-[[nodiscard]] auto parse_zones(const pt::ptree &node) -> std::vector<OrDatasetZone> {
+[[nodiscard]] auto parse_zones(const pt::ptree &node)
+    -> std::vector<OrDatasetZone> {
   std::vector<OrDatasetZone> zones;
   for (const auto &child : node) {
     OrDatasetZone zone;
@@ -130,13 +132,15 @@ auto load_or_dataset(const std::filesystem::path &path)
       item.item_id = item_tree.get<std::uint32_t>("id");
       item.demand = item_tree.get<std::uint32_t>("demand", 1U);
       item.dxf_path = item_tree.get<std::string>("dxf", "");
-      if (const auto minimum_quality = item_tree.get_optional<int>("min_quality")) {
+      if (const auto minimum_quality =
+              item_tree.get_optional<int>("min_quality")) {
         item.minimum_quality = *minimum_quality;
       }
       if (const auto orientations =
               item_tree.get_child_optional("allowed_orientations")) {
         for (const auto &orientation : *orientations) {
-          item.allowed_orientations.push_back(orientation.second.get_value<double>());
+          item.allowed_orientations.push_back(
+              orientation.second.get_value<double>());
         }
       }
       if (const auto zones = item_tree.get_child_optional("zones")) {

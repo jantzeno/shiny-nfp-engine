@@ -36,12 +36,12 @@ constexpr int kMaxBezierDepth = 12;
 auto append_cubic_bezier_points(const geom::Point2 &start,
                                 const geom::Point2 &control1,
                                 const geom::Point2 &control2,
-                                const geom::Point2 &end,
-                                const double tolerance,
+                                const geom::Point2 &end, const double tolerance,
                                 std::vector<geom::Point2> &samples,
                                 const int depth = 0) -> void {
-  const double flatness = std::max(distance_point_to_line(control1, start, end),
-                                   distance_point_to_line(control2, start, end));
+  const double flatness =
+      std::max(distance_point_to_line(control1, start, end),
+               distance_point_to_line(control2, start, end));
   if (depth >= kMaxBezierDepth || flatness <= tolerance) {
     samples.push_back(end);
     return;
@@ -86,8 +86,9 @@ auto append_segment_samples(const ImportedPathSegment &segment,
     samples.push_back(segment.end);
     return;
   case ImportedPathSegmentKind::cubic_bezier:
-    append_cubic_bezier_points(segment.start, segment.control1, segment.control2,
-                               segment.end, tolerance, samples);
+    append_cubic_bezier_points(segment.start, segment.control1,
+                               segment.control2, segment.end, tolerance,
+                               samples);
     return;
   }
 }
@@ -113,16 +114,16 @@ auto append_segment_samples(const ImportedPathSegment &segment,
 
   polygon = geom::normalize_polygon(polygon);
   if (options.simplify_epsilon > 0.0) {
-    polygon =
-        poly::simplify_polygon_douglas_peucker(polygon, options.simplify_epsilon);
+    polygon = poly::simplify_polygon_douglas_peucker(polygon,
+                                                     options.simplify_epsilon);
   } else {
     polygon = poly::simplify_polygon(polygon);
   }
 
   if (normalize_piece_origins) {
     const auto bounds = geom::compute_bounds(polygon);
-    polygon = geom::translate(
-        polygon, {.x = -bounds.min.x, .y = -bounds.min.y});
+    polygon =
+        geom::translate(polygon, {.x = -bounds.min.x, .y = -bounds.min.y});
   }
   return geom::normalize_polygon(polygon);
 }
@@ -170,7 +171,8 @@ auto preprocess_import_request(const ImportPreprocessRequest &request)
   }
 
   NestingRequest normalized_request = request.base_request;
-  normalized_request.preprocess.simplify_epsilon = request.options.simplify_epsilon;
+  normalized_request.preprocess.simplify_epsilon =
+      request.options.simplify_epsilon;
   normalized_request.preprocess.normalize_piece_origins =
       request.options.normalize_piece_origins;
   normalized_request.preprocess.discard_empty_bins =

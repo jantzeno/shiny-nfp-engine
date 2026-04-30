@@ -34,15 +34,14 @@ TEST_CASE("json polygon sets load and round trip", "[io][json]") {
 
   for (std::size_t index = 0; index < loaded.value().size(); ++index) {
     shiny::nesting::test::require_polygon_equal(roundtrip.value()[index],
-                                            loaded.value()[index]);
+                                                loaded.value()[index]);
   }
 }
 
 TEST_CASE("json io rejects traversal and persists layout outputs",
           "[io][json]") {
-  REQUIRE(
-      shiny::nesting::io::load_polygon_set(fs::path{"../escape.json"}).status() ==
-      shiny::nesting::util::Status::invalid_input);
+  REQUIRE(shiny::nesting::io::load_polygon_set(fs::path{"../escape.json"})
+              .status() == shiny::nesting::util::Status::invalid_input);
 
   const auto layout_path = make_temp_path("layout.json");
   const auto cut_plan_path = make_temp_path("cut_plan.json");

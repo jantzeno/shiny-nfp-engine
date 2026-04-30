@@ -17,8 +17,8 @@ namespace shiny::nesting::geom {
 // boolean-op result (which can be an empty set / single piece /
 // multipolygon) into a single scalar — e.g., total intersection area for
 // overlap detection or total clipped area for containment checks.
-[[nodiscard]] auto polygon_area_sum(
-    std::span<const PolygonWithHoles> polygons) -> double;
+[[nodiscard]] auto polygon_area_sum(std::span<const PolygonWithHoles> polygons)
+    -> double;
 
 // Euclidean distance between two points. Centralised to keep the same
 // hypot formulation across NFP, overlap proxy, and packing code.
@@ -57,8 +57,8 @@ namespace shiny::nesting::geom {
 
 [[nodiscard]] auto boxes_overlap(const Box2 &lhs, const Box2 &rhs) -> bool;
 
-[[nodiscard]] auto box_contains(const Box2 &container,
-                                const Box2 &candidate) -> bool;
+[[nodiscard]] auto box_contains(const Box2 &container, const Box2 &candidate)
+    -> bool;
 
 [[nodiscard]] auto polygon_revision(const Polygon &polygon) -> std::uint64_t;
 

@@ -103,15 +103,16 @@ TEST_CASE("orientation fixtures", "[predicates][orientation][fixtures]") {
 
 TEST_CASE("segment contact fixtures",
           "[predicates][segment-contact][fixtures]") {
-  const auto root =
-      shiny::nesting::test::load_fixture_file("predicates/segment_contact.json");
+  const auto root = shiny::nesting::test::load_fixture_file(
+      "predicates/segment_contact.json");
 
   for (const auto &fixture_node : root.get_child("fixtures")) {
     const auto &fixture = fixture_node.second;
     const auto id = fixture.get<std::string>("id");
 
     DYNAMIC_SECTION(id) {
-      shiny::nesting::test::require_fixture_metadata(fixture, "segment_contact");
+      shiny::nesting::test::require_fixture_metadata(fixture,
+                                                     "segment_contact");
 
       const auto inputs = fixture.get_child("inputs");
       const auto expected = fixture.get_child("expected");
@@ -136,7 +137,7 @@ TEST_CASE("segment contact fixtures",
       REQUIRE(actual_points.size() == expected_points.size());
       for (std::size_t index = 0; index < actual_points.size(); ++index) {
         shiny::nesting::test::require_point_equal(actual_points[index],
-                                              expected_points[index]);
+                                                  expected_points[index]);
       }
     }
   }
@@ -144,15 +145,16 @@ TEST_CASE("segment contact fixtures",
 
 TEST_CASE("point-on-segment fixtures",
           "[predicates][point-on-segment][fixtures]") {
-  const auto root =
-      shiny::nesting::test::load_fixture_file("predicates/point_on_segment.json");
+  const auto root = shiny::nesting::test::load_fixture_file(
+      "predicates/point_on_segment.json");
 
   for (const auto &fixture_node : root.get_child("fixtures")) {
     const auto &fixture = fixture_node.second;
     const auto id = fixture.get<std::string>("id");
 
     DYNAMIC_SECTION(id) {
-      shiny::nesting::test::require_fixture_metadata(fixture, "point_on_segment");
+      shiny::nesting::test::require_fixture_metadata(fixture,
+                                                     "point_on_segment");
 
       const auto inputs = fixture.get_child("inputs");
       const auto expected = fixture.get_child("expected");
@@ -197,15 +199,16 @@ TEST_CASE("point-in-ring fixtures",
 
 TEST_CASE("point-in-polygon fixtures",
           "[predicates][point-location][polygon][fixtures]") {
-  const auto root =
-      shiny::nesting::test::load_fixture_file("predicates/point_in_polygon.json");
+  const auto root = shiny::nesting::test::load_fixture_file(
+      "predicates/point_in_polygon.json");
 
   for (const auto &fixture_node : root.get_child("fixtures")) {
     const auto &fixture = fixture_node.second;
     const auto id = fixture.get<std::string>("id");
 
     DYNAMIC_SECTION(id) {
-      shiny::nesting::test::require_fixture_metadata(fixture, "point_in_polygon");
+      shiny::nesting::test::require_fixture_metadata(fixture,
+                                                     "point_in_polygon");
 
       const auto inputs = fixture.get_child("inputs");
       const auto expected = fixture.get_child("expected");

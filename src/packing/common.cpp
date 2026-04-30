@@ -257,8 +257,8 @@ auto overlaps_any_exclusion_zone(
 
 auto piece_allows_bin(const PieceInput &piece, std::uint32_t bin_id) -> bool {
   return (!piece.restricted_to_allowed_bins && piece.allowed_bin_ids.empty()) ||
-          std::find(piece.allowed_bin_ids.begin(), piece.allowed_bin_ids.end(),
-                    bin_id) != piece.allowed_bin_ids.end();
+         std::find(piece.allowed_bin_ids.begin(), piece.allowed_bin_ids.end(),
+                   bin_id) != piece.allowed_bin_ids.end();
 }
 
 auto allowed_rotations_for(const PieceInput &piece,

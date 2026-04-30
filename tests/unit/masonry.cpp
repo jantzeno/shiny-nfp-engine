@@ -247,8 +247,9 @@ auto parse_masonry_request(const shiny::nesting::test::pt::ptree &node)
   return request;
 }
 
-void require_trace_matches(const shiny::nesting::test::pt::ptree &expected_trace,
-                           const shiny::nesting::pack::MasonryResult &result) {
+void require_trace_matches(
+    const shiny::nesting::test::pt::ptree &expected_trace,
+    const shiny::nesting::pack::MasonryResult &result) {
   REQUIRE(result.trace.size() == expected_trace.size());
   std::size_t index = 0;
   for (const auto &child : expected_trace) {
@@ -458,7 +459,8 @@ TEST_CASE("masonry builder honors top-right start corner",
           .bin_id = 50,
           .polygon = make_rectangle(0.0, 0.0, 10.0, 10.0),
           .geometry_revision = 400,
-          .start_corner = shiny::nesting::place::PlacementStartCorner::top_right,
+          .start_corner =
+              shiny::nesting::place::PlacementStartCorner::top_right,
       }},
       .pieces =
           {

@@ -25,12 +25,12 @@ box_for_start_corner(const geom::Box2 &box, const geom::Box2 &container,
 
 [[nodiscard]] auto
 overlaps_any_occupied_bounds(std::span<const geom::Box2> occupied_bounds,
-                              const geom::Box2 &candidate_bounds) -> bool;
+                             const geom::Box2 &candidate_bounds) -> bool;
 
 [[nodiscard]] auto
 overlaps_any_occupied_bounds(std::span<const geom::Box2> occupied_bounds,
-                             const geom::Box2 &candidate_bounds,
-                             double spacing) -> bool;
+                             const geom::Box2 &candidate_bounds, double spacing)
+    -> bool;
 
 auto split_free_rectangles(std::vector<geom::Box2> &free_rectangles,
                            const geom::Box2 &used_bounds) -> void;

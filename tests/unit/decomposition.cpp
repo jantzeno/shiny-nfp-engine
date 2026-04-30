@@ -122,7 +122,8 @@ auto ring_less(const shiny::nesting::geom::Ring &lhs,
 }
 
 auto inverse_rotate_point(const shiny::nesting::geom::Point2 &point,
-                          int rotation_degrees) -> shiny::nesting::geom::Point2 {
+                          int rotation_degrees)
+    -> shiny::nesting::geom::Point2 {
   switch (((rotation_degrees % 360) + 360) % 360) {
   case 0:
     return point;
@@ -151,7 +152,8 @@ auto canonicalize_components(const DecompositionResult &result,
       rotated.push_back(inverse_rotate_point(point, rotation_degrees));
     }
     canonical_components.push_back(
-        normalize_polygon(shiny::nesting::geom::Polygon{.outer = rotated}).outer);
+        normalize_polygon(shiny::nesting::geom::Polygon{.outer = rotated})
+            .outer);
   }
 
   std::sort(canonical_components.begin(), canonical_components.end(),
@@ -234,7 +236,8 @@ TEST_CASE("decomposition rotation variants are stable in canonical space",
           "[decomposition][fixtures][rotation]") {
   const auto root = load_fixture_file("decomposition/decompose.json");
 
-  std::map<std::string, std::vector<shiny::nesting::geom::Ring>> baseline_by_group;
+  std::map<std::string, std::vector<shiny::nesting::geom::Ring>>
+      baseline_by_group;
   std::map<std::string, std::string> baseline_id_by_group;
 
   for (const auto &fixture_node : root.get_child("fixtures")) {
@@ -289,9 +292,9 @@ TEST_CASE("convex decomposition returns a single normalized component",
   REQUIRE(result.components.size() == 1U);
   REQUIRE_FALSE(result.cached);
   REQUIRE(result.components.front().normalized);
-  require_ring_equal(
-      result.components.front().outer,
-      shiny::nesting::geom::Ring{{0.0, 0.0}, {5.0, 0.0}, {5.0, 2.0}, {0.0, 2.0}});
+  require_ring_equal(result.components.front().outer,
+                     shiny::nesting::geom::Ring{
+                         {0.0, 0.0}, {5.0, 0.0}, {5.0, 2.0}, {0.0, 2.0}});
   REQUIRE(validate_decomposition(request.polygon, result) ==
           DecompositionValidity::valid);
 }

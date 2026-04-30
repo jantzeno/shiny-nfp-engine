@@ -73,12 +73,12 @@ TEST_CASE("mtg bed margin request polygons shrink as expected",
   const auto request = make_request(fixture, options);
   REQUIRE(request.is_valid());
 
-  const auto bed1 = std::find_if(
-      request.bins.begin(), request.bins.end(),
-      [](const BinRequest &bin) { return bin.bin_id == kBed1Id; });
-  const auto bed2 = std::find_if(
-      request.bins.begin(), request.bins.end(),
-      [](const BinRequest &bin) { return bin.bin_id == kBed2Id; });
+  const auto bed1 =
+      std::find_if(request.bins.begin(), request.bins.end(),
+                   [](const BinRequest &bin) { return bin.bin_id == kBed1Id; });
+  const auto bed2 =
+      std::find_if(request.bins.begin(), request.bins.end(),
+                   [](const BinRequest &bin) { return bin.bin_id == kBed2Id; });
   REQUIRE(bed1 != request.bins.end());
   REQUIRE(bed2 != request.bins.end());
 

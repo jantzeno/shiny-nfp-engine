@@ -44,19 +44,20 @@ TEST_CASE("benchmark support emits canonical algorithm metrics",
   REQUIRE(jostle_output.find("search_algorithm=") == std::string::npos);
 
   const auto scaling_output = capture_stdout([] {
-    shiny::nesting::tooling::print_jostle_search_worker_scaling_benchmark_result(
-        {.algorithm = shiny::nesting::AlgorithmKind::jostle_search,
-         .benchmark_case =
-             shiny::nesting::tooling::JostleSearchBenchmarkCase::dense,
-         .runs_per_worker = 2,
-         .piece_count = 8,
-         .serial_avg_ms = 10.0,
-         .best_parallel_worker_count = 4,
-         .best_parallel_avg_ms = 6.0,
-         .worst_parallel_worker_count = 2,
-         .worst_parallel_avg_ms = 8.0,
-         .max_parallel_over_serial_ratio = 0.8,
-         .parallel_spread_ratio = 1.333333});
+    shiny::nesting::tooling::
+        print_jostle_search_worker_scaling_benchmark_result(
+            {.algorithm = shiny::nesting::AlgorithmKind::jostle_search,
+             .benchmark_case =
+                 shiny::nesting::tooling::JostleSearchBenchmarkCase::dense,
+             .runs_per_worker = 2,
+             .piece_count = 8,
+             .serial_avg_ms = 10.0,
+             .best_parallel_worker_count = 4,
+             .best_parallel_avg_ms = 6.0,
+             .worst_parallel_worker_count = 2,
+             .worst_parallel_avg_ms = 8.0,
+             .max_parallel_over_serial_ratio = 0.8,
+             .parallel_spread_ratio = 1.333333});
   });
   REQUIRE(scaling_output.find("algorithm=jostle_search") != std::string::npos);
   REQUIRE(scaling_output.find("search_algorithm=") == std::string::npos);

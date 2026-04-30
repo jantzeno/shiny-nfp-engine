@@ -17,16 +17,15 @@ namespace shiny::nesting::pack {
 // shared with the tracker so `sample_evaluator` and the tracker
 // always agree on the pair-loss formula. Returns the same `loss` /
 // `exact` decomposition as the tracker.
-[[nodiscard]] auto compute_polygon_pair_loss(const geom::PolygonWithHoles &lhs,
-                                              std::uint64_t lhs_revision,
-                                              const geom::PolygonWithHoles &rhs,
-                                              std::uint64_t rhs_revision,
-                                              cache::PoleCache *pole_cache = nullptr,
-                                              cache::PenetrationDepthCache *pd_cache = nullptr)
+[[nodiscard]] auto compute_polygon_pair_loss(
+    const geom::PolygonWithHoles &lhs, std::uint64_t lhs_revision,
+    const geom::PolygonWithHoles &rhs, std::uint64_t rhs_revision,
+    cache::PoleCache *pole_cache = nullptr,
+    cache::PenetrationDepthCache *pd_cache = nullptr)
     -> std::pair<double, double>;
 
 [[nodiscard]] auto compute_polygon_pair_loss(const geom::PolygonWithHoles &lhs,
-                                              const geom::PolygonWithHoles &rhs)
+                                             const geom::PolygonWithHoles &rhs)
     -> std::pair<double, double>;
 
 struct CollisionTrackerItem {
@@ -42,7 +41,8 @@ public:
                    std::vector<CollisionTrackerItem> items);
 
   [[nodiscard]] auto item_count() const -> std::size_t;
-  [[nodiscard]] auto item(std::size_t index) const -> const CollisionTrackerItem &;
+  [[nodiscard]] auto item(std::size_t index) const
+      -> const CollisionTrackerItem &;
   [[nodiscard]] auto item_polygon_revision(std::size_t index) const
       -> std::uint64_t;
   [[nodiscard]] auto container() const -> const geom::PolygonWithHoles &;
@@ -53,11 +53,13 @@ public:
   [[nodiscard]] auto pair_loss_cache_stats() const
       -> cache::CollisionPairLossCacheStats;
 
-  auto register_item_move(std::size_t index, const geom::PolygonWithHoles &polygon)
-      -> void;
+  auto register_item_move(std::size_t index,
+                          const geom::PolygonWithHoles &polygon) -> void;
 
-  [[nodiscard]] auto pair_loss(std::size_t lhs, std::size_t rhs) const -> double;
-  [[nodiscard]] auto pair_weight(std::size_t lhs, std::size_t rhs) const -> double;
+  [[nodiscard]] auto pair_loss(std::size_t lhs, std::size_t rhs) const
+      -> double;
+  [[nodiscard]] auto pair_weight(std::size_t lhs, std::size_t rhs) const
+      -> double;
   [[nodiscard]] auto container_loss(std::size_t index) const -> double;
   [[nodiscard]] auto container_weight(std::size_t index) const -> double;
   [[nodiscard]] auto total_loss() const -> double;
@@ -69,7 +71,8 @@ public:
   // the correct convergence signal for separators and strip
   // optimisers — `exact_total_loss() == 0` ⇒ feasible packing.
   [[nodiscard]] auto exact_total_loss() const -> double;
-  [[nodiscard]] auto pair_exact_loss(std::size_t lhs, std::size_t rhs) const -> double;
+  [[nodiscard]] auto pair_exact_loss(std::size_t lhs, std::size_t rhs) const
+      -> double;
 
   auto update_gls_weights(double weight_cap = 1e6) -> void;
 
@@ -80,7 +83,8 @@ private:
     double weight{1.0};
   };
 
-  [[nodiscard]] auto pair_index(std::size_t lhs, std::size_t rhs) const -> std::size_t;
+  [[nodiscard]] auto pair_index(std::size_t lhs, std::size_t rhs) const
+      -> std::size_t;
   [[nodiscard]] auto compute_pair_loss(std::size_t lhs, std::size_t rhs) const
       -> PairEntry;
   [[nodiscard]] auto compute_container_loss(std::size_t index) const -> double;

@@ -21,7 +21,7 @@ using shiny::nesting::geom::Point2;
 using shiny::nesting::geom::Polygon;
 using shiny::nesting::nfp::compute_convex_nfp;
 
-}  // namespace
+} // namespace
 
 TEST_CASE("compute_convex_nfp tolerates collinear vertices on the outer ring",
           "[nfp][convex-nfp][collinear-regression]") {
@@ -33,19 +33,18 @@ TEST_CASE("compute_convex_nfp tolerates collinear vertices on the outer ring",
   const Polygon fixed_with_collinear{
       .outer = {
           Point2{.x = 0.0, .y = 0.0},
-          Point2{.x = 2.0, .y = 0.0},  // collinear with (0,0) and (4,0)
+          Point2{.x = 2.0, .y = 0.0}, // collinear with (0,0) and (4,0)
           Point2{.x = 4.0, .y = 0.0},
           Point2{.x = 4.0, .y = 2.0},
           Point2{.x = 0.0, .y = 2.0},
       }};
 
-  const Polygon moving{
-      .outer = {
-          Point2{.x = 0.0, .y = 0.0},
-          Point2{.x = 1.0, .y = 0.0},
-          Point2{.x = 1.0, .y = 1.0},
-          Point2{.x = 0.0, .y = 1.0},
-      }};
+  const Polygon moving{.outer = {
+                           Point2{.x = 0.0, .y = 0.0},
+                           Point2{.x = 1.0, .y = 0.0},
+                           Point2{.x = 1.0, .y = 1.0},
+                           Point2{.x = 0.0, .y = 1.0},
+                       }};
 
   // Without upstream simplification (request normalization or boolean-op
   // post-processing), this convex hexagon would reach EPICK
@@ -58,21 +57,20 @@ TEST_CASE("compute_convex_nfp tolerates collinear vertices on the outer ring",
 
 TEST_CASE("compute_convex_nfp tolerates collinear vertices on both inputs",
           "[nfp][convex-nfp][collinear-regression]") {
-  const Polygon fixed_with_collinear{
-      .outer = {
-          Point2{.x = 0.0, .y = 0.0},
-          Point2{.x = 1.5, .y = 0.0},
-          Point2{.x = 3.0, .y = 0.0},
-          Point2{.x = 3.0, .y = 2.0},
-          Point2{.x = 0.0, .y = 2.0},
-      }};
+  const Polygon fixed_with_collinear{.outer = {
+                                         Point2{.x = 0.0, .y = 0.0},
+                                         Point2{.x = 1.5, .y = 0.0},
+                                         Point2{.x = 3.0, .y = 0.0},
+                                         Point2{.x = 3.0, .y = 2.0},
+                                         Point2{.x = 0.0, .y = 2.0},
+                                     }};
 
   const Polygon moving_with_collinear{
       .outer = {
           Point2{.x = 0.0, .y = 0.0},
           Point2{.x = 1.0, .y = 0.0},
           Point2{.x = 1.0, .y = 0.5},
-          Point2{.x = 1.0, .y = 1.0},  // collinear on the right edge
+          Point2{.x = 1.0, .y = 1.0}, // collinear on the right edge
           Point2{.x = 0.0, .y = 1.0},
       }};
 

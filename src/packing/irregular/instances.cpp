@@ -55,43 +55,44 @@ auto order_piece_instances(std::vector<PieceInstance> pieces,
                           piece_order_metrics_for(pieces[index], index));
   }
 
-  std::stable_sort(pieces.begin(), pieces.end(),
-                   [&execution, &metrics_by_id](const PieceInstance &lhs,
-                                                const PieceInstance &rhs) {
-                     const auto &lhs_metrics =
-                         metrics_by_id.at(lhs.expanded.expanded_piece_id);
-                     const auto &rhs_metrics =
-                         metrics_by_id.at(rhs.expanded.expanded_piece_id);
+  std::stable_sort(
+      pieces.begin(), pieces.end(),
+      [&execution, &metrics_by_id](const PieceInstance &lhs,
+                                   const PieceInstance &rhs) {
+        const auto &lhs_metrics =
+            metrics_by_id.at(lhs.expanded.expanded_piece_id);
+        const auto &rhs_metrics =
+            metrics_by_id.at(rhs.expanded.expanded_piece_id);
 
-                     switch (execution.irregular.piece_ordering) {
-                     case PieceOrdering::input:
-                       return lhs_metrics.original_index < rhs_metrics.original_index;
-                     case PieceOrdering::largest_area_first:
-                       if (!almost_equal(lhs_metrics.polygon_area,
-                                         rhs_metrics.polygon_area)) {
-                         return lhs_metrics.polygon_area > rhs_metrics.polygon_area;
-                       }
-                       break;
-                     case PieceOrdering::hull_diameter_first:
-                       if (!almost_equal(lhs_metrics.hull_diameter_score,
-                                         rhs_metrics.hull_diameter_score)) {
-                         return lhs_metrics.hull_diameter_score >
-                                rhs_metrics.hull_diameter_score;
-                       }
-                       break;
-                     case PieceOrdering::priority:
-                       if (lhs_metrics.priority != rhs_metrics.priority) {
-                         return lhs_metrics.priority > rhs_metrics.priority;
-                       }
-                       if (!almost_equal(lhs_metrics.polygon_area,
-                                         rhs_metrics.polygon_area)) {
-                         return lhs_metrics.polygon_area > rhs_metrics.polygon_area;
-                       }
-                       break;
-                     }
+        switch (execution.irregular.piece_ordering) {
+        case PieceOrdering::input:
+          return lhs_metrics.original_index < rhs_metrics.original_index;
+        case PieceOrdering::largest_area_first:
+          if (!almost_equal(lhs_metrics.polygon_area,
+                            rhs_metrics.polygon_area)) {
+            return lhs_metrics.polygon_area > rhs_metrics.polygon_area;
+          }
+          break;
+        case PieceOrdering::hull_diameter_first:
+          if (!almost_equal(lhs_metrics.hull_diameter_score,
+                            rhs_metrics.hull_diameter_score)) {
+            return lhs_metrics.hull_diameter_score >
+                   rhs_metrics.hull_diameter_score;
+          }
+          break;
+        case PieceOrdering::priority:
+          if (lhs_metrics.priority != rhs_metrics.priority) {
+            return lhs_metrics.priority > rhs_metrics.priority;
+          }
+          if (!almost_equal(lhs_metrics.polygon_area,
+                            rhs_metrics.polygon_area)) {
+            return lhs_metrics.polygon_area > rhs_metrics.polygon_area;
+          }
+          break;
+        }
 
-                     return lhs_metrics.original_index < rhs_metrics.original_index;
-                   });
+        return lhs_metrics.original_index < rhs_metrics.original_index;
+      });
   return pieces;
 }
 
@@ -121,18 +122,18 @@ auto build_piece_instances(const NormalizedRequest &request)
         .expanded = expanded,
         .source = it->second,
         .restricted_to_allowed_bins = !it->second->allowed_bin_ids.empty(),
-        .forced_rotation_index =
-            index < request.forced_rotations.size() ? request.forced_rotations[index]
-                                                    : std::nullopt,
+        .forced_rotation_index = index < request.forced_rotations.size()
+                                     ? request.forced_rotations[index]
+                                     : std::nullopt,
     };
     for (const auto source_bin_id : it->second->allowed_bin_ids) {
       const auto bins_it = expanded_bin_ids_by_source.find(source_bin_id);
       if (bins_it == expanded_bin_ids_by_source.end()) {
         continue;
       }
-      instance.allowed_expanded_bin_ids.insert(instance.allowed_expanded_bin_ids.end(),
-                                               bins_it->second.begin(),
-                                               bins_it->second.end());
+      instance.allowed_expanded_bin_ids.insert(
+          instance.allowed_expanded_bin_ids.end(), bins_it->second.begin(),
+          bins_it->second.end());
     }
     std::sort(instance.allowed_expanded_bin_ids.begin(),
               instance.allowed_expanded_bin_ids.end());

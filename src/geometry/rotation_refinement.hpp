@@ -72,9 +72,12 @@ using RefinementRotationRange = RotationRange;
                angles.end());
   if (!angles.empty()) {
     std::rotate(angles.begin(),
-                std::find_if(angles.begin(), angles.end(), [&](const double angle) {
-                  return std::fabs(angle - normalize_angle_degrees(seed_degrees)) <= 1e-9;
-                }),
+                std::find_if(angles.begin(), angles.end(),
+                             [&](const double angle) {
+                               return std::fabs(angle - normalize_angle_degrees(
+                                                            seed_degrees)) <=
+                                      1e-9;
+                             }),
                 angles.end());
   }
   return angles;

@@ -36,9 +36,15 @@ auto main() -> int {
       }},
       .pieces =
           {
-              {.piece_id = 101, .polygon = make_rectangle(4.0, 2.0), .geometry_revision = 1},
-              {.piece_id = 102, .polygon = make_rectangle(3.0, 2.0), .geometry_revision = 2},
-              {.piece_id = 103, .polygon = make_rectangle(2.0, 2.0), .geometry_revision = 3},
+              {.piece_id = 101,
+               .polygon = make_rectangle(4.0, 2.0),
+               .geometry_revision = 1},
+              {.piece_id = 102,
+               .polygon = make_rectangle(3.0, 2.0),
+               .geometry_revision = 2},
+              {.piece_id = 103,
+               .polygon = make_rectangle(2.0, 2.0),
+               .geometry_revision = 3},
           },
   };
   request.config.bounding_box.heuristic = BoundingBoxHeuristic::skyline;
@@ -59,8 +65,8 @@ auto main() -> int {
   for (const auto &entry : best.layout.placement_trace) {
     std::cout << "piece=" << entry.piece_id << " bin=" << entry.bin_id
               << " translation=(" << entry.translation.x << ", "
-              << entry.translation.y << ") rotation="
-              << entry.resolved_rotation.degrees << '\n';
+              << entry.translation.y
+              << ") rotation=" << entry.resolved_rotation.degrees << '\n';
   }
 
   return 0;

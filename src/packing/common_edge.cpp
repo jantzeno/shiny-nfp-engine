@@ -45,7 +45,7 @@ constexpr double kSegmentEpsilon = 1e-9;
 [[nodiscard]] auto are_collinear(const geom::Segment2 &lhs,
                                  const geom::Segment2 &rhs) -> bool {
   return pred::orient({lhs.start, lhs.end, rhs.start}) ==
-              pred::Orientation::collinear &&
+             pred::Orientation::collinear &&
          pred::orient({lhs.start, lhs.end, rhs.end}) ==
              pred::Orientation::collinear;
 }
@@ -71,7 +71,8 @@ constexpr double kSegmentEpsilon = 1e-9;
 [[nodiscard]] auto project_onto_line(const geom::Point2 &point,
                                      const geom::Point2 &origin,
                                      const geom::Vector2 &direction) -> double {
-  return (point.x - origin.x) * direction.x + (point.y - origin.y) * direction.y;
+  return (point.x - origin.x) * direction.x +
+         (point.y - origin.y) * direction.y;
 }
 
 struct LineKey {
@@ -83,7 +84,8 @@ struct LineKey {
   auto operator<=>(const LineKey &) const = default;
 };
 
-[[nodiscard]] auto line_key(const CutSegment &segment) -> std::optional<LineKey> {
+[[nodiscard]] auto line_key(const CutSegment &segment)
+    -> std::optional<LineKey> {
   const auto direction = canonical_direction(segment.segment);
   if (!direction.has_value()) {
     return std::nullopt;
@@ -150,7 +152,8 @@ struct MergedInterval {
 
   for (const auto &[unused_key, groups] : grouped_segments) {
     for (const auto &group : groups) {
-      const auto direction = canonical_direction(group.reference.segment.segment);
+      const auto direction =
+          canonical_direction(group.reference.segment.segment);
       if (!direction.has_value()) {
         merged_segments.push_back(group.reference);
         continue;
@@ -160,8 +163,10 @@ struct MergedInterval {
       std::vector<MergedInterval> intervals;
       intervals.reserve(group.segments.size());
       for (const auto &entry : group.segments) {
-        auto start = project_onto_line(entry.segment.segment.start, origin, *direction);
-        auto end = project_onto_line(entry.segment.segment.end, origin, *direction);
+        auto start =
+            project_onto_line(entry.segment.segment.start, origin, *direction);
+        auto end =
+            project_onto_line(entry.segment.segment.end, origin, *direction);
         auto start_point = entry.segment.segment.start;
         auto end_point = entry.segment.segment.end;
         if (end < start) {
@@ -235,7 +240,8 @@ struct MergedInterval {
 // same-bin collinear segments, merges overlapping or abutting coverage
 // into maximal intervals, then uses an R-tree broad phase to drop any
 // remaining fully covered duplicates.
-auto detect_common_edges(std::vector<CutSegment> segments) -> std::vector<CutSegment> {
+auto detect_common_edges(std::vector<CutSegment> segments)
+    -> std::vector<CutSegment> {
   auto merged_segments = merge_collinear_segments(std::move(segments));
   geom::RTreeIndex segment_index;
   std::vector<geom::Box2> bounds;
@@ -251,8 +257,8 @@ auto detect_common_edges(std::vector<CutSegment> segments) -> std::vector<CutSeg
     bool redundant = false;
     for (const auto candidate_id : segment_index.query(bounds[index])) {
       const auto other = static_cast<std::size_t>(candidate_id);
-      if (index == other ||
-          merged_segments[index].segment.bin_id != merged_segments[other].segment.bin_id) {
+      if (index == other || merged_segments[index].segment.bin_id !=
+                                merged_segments[other].segment.bin_id) {
         continue;
       }
 

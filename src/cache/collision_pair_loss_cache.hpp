@@ -27,7 +27,8 @@ struct CollisionPairLossCacheStats {
 };
 
 struct CollisionPairLossCacheKeyHash {
-  [[nodiscard]] auto operator()(const CollisionPairLossCacheKey &key) const noexcept
+  [[nodiscard]] auto
+  operator()(const CollisionPairLossCacheKey &key) const noexcept
       -> std::size_t {
     return runtime::hash::combine_hashes(key.lhs_polygon_revision,
                                          key.rhs_polygon_revision);
@@ -44,9 +45,10 @@ using CollisionPairLossCache =
                           .max_entries = 8192U};
 }
 
-[[nodiscard]] inline auto make_collision_pair_loss_cache_key(
-    const std::uint64_t lhs_polygon_revision,
-    const std::uint64_t rhs_polygon_revision) -> CollisionPairLossCacheKey {
+[[nodiscard]] inline auto
+make_collision_pair_loss_cache_key(const std::uint64_t lhs_polygon_revision,
+                                   const std::uint64_t rhs_polygon_revision)
+    -> CollisionPairLossCacheKey {
   if (lhs_polygon_revision <= rhs_polygon_revision) {
     return CollisionPairLossCacheKey{
         .lhs_polygon_revision = lhs_polygon_revision,

@@ -21,8 +21,8 @@ namespace shiny::nesting::poly {
 /**
  * @brief Simplifies the outer ring of a polygon with Douglas-Peucker.
  */
-[[nodiscard]] auto simplify_polygon_douglas_peucker(const geom::Polygon &polygon,
-                                                    double epsilon)
+[[nodiscard]] auto
+simplify_polygon_douglas_peucker(const geom::Polygon &polygon, double epsilon)
     -> geom::Polygon;
 
 /**
@@ -35,8 +35,8 @@ namespace shiny::nesting::poly {
  * @brief Simplifies the outer ring and holes of a polygon-with-holes with
  * Douglas-Peucker.
  */
-[[nodiscard]] auto simplify_polygon_douglas_peucker(
-    const geom::PolygonWithHoles &polygon, double epsilon)
-    -> geom::PolygonWithHoles;
+[[nodiscard]] auto
+simplify_polygon_douglas_peucker(const geom::PolygonWithHoles &polygon,
+                                 double epsilon) -> geom::PolygonWithHoles;
 
 } // namespace shiny::nesting::poly

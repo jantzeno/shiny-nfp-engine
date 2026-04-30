@@ -13,8 +13,8 @@ constexpr double kLeadRadiusFactor = 0.25;
 constexpr double kLeadRadiusCap = 0.5;
 constexpr double kLeadRadiusFloor = 1e-6;
 
-[[nodiscard]] auto normalized_vector(const geom::Point2 &from, const geom::Point2 &to)
-    -> geom::Vector2 {
+[[nodiscard]] auto normalized_vector(const geom::Point2 &from,
+                                     const geom::Point2 &to) -> geom::Vector2 {
   const auto dx = to.x - from.x;
   const auto dy = to.y - from.y;
   const auto length = std::sqrt(dx * dx + dy * dy);
@@ -24,8 +24,9 @@ constexpr double kLeadRadiusFloor = 1e-6;
   return {.x = dx / length, .y = dy / length};
 }
 
-[[nodiscard]] auto add_scaled(const geom::Point2 &point, const geom::Vector2 &vector,
-                              double scale) -> geom::Point2 {
+[[nodiscard]] auto add_scaled(const geom::Point2 &point,
+                              const geom::Vector2 &vector, double scale)
+    -> geom::Point2 {
   return {.x = point.x + vector.x * scale, .y = point.y + vector.y * scale};
 }
 
@@ -67,14 +68,16 @@ struct PierceCandidate {
 
 [[nodiscard]] auto build_lead_in(const geom::Point2 &pierce_point,
                                  const geom::Vector2 &outgoing_tangent,
-                                 double radius, double outward) -> CutContourOrder::LeadArc {
+                                 double radius, double outward)
+    -> CutContourOrder::LeadArc {
   if (radius <= kLeadRadiusFloor ||
       (outgoing_tangent.x == 0.0 && outgoing_tangent.y == 0.0)) {
     return {};
   }
 
   const auto base_normal = right_normal(outgoing_tangent);
-  const geom::Vector2 normal{.x = base_normal.x * outward, .y = base_normal.y * outward};
+  const geom::Vector2 normal{.x = base_normal.x * outward,
+                             .y = base_normal.y * outward};
   const auto center = add_scaled(pierce_point, normal, radius);
   return {
       .enabled = true,
@@ -87,14 +90,16 @@ struct PierceCandidate {
 
 [[nodiscard]] auto build_lead_out(const geom::Point2 &pierce_point,
                                   const geom::Vector2 &incoming_tangent,
-                                  double radius, double outward) -> CutContourOrder::LeadArc {
+                                  double radius, double outward)
+    -> CutContourOrder::LeadArc {
   if (radius <= kLeadRadiusFloor ||
       (incoming_tangent.x == 0.0 && incoming_tangent.y == 0.0)) {
     return {};
   }
 
   const auto base_normal = right_normal(incoming_tangent);
-  const geom::Vector2 normal{.x = base_normal.x * outward, .y = base_normal.y * outward};
+  const geom::Vector2 normal{.x = base_normal.x * outward,
+                             .y = base_normal.y * outward};
   const auto center = add_scaled(pierce_point, normal, radius);
   return {
       .enabled = true,
@@ -133,12 +138,12 @@ auto select_pierce_plan(const CutContour &contour,
   }
 
   if (contour.ring.size() < 3U) {
-    const auto best = std::min_element(
-        contour.ring.begin(), contour.ring.end(),
-        [&](const auto &lhs, const auto &rhs) {
-          return geom::squared_distance(lhs, previous_exit) <
-                 geom::squared_distance(rhs, previous_exit);
-        });
+    const auto best =
+        std::min_element(contour.ring.begin(), contour.ring.end(),
+                         [&](const auto &lhs, const auto &rhs) {
+                           return geom::squared_distance(lhs, previous_exit) <
+                                  geom::squared_distance(rhs, previous_exit);
+                         });
     plan.pierce_point = *best;
     plan.exit_point = plan.pierce_point;
     return plan;
@@ -173,7 +178,8 @@ auto select_pierce_plan(const CutContour &contour,
         .radius = std::min(kLeadRadiusCap,
                            std::min(incoming_length, outgoing_length) *
                                kLeadRadiusFactor),
-        .concavity_penalty = tangent_turn_penalty(incoming_tangent, outgoing_tangent),
+        .concavity_penalty =
+            tangent_turn_penalty(incoming_tangent, outgoing_tangent),
         .stable_index = stable_index++,
     });
 
@@ -194,11 +200,13 @@ auto select_pierce_plan(const CutContour &contour,
   std::size_t best_index = 0;
   double best_score = std::numeric_limits<double>::infinity();
   for (std::size_t index = 0; index < candidates.size(); ++index) {
-    const auto score = geom::point_distance(previous_exit, candidates[index].point) +
-                       concavity_weight * candidates[index].concavity_penalty;
+    const auto score =
+        geom::point_distance(previous_exit, candidates[index].point) +
+        concavity_weight * candidates[index].concavity_penalty;
     if (score + kLeadRadiusFloor < best_score ||
         (std::abs(score - best_score) <= kLeadRadiusFloor &&
-         candidates[index].stable_index < candidates[best_index].stable_index)) {
+         candidates[index].stable_index <
+             candidates[best_index].stable_index)) {
       best_index = index;
       best_score = score;
     }
@@ -209,10 +217,10 @@ auto select_pierce_plan(const CutContour &contour,
   plan.exit_point = plan.pierce_point;
 
   const double outward = outward_sign(ring_span);
-  plan.lead_in =
-      build_lead_in(plan.pierce_point, best.outgoing_tangent, best.radius, outward);
-  plan.lead_out =
-      build_lead_out(plan.pierce_point, best.incoming_tangent, best.radius, outward);
+  plan.lead_in = build_lead_in(plan.pierce_point, best.outgoing_tangent,
+                               best.radius, outward);
+  plan.lead_out = build_lead_out(plan.pierce_point, best.incoming_tangent,
+                                 best.radius, outward);
   if (plan.lead_out.enabled) {
     plan.exit_point = plan.lead_out.end;
   }

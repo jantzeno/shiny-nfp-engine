@@ -21,7 +21,6 @@ struct Point2 {
   double x{};
   double y{};
 
-  auto operator==(const Point2 &) const -> bool = default;
   auto operator<=>(const Point2 &) const = default;
 };
 
@@ -41,7 +40,6 @@ struct Vector2 {
   double x{};
   double y{};
 
-  auto operator==(const Vector2 &) const -> bool = default;
   auto operator<=>(const Vector2 &) const = default;
 };
 
@@ -61,7 +59,6 @@ struct Box2 {
   Point2 min{};
   Point2 max{};
 
-  auto operator==(const Box2 &) const -> bool = default;
   auto operator<=>(const Box2 &) const = default;
 };
 
@@ -81,7 +78,6 @@ struct Segment2 {
   Point2 start{};
   Point2 end{};
 
-  auto operator==(const Segment2 &) const -> bool = default;
   auto operator<=>(const Segment2 &) const = default;
 };
 

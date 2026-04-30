@@ -121,7 +121,8 @@ auto build_polygon_from_result(const NfpResult &result)
 }
 
 auto midpoint(const shiny::nesting::geom::Point2 &lhs,
-              const shiny::nesting::geom::Point2 &rhs) -> shiny::nesting::geom::Point2 {
+              const shiny::nesting::geom::Point2 &rhs)
+    -> shiny::nesting::geom::Point2 {
   return {
       .x = (lhs.x + rhs.x) / 2.0,
       .y = (lhs.y + rhs.y) / 2.0,
@@ -147,7 +148,8 @@ auto squared_distance(const shiny::nesting::geom::Point2 &lhs,
 }
 
 auto distance_to_segment(const shiny::nesting::geom::Point2 &point,
-                         const shiny::nesting::geom::Segment2 &segment) -> double {
+                         const shiny::nesting::geom::Segment2 &segment)
+    -> double {
   const auto dx = segment.end.x - segment.start.x;
   const auto dy = segment.end.y - segment.start.y;
   const auto length_squared = dx * dx + dy * dy;
@@ -166,9 +168,10 @@ auto distance_to_segment(const shiny::nesting::geom::Point2 &point,
   return std::sqrt(squared_distance(point, closest));
 }
 
-auto is_near_polygon_boundary(const shiny::nesting::geom::Point2 &point,
-                              const shiny::nesting::geom::PolygonWithHoles &polygon,
-                              double tolerance) -> bool {
+auto is_near_polygon_boundary(
+    const shiny::nesting::geom::Point2 &point,
+    const shiny::nesting::geom::PolygonWithHoles &polygon, double tolerance)
+    -> bool {
   auto ring_contains_near_edge = [&](const shiny::nesting::geom::Ring &ring) {
     for (std::size_t index = 0; index < ring.size(); ++index) {
       const auto next_index = (index + 1U) % ring.size();
@@ -238,7 +241,7 @@ TEST_CASE("convex edge sequences use deterministic angular traversal",
       {0U, 1U, 2U, 3U});
 
   const shiny::nesting::geom::Ring hexagon{{3.0, 2.0}, {1.0, 2.0}, {0.0, 1.0},
-                                       {1.0, 0.0}, {3.0, 0.0}, {4.0, 1.0}};
+                                           {1.0, 0.0}, {3.0, 0.0}, {4.0, 1.0}};
   const auto hexagon_sequence = build_convex_edge_sequence(hexagon);
   require_edge_sequence_equal(hexagon_sequence,
                               {{2.0, 0.0},

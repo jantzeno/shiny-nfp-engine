@@ -244,16 +244,18 @@ TEST_CASE("nfp headers expose the planned milestone 3, 5, and 6 surfaces",
           decltype(shiny::nesting::build_convex_edge_sequence(
               std::declval<std::span<const shiny::nesting::geom::Point2>>())),
           ConvexEdgeSequence>);
-  STATIC_REQUIRE(std::is_same_v<decltype(shiny::nesting::order_convex_nfp_vertices(
-                                    std::declval<const NfpResult &>())),
-                                std::vector<ConvexOrderingVertex>>);
+  STATIC_REQUIRE(
+      std::is_same_v<decltype(shiny::nesting::order_convex_nfp_vertices(
+                         std::declval<const NfpResult &>())),
+                     std::vector<ConvexOrderingVertex>>);
   STATIC_REQUIRE(
       std::is_same_v<decltype(shiny::nesting::build_arrangement_graph(
                          std::declval<const NonconvexNfpRequest &>())),
                      ArrangementGraph>);
-  STATIC_REQUIRE(std::is_same_v<decltype(shiny::nesting::prune_arrangement_graph(
-                                    std::declval<ArrangementGraph>())),
-                                ArrangementGraph>);
+  STATIC_REQUIRE(
+      std::is_same_v<decltype(shiny::nesting::prune_arrangement_graph(
+                         std::declval<ArrangementGraph>())),
+                     ArrangementGraph>);
   STATIC_REQUIRE(std::is_same_v<decltype(shiny::nesting::extract_nfp_from_graph(
                                     std::declval<const ArrangementGraph &>())),
                                 NfpResult>);
@@ -279,10 +281,10 @@ TEST_CASE("nfp headers expose the planned milestone 3, 5, and 6 surfaces",
               std::declval<GeometryRevision>(),
               std::declval<GeometryRevision>())),
           OrbitalVerifierResult>);
-  STATIC_REQUIRE(
-      std::is_same_v<decltype(shiny::nesting::cache::make_nonconvex_nfp_cache_key(
-                         std::declval<const NonconvexNfpRequest &>(),
-                         std::declval<GeometryRevision>(),
-                         std::declval<GeometryRevision>())),
-                     NonconvexNfpCacheKey>);
+  STATIC_REQUIRE(std::is_same_v<
+                 decltype(shiny::nesting::cache::make_nonconvex_nfp_cache_key(
+                     std::declval<const NonconvexNfpRequest &>(),
+                     std::declval<GeometryRevision>(),
+                     std::declval<GeometryRevision>())),
+                 NonconvexNfpCacheKey>);
 }

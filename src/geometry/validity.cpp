@@ -17,7 +17,8 @@ constexpr double kAreaEpsilon = 1e-9;
   return std::isfinite(point.x) && std::isfinite(point.y);
 }
 
-[[nodiscard]] auto edges_are_adjacent(const std::size_t lhs, const std::size_t rhs,
+[[nodiscard]] auto edges_are_adjacent(const std::size_t lhs,
+                                      const std::size_t rhs,
                                       const std::size_t edge_count) -> bool {
   return lhs == rhs || (lhs + 1U) % edge_count == rhs ||
          (rhs + 1U) % edge_count == lhs;
@@ -85,7 +86,8 @@ constexpr double kAreaEpsilon = 1e-9;
   for (std::size_t lhs_index = 0; lhs_index < lhs.size(); ++lhs_index) {
     const Segment2 lhs_edge{lhs[lhs_index], lhs[(lhs_index + 1U) % lhs.size()]};
     for (std::size_t rhs_index = 0; rhs_index < rhs.size(); ++rhs_index) {
-      const Segment2 rhs_edge{rhs[rhs_index], rhs[(rhs_index + 1U) % rhs.size()]};
+      const Segment2 rhs_edge{rhs[rhs_index],
+                              rhs[(rhs_index + 1U) % rhs.size()]};
       const auto contact = pred::classify_segment_contact(lhs_edge, rhs_edge);
       if (ring_contact_is_invalid(contact, false)) {
         return true;
@@ -108,7 +110,8 @@ auto validate_polygon(const Polygon &polygon) -> PolygonValidity {
 
 auto validate_polygon(const PolygonWithHoles &polygon) -> PolygonValidity {
   const auto normalized = normalize_polygon(polygon);
-  const auto outer_validity = detail::validate_ring_simple(normalized.outer, -1);
+  const auto outer_validity =
+      detail::validate_ring_simple(normalized.outer, -1);
   if (!outer_validity.is_valid()) {
     return outer_validity;
   }
@@ -121,7 +124,8 @@ auto validate_polygon(const PolygonWithHoles &polygon) -> PolygonValidity {
       return hole_validity;
     }
 
-    if (detail::rings_intersect(normalized.outer, normalized.holes[hole_index])) {
+    if (detail::rings_intersect(normalized.outer,
+                                normalized.holes[hole_index])) {
       return {.issue = PolygonValidityIssue::hole_outside_outer,
               .ring_index = static_cast<std::int32_t>(hole_index)};
     }
@@ -136,7 +140,8 @@ auto validate_polygon(const PolygonWithHoles &polygon) -> PolygonValidity {
 
   for (std::size_t lhs = 0; lhs < normalized.holes.size(); ++lhs) {
     for (std::size_t rhs = lhs + 1U; rhs < normalized.holes.size(); ++rhs) {
-      if (detail::rings_intersect(normalized.holes[lhs], normalized.holes[rhs])) {
+      if (detail::rings_intersect(normalized.holes[lhs],
+                                  normalized.holes[rhs])) {
         return {.issue = PolygonValidityIssue::hole_intersection,
                 .ring_index = static_cast<std::int32_t>(lhs)};
       }

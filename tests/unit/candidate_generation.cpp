@@ -11,8 +11,8 @@
 #include "geometry/transform.hpp"
 #include "nfp/ifp.hpp"
 #include "nfp/nfp.hpp"
-#include "packing/irregular/candidate_generation.hpp"
 #include "packing/irregular/blocked_regions.hpp"
+#include "packing/irregular/candidate_generation.hpp"
 #include "predicates/point_location.hpp"
 #include "runtime/deterministic_rng.hpp"
 #include "support/fixture_test_support.hpp"
@@ -424,7 +424,8 @@ TEST_CASE("NFP perfect-fit candidates stay inside the feasible domain",
   }
 }
 
-TEST_CASE("fixture-backed NFP candidate generation covers synthetic geometry families",
+TEST_CASE("fixture-backed NFP candidate generation covers synthetic geometry "
+          "families",
           "[packing][candidate-generation][nfp][fixtures]") {
   const auto root = load_fixture_file("nfp/candidate_geometry_families.json");
 
@@ -440,7 +441,8 @@ TEST_CASE("fixture-backed NFP candidate generation covers synthetic geometry fam
       const auto moving_piece = parse_polygon(inputs.get_child("moving"));
       const auto obstacles = parse_obstacles(inputs);
       const std::span<const PolygonWithHoles> exclusion_regions{};
-      const std::span<const CandidateGenerationObstacle> obstacle_span{obstacles};
+      const std::span<const CandidateGenerationObstacle> obstacle_span{
+          obstacles};
 
       shiny::nesting::cache::NfpCache cache(
           shiny::nesting::cache::default_nfp_cache_config());
@@ -527,8 +529,7 @@ TEST_CASE("anchor strategy skips obstacle NFP generation by default",
 
   const auto points = shiny::nesting::pack::generate_nfp_candidate_points(
       container, exclusion_regions, obstacles, moving_piece, 17U,
-      {.degrees = 0.0}, CandidateStrategy::anchor_vertex, &cache,
-      &diagnostics);
+      {.degrees = 0.0}, CandidateStrategy::anchor_vertex, &cache, &diagnostics);
 
   REQUIRE(points.ok());
   REQUIRE_FALSE(points.value().empty());
@@ -646,8 +647,7 @@ TEST_CASE("bbox fallback cache entries are labeled separately from exact NFPs",
   const auto fallback_entry = cache.get(fallback_key);
   REQUIRE(fallback_entry != nullptr);
   REQUIRE(fallback_entry->accuracy ==
-          shiny::nesting::cache::NfpCacheAccuracy::
-              conservative_bbox_fallback);
+          shiny::nesting::cache::NfpCacheAccuracy::conservative_bbox_fallback);
   REQUIRE_FALSE(fallback_entry->polygons.empty());
   REQUIRE(fallback_entry->status != shiny::nesting::util::Status::ok);
 

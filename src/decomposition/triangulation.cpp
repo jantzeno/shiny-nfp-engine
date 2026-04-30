@@ -50,11 +50,15 @@ struct FaceInfo {
   int nesting_level{-1};
   std::int32_t triangle_index{-1};
 
-  [[nodiscard]] auto in_domain() const -> bool { return nesting_level % 2 == 1; }
+  [[nodiscard]] auto in_domain() const -> bool {
+    return nesting_level % 2 == 1;
+  }
 };
 
-using FaceBaseInfo = CGAL::Triangulation_face_base_with_info_2<FaceInfo, Kernel>;
-using FaceBase = CGAL::Constrained_triangulation_face_base_2<Kernel, FaceBaseInfo>;
+using FaceBaseInfo =
+    CGAL::Triangulation_face_base_with_info_2<FaceInfo, Kernel>;
+using FaceBase =
+    CGAL::Constrained_triangulation_face_base_2<Kernel, FaceBaseInfo>;
 using TriangulationData =
     CGAL::Triangulation_data_structure_2<VertexBase, FaceBase>;
 using ConstrainedTriangulation =
@@ -238,9 +242,8 @@ auto triangulate_polygon(const geom::PolygonWithHoles &polygon)
   std::iota(order.begin(), order.end(), 0);
   std::sort(order.begin(), order.end(),
             [&](const std::int32_t lhs, const std::int32_t rhs) {
-              return triangle_less(
-                  triangles[static_cast<std::size_t>(lhs)],
-                  triangles[static_cast<std::size_t>(rhs)]);
+              return triangle_less(triangles[static_cast<std::size_t>(lhs)],
+                                   triangles[static_cast<std::size_t>(rhs)]);
             });
 
   std::vector<std::int32_t> old_to_new(triangles.size(), -1);

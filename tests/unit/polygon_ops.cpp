@@ -144,12 +144,10 @@ TEST_CASE("douglas-peucker simplification removes shallow jogs from polygon",
 
   const Polygon simplified = simplify_polygon_douglas_peucker(input, 0.25);
 
-  require_ring_equal(simplified.outer,
-                     Polygon{.outer = {{0.0, 0.0},
-                                       {12.0, 0.0},
-                                       {12.0, 6.0},
-                                       {0.0, 6.0}}}
-                         .outer);
+  require_ring_equal(
+      simplified.outer,
+      Polygon{.outer = {{0.0, 0.0}, {12.0, 0.0}, {12.0, 6.0}, {0.0, 6.0}}}
+          .outer);
 }
 
 TEST_CASE("douglas-peucker simplification preserves polygon holes",

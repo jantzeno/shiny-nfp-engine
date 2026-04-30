@@ -29,37 +29,41 @@ using shiny::nesting::geom::PolygonWithHoles;
 
 auto rectangle(const double min_x, const double min_y, const double max_x,
                const double max_y) -> PolygonWithHoles {
-  return shiny::nesting::geom::normalize_polygon(PolygonWithHoles{.outer = {
-                                                 {min_x, min_y},
-                                                 {max_x, min_y},
-                                                 {max_x, max_y},
-                                                 {min_x, max_y},
-                                             }});
+  return shiny::nesting::geom::normalize_polygon(
+      PolygonWithHoles{.outer = {
+                           {min_x, min_y},
+                           {max_x, min_y},
+                           {max_x, max_y},
+                           {min_x, max_y},
+                       }});
 }
 
 auto l_shape() -> PolygonWithHoles {
-  return shiny::nesting::geom::normalize_polygon(PolygonWithHoles{.outer = {
-                                                 {0.0, 0.0},
-                                                 {3.0, 0.0},
-                                                 {3.0, 1.0},
-                                                 {1.0, 1.0},
-                                                 {1.0, 3.0},
-                                                 {0.0, 3.0},
-                                             }});
+  return shiny::nesting::geom::normalize_polygon(
+      PolygonWithHoles{.outer = {
+                           {0.0, 0.0},
+                           {3.0, 0.0},
+                           {3.0, 1.0},
+                           {1.0, 1.0},
+                           {1.0, 3.0},
+                           {0.0, 3.0},
+                       }});
 }
 
 auto concave_bin() -> PolygonWithHoles {
-  return shiny::nesting::geom::normalize_polygon(PolygonWithHoles{.outer = {
-                                                 {0.0, 0.0},
-                                                 {8.0, 0.0},
-                                                 {8.0, 3.0},
-                                                 {3.0, 3.0},
-                                                 {3.0, 8.0},
-                                                 {0.0, 8.0},
-                                             }});
+  return shiny::nesting::geom::normalize_polygon(
+      PolygonWithHoles{.outer = {
+                           {0.0, 0.0},
+                           {8.0, 0.0},
+                           {8.0, 3.0},
+                           {3.0, 3.0},
+                           {3.0, 8.0},
+                           {0.0, 8.0},
+                       }});
 }
 
-auto count_placements(const shiny::nesting::NestingResult &result) -> std::size_t {
+auto count_placements(const shiny::nesting::NestingResult &result)
+    -> std::size_t {
   std::size_t count = 0;
   for (const auto &bin : result.layout.bins) {
     count += bin.placements.size();
@@ -76,7 +80,8 @@ auto placements_per_bin(const shiny::nesting::NestingResult &result)
   return counts;
 }
 
-auto solve_checked(const NestingRequest &request, const SolveControl &control = {})
+auto solve_checked(const NestingRequest &request,
+                   const SolveControl &control = {})
     -> shiny::nesting::NestingResult {
   REQUIRE(request.is_valid());
   const auto solved = shiny::nesting::solve(request, control);
@@ -88,7 +93,8 @@ auto targeted_request() -> NestingRequest {
   NestingRequest request;
   request.execution.strategy = StrategyKind::sequential_backtrack;
   request.execution.default_rotations = {{0.0, 90.0}};
-  request.execution.irregular.candidate_strategy = CandidateStrategy::nfp_hybrid;
+  request.execution.irregular.candidate_strategy =
+      CandidateStrategy::nfp_hybrid;
   request.execution.irregular.piece_ordering = PieceOrdering::input;
   request.execution.irregular.max_candidate_points = 128;
   return request;
@@ -169,8 +175,8 @@ TEST_CASE("representative integration layouts cover core placement shapes",
 
     const auto result = solve_checked(request);
     REQUIRE(result.is_full_success());
-    REQUIRE(placements_per_bin(result) == std::map<std::uint32_t, std::size_t>{
-                                             {201, 1U}, {202, 1U}});
+    REQUIRE(placements_per_bin(result) ==
+            std::map<std::uint32_t, std::size_t>{{201, 1U}, {202, 1U}});
   }
 
   SECTION("dense rectangle packing") {
@@ -197,7 +203,8 @@ TEST_CASE("representative integration layouts cover core placement shapes",
         .bin_id = 400,
         .polygon = rectangle(0.0, 0.0, 6.0, 6.0),
     });
-    request.pieces.push_back(PieceRequest{.piece_id = 41, .polygon = l_shape()});
+    request.pieces.push_back(
+        PieceRequest{.piece_id = 41, .polygon = l_shape()});
 
     const auto result = solve_checked(request);
     REQUIRE(result.is_full_success());
@@ -211,7 +218,8 @@ TEST_CASE("representative integration layouts cover core placement shapes",
         .bin_id = 410,
         .polygon = concave_bin(),
     });
-    request.pieces.push_back(PieceRequest{.piece_id = 42, .polygon = l_shape()});
+    request.pieces.push_back(
+        PieceRequest{.piece_id = 42, .polygon = l_shape()});
 
     const auto result = solve_checked(request);
     REQUIRE(result.is_full_success());
@@ -233,7 +241,8 @@ TEST_CASE("representative integration layouts cover core placement shapes",
     REQUIRE(result.stop_reason == StopReason::completed);
     REQUIRE_FALSE(result.all_parts_placed());
     REQUIRE(result.unplaced_parts() == 1U);
-    REQUIRE(result.layout.unplaced_piece_ids == std::vector<std::uint32_t>{61U});
+    REQUIRE(result.layout.unplaced_piece_ids ==
+            std::vector<std::uint32_t>{61U});
   }
 }
 

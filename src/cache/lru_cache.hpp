@@ -77,7 +77,8 @@ private:
 
   using EntryMap = std::unordered_map<Key, Entry, Hash>;
 
-  auto insert_locked(const Key &key, std::shared_ptr<const Value> value) -> void {
+  auto insert_locked(const Key &key, std::shared_ptr<const Value> value)
+      -> void {
     const auto existing = entries_.find(key);
     if (existing != entries_.end()) {
       existing->second.value = std::move(value);
@@ -86,8 +87,8 @@ private:
     }
 
     order_.push_front(key);
-    entries_.emplace(key, Entry{.value = std::move(value),
-                                .order_it = order_.begin()});
+    entries_.emplace(
+        key, Entry{.value = std::move(value), .order_it = order_.begin()});
     evict_locked();
   }
 
@@ -97,7 +98,8 @@ private:
   }
 
   auto evict_locked() -> void {
-    if (config_.policy != CachePolicy::lru_bounded || config_.max_entries == 0U) {
+    if (config_.policy != CachePolicy::lru_bounded ||
+        config_.max_entries == 0U) {
       return;
     }
     while (entries_.size() > config_.max_entries) {
