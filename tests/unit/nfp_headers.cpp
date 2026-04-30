@@ -79,36 +79,36 @@ TEST_CASE("nfp headers expose the planned milestone 3, 5, and 6 surfaces",
   const ConvexIfpRequest convex_ifp_request{
       .container_id = 7,
       .piece_id = 9,
-      .container = {.outer = {{0.0, 0.0}, {8.0, 0.0}, {8.0, 8.0}, {0.0, 8.0}}},
-      .piece = {.outer = {{0.0, 0.0}, {2.0, 0.0}, {1.0, 1.0}}},
+      .container = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0}, {8.0, 0.0}, {8.0, 8.0}, {0.0, 8.0}}),
+      .piece = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0}, {2.0, 0.0}, {1.0, 1.0}}),
       .container_rotation = {.degrees = 0.0},
       .piece_rotation = {.degrees = 180.0},
   };
   REQUIRE(convex_ifp_request.container_id == 7U);
   REQUIRE(convex_ifp_request.piece_id == 9U);
-  REQUIRE(convex_ifp_request.container.outer.size() == 4U);
+  REQUIRE(convex_ifp_request.container.outer().size() == 4U);
   REQUIRE(convex_ifp_request.piece_rotation.degrees == 180.0);
 
   const NonconvexNfpRequest nonconvex_request{
       .piece_a_id = 41,
       .piece_b_id = 42,
-      .piece_a = {.outer = {{0.0, 0.0},
+      .piece_a = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
                             {4.0, 0.0},
                             {4.0, 1.0},
                             {1.0, 1.0},
                             {1.0, 4.0},
-                            {0.0, 4.0}}},
-      .piece_b = {.outer = {{0.0, 0.0},
+                            {0.0, 4.0}}),
+      .piece_b = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
                             {2.0, 0.0},
                             {2.0, 2.0},
                             {1.0, 1.0},
-                            {0.0, 2.0}}},
+                            {0.0, 2.0}}),
       .rotation_a = {.degrees = 180.0},
       .rotation_b = {.degrees = 90.0},
       .algorithm_revision = AlgorithmRevision{3},
   };
   REQUIRE(nonconvex_request.piece_a_id == 41U);
-  REQUIRE(nonconvex_request.piece_b.outer.size() == 5U);
+  REQUIRE(nonconvex_request.piece_b.outer().size() == 5U);
   REQUIRE(nonconvex_request.algorithm_revision.value == 3U);
 
   const GraphVertex graph_vertex{
@@ -170,7 +170,7 @@ TEST_CASE("nfp headers expose the planned milestone 3, 5, and 6 surfaces",
       .completed = true,
   };
   REQUIRE(toucher.kind == OrbitalTouchKind::vertex_edge);
-  REQUIRE(feasible_translation.segment.start.x == 0.0);
+  REQUIRE(feasible_translation.segment.start.x() == 0.0);
   REQUIRE(trace.kind == NfpFeatureKind::hole);
   REQUIRE(orbital_result.result.algorithm == AlgorithmKind::orbital_verifier);
   REQUIRE(orbital_result.status == OrbitalVerifierStatus::success);

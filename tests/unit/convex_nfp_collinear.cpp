@@ -19,6 +19,7 @@ namespace {
 
 using shiny::nesting::geom::Point2;
 using shiny::nesting::geom::Polygon;
+using shiny::nesting::geom::Ring;
 using shiny::nesting::nfp::compute_convex_nfp;
 
 } // namespace
@@ -30,21 +31,16 @@ TEST_CASE("compute_convex_nfp tolerates collinear vertices on the outer ring",
   // on the segment (0,0)-(4,0). This mirrors the shape Boost.Geometry emits
   // for a fused triangle pair: the merge seam is preserved as an interior
   // collinear vertex.
-  const Polygon fixed_with_collinear{
-      .outer = {
-          Point2{.x = 0.0, .y = 0.0},
-          Point2{.x = 2.0, .y = 0.0}, // collinear with (0,0) and (4,0)
-          Point2{.x = 4.0, .y = 0.0},
-          Point2{.x = 4.0, .y = 2.0},
-          Point2{.x = 0.0, .y = 2.0},
-      }};
+  const Polygon fixed_with_collinear(Ring{
+      shiny::nesting::geom::Point2(0.0, 0.0),
+      shiny::nesting::geom::Point2(2.0, 0.0), // collinear with (0,0) and (4,0)
+      shiny::nesting::geom::Point2(4.0, 0.0),
+      shiny::nesting::geom::Point2(4.0, 2.0),
+      shiny::nesting::geom::Point2(0.0, 2.0),
+  });
 
-  const Polygon moving{.outer = {
-                           Point2{.x = 0.0, .y = 0.0},
-                           Point2{.x = 1.0, .y = 0.0},
-                           Point2{.x = 1.0, .y = 1.0},
-                           Point2{.x = 0.0, .y = 1.0},
-                       }};
+  const Polygon moving(Ring{shiny::nesting::geom::Point2(0.0, 0.0), shiny::nesting::geom::Point2(1.0, 0.0),
+                            shiny::nesting::geom::Point2(1.0, 1.0), shiny::nesting::geom::Point2(0.0, 1.0)});
 
   // Without upstream simplification (request normalization or boolean-op
   // post-processing), this convex hexagon would reach EPICK
@@ -52,30 +48,21 @@ TEST_CASE("compute_convex_nfp tolerates collinear vertices on the outer ring",
   // tolerate that input shape.
   const auto result = compute_convex_nfp(fixed_with_collinear, moving);
   REQUIRE(result.ok());
-  REQUIRE_FALSE(result.value().outer.empty());
+  REQUIRE_FALSE(result.value().outer().empty());
 }
 
 TEST_CASE("compute_convex_nfp tolerates collinear vertices on both inputs",
           "[nfp][convex-nfp][collinear-regression]") {
-  const Polygon fixed_with_collinear{.outer = {
-                                         Point2{.x = 0.0, .y = 0.0},
-                                         Point2{.x = 1.5, .y = 0.0},
-                                         Point2{.x = 3.0, .y = 0.0},
-                                         Point2{.x = 3.0, .y = 2.0},
-                                         Point2{.x = 0.0, .y = 2.0},
-                                     }};
+  const Polygon fixed_with_collinear(Ring{shiny::nesting::geom::Point2(0.0, 0.0), shiny::nesting::geom::Point2(1.5, 0.0),
+                                          shiny::nesting::geom::Point2(3.0, 0.0), shiny::nesting::geom::Point2(3.0, 2.0),
+                                          shiny::nesting::geom::Point2(0.0, 2.0)});
 
-  const Polygon moving_with_collinear{
-      .outer = {
-          Point2{.x = 0.0, .y = 0.0},
-          Point2{.x = 1.0, .y = 0.0},
-          Point2{.x = 1.0, .y = 0.5},
-          Point2{.x = 1.0, .y = 1.0}, // collinear on the right edge
-          Point2{.x = 0.0, .y = 1.0},
-      }};
+  const Polygon moving_with_collinear(Ring{shiny::nesting::geom::Point2(0.0, 0.0), shiny::nesting::geom::Point2(1.0, 0.0),
+                                           shiny::nesting::geom::Point2(1.0, 0.5), shiny::nesting::geom::Point2(1.0, 1.0),
+                                           shiny::nesting::geom::Point2(0.0, 1.0)});
 
   const auto result =
       compute_convex_nfp(fixed_with_collinear, moving_with_collinear);
   REQUIRE(result.ok());
-  REQUIRE_FALSE(result.value().outer.empty());
+  REQUIRE_FALSE(result.value().outer().empty());
 }

@@ -1,49 +1,30 @@
 #include "polygon_ops/convex_hull.hpp"
 
-#include <algorithm>
+#include <utility>
 
 #include <boost/geometry.hpp>
 
 #include "geometry/normalize.hpp"
+#include "geometry/types.hpp"
 
 namespace shiny::nesting::poly {
 namespace {
 
 namespace bg = boost::geometry;
 
-using BgPoint = bg::model::d2::point_xy<double>;
-using BgMultiPoint = bg::model::multi_point<BgPoint>;
-using BgRing = bg::model::ring<BgPoint, false, false>;
-using BgPolygon = bg::model::polygon<BgPoint, false, false>;
-
-[[nodiscard]] auto to_bg_point(const geom::Point2 &point) -> BgPoint {
-  return {point.x, point.y};
-}
-
-[[nodiscard]] auto from_bg_point(const BgPoint &point) -> geom::Point2 {
-  return {bg::get<0>(point), bg::get<1>(point)};
-}
-
-[[nodiscard]] auto from_bg_ring(const BgRing &ring) -> geom::Ring {
-  geom::Ring result;
-  result.reserve(ring.size());
-  for (const auto &point : ring) {
-    result.push_back(from_bg_point(point));
-  }
-  return result;
-}
+using BgMultiPoint = bg::model::multi_point<geom::Point2>;
 
 [[nodiscard]] auto collect_polygon_points(const geom::PolygonWithHoles &polygon)
     -> BgMultiPoint {
   const auto normalized = geom::normalize_polygon(polygon);
 
   BgMultiPoint points;
-  for (const auto &point : normalized.outer) {
-    bg::append(points, to_bg_point(point));
+  for (const auto &point : normalized.outer()) {
+    bg::append(points, point);
   }
-  for (const auto &hole : normalized.holes) {
+  for (const auto &hole : normalized.holes()) {
     for (const auto &point : hole) {
-      bg::append(points, to_bg_point(point));
+      bg::append(points, point);
     }
   }
 
@@ -60,23 +41,22 @@ auto compute_convex_hull(std::span<const geom::Point2> points)
 
   if (points.size() < 3U) {
     return geom::normalize_polygon(
-        geom::Polygon{.outer = geom::Ring(points.begin(), points.end())});
+        geom::Polygon{geom::Ring(points.begin(), points.end())});
   }
 
   BgMultiPoint multipoint;
   for (const auto &point : points) {
-    bg::append(multipoint, to_bg_point(point));
+    bg::append(multipoint, point);
   }
 
-  BgPolygon hull;
+  geom::PolygonWithHoles hull;
   bg::convex_hull(multipoint, hull);
-  return geom::normalize_polygon(
-      geom::Polygon{.outer = from_bg_ring(hull.outer())});
+  return geom::normalize_polygon(geom::Polygon{std::move(hull.outer())});
 }
 
 auto compute_convex_hull(const geom::Polygon &polygon) -> geom::Polygon {
   return compute_convex_hull(std::span<const geom::Point2>(
-      polygon.outer.data(), polygon.outer.size()));
+      polygon.outer().data(), polygon.outer().size()));
 }
 
 auto compute_convex_hull(const geom::PolygonWithHoles &polygon)
@@ -86,10 +66,9 @@ auto compute_convex_hull(const geom::PolygonWithHoles &polygon)
     return {};
   }
 
-  BgPolygon hull;
+  geom::PolygonWithHoles hull;
   bg::convex_hull(points, hull);
-  return geom::normalize_polygon(
-      geom::Polygon{.outer = from_bg_ring(hull.outer())});
+  return geom::normalize_polygon(geom::Polygon{std::move(hull.outer())});
 }
 
 } // namespace shiny::nesting::poly

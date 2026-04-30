@@ -210,13 +210,11 @@ namespace {
 [[nodiscard]] auto translation_delta(const geom::PolygonWithHoles &from,
                                      const geom::PolygonWithHoles &to)
     -> geom::Vector2 {
-  if (from.outer.empty() || to.outer.empty()) {
+  if (from.outer().empty() || to.outer().empty()) {
     return {};
   }
-  return {
-      .x = to.outer.front().x - from.outer.front().x,
-      .y = to.outer.front().y - from.outer.front().y,
-  };
+  return {to.outer().front().x() - from.outer().front().x(),
+          to.outer().front().y() - from.outer().front().y()};
 }
 
 auto refresh_layout_bin(pack::LayoutBin &bin) -> void {
@@ -290,10 +288,10 @@ auto refresh_layout_bin(pack::LayoutBin &bin) -> void {
         envelope = bounds;
         initialized = true;
       } else {
-        envelope.min.x = std::min(envelope.min.x, bounds.min.x);
-        envelope.min.y = std::min(envelope.min.y, bounds.min.y);
-        envelope.max.x = std::max(envelope.max.x, bounds.max.x);
-        envelope.max.y = std::max(envelope.max.y, bounds.max.y);
+        envelope.min.set_x(std::min(envelope.min.x(), bounds.min.x()));
+        envelope.min.set_y(std::min(envelope.min.y(), bounds.min.y()));
+        envelope.max.set_x(std::max(envelope.max.x(), bounds.max.x()));
+        envelope.max.set_y(std::max(envelope.max.y(), bounds.max.y()));
       }
       occupied_area += geom::polygon_area(placement.polygon);
       items.push_back({
@@ -375,11 +373,13 @@ auto refresh_layout_bin(pack::LayoutBin &bin) -> void {
     for (std::size_t index = 0; index < bin.placements.size(); ++index) {
       const auto delta = translation_delta(bin.placements[index].polygon,
                                            separated.polygons[index]);
-      moved_any |= std::fabs(delta.x) > kStripLengthTolerance ||
-                   std::fabs(delta.y) > kStripLengthTolerance;
+      moved_any |= std::fabs(delta.x()) > kStripLengthTolerance ||
+                   std::fabs(delta.y()) > kStripLengthTolerance;
       bin.placements[index].polygon = separated.polygons[index];
-      bin.placements[index].placement.translation.x += delta.x;
-      bin.placements[index].placement.translation.y += delta.y;
+      bin.placements[index].placement.translation.set_x(
+          bin.placements[index].placement.translation.x() + delta.x());
+      bin.placements[index].placement.translation.set_y(
+          bin.placements[index].placement.translation.y() + delta.y());
       translations_by_piece[bin.placements[index].placement.piece_id] =
           bin.placements[index].placement.translation;
     }

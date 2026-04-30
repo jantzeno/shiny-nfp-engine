@@ -24,11 +24,11 @@ inline constexpr double kCanonicalCoordinateScale = 1000000000.0;
  */
 [[nodiscard]] inline auto point_less(const geom::Point2 &lhs,
                                      const geom::Point2 &rhs) -> bool {
-  if (lhs.x != rhs.x) {
-    return lhs.x < rhs.x;
+  if (lhs.x() != rhs.x()) {
+    return lhs.x() < rhs.x();
   }
 
-  return lhs.y < rhs.y;
+  return lhs.y() < rhs.y();
 }
 
 /**
@@ -36,8 +36,8 @@ inline constexpr double kCanonicalCoordinateScale = 1000000000.0;
  */
 [[nodiscard]] inline auto near_same_point(const geom::Point2 &lhs,
                                           const geom::Point2 &rhs) -> bool {
-  return canonicalize_coordinate(lhs.x) == canonicalize_coordinate(rhs.x) &&
-         canonicalize_coordinate(lhs.y) == canonicalize_coordinate(rhs.y);
+  return canonicalize_coordinate(lhs.x()) == canonicalize_coordinate(rhs.x()) &&
+         canonicalize_coordinate(lhs.y()) == canonicalize_coordinate(rhs.y());
 }
 
 } // namespace shiny::nesting::detail

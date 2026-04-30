@@ -25,9 +25,9 @@ bounds_corner_for_start_corner(const geom::Box2 &bounds,
   case place::PlacementStartCorner::bottom_left:
     return bounds.min;
   case place::PlacementStartCorner::bottom_right:
-    return {.x = bounds.max.x, .y = bounds.min.y};
+    return geom::Point2{bounds.max.x(), bounds.min.y()};
   case place::PlacementStartCorner::top_left:
-    return {.x = bounds.min.x, .y = bounds.max.y};
+    return geom::Point2{bounds.min.x(), bounds.max.y()};
   case place::PlacementStartCorner::top_right:
     return bounds.max;
   }
@@ -38,8 +38,8 @@ auto append_unique_anchor(std::vector<AnchorPoint> &anchors,
                           const AnchorPoint &candidate) -> void {
   const auto duplicate = std::find_if(
       anchors.begin(), anchors.end(), [&](const AnchorPoint &existing) {
-        return almost_equal(existing.point.x, candidate.point.x) &&
-               almost_equal(existing.point.y, candidate.point.y) &&
+        return almost_equal(existing.point.x(), candidate.point.x()) &&
+               almost_equal(existing.point.y(), candidate.point.y()) &&
                existing.source == candidate.source;
       });
   if (duplicate == anchors.end()) {
@@ -60,10 +60,12 @@ auto append_box_anchors(std::vector<AnchorPoint> &anchors,
                         const place::PlacementCandidateSource source) -> void {
   append_unique_anchor(anchors, {.point = box.min, .source = source});
   append_unique_anchor(
-      anchors, {.point = {.x = box.max.x, .y = box.min.y}, .source = source});
+      anchors,
+      {.point = geom::Point2{box.max.x(), box.min.y()}, .source = source});
   append_unique_anchor(anchors, {.point = box.max, .source = source});
   append_unique_anchor(
-      anchors, {.point = {.x = box.min.x, .y = box.max.y}, .source = source});
+      anchors,
+      {.point = geom::Point2{box.min.x(), box.max.y()}, .source = source});
 }
 
 [[nodiscard]] auto
@@ -82,13 +84,13 @@ start_corner_on_top(const place::PlacementStartCorner start_corner) -> bool {
 point_for_start_corner(const geom::Point2 &point, const geom::Box2 &container,
                        const place::PlacementStartCorner start_corner)
     -> geom::Point2 {
-  return {
-      .x = start_corner_on_right(start_corner)
-               ? container.min.x + (container.max.x - point.x)
-               : point.x,
-      .y = start_corner_on_top(start_corner)
-               ? container.min.y + (container.max.y - point.y)
-               : point.y,
+  return geom::Point2{
+      start_corner_on_right(start_corner)
+          ? container.min.x() + (container.max.x() - point.x())
+          : point.x(),
+      start_corner_on_top(start_corner)
+          ? container.min.y() + (container.max.y() - point.y())
+          : point.y(),
   };
 }
 
@@ -116,21 +118,21 @@ box_for_start_corner(const geom::Box2 &box, const geom::Box2 &container,
                                    const double part_spacing)
     -> std::vector<AnchorPoint> {
   std::vector<AnchorPoint> anchors;
-  append_ring_anchors(anchors, bin.state.container.outer,
+  append_ring_anchors(anchors, bin.state.container.outer(),
                       place::PlacementCandidateSource::bin_boundary);
   append_box_anchors(anchors, geom::compute_bounds(bin.state.container),
                      place::PlacementCandidateSource::bin_boundary);
-  for (const auto &hole : bin.state.container.holes) {
+  for (const auto &hole : bin.state.container.holes()) {
     append_ring_anchors(anchors, hole,
                         place::PlacementCandidateSource::constructive_boundary);
   }
 
   for (const auto &region : bin.cached_free_regions) {
-    append_ring_anchors(anchors, region.outer,
+    append_ring_anchors(anchors, region.outer(),
                         place::PlacementCandidateSource::constructive_boundary);
     append_box_anchors(anchors, geom::compute_bounds(region),
                        place::PlacementCandidateSource::constructive_boundary);
-    for (const auto &hole : region.holes) {
+    for (const auto &hole : region.holes()) {
       append_ring_anchors(
           anchors, hole,
           place::PlacementCandidateSource::constructive_boundary);
@@ -140,12 +142,12 @@ box_for_start_corner(const geom::Box2 &box, const geom::Box2 &container,
   if (part_spacing <= 0.0) {
     for (const auto &zone : bin.exclusion_regions) {
       append_ring_anchors(
-          anchors, zone.outer,
+          anchors, zone.outer(),
           place::PlacementCandidateSource::constructive_boundary);
     }
     for (const auto &placement : bin.state.placements) {
       append_ring_anchors(
-          anchors, placement.polygon.outer,
+          anchors, placement.polygon.outer(),
           place::PlacementCandidateSource::constructive_boundary);
       append_box_anchors(
           anchors, geom::compute_bounds(placement.polygon),
@@ -154,7 +156,7 @@ box_for_start_corner(const geom::Box2 &box, const geom::Box2 &container,
   }
 
   for (const auto &hole : bin.state.holes) {
-    append_ring_anchors(anchors, hole.outer,
+    append_ring_anchors(anchors, hole.outer(),
                         place::PlacementCandidateSource::hole_boundary);
   }
   return anchors;
@@ -165,11 +167,12 @@ candidate_reference_points(const geom::PolygonWithHoles &polygon,
                            const geom::Box2 &bounds,
                            const place::PlacementStartCorner start_corner)
     -> std::vector<geom::Point2> {
-  std::vector<geom::Point2> points = polygon.outer;
+  std::vector<geom::Point2> points(polygon.outer().begin(),
+                                   polygon.outer().end());
   points.push_back(bounds.min);
-  points.push_back({.x = bounds.max.x, .y = bounds.min.y});
+  points.emplace_back(bounds.max.x(), bounds.min.y());
   points.push_back(bounds.max);
-  points.push_back({.x = bounds.min.x, .y = bounds.max.y});
+  points.emplace_back(bounds.min.x(), bounds.max.y());
   points.push_back(bounds_corner_for_start_corner(bounds, start_corner));
   std::sort(points.begin(), points.end());
   points.erase(std::unique(points.begin(), points.end()), points.end());
@@ -185,11 +188,8 @@ candidate_reference_points(const geom::PolygonWithHoles &polygon,
   for (const auto &anchor : anchors) {
     for (const auto &reference_point : reference_points) {
       translations.push_back({
-          .translation =
-              {
-                  .x = anchor.point.x - reference_point.x,
-                  .y = anchor.point.y - reference_point.y,
-              },
+          .translation = geom::Point2{anchor.point.x() - reference_point.x(),
+                                      anchor.point.y() - reference_point.y()},
           .source = anchor.source,
       });
     }
@@ -202,24 +202,25 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
                          const std::span<const geom::Box2> occupied_bounds,
                          const double width) -> std::vector<double> {
   std::vector<double> candidates{
-      container_bounds.min.x,
-      container_bounds.max.x - width,
+      container_bounds.min.x(),
+      container_bounds.max.x() - width,
   };
   candidates.reserve(2U + occupied_bounds.size() * 4U);
   for (const auto &occupied : occupied_bounds) {
-    candidates.push_back(occupied.min.x);
-    candidates.push_back(occupied.max.x);
-    candidates.push_back(occupied.min.x - width);
-    candidates.push_back(occupied.max.x - width);
+    candidates.push_back(occupied.min.x());
+    candidates.push_back(occupied.max.x());
+    candidates.push_back(occupied.min.x() - width);
+    candidates.push_back(occupied.max.x() - width);
   }
 
   auto unique = unique_sorted_values(std::move(candidates));
   unique.erase(std::remove_if(unique.begin(), unique.end(),
                               [&](const double value) {
-                                return value < container_bounds.min.x -
+                                return value < container_bounds.min.x() -
                                                    kDistanceEpsilon ||
-                                       value + width > container_bounds.max.x +
-                                                           kDistanceEpsilon;
+                                       value + width >
+                                           container_bounds.max.x() +
+                                               kDistanceEpsilon;
                               }),
                unique.end());
   return unique;
@@ -248,19 +249,19 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
   translations.reserve(candidate_xs.size());
 
   for (const double candidate_min_x : candidate_xs) {
-    double candidate_min_y = canonical_container.min.y;
+    double candidate_min_y = canonical_container.min.y();
     for (const auto &occupied : canonical_occupied_bounds) {
-      if (!pack::intervals_overlap_interior(candidate_min_x,
-                                            candidate_min_x + width,
-                                            occupied.min.x, occupied.max.x)) {
+      if (!pack::intervals_overlap_interior(
+              candidate_min_x, candidate_min_x + width, occupied.min.x(),
+              occupied.max.x())) {
         continue;
       }
-      candidate_min_y = std::max(candidate_min_y, occupied.max.y);
+      candidate_min_y = std::max(candidate_min_y, occupied.max.y());
     }
 
     const geom::Box2 canonical_candidate{
-        .min = {.x = candidate_min_x, .y = candidate_min_y},
-        .max = {.x = candidate_min_x + width, .y = candidate_min_y + height},
+        .min = geom::Point2{candidate_min_x, candidate_min_y},
+        .max = geom::Point2{candidate_min_x + width, candidate_min_y + height},
     };
     const auto actual_candidate = box_for_start_corner(
         canonical_candidate, container_bounds, start_corner);
@@ -268,8 +269,9 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
       continue;
     }
     translations.push_back({
-        .translation = {.x = actual_candidate.min.x - rotated_bounds.min.x,
-                        .y = actual_candidate.min.y - rotated_bounds.min.y},
+        .translation =
+            geom::Point2{actual_candidate.min.x() - rotated_bounds.min.x(),
+                         actual_candidate.min.y() - rotated_bounds.min.y()},
         .source = place::PlacementCandidateSource::constructive_boundary,
     });
   }
@@ -284,8 +286,8 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
     obstacles.push_back({
         .geometry_revision = placement.piece_geometry_revision,
         .polygon = placement.polygon,
-        .translation = {.x = placement.placement.translation.x,
-                        .y = placement.placement.translation.y},
+        .translation = geom::Vector2{placement.placement.translation.x(),
+                                     placement.placement.translation.y()},
         .rotation = placement.resolved_rotation,
     });
   }
@@ -346,19 +348,6 @@ region_can_fit_piece_exact(const geom::PolygonWithHoles &region,
   return !ifp.value().empty();
 }
 
-template <typename Fn>
-auto for_each_polygon_vertex(const geom::PolygonWithHoles &polygon, Fn &&fn)
-    -> void {
-  for (const auto &vertex : polygon.outer) {
-    fn(vertex);
-  }
-  for (const auto &hole : polygon.holes) {
-    for (const auto &vertex : hole) {
-      fn(vertex);
-    }
-  }
-}
-
 auto try_exact_fit_candidate_impl(WorkingBin &bin, const PieceInstance &piece,
                                   const NormalizedRequest &request,
                                   const SolveControl &control,
@@ -413,7 +402,7 @@ auto try_exact_fit_candidate_impl(WorkingBin &bin, const PieceInstance &piece,
         const geom::ResolvedRotation active_rotation{.degrees = refined_angle};
         const auto rotated_piece =
             geom::rotate(source_polygon, active_rotation);
-        if (rotated_piece.outer.empty()) {
+        if (rotated_piece.outer().empty()) {
           continue;
         }
 
@@ -432,83 +421,80 @@ auto try_exact_fit_candidate_impl(WorkingBin &bin, const PieceInstance &piece,
           }
 
           for (const auto &feasible_region : ifp.value()) {
-            for_each_polygon_vertex(
-                feasible_region, [&](const geom::Point2 &translation) {
-                  ++attempt_context.candidate_evaluations_completed;
+            geom::for_each_vertex(feasible_region, [&](const geom::Point2
+                                                           &translation) {
+              ++attempt_context.candidate_evaluations_completed;
 
-                  const geom::Box2 candidate_bbox{
-                      .min = {.x = rotated_bounds.min.x + translation.x,
-                              .y = rotated_bounds.min.y + translation.y},
-                      .max = {.x = rotated_bounds.max.x + translation.x,
-                              .y = rotated_bounds.max.y + translation.y},
-                  };
-                  const bool any_bbox_fit =
-                      request.request.execution.irregular
-                              .enable_direct_overlap_check
-                          ? geom::box_contains(container_bounds, candidate_bbox)
-                          : std::any_of(region_bboxes.begin(),
-                                        region_bboxes.end(),
-                                        [&](const auto &region_bbox) {
-                                          return geom::box_contains(
-                                              region_bbox, candidate_bbox);
-                                        });
-                  if (!any_bbox_fit) {
-                    return;
-                  }
+              const geom::Box2 candidate_bbox{
+                  .min = geom::Point2{rotated_bounds.min.x() + translation.x(),
+                                      rotated_bounds.min.y() + translation.y()},
+                  .max = geom::Point2{rotated_bounds.max.x() + translation.x(),
+                                      rotated_bounds.max.y() + translation.y()},
+              };
+              const bool any_bbox_fit =
+                  request.request.execution.irregular
+                          .enable_direct_overlap_check
+                      ? geom::box_contains(container_bounds, candidate_bbox)
+                      : std::any_of(region_bboxes.begin(), region_bboxes.end(),
+                                    [&](const auto &region_bbox) {
+                                      return geom::box_contains(region_bbox,
+                                                                candidate_bbox);
+                                    });
+              if (!any_bbox_fit) {
+                return;
+              }
 
-                  const geom::Vector2 translation_vector{
-                      .x = translation.x,
-                      .y = translation.y,
-                  };
-                  const auto transformed_piece =
-                      geom::translate(rotated_piece, translation_vector);
-                  const bool fits =
-                      request.request.execution.irregular
-                              .enable_direct_overlap_check
-                          ? fits_bin_direct(transformed_piece, candidate_bbox,
-                                            bin, request.request.execution)
-                          : fits_any_region(transformed_piece, candidate_bbox,
-                                            free_regions, region_bboxes);
-                  if (!fits) {
-                    return;
-                  }
-                  if (!respects_spacing(transformed_piece, bin,
-                                        request.request.execution)) {
-                    return;
-                  }
+              const geom::Vector2 translation_vector{translation.x(),
+                                                     translation.y()};
+              const auto transformed_piece =
+                  geom::translate(rotated_piece, translation_vector);
+              const bool fits =
+                  request.request.execution.irregular
+                          .enable_direct_overlap_check
+                      ? fits_bin_direct(transformed_piece, candidate_bbox, bin,
+                                        request.request.execution)
+                      : fits_any_region(transformed_piece, candidate_bbox,
+                                        free_regions, region_bboxes);
+              if (!fits) {
+                return;
+              }
+              if (!respects_spacing(transformed_piece, bin,
+                                    request.request.execution)) {
+                return;
+              }
 
-                  const auto hole_index = hole_index_for_candidate(
-                      transformed_piece, candidate_bbox, bin.state.holes);
-                  CandidatePlacement candidate{
-                      .placement =
-                          {
-                              .piece_id = piece.expanded.expanded_piece_id,
-                              .bin_id = bin.state.bin_id,
-                              .rotation_index = rotation_index,
-                              .translation = {.x = translation.x,
-                                              .y = translation.y},
-                              .mirrored = mirrored,
-                          },
-                      .piece_geometry_revision = mirrored_revision,
-                      .resolved_rotation = active_rotation,
-                      .polygon = transformed_piece,
-                      .bounds = candidate_bbox,
-                      .source = place::PlacementCandidateSource::perfect_fit,
-                      .nfp_accuracy = cache::NfpCacheAccuracy::exact,
-                      .inside_hole = hole_index >= 0,
-                      .hole_index = hole_index,
-                      .score = compute_candidate_score(
-                          bin, request.request.execution, transformed_piece,
-                          candidate_bbox),
-                  };
+              const auto hole_index = hole_index_for_candidate(
+                  transformed_piece, candidate_bbox, bin.state.holes);
+              CandidatePlacement candidate{
+                  .placement =
+                      {
+                          .piece_id = piece.expanded.expanded_piece_id,
+                          .bin_id = bin.state.bin_id,
+                          .rotation_index = rotation_index,
+                          .translation =
+                              geom::Point2{translation.x(), translation.y()},
+                          .mirrored = mirrored,
+                      },
+                  .piece_geometry_revision = mirrored_revision,
+                  .resolved_rotation = active_rotation,
+                  .polygon = transformed_piece,
+                  .bounds = candidate_bbox,
+                  .source = place::PlacementCandidateSource::perfect_fit,
+                  .nfp_accuracy = cache::NfpCacheAccuracy::exact,
+                  .inside_hole = hole_index >= 0,
+                  .hole_index = hole_index,
+                  .score = compute_candidate_score(
+                      bin, request.request.execution, transformed_piece,
+                      candidate_bbox),
+              };
 
-                  if (!best.has_value() ||
-                      better_candidate(
-                          bin, request.request.execution.placement_policy,
-                          candidate, *best)) {
-                    best = std::move(candidate);
-                  }
-                });
+              if (!best.has_value() ||
+                  better_candidate(bin,
+                                   request.request.execution.placement_policy,
+                                   candidate, *best)) {
+                best = std::move(candidate);
+              }
+            });
           }
         }
       }
@@ -583,7 +569,7 @@ auto frontier_exhaustion_status_for_piece(WorkingBin &bin,
       for (const auto refined_angle : refined_angles) {
         const auto rotated_piece = geom::rotate(
             source_polygon, geom::ResolvedRotation{.degrees = refined_angle});
-        if (rotated_piece.outer.empty()) {
+        if (rotated_piece.outer().empty()) {
           continue;
         }
 
@@ -636,7 +622,6 @@ auto find_best_for_bin(
   const auto strategy = request.request.execution.irregular.candidate_strategy;
   const bool use_anchor_candidates =
       strategy == CandidateStrategy::anchor_vertex ||
-      strategy == CandidateStrategy::nfp_perfect ||
       strategy == CandidateStrategy::nfp_hybrid;
   const bool use_nfp_candidates = strategy != CandidateStrategy::anchor_vertex;
   const auto anchors =
@@ -696,7 +681,7 @@ auto find_best_for_bin(
         const geom::ResolvedRotation active_rotation{.degrees = refined_angle};
         const auto rotated_piece =
             geom::rotate(source_polygon, active_rotation);
-        if (rotated_piece.outer.empty()) {
+        if (rotated_piece.outer().empty()) {
           continue;
         }
 
@@ -763,15 +748,13 @@ auto find_best_for_bin(
         bbox_clear_candidate_points.reserve(candidate_points.size());
         bbox_overlap_candidate_points.reserve(candidate_points.size());
         for (const auto &candidate_point : candidate_points) {
-          const geom::Vector2 translation{
-              .x = candidate_point.translation.x,
-              .y = candidate_point.translation.y,
-          };
+          const geom::Vector2 translation{candidate_point.translation.x(),
+                                          candidate_point.translation.y()};
           const geom::Box2 candidate_bbox{
-              .min = {.x = rotated_bounds.min.x + translation.x,
-                      .y = rotated_bounds.min.y + translation.y},
-              .max = {.x = rotated_bounds.max.x + translation.x,
-                      .y = rotated_bounds.max.y + translation.y},
+              .min = geom::Point2{rotated_bounds.min.x() + translation.x(),
+                                  rotated_bounds.min.y() + translation.y()},
+              .max = geom::Point2{rotated_bounds.max.x() + translation.x(),
+                                  rotated_bounds.max.y() + translation.y()},
           };
           const bool any_bbox_fit =
               request.request.execution.irregular.enable_direct_overlap_check
@@ -822,15 +805,13 @@ auto find_best_for_bin(
             }
           }
 
-          const geom::Vector2 translation{
-              .x = candidate_point.translation.x,
-              .y = candidate_point.translation.y,
-          };
+          const geom::Vector2 translation{candidate_point.translation.x(),
+                                          candidate_point.translation.y()};
           const geom::Box2 candidate_bbox{
-              .min = {.x = rotated_bounds.min.x + translation.x,
-                      .y = rotated_bounds.min.y + translation.y},
-              .max = {.x = rotated_bounds.max.x + translation.x,
-                      .y = rotated_bounds.max.y + translation.y},
+              .min = geom::Point2{rotated_bounds.min.x() + translation.x(),
+                                  rotated_bounds.min.y() + translation.y()},
+              .max = geom::Point2{rotated_bounds.max.x() + translation.x(),
+                                  rotated_bounds.max.y() + translation.y()},
           };
           const bool any_bbox_fit =
               request.request.execution.irregular.enable_direct_overlap_check
@@ -880,7 +861,8 @@ auto find_best_for_bin(
                       .piece_id = piece.expanded.expanded_piece_id,
                       .bin_id = bin.state.bin_id,
                       .rotation_index = rotation_index,
-                      .translation = {.x = translation.x, .y = translation.y},
+                      .translation =
+                          geom::Point2{translation.x(), translation.y()},
                       .mirrored = mirrored,
                   },
               .piece_geometry_revision = mirrored_revision,

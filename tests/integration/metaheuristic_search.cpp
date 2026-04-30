@@ -28,36 +28,29 @@ namespace {
 
 [[nodiscard]] auto rectangle(double min_x, double min_y, double max_x,
                              double max_y) -> geom::PolygonWithHoles {
-  return {
-      .outer =
-          {
+  return shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
               {min_x, min_y},
               {max_x, min_y},
               {max_x, max_y},
               {min_x, max_y},
-          },
-  };
+          });
 }
 
 [[nodiscard]] auto frame(double min_x, double min_y, double max_x, double max_y,
                          double hole_min_x, double hole_min_y,
                          double hole_max_x, double hole_max_y)
     -> geom::PolygonWithHoles {
-  return {
-      .outer =
-          {
+  return shiny::nesting::geom::PolygonWithHoles({
               {min_x, min_y},
               {max_x, min_y},
               {max_x, max_y},
               {min_x, max_y},
-          },
-      .holes = {{
+          }, {{
           {hole_min_x, hole_min_y},
           {hole_min_x, hole_max_y},
           {hole_max_x, hole_max_y},
           {hole_max_x, hole_min_y},
-      }},
-  };
+      }});
 }
 
 [[nodiscard]] auto four_rotations() -> geom::DiscreteRotationSet {

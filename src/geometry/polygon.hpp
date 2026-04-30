@@ -38,6 +38,8 @@ namespace shiny::nesting::geom {
 
 [[nodiscard]] auto compute_bounds(const PolygonWithHoles &polygon) -> Box2;
 
+[[nodiscard]] auto polygon_is_convex(const Polygon &polygon) -> bool;
+
 [[nodiscard]] auto box_width(const Box2 &box) -> double;
 
 [[nodiscard]] auto box_height(const Box2 &box) -> double;
@@ -73,10 +75,19 @@ namespace shiny::nesting::geom {
 // and rendering. Keeps callers from forgetting the hole loop.
 template <typename Fn>
 auto for_each_ring(const PolygonWithHoles &polygon, Fn &&fn) -> void {
-  fn(std::span<const Point2>{polygon.outer});
-  for (const auto &hole : polygon.holes) {
+  fn(std::span<const Point2>{polygon.outer()});
+  for (const auto &hole : polygon.holes()) {
     fn(std::span<const Point2>{hole});
   }
+}
+
+template <typename Fn>
+auto for_each_vertex(const PolygonWithHoles &polygon, Fn &&fn) -> void {
+  for_each_ring(polygon, [&](std::span<const Point2> ring) {
+    for (const auto &vertex : ring) {
+      fn(vertex);
+    }
+  });
 }
 
 } // namespace shiny::nesting::geom

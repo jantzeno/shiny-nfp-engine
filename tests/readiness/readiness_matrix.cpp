@@ -83,23 +83,21 @@ struct ReadinessOptions {
 
 auto rectangle(const double min_x, const double min_y, const double max_x,
                const double max_y) -> PolygonWithHoles {
-  return {
-      .outer =
-          {
-              {min_x, min_y},
-              {max_x, min_y},
-              {max_x, max_y},
-              {min_x, max_y},
-              {min_x, min_y},
-          },
-  };
+  return shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+      {min_x, min_y},
+      {max_x, min_y},
+      {max_x, max_y},
+      {min_x, max_y},
+      {min_x, min_y},
+  });
 }
 
 auto normalize_origin(const PolygonWithHoles &polygon) -> PolygonWithHoles {
   const auto bounds = shiny::nesting::geom::compute_bounds(polygon);
   return shiny::nesting::geom::normalize_polygon(
       shiny::nesting::geom::translate(
-          polygon, {.x = -bounds.min.x, .y = -bounds.min.y}));
+          polygon,
+          shiny::nesting::geom::Vector2(-bounds.min.x(), -bounds.min.y())));
 }
 
 auto readiness_request_base() -> NestingRequest {
@@ -171,7 +169,7 @@ auto request_from_svg_fixture(const fs::path &path) -> NestingRequest {
         continue;
       }
 
-      PolygonWithHoles polygon{.outer = parse_points(points_match[1].str())};
+      PolygonWithHoles polygon(parse_points(points_match[1].str()));
       parsed.push_back(std::pair<std::string, PolygonWithHoles>{
           id_match[1].str(),
           shiny::nesting::geom::normalize_polygon(polygon),
@@ -228,7 +226,7 @@ auto parse_svg_fixture(const fs::path &path)
       continue;
     }
 
-    PolygonWithHoles polygon{.outer = parse_points(points_match[1].str())};
+    PolygonWithHoles polygon(parse_points(points_match[1].str()));
     polygons.push_back(std::pair<std::string, PolygonWithHoles>{
         id_match[1].str(),
         shiny::nesting::geom::normalize_polygon(polygon),

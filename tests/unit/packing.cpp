@@ -76,8 +76,8 @@ auto parse_exclusion_zones(const shiny::nesting::test::pt::ptree &node)
   for (const auto &child : node) {
     zones.push_back({
         .zone_id = child.second.get<std::uint32_t>("zone_id", 0),
-        .region = {.outer = shiny::nesting::test::parse_ring(
-                       child.second.get_child("region"))},
+        .region = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::test::parse_ring(
+                       child.second.get_child("region"))),
     });
   }
   return zones;
@@ -315,7 +315,7 @@ void require_bin_matches(const shiny::nesting::test::pt::ptree &expected_bin,
   }
   if (const auto hole_count =
           expected_bin.get_optional<std::size_t>("hole_count")) {
-    REQUIRE(actual_bin.holes.size() == *hole_count);
+    REQUIRE(actual_bin.holes().size() == *hole_count);
   }
 
   if (const auto placements = expected_bin.get_child_optional("placements")) {
@@ -340,15 +340,15 @@ auto has_segment(const CutPlan &plan, std::uint32_t piece_id,
   return std::any_of(plan.segments.begin(), plan.segments.end(),
                      [&](const auto &segment) {
                        const auto same_direction =
-                           segment.segment.start.x == expected.start.x &&
-                           segment.segment.start.y == expected.start.y &&
-                           segment.segment.end.x == expected.end.x &&
-                           segment.segment.end.y == expected.end.y;
+                           segment.segment.start.x() == expected.start.x() &&
+                           segment.segment.start.y() == expected.start.y() &&
+                           segment.segment.end.x() == expected.end.x() &&
+                           segment.segment.end.y() == expected.end.y();
                        const auto reverse_direction =
-                           segment.segment.start.x == expected.end.x &&
-                           segment.segment.start.y == expected.end.y &&
-                           segment.segment.end.x == expected.start.x &&
-                           segment.segment.end.y == expected.start.y;
+                           segment.segment.start.x() == expected.end.x() &&
+                           segment.segment.start.y() == expected.end.y() &&
+                           segment.segment.end.x() == expected.start.x() &&
+                           segment.segment.end.y() == expected.start.y();
                        return segment.piece_id == piece_id &&
                               (same_direction || reverse_direction);
                      });
@@ -356,15 +356,12 @@ auto has_segment(const CutPlan &plan, std::uint32_t piece_id,
 
 auto make_rectangle(double min_x, double min_y, double max_x, double max_y)
     -> shiny::nesting::geom::PolygonWithHoles {
-  return {
-      .outer =
-          {
-              {.x = min_x, .y = min_y},
-              {.x = max_x, .y = min_y},
-              {.x = max_x, .y = max_y},
-              {.x = min_x, .y = max_y},
-          },
-  };
+  return shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+              shiny::nesting::geom::Point2(min_x, min_y),
+              shiny::nesting::geom::Point2(max_x, min_y),
+              shiny::nesting::geom::Point2(max_x, max_y),
+              shiny::nesting::geom::Point2(min_x, max_y),
+          });
 }
 
 } // namespace
@@ -627,10 +624,10 @@ TEST_CASE("packing decoder treats exclusion zones as keep-outs",
                       .enable_part_in_part_placement = true,
                       .exclusion_zones = {{
                           .zone_id = 11,
-                          .region = {.outer = {{0.0, 0.0},
+                          .region = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
                                                {3.0, 0.0},
                                                {3.0, 3.0},
-                                               {0.0, 3.0}}},
+                                               {0.0, 3.0}}),
                       }},
                   },
               .enable_hole_first_placement = true,
@@ -711,10 +708,10 @@ TEST_CASE("packing decoder allows placements tangent to exclusion zones",
                       .allowed_rotations = {.angles_degrees = {0.0}},
                       .exclusion_zones = {{
                           .zone_id = 21,
-                          .region = {.outer = {{0.0, 0.0},
+                          .region = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
                                                {3.0, 0.0},
                                                {3.0, 3.0},
-                                               {0.0, 3.0}}},
+                                               {0.0, 3.0}}),
                       }},
                   },
               .enable_hole_first_placement = false,

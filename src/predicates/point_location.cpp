@@ -12,7 +12,7 @@ namespace {
 using Kernel = CGAL::Exact_predicates_inexact_constructions_kernel;
 
 [[nodiscard]] auto to_cgal_point(const geom::Point2 &point) -> Kernel::Point_2 {
-  return {point.x, point.y};
+  return {point.x(), point.y()};
 }
 
 [[nodiscard]] auto ring_to_cgal_points(std::span<const geom::Point2> ring)
@@ -28,18 +28,18 @@ using Kernel = CGAL::Exact_predicates_inexact_constructions_kernel;
 [[nodiscard]] auto compute_parametric_t(const geom::Point2 &point,
                                         const geom::Segment2 &segment)
     -> double {
-  const double dx = segment.end.x - segment.start.x;
-  const double dy = segment.end.y - segment.start.y;
+  const double dx = segment.end.x() - segment.start.x();
+  const double dy = segment.end.y() - segment.start.y();
 
   if (dx == 0.0 && dy == 0.0) {
     return 0.0;
   }
 
   if (std::abs(dx) >= std::abs(dy)) {
-    return (point.x - segment.start.x) / dx;
+    return (point.x() - segment.start.x()) / dx;
   }
 
-  return (point.y - segment.start.y) / dy;
+  return (point.y() - segment.start.y()) / dy;
 }
 
 } // namespace
@@ -127,7 +127,7 @@ auto locate_point_in_polygon(const geom::Point2 &point,
                              const geom::PolygonWithHoles &polygon)
     -> PolygonLocationResult {
   PolygonLocationResult result{};
-  const auto outer_location = locate_point_in_ring(point, polygon.outer);
+  const auto outer_location = locate_point_in_ring(point, polygon.outer());
 
   result.location = outer_location.location;
   result.boundary_edge_index = outer_location.edge_index;
@@ -140,10 +140,10 @@ auto locate_point_in_polygon(const geom::Point2 &point,
   result.boundary_edge_index = -1;
   result.boundary_vertex_index = -1;
 
-  for (std::size_t hole_index = 0; hole_index < polygon.holes.size();
+  for (std::size_t hole_index = 0; hole_index < polygon.holes().size();
        ++hole_index) {
     const auto hole_location = locate_point_in_ring(
-        point, std::span<const geom::Point2>(polygon.holes[hole_index]));
+        point, std::span<const geom::Point2>(polygon.holes()[hole_index]));
 
     if (hole_location.location == PointLocation::exterior) {
       continue;

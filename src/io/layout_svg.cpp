@@ -42,9 +42,9 @@ namespace fs = std::filesystem;
     return {};
   }
   std::ostringstream stream;
-  stream << "M " << ring.front().x << ' ' << ring.front().y;
+  stream << "M " << ring.front().x() << ' ' << ring.front().y();
   for (std::size_t index = 1; index < ring.size(); ++index) {
-    stream << " L " << ring[index].x << ' ' << ring[index].y;
+    stream << " L " << ring[index].x() << ' ' << ring[index].y();
   }
   stream << " Z";
   return stream.str();
@@ -52,8 +52,8 @@ namespace fs = std::filesystem;
 
 [[nodiscard]] auto polygon_to_path_data(const geom::PolygonWithHoles &polygon)
     -> std::string {
-  auto path_data = ring_to_path_data(polygon.outer);
-  for (const auto &hole : polygon.holes) {
+  auto path_data = ring_to_path_data(polygon.outer());
+  for (const auto &hole : polygon.holes()) {
     path_data += " ";
     path_data += ring_to_path_data(hole);
   }
@@ -89,10 +89,10 @@ auto save_layout_svg(const fs::path &path, const pack::Layout &layout)
       initialized = true;
       return;
     }
-    bounds.min.x = std::min(bounds.min.x, polygon_bounds.min.x);
-    bounds.min.y = std::min(bounds.min.y, polygon_bounds.min.y);
-    bounds.max.x = std::max(bounds.max.x, polygon_bounds.max.x);
-    bounds.max.y = std::max(bounds.max.y, polygon_bounds.max.y);
+    bounds.min.set_x(std::min(bounds.min.x(), polygon_bounds.min.x()));
+    bounds.min.set_y(std::min(bounds.min.y(), polygon_bounds.min.y()));
+    bounds.max.set_x(std::max(bounds.max.x(), polygon_bounds.max.x()));
+    bounds.max.set_y(std::max(bounds.max.y(), polygon_bounds.max.y()));
   };
 
   for (const auto &bin : layout.bins) {
@@ -102,7 +102,7 @@ auto save_layout_svg(const fs::path &path, const pack::Layout &layout)
     }
   }
   if (!initialized) {
-    bounds = {.min = {.x = 0.0, .y = 0.0}, .max = {.x = 1.0, .y = 1.0}};
+    bounds = {.min = geom::Point2(0.0, 0.0), .max = geom::Point2(1.0, 1.0)};
   }
 
   constexpr double kMargin = 5.0;
@@ -116,7 +116,7 @@ auto save_layout_svg(const fs::path &path, const pack::Layout &layout)
 
   output << std::format(
       "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"{} {} {} {}\">\n",
-      bounds.min.x - kMargin, bounds.min.y - kMargin, width, height);
+      bounds.min.x() - kMargin, bounds.min.y() - kMargin, width, height);
 
   for (const auto &bin : layout.bins) {
     output << std::format("  <g id=\"bin-{}\">\n", bin.bin_id);

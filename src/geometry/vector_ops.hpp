@@ -8,36 +8,33 @@
 
 namespace shiny::nesting::geom {
 
-[[nodiscard]] inline constexpr auto vector_between(const Point2 &start,
-                                                   const Point2 &end)
+[[nodiscard]] inline auto vector_between(const Point2 &start, const Point2 &end)
     -> Vector2 {
-  return {.x = end.x - start.x, .y = end.y - start.y};
+  return {end.x() - start.x(), end.y() - start.y()};
 }
 
-[[nodiscard]] inline constexpr auto point_plus_vector(const Point2 &point,
-                                                      const Vector2 &vector)
-    -> Point2 {
-  return {.x = point.x + vector.x, .y = point.y + vector.y};
+[[nodiscard]] inline auto point_plus_vector(const Point2 &point,
+                                            const Vector2 &vector) -> Point2 {
+  return {point.x() + vector.x(), point.y() + vector.y()};
 }
 
-[[nodiscard]] inline constexpr auto scale_vector(const Vector2 &vector,
-                                                 const double scale)
-    -> Vector2 {
-  return {.x = vector.x * scale, .y = vector.y * scale};
+[[nodiscard]] inline auto scale_vector(const Vector2 &vector,
+                                       const double scale) -> Vector2 {
+  return {vector.x() * scale, vector.y() * scale};
 }
 
-[[nodiscard]] inline constexpr auto dot(const Vector2 &lhs, const Vector2 &rhs)
+[[nodiscard]] inline auto dot(const Vector2 &lhs, const Vector2 &rhs)
     -> double {
-  return lhs.x * rhs.x + lhs.y * rhs.y;
+  return lhs.x() * rhs.x() + lhs.y() * rhs.y();
 }
 
-[[nodiscard]] inline constexpr auto cross(const Vector2 &lhs,
-                                          const Vector2 &rhs) -> double {
-  return lhs.x * rhs.y - lhs.y * rhs.x;
+[[nodiscard]] inline auto cross(const Vector2 &lhs, const Vector2 &rhs)
+    -> double {
+  return lhs.x() * rhs.y() - lhs.y() * rhs.x();
 }
 
 [[nodiscard]] inline auto vector_length(const Vector2 &vector) -> double {
-  return std::hypot(vector.x, vector.y);
+  return std::hypot(vector.x(), vector.y());
 }
 
 // Returns `vector / |vector|`, or the zero vector when `|vector| <=
@@ -96,10 +93,5 @@ namespace shiny::nesting::geom {
                                            const double tolerance) -> bool {
   return point_to_segment_distance(point, segment) <= tolerance;
 }
-
-static_assert(dot(Vector2{.x = 1.0, .y = 0.0}, Vector2{.x = 0.0, .y = 1.0}) ==
-              0.0);
-static_assert(cross(Vector2{.x = 1.0, .y = 0.0}, Vector2{.x = 0.0, .y = 1.0}) ==
-              1.0);
 
 } // namespace shiny::nesting::geom

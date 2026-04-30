@@ -52,15 +52,15 @@ TEST_CASE("json io rejects traversal and persists layout outputs",
       .bin_id = 1,
       .translation = {1.0, 1.0},
   };
-  placed_piece.polygon = {
-      .outer = {{0.0, 0.0}, {2.0, 0.0}, {2.0, 2.0}, {0.0, 2.0}},
-  };
+  placed_piece.polygon =
+      shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+          {0.0, 0.0}, {2.0, 0.0}, {2.0, 2.0}, {0.0, 2.0}});
 
   shiny::nesting::pack::LayoutBin bin{};
   bin.bin_id = 1;
-  bin.container = {
-      .outer = {{0.0, 0.0}, {5.0, 0.0}, {5.0, 5.0}, {0.0, 5.0}},
-  };
+  bin.container =
+      shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+          {0.0, 0.0}, {5.0, 0.0}, {5.0, 5.0}, {0.0, 5.0}});
   bin.placements.push_back(placed_piece);
 
   shiny::nesting::pack::Layout layout{};

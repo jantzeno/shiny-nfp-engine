@@ -20,8 +20,9 @@ enum class DesiredWinding {
   long double twice_area = 0.0L;
   for (std::size_t index = 0; index < ring.size(); ++index) {
     const auto next_index = (index + 1U) % ring.size();
-    twice_area += static_cast<long double>(ring[index].x) * ring[next_index].y -
-                  static_cast<long double>(ring[next_index].x) * ring[index].y;
+    twice_area +=
+        static_cast<long double>(ring[index].x()) * ring[next_index].y() -
+        static_cast<long double>(ring[next_index].x()) * ring[index].y();
   }
 
   return twice_area / 2.0L;
@@ -94,19 +95,19 @@ void enforce_winding(Ring &ring, DesiredWinding desired_winding) {
 } // namespace
 
 auto normalize_polygon(const Polygon &polygon) -> Polygon {
-  return {
-      .outer = normalize_ring(polygon.outer, DesiredWinding::counterclockwise),
-  };
+  return Polygon{
+      normalize_ring(polygon.outer(), DesiredWinding::counterclockwise)};
 }
 
 auto normalize_polygon(const PolygonWithHoles &polygon) -> PolygonWithHoles {
   PolygonWithHoles normalized{};
-  normalized.outer =
-      normalize_ring(polygon.outer, DesiredWinding::counterclockwise);
-  normalized.holes.reserve(polygon.holes.size());
+  normalized.outer() =
+      normalize_ring(polygon.outer(), DesiredWinding::counterclockwise);
+  normalized.holes().reserve(polygon.holes().size());
 
-  for (const auto &hole : polygon.holes) {
-    normalized.holes.push_back(normalize_ring(hole, DesiredWinding::clockwise));
+  for (const auto &hole : polygon.holes()) {
+    normalized.holes().push_back(
+        normalize_ring(hole, DesiredWinding::clockwise));
   }
 
   return normalized;

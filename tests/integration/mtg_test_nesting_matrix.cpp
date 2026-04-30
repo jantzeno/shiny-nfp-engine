@@ -75,9 +75,9 @@ TEST_CASE(
             Catch::Approx(rectangle_piece.width_mm).margin(1e-3));
     REQUIRE(actual_piece.height_mm ==
             Catch::Approx(rectangle_piece.height_mm).margin(1e-3));
-    REQUIRE_FALSE(actual_piece.polygon.outer.empty());
-    REQUIRE(actual_piece.polygon.holes.empty());
-    if (actual_piece.polygon.outer.size() != 4U) {
+    REQUIRE_FALSE(actual_piece.polygon.outer().empty());
+    REQUIRE(actual_piece.polygon.holes().empty());
+    if (actual_piece.polygon.outer().size() != 4U) {
       saw_non_rectangular_outline = true;
     }
   }

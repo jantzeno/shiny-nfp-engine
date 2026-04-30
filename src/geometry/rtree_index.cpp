@@ -7,20 +7,14 @@
 #include <boost/geometry.hpp>
 #include <boost/geometry/index/rtree.hpp>
 
+#include "geometry/types.hpp"
+
 namespace shiny::nesting::geom {
 namespace {
 
-namespace bg = boost::geometry;
 namespace bgi = boost::geometry::index;
 
-using BoostPoint = bg::model::point<double, 2, bg::cs::cartesian>;
-using BoostBox = bg::model::box<BoostPoint>;
-using BoostValue = std::pair<BoostBox, std::uint32_t>;
-
-[[nodiscard]] auto to_boost_box(const Box2 &bounds) -> BoostBox {
-  return {BoostPoint(bounds.min.x, bounds.min.y),
-          BoostPoint(bounds.max.x, bounds.max.y)};
-}
+using BoostValue = std::pair<Box2, std::uint32_t>;
 
 } // namespace
 
@@ -53,7 +47,7 @@ auto RTreeIndex::query(const Box2 &bounds) const -> std::vector<std::uint32_t> {
     std::vector<BoostValue> packed;
     packed.reserve(entries_.size());
     for (const auto &[entry_bounds, item_id] : entries_) {
-      packed.emplace_back(to_boost_box(entry_bounds), item_id);
+      packed.emplace_back(entry_bounds, item_id);
     }
     fresh->rtree = decltype(fresh->rtree)(packed.begin(), packed.end());
     impl_ = std::move(fresh);
@@ -61,8 +55,7 @@ auto RTreeIndex::query(const Box2 &bounds) const -> std::vector<std::uint32_t> {
   }
 
   std::vector<BoostValue> hits;
-  impl_->rtree.query(bgi::intersects(to_boost_box(bounds)),
-                     std::back_inserter(hits));
+  impl_->rtree.query(bgi::intersects(bounds), std::back_inserter(hits));
 
   std::vector<std::uint32_t> matches;
   matches.reserve(hits.size());

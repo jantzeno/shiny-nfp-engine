@@ -23,12 +23,12 @@ using shiny::nesting::geom::Vector2;
 
 auto rectangle(const double width, const double height) -> PolygonWithHoles {
   return shiny::nesting::geom::normalize_polygon(
-      PolygonWithHoles{.outer = {
-                           {.x = 0.0, .y = 0.0},
-                           {.x = width, .y = 0.0},
-                           {.x = width, .y = height},
-                           {.x = 0.0, .y = height},
-                       }});
+      shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+          shiny::nesting::geom::Point2(0.0, 0.0),
+          shiny::nesting::geom::Point2(width, 0.0),
+          shiny::nesting::geom::Point2(width, height),
+          shiny::nesting::geom::Point2(0.0, height),
+      }));
 }
 
 } // namespace
@@ -45,24 +45,22 @@ static_assert(shiny::nesting::geom::TransformGeometry<PolygonWithHoles>);
 TEST_CASE("geometry foundation handles convex, concave, and holed polygons",
           "[geometry][foundation]") {
   const auto convex = rectangle(4.0, 3.0);
-  const auto concave = shiny::nesting::geom::normalize_polygon(PolygonWithHoles{
-      .outer =
-          {
-              {.x = 0.0, .y = 0.0},
-              {.x = 4.0, .y = 0.0},
-              {.x = 4.0, .y = 4.0},
-              {.x = 2.0, .y = 4.0},
-              {.x = 2.0, .y = 2.0},
-              {.x = 0.0, .y = 2.0},
-          },
-  });
-  const auto holed = shiny::nesting::geom::normalize_polygon(PolygonWithHoles{
-      .outer = rectangle(5.0, 5.0).outer,
-      .holes = {{{.x = 1.0, .y = 1.0},
-                 {.x = 1.0, .y = 2.0},
-                 {.x = 2.0, .y = 2.0},
-                 {.x = 2.0, .y = 1.0}}},
-  });
+  const auto concave = shiny::nesting::geom::normalize_polygon(
+      shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+          shiny::nesting::geom::Point2(0.0, 0.0),
+          shiny::nesting::geom::Point2(4.0, 0.0),
+          shiny::nesting::geom::Point2(4.0, 4.0),
+          shiny::nesting::geom::Point2(2.0, 4.0),
+          shiny::nesting::geom::Point2(2.0, 2.0),
+          shiny::nesting::geom::Point2(0.0, 2.0),
+      }));
+  const auto holed = shiny::nesting::geom::normalize_polygon(
+      shiny::nesting::geom::PolygonWithHoles(
+          rectangle(5.0, 5.0).outer(),
+          {{shiny::nesting::geom::Point2(1.0, 1.0),
+            shiny::nesting::geom::Point2(1.0, 2.0),
+            shiny::nesting::geom::Point2(2.0, 2.0),
+            shiny::nesting::geom::Point2(2.0, 1.0)}}));
 
   REQUIRE(shiny::nesting::geom::polygon_area(convex) == 12.0);
   REQUIRE(shiny::nesting::geom::polygon_area(concave) == 12.0);
@@ -79,45 +77,45 @@ TEST_CASE("geometry foundation applies deterministic transforms",
       shiny::nesting::geom::rotate(polygon, ResolvedRotation{.degrees = 90.0});
   const auto rotated_bounds = shiny::nesting::geom::compute_bounds(rotated);
 
-  REQUIRE(rotated_bounds.min.x == -1.0);
-  REQUIRE(rotated_bounds.max.x == 0.0);
-  REQUIRE(rotated_bounds.min.y == 0.0);
-  REQUIRE(rotated_bounds.max.y == 2.0);
+  REQUIRE(rotated_bounds.min.x() == -1.0);
+  REQUIRE(rotated_bounds.max.x() == 0.0);
+  REQUIRE(rotated_bounds.min.y() == 0.0);
+  REQUIRE(rotated_bounds.max.y() == 2.0);
 
   shiny::nesting::geom::DiscreteRotationSet rotations{{0.0, 90.0}};
   const auto transformed = shiny::nesting::geom::apply_transform(
       polygon,
       Transform2{.rotation_index = RotationIndex{1},
-                 .translation = Vector2{.x = 10.0, .y = 20.0}},
+                 .translation = shiny::nesting::geom::Vector2(10.0, 20.0)},
       rotations);
   REQUIRE(transformed.has_value());
   const auto bounds = shiny::nesting::geom::compute_bounds(*transformed);
-  REQUIRE(bounds.min.x == 9.0);
-  REQUIRE(bounds.max.x == 10.0);
-  REQUIRE(bounds.min.y == 20.0);
-  REQUIRE(bounds.max.y == 22.0);
+  REQUIRE(bounds.min.x() == 9.0);
+  REQUIRE(bounds.max.x() == 10.0);
+  REQUIRE(bounds.min.y() == 20.0);
+  REQUIRE(bounds.max.y() == 22.0);
 }
 
 TEST_CASE("geometry validity rejects invalid input", "[geometry][validity]") {
-  const PolygonWithHoles self_intersecting{.outer = {
-                                               {.x = 0.0, .y = 0.0},
-                                               {.x = 2.0, .y = 2.0},
-                                               {.x = 0.0, .y = 2.0},
-                                               {.x = 2.0, .y = 0.0},
-                                           }};
+  const PolygonWithHoles self_intersecting(Ring{
+      shiny::nesting::geom::Point2(0.0, 0.0),
+      shiny::nesting::geom::Point2(2.0, 2.0),
+      shiny::nesting::geom::Point2(0.0, 2.0),
+      shiny::nesting::geom::Point2(2.0, 0.0),
+  });
   const auto self_intersection_validity =
       shiny::nesting::geom::validate_polygon(self_intersecting);
   REQUIRE_FALSE(self_intersection_validity.is_valid());
   REQUIRE(self_intersection_validity.issue ==
           PolygonValidityIssue::self_intersection);
 
-  const PolygonWithHoles hole_outside{
-      .outer = rectangle(4.0, 4.0).outer,
-      .holes = {{{.x = 5.0, .y = 5.0},
-                 {.x = 5.0, .y = 6.0},
-                 {.x = 6.0, .y = 6.0},
-                 {.x = 6.0, .y = 5.0}}},
-  };
+  const PolygonWithHoles hole_outside(
+      rectangle(4.0, 4.0).outer(), {Ring{
+                                       shiny::nesting::geom::Point2(5.0, 5.0),
+                                       shiny::nesting::geom::Point2(5.0, 6.0),
+                                       shiny::nesting::geom::Point2(6.0, 6.0),
+                                       shiny::nesting::geom::Point2(6.0, 5.0),
+                                   }});
   const auto hole_validity =
       shiny::nesting::geom::validate_polygon(hole_outside);
   REQUIRE_FALSE(hole_validity.is_valid());

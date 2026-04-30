@@ -28,12 +28,12 @@ struct CutSegmentRecord {
 
 [[nodiscard]] auto canonical_point_before(const geom::Point2 &lhs,
                                           const geom::Point2 &rhs) -> bool {
-  const auto lhs_x = coordinate_key(lhs.x);
-  const auto rhs_x = coordinate_key(rhs.x);
+  const auto lhs_x = coordinate_key(lhs.x());
+  const auto rhs_x = coordinate_key(rhs.x());
   if (lhs_x != rhs_x) {
     return lhs_x < rhs_x;
   }
-  return coordinate_key(lhs.y) < coordinate_key(rhs.y);
+  return coordinate_key(lhs.y()) < coordinate_key(rhs.y());
 }
 
 [[nodiscard]] auto ordered_endpoints(const geom::Segment2 &segment)
@@ -45,8 +45,8 @@ struct CutSegmentRecord {
 }
 
 [[nodiscard]] auto segment_length(const geom::Segment2 &segment) -> double {
-  const auto dx = segment.end.x - segment.start.x;
-  const auto dy = segment.end.y - segment.start.y;
+  const auto dx = segment.end.x() - segment.start.x();
+  const auto dy = segment.end.y() - segment.start.y();
   return std::sqrt(dx * dx + dy * dy);
 }
 
@@ -66,13 +66,13 @@ struct CutSegmentRecord {
 
 [[nodiscard]] auto segment_projection_axis(const geom::Segment2 &segment)
     -> bool {
-  return std::fabs(segment.end.x - segment.start.x) >=
-         std::fabs(segment.end.y - segment.start.y);
+  return std::fabs(segment.end.x() - segment.start.x()) >=
+         std::fabs(segment.end.y() - segment.start.y());
 }
 
 [[nodiscard]] auto project_point(const geom::Point2 &point, bool use_x_axis)
     -> double {
-  return use_x_axis ? point.x : point.y;
+  return use_x_axis ? point.x() : point.y();
 }
 
 [[nodiscard]] auto segment_covers_segment(const geom::Segment2 &candidate,
@@ -85,7 +85,8 @@ struct CutSegmentRecord {
 [[nodiscard]] auto
 segments_cover_segment(const geom::Segment2 &covered,
                        std::span<const geom::Segment2> candidates) -> bool {
-  if (covered.start.x == covered.end.x && covered.start.y == covered.end.y) {
+  if (covered.start.x() == covered.end.x() &&
+      covered.start.y() == covered.end.y()) {
     return false;
   }
 
@@ -185,7 +186,8 @@ void append_ring_segments(std::vector<CutSegmentRecord> &segments,
   for (std::size_t index = 0; index < ring.size(); ++index) {
     const auto next_index = (index + 1U) % ring.size();
     const geom::Segment2 segment{ring[index], ring[next_index]};
-    if (segment.start.x == segment.end.x && segment.start.y == segment.end.y) {
+    if (segment.start.x() == segment.end.x() &&
+        segment.start.y() == segment.end.y()) {
       continue;
     }
 
@@ -207,8 +209,8 @@ void append_ring_segments(std::vector<CutSegmentRecord> &segments,
   for (const auto &bin : layout.bins) {
     for (const auto &piece : bin.placements) {
       append_ring_segments(segments, bin.bin_id, piece.placement.piece_id,
-                           piece.polygon.outer, false, ordinal);
-      for (const auto &hole : piece.polygon.holes) {
+                           piece.polygon.outer(), false, ordinal);
+      for (const auto &hole : piece.polygon.holes()) {
         append_ring_segments(segments, bin.bin_id, piece.placement.piece_id,
                              hole, true, ordinal);
       }
@@ -229,8 +231,8 @@ void append_ring_segments(std::vector<CutSegmentRecord> &segments,
     for (std::size_t index = 0; index < ring.size(); ++index) {
       const auto next_index = (index + 1U) % ring.size();
       const geom::Segment2 segment{ring[index], ring[next_index]};
-      if (segment.start.x == segment.end.x &&
-          segment.start.y == segment.end.y) {
+      if (segment.start.x() == segment.end.x() &&
+          segment.start.y() == segment.end.y()) {
         continue;
       }
       segments.push_back(segment);
@@ -238,8 +240,8 @@ void append_ring_segments(std::vector<CutSegmentRecord> &segments,
   };
 
   for (const auto &region : bin.occupied.regions) {
-    append_ring(region.outer);
-    for (const auto &hole : region.holes) {
+    append_ring(region.outer());
+    for (const auto &hole : region.holes()) {
       append_ring(hole);
     }
   }

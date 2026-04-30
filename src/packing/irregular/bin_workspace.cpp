@@ -56,13 +56,13 @@ auto subtract_obstacle(std::vector<geom::PolygonWithHoles> &regions,
   for (std::size_t placement_index = 0;
        placement_index < bin.state.placements.size(); ++placement_index) {
     const auto &placement = bin.state.placements[placement_index];
-    for (const auto &hole_ring : placement.polygon.holes) {
+    for (const auto &hole_ring : placement.polygon.holes()) {
       if (hole_ring.size() < 3U) {
         continue;
       }
 
       std::vector<geom::PolygonWithHoles> regions{
-          geom::normalize_polygon(geom::PolygonWithHoles{.outer = hole_ring})};
+          geom::normalize_polygon(geom::PolygonWithHoles(hole_ring))};
       for (const auto &zone : bin.exclusion_regions) {
         subtract_region(regions, zone);
       }
@@ -85,7 +85,7 @@ auto subtract_obstacle(std::vector<geom::PolygonWithHoles> &regions,
 
 auto fill_polygon_holes(const geom::PolygonWithHoles &polygon)
     -> geom::PolygonWithHoles {
-  return {.outer = polygon.outer};
+  return geom::PolygonWithHoles(polygon.outer());
 }
 
 auto make_working_bin(const BinInstance &instance) -> WorkingBin {
@@ -98,8 +98,8 @@ auto make_working_bin(const BinInstance &instance) -> WorkingBin {
   bin.state.utilization = summarize_bin(bin.state);
 
   for (const auto &zone : instance.source->exclusion_zones) {
-    bin.exclusion_regions.push_back(geom::normalize_polygon(
-        geom::PolygonWithHoles{.outer = zone.region.outer}));
+    bin.exclusion_regions.push_back(
+        geom::normalize_polygon(geom::PolygonWithHoles(zone.region.outer())));
   }
   return bin;
 }

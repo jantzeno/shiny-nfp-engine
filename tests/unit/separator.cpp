@@ -17,15 +17,12 @@ using shiny::nesting::geom::PolygonWithHoles;
 
 auto rectangle(const double min_x, const double min_y, const double max_x,
                const double max_y) -> PolygonWithHoles {
-  return shiny::nesting::geom::normalize_polygon(PolygonWithHoles{
-      .outer =
-          {
-              {.x = min_x, .y = min_y},
-              {.x = max_x, .y = min_y},
-              {.x = max_x, .y = max_y},
-              {.x = min_x, .y = max_y},
-          },
-  });
+  return shiny::nesting::geom::normalize_polygon(shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+              shiny::nesting::geom::Point2(min_x, min_y),
+              shiny::nesting::geom::Point2(max_x, min_y),
+              shiny::nesting::geom::Point2(max_x, max_y),
+              shiny::nesting::geom::Point2(min_x, max_y),
+          }));
 }
 
 auto overlap_area(const PolygonWithHoles &lhs, const PolygonWithHoles &rhs)
@@ -47,35 +44,32 @@ auto rotated(const PolygonWithHoles &polygon, const double degrees)
 auto bounds_center(const PolygonWithHoles &polygon)
     -> shiny::nesting::geom::Point2 {
   const auto bounds = shiny::nesting::geom::compute_bounds(polygon);
-  return {
-      .x = (bounds.min.x + bounds.max.x) / 2.0,
-      .y = (bounds.min.y + bounds.max.y) / 2.0,
-  };
+  return shiny::nesting::geom::Point2((bounds.min.x() + bounds.max.x()) / 2.0, (bounds.min.y() + bounds.max.y()) / 2.0);
 }
 
 auto polygon_matches(const PolygonWithHoles &lhs, const PolygonWithHoles &rhs)
     -> bool {
-  if (lhs.outer.size() != rhs.outer.size() ||
-      lhs.holes.size() != rhs.holes.size()) {
+  if (lhs.outer().size() != rhs.outer().size() ||
+      lhs.holes().size() != rhs.holes().size()) {
     return false;
   }
-  for (std::size_t index = 0; index < lhs.outer.size(); ++index) {
-    if (std::fabs(lhs.outer[index].x - rhs.outer[index].x) > 1e-9 ||
-        std::fabs(lhs.outer[index].y - rhs.outer[index].y) > 1e-9) {
+  for (std::size_t index = 0; index < lhs.outer().size(); ++index) {
+    if (std::fabs(lhs.outer()[index].x() - rhs.outer()[index].x()) > 1e-9 ||
+        std::fabs(lhs.outer()[index].y() - rhs.outer()[index].y()) > 1e-9) {
       return false;
     }
   }
-  for (std::size_t hole_index = 0; hole_index < lhs.holes.size();
+  for (std::size_t hole_index = 0; hole_index < lhs.holes().size();
        ++hole_index) {
-    if (lhs.holes[hole_index].size() != rhs.holes[hole_index].size()) {
+    if (lhs.holes()[hole_index].size() != rhs.holes()[hole_index].size()) {
       return false;
     }
     for (std::size_t point_index = 0;
-         point_index < lhs.holes[hole_index].size(); ++point_index) {
-      if (std::fabs(lhs.holes[hole_index][point_index].x -
-                    rhs.holes[hole_index][point_index].x) > 1e-9 ||
-          std::fabs(lhs.holes[hole_index][point_index].y -
-                    rhs.holes[hole_index][point_index].y) > 1e-9) {
+         point_index < lhs.holes()[hole_index].size(); ++point_index) {
+      if (std::fabs(lhs.holes()[hole_index][point_index].x() -
+                    rhs.holes()[hole_index][point_index].x()) > 1e-9 ||
+          std::fabs(lhs.holes()[hole_index][point_index].y() -
+                    rhs.holes()[hole_index][point_index].y()) > 1e-9) {
         return false;
       }
     }
@@ -161,10 +155,10 @@ TEST_CASE("item mover can improve overlap with rotation-only refinement",
   REQUIRE(move.has_value());
   REQUIRE(overlap_area(stationary, move->polygon) + 1e-9 <
           overlap_area(stationary, moving));
-  REQUIRE(bounds_center(move->polygon).x ==
-          Catch::Approx(bounds_center(moving).x).margin(1e-9));
-  REQUIRE(bounds_center(move->polygon).y ==
-          Catch::Approx(bounds_center(moving).y).margin(1e-9));
+  REQUIRE(bounds_center(move->polygon).x() ==
+          Catch::Approx(bounds_center(moving).x()).margin(1e-9));
+  REQUIRE(bounds_center(move->polygon).y() ==
+          Catch::Approx(bounds_center(moving).y()).margin(1e-9));
 }
 
 TEST_CASE(
@@ -205,11 +199,11 @@ TEST_CASE(
   // preserved (a rotation would change them).
   const auto original_bounds = shiny::nesting::geom::compute_bounds(moving);
   const auto moved_bounds = shiny::nesting::geom::compute_bounds(move->polygon);
-  REQUIRE(moved_bounds.max.x - moved_bounds.min.x ==
-          Catch::Approx(original_bounds.max.x - original_bounds.min.x)
+  REQUIRE(moved_bounds.max.x() - moved_bounds.min.x() ==
+          Catch::Approx(original_bounds.max.x() - original_bounds.min.x())
               .margin(1e-9));
-  REQUIRE(moved_bounds.max.y - moved_bounds.min.y ==
-          Catch::Approx(original_bounds.max.y - original_bounds.min.y)
+  REQUIRE(moved_bounds.max.y() - moved_bounds.min.y() ==
+          Catch::Approx(original_bounds.max.y() - original_bounds.min.y())
               .margin(1e-9));
 }
 

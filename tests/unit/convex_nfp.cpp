@@ -73,8 +73,8 @@ void require_edge_sequence_equal(
   REQUIRE(actual.edges.size() == expected_edges.size());
   REQUIRE(actual.source_indices == expected_indices);
   for (std::size_t index = 0; index < actual.edges.size(); ++index) {
-    REQUIRE(actual.edges[index].x == expected_edges[index].x);
-    REQUIRE(actual.edges[index].y == expected_edges[index].y);
+    REQUIRE(actual.edges[index].x() == expected_edges[index].x());
+    REQUIRE(actual.edges[index].y() == expected_edges[index].y());
   }
 }
 
@@ -102,8 +102,8 @@ void require_ring_approx_equal(const shiny::nesting::geom::Ring &actual,
                                double margin) {
   REQUIRE(actual.size() == expected.size());
   for (std::size_t index = 0; index < actual.size(); ++index) {
-    REQUIRE(actual[index].x == Approx(expected[index].x).margin(margin));
-    REQUIRE(actual[index].y == Approx(expected[index].y).margin(margin));
+    REQUIRE(actual[index].x() == Approx(expected[index].x()).margin(margin));
+    REQUIRE(actual[index].y() == Approx(expected[index].y()).margin(margin));
   }
 }
 
@@ -112,9 +112,9 @@ auto build_polygon_from_result(const NfpResult &result)
   shiny::nesting::geom::PolygonWithHoles polygon{};
   for (const auto &loop : result.loops) {
     if (loop.kind == NfpFeatureKind::outer_loop) {
-      polygon.outer = loop.vertices;
+      polygon.outer() = loop.vertices;
     } else if (loop.kind == NfpFeatureKind::hole) {
-      polygon.holes.push_back(loop.vertices);
+      polygon.holes().push_back(loop.vertices);
     }
   }
   return polygon;
@@ -123,10 +123,7 @@ auto build_polygon_from_result(const NfpResult &result)
 auto midpoint(const shiny::nesting::geom::Point2 &lhs,
               const shiny::nesting::geom::Point2 &rhs)
     -> shiny::nesting::geom::Point2 {
-  return {
-      .x = (lhs.x + rhs.x) / 2.0,
-      .y = (lhs.y + rhs.y) / 2.0,
-  };
+  return shiny::nesting::geom::Point2((lhs.x() + rhs.x()) / 2.0, (lhs.y() + rhs.y()) / 2.0);
 }
 
 auto translate_ring(const shiny::nesting::geom::Ring &ring,
@@ -135,36 +132,33 @@ auto translate_ring(const shiny::nesting::geom::Ring &ring,
   shiny::nesting::geom::Ring translated;
   translated.reserve(ring.size());
   for (const auto &point : ring) {
-    translated.push_back({point.x + translation.x, point.y + translation.y});
+    translated.push_back({point.x() + translation.x(), point.y() + translation.y()});
   }
   return translated;
 }
 
 auto squared_distance(const shiny::nesting::geom::Point2 &lhs,
                       const shiny::nesting::geom::Point2 &rhs) -> double {
-  const auto dx = lhs.x - rhs.x;
-  const auto dy = lhs.y - rhs.y;
+  const auto dx = lhs.x() - rhs.x();
+  const auto dy = lhs.y() - rhs.y();
   return dx * dx + dy * dy;
 }
 
 auto distance_to_segment(const shiny::nesting::geom::Point2 &point,
                          const shiny::nesting::geom::Segment2 &segment)
     -> double {
-  const auto dx = segment.end.x - segment.start.x;
-  const auto dy = segment.end.y - segment.start.y;
+  const auto dx = segment.end.x() - segment.start.x();
+  const auto dy = segment.end.y() - segment.start.y();
   const auto length_squared = dx * dx + dy * dy;
   if (length_squared == 0.0) {
     return std::sqrt(squared_distance(point, segment.start));
   }
 
   const auto projection =
-      ((point.x - segment.start.x) * dx + (point.y - segment.start.y) * dy) /
+      ((point.x() - segment.start.x()) * dx + (point.y() - segment.start.y()) * dy) /
       length_squared;
   const auto clamped = std::clamp(projection, 0.0, 1.0);
-  const shiny::nesting::geom::Point2 closest{
-      .x = segment.start.x + clamped * dx,
-      .y = segment.start.y + clamped * dy,
-  };
+  const shiny::nesting::geom::Point2 closestPoint2(segment.start.x() + clamped * dx, segment.start.y() + clamped * dy);
   return std::sqrt(squared_distance(point, closest));
 }
 
@@ -183,11 +177,11 @@ auto is_near_polygon_boundary(
     return false;
   };
 
-  if (ring_contains_near_edge(polygon.outer)) {
+  if (ring_contains_near_edge(polygon.outer())) {
     return true;
   }
 
-  for (const auto &hole : polygon.holes) {
+  for (const auto &hole : polygon.holes()) {
     if (ring_contains_near_edge(hole)) {
       return true;
     }
@@ -199,7 +193,7 @@ void require_translation_feasible(
     const shiny::nesting::geom::PolygonWithHoles &container,
     const shiny::nesting::geom::PolygonWithHoles &piece,
     const shiny::nesting::geom::Point2 &translation) {
-  const auto translated_piece = translate_ring(piece.outer, translation);
+  const auto translated_piece = translate_ring(piece.outer(), translation);
 
   for (const auto &point : translated_piece) {
     const auto location =
@@ -280,8 +274,8 @@ TEST_CASE("convex nfp vertex ordering follows outgoing edge angle",
   };
 
   for (std::size_t index = 0; index < ordered.size(); ++index) {
-    REQUIRE(ordered[index].point.x == expected_points[index].x);
-    REQUIRE(ordered[index].point.y == expected_points[index].y);
+    REQUIRE(ordered[index].point.x() == expected_points[index].x());
+    REQUIRE(ordered[index].point.y() == expected_points[index].y());
     REQUIRE(ordered[index].source_edge_index == expected_indices[index]);
     REQUIRE(ordered[index].polar_key == Approx(expected_polar_keys[index]));
   }
@@ -441,7 +435,7 @@ TEST_CASE("convex ifp fixtures", "[nfp][convex][ifp][fixtures]") {
       REQUIRE(result.algorithm == AlgorithmKind::convex_ifp);
       REQUIRE(result.normalized);
 
-      if (expected.outer.empty()) {
+      if (expected.outer().empty()) {
         REQUIRE(result.loops.empty());
         continue;
       }
@@ -452,10 +446,10 @@ TEST_CASE("convex ifp fixtures", "[nfp][convex][ifp][fixtures]") {
       const auto hole_samples =
           parse_optional_points(fixture.get_child("expected"), "hole_samples");
 
-      REQUIRE(actual.holes.size() == expected.holes.size());
-      require_ring_approx_equal(actual.outer, expected.outer, 1e-4);
-      for (std::size_t index = 0; index < actual.holes.size(); ++index) {
-        require_ring_approx_equal(actual.holes[index], expected.holes[index],
+      REQUIRE(actual.holes().size() == expected.holes().size());
+      require_ring_approx_equal(actual.outer(), expected.outer(), 1e-4);
+      for (std::size_t index = 0; index < actual.holes().size(); ++index) {
+        require_ring_approx_equal(actual.holes()[index], expected.holes()[index],
                                   1e-4);
       }
 

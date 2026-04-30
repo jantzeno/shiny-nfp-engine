@@ -36,10 +36,10 @@ constexpr double kSegmentEpsilon = 1e-9;
 }
 
 [[nodiscard]] auto segment_bounds(const geom::Segment2 &segment) -> geom::Box2 {
-  return {.min = {.x = std::min(segment.start.x, segment.end.x),
-                  .y = std::min(segment.start.y, segment.end.y)},
-          .max = {.x = std::max(segment.start.x, segment.end.x),
-                  .y = std::max(segment.start.y, segment.end.y)}};
+  return {geom::Point2{std::min(segment.start.x(), segment.end.x()),
+                       std::min(segment.start.y(), segment.end.y())},
+          geom::Point2{std::max(segment.start.x(), segment.end.x()),
+                       std::max(segment.start.y(), segment.end.y())}};
 }
 
 [[nodiscard]] auto are_collinear(const geom::Segment2 &lhs,
@@ -52,18 +52,18 @@ constexpr double kSegmentEpsilon = 1e-9;
 
 [[nodiscard]] auto canonical_direction(const geom::Segment2 &segment)
     -> std::optional<geom::Vector2> {
-  const auto dx = segment.end.x - segment.start.x;
-  const auto dy = segment.end.y - segment.start.y;
+  const auto dx = segment.end.x() - segment.start.x();
+  const auto dy = segment.end.y() - segment.start.y();
   const auto length = std::hypot(dx, dy);
   if (length <= kSegmentEpsilon) {
     return std::nullopt;
   }
 
-  geom::Vector2 direction{.x = dx / length, .y = dy / length};
-  if (direction.x < -kSegmentEpsilon ||
-      (std::abs(direction.x) <= kSegmentEpsilon && direction.y < 0.0)) {
-    direction.x = -direction.x;
-    direction.y = -direction.y;
+  geom::Vector2 direction{dx / length, dy / length};
+  if (direction.x() < -kSegmentEpsilon ||
+      (std::abs(direction.x()) <= kSegmentEpsilon && direction.y() < 0.0)) {
+    direction.set_x(-direction.x());
+    direction.set_y(-direction.y());
   }
   return direction;
 }
@@ -71,8 +71,8 @@ constexpr double kSegmentEpsilon = 1e-9;
 [[nodiscard]] auto project_onto_line(const geom::Point2 &point,
                                      const geom::Point2 &origin,
                                      const geom::Vector2 &direction) -> double {
-  return (point.x - origin.x) * direction.x +
-         (point.y - origin.y) * direction.y;
+  return (point.x() - origin.x()) * direction.x() +
+         (point.y() - origin.y()) * direction.y();
 }
 
 struct LineKey {
@@ -91,13 +91,13 @@ struct LineKey {
     return std::nullopt;
   }
 
-  const geom::Vector2 normal{.x = -direction->y, .y = direction->x};
-  const auto offset =
-      normal.x * segment.segment.start.x + normal.y * segment.segment.start.y;
+  const geom::Vector2 normal{-direction->y(), direction->x()};
+  const auto offset = normal.x() * segment.segment.start.x() +
+                      normal.y() * segment.segment.start.y();
   return LineKey{
       .bin_id = segment.bin_id,
-      .direction_x = coordinate_key(direction->x),
-      .direction_y = coordinate_key(direction->y),
+      .direction_x = coordinate_key(direction->x()),
+      .direction_y = coordinate_key(direction->y()),
       .offset = coordinate_key(offset),
   };
 }
@@ -196,10 +196,8 @@ struct MergedInterval {
 
       auto emit_interval = [&](const MergedInterval &interval) {
         auto segment = segments[interval.representative_index];
-        segment.segment = {
-            .start = interval.start_point,
-            .end = interval.end_point,
-        };
+        segment.segment =
+            geom::Segment2{interval.start_point, interval.end_point};
         merged_segments.push_back({
             .segment = segment,
             .original_index = interval.representative_index,

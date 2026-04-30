@@ -27,35 +27,30 @@ using shiny::nesting::place::PlacementCandidateSource;
 
 auto rectangle(double min_x, double min_y, double max_x, double max_y)
     -> PolygonWithHoles {
-  return {
-      .outer =
-          {
-              {min_x, min_y},
-              {max_x, min_y},
-              {max_x, max_y},
-              {min_x, max_y},
-          },
-  };
+  return shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+      {min_x, min_y},
+      {max_x, min_y},
+      {max_x, max_y},
+      {min_x, max_y},
+  });
 }
 
 auto frame(double min_x, double min_y, double max_x, double max_y,
            double hole_min_x, double hole_min_y, double hole_max_x,
            double hole_max_y) -> PolygonWithHoles {
-  return {
-      .outer =
-          {
-              {min_x, min_y},
-              {max_x, min_y},
-              {max_x, max_y},
-              {min_x, max_y},
-          },
-      .holes = {{
+  return shiny::nesting::geom::PolygonWithHoles(
+      {
+          {min_x, min_y},
+          {max_x, min_y},
+          {max_x, max_y},
+          {min_x, max_y},
+      },
+      {{
           {hole_min_x, hole_min_y},
           {hole_min_x, hole_max_y},
           {hole_max_x, hole_max_y},
           {hole_max_x, hole_min_y},
-      }},
-  };
+      }});
 }
 
 auto total_intersection_area(std::span<const PolygonWithHoles> polygons)
@@ -157,9 +152,10 @@ TEST_CASE(
   request.bins.push_back(BinRequest{
       .bin_id = 20,
       .polygon = rectangle(0.0, 0.0, 8.0, 8.0),
-      .exclusion_zones = {{
+      .exclusion_zones = {shiny::nesting::place::BedExclusionZone{
           .zone_id = 1,
-          .region = {.outer = {{0.0, 0.0}, {5.0, 0.0}, {5.0, 5.0}, {0.0, 5.0}}},
+          .region = shiny::nesting::geom::Polygon(shiny::nesting::geom::Ring{
+              {0.0, 0.0}, {5.0, 0.0}, {5.0, 5.0}, {0.0, 5.0}}),
       }},
   });
   request.bins.push_back(BinRequest{
@@ -190,9 +186,9 @@ TEST_CASE(
   REQUIRE(first_bin.placements.front().placement.translation ==
           Point2{5.0, 0.0});
 
-  const auto exclusion = PolygonWithHoles{
-      .outer = {{0.0, 0.0}, {5.0, 0.0}, {5.0, 5.0}, {0.0, 5.0}},
-  };
+  const auto exclusion =
+      shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+          {0.0, 0.0}, {5.0, 0.0}, {5.0, 5.0}, {0.0, 5.0}});
   REQUIRE(shiny::nesting::poly::polygon_distance(
               first_bin.placements.front().polygon, exclusion) ==
           Catch::Approx(0.0).margin(1e-8));

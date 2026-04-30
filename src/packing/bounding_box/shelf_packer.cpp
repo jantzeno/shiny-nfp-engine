@@ -13,8 +13,8 @@ namespace {
 [[nodiscard]] auto fits_on_existing_shelf(const ShelfState &shelf,
                                           const geom::Box2 &rotated_bounds)
     -> bool {
-  const auto width = rotated_bounds.max.x - rotated_bounds.min.x;
-  const auto height = rotated_bounds.max.y - rotated_bounds.min.y;
+  const auto width = rotated_bounds.max.x() - rotated_bounds.min.x();
+  const auto height = rotated_bounds.max.y() - rotated_bounds.min.y();
   return height <= shelf.height + kCoordinateSnap && width >= 0.0 &&
          height >= 0.0;
 }
@@ -38,8 +38,8 @@ auto find_best_shelf_candidate(const BinPackingState &state,
                                       std::size_t shelf_index,
                                       bool starts_new_shelf) {
     const geom::Box2 translated_bounds{
-        .min = {.x = target_min_x, .y = target_min_y},
-        .max = {.x = target_min_x + width, .y = target_min_y + height},
+        geom::Point2{target_min_x, target_min_y},
+        geom::Point2{target_min_x + width, target_min_y + height},
     };
     if (!contains_box(state.container_bounds, translated_bounds) ||
         overlaps_any_occupied_bounds(state.occupied_bounds, translated_bounds,
@@ -47,10 +47,8 @@ auto find_best_shelf_candidate(const BinPackingState &state,
       return;
     }
 
-    const geom::Point2 translation{
-        .x = target_min_x - rotated_bounds.min.x,
-        .y = target_min_y - rotated_bounds.min.y,
-    };
+    const geom::Point2 translation{target_min_x - rotated_bounds.min.x(),
+                                   target_min_y - rotated_bounds.min.y()};
     const auto translated_piece = translate_polygon(rotated_piece, translation);
     if (overlaps_any_exclusion_zone(translated_piece, translated_bounds,
                                     request.config.placement.exclusion_zones,
@@ -103,16 +101,16 @@ auto find_best_shelf_candidate(const BinPackingState &state,
   const double next_shelf_y =
       state.shelves.empty()
           ? (start_corner_on_top(state.bin_state.start_corner)
-                 ? state.container_bounds.max.y - height
-                 : state.container_bounds.min.y)
+                 ? state.container_bounds.max.y() - height
+                 : state.container_bounds.min.y())
           : (start_corner_on_top(state.bin_state.start_corner)
                  ? state.shelves.back().y - height - clearance
                  : state.shelves.back().y + state.shelves.back().height +
                        clearance);
   const double new_shelf_min_x =
       start_corner_on_right(state.bin_state.start_corner)
-          ? state.container_bounds.max.x - width
-          : state.container_bounds.min.x;
+          ? state.container_bounds.max.x() - width
+          : state.container_bounds.min.x();
   consider_candidate(new_shelf_min_x, next_shelf_y, state.shelves.size(), true);
   return best;
 }

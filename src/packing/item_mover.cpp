@@ -49,39 +49,41 @@ struct RingCentroid {
     const auto &current = ring[index];
     const auto &next = ring[next_index];
     const long double edge_cross =
-        static_cast<long double>(current.x) * next.y -
-        static_cast<long double>(next.x) * current.y;
+        static_cast<long double>(current.x()) * next.y() -
+        static_cast<long double>(next.x()) * current.y();
     twice_area += edge_cross;
-    centroid_x += (static_cast<long double>(current.x) + next.x) * edge_cross;
-    centroid_y += (static_cast<long double>(current.y) + next.y) * edge_cross;
+    centroid_x +=
+        (static_cast<long double>(current.x()) + next.x()) * edge_cross;
+    centroid_y +=
+        (static_cast<long double>(current.y()) + next.y()) * edge_cross;
   }
 
   if (std::fabs(static_cast<double>(twice_area)) <= 1e-12) {
     long double average_x = 0.0L;
     long double average_y = 0.0L;
     for (const auto &point : ring) {
-      average_x += point.x;
-      average_y += point.y;
+      average_x += point.x();
+      average_y += point.y();
     }
     const auto scale = 1.0L / static_cast<long double>(ring.size());
     return RingCentroid{
-        .centroid = {.x = static_cast<double>(average_x * scale),
-                     .y = static_cast<double>(average_y * scale)},
+        .centroid = geom::Point2(static_cast<double>(average_x * scale),
+                                 static_cast<double>(average_y * scale)),
         .signed_area = 0.0,
     };
   }
 
   const auto scale = 1.0L / (3.0L * twice_area);
   return RingCentroid{
-      .centroid = {.x = static_cast<double>(centroid_x * scale),
-                   .y = static_cast<double>(centroid_y * scale)},
+      .centroid = geom::Point2(static_cast<double>(centroid_x * scale),
+                               static_cast<double>(centroid_y * scale)),
       .signed_area = static_cast<double>(twice_area / 2.0L),
   };
 }
 
 [[nodiscard]] auto polygon_centroid(const geom::PolygonWithHoles &polygon)
     -> geom::Point2 {
-  if (polygon.outer.empty()) {
+  if (polygon.outer().empty()) {
     return {};
   }
 
@@ -89,42 +91,38 @@ struct RingCentroid {
   long double weighted_y = 0.0L;
   long double total_area = 0.0L;
 
-  if (const auto outer = ring_centroid(polygon.outer); outer.has_value()) {
+  if (const auto outer = ring_centroid(polygon.outer()); outer.has_value()) {
     weighted_x +=
-        static_cast<long double>(outer->centroid.x) * outer->signed_area;
+        static_cast<long double>(outer->centroid.x()) * outer->signed_area;
     weighted_y +=
-        static_cast<long double>(outer->centroid.y) * outer->signed_area;
+        static_cast<long double>(outer->centroid.y()) * outer->signed_area;
     total_area += outer->signed_area;
   }
-  for (const auto &hole : polygon.holes) {
+  for (const auto &hole : polygon.holes()) {
     if (const auto contribution = ring_centroid(hole);
         contribution.has_value()) {
-      weighted_x += static_cast<long double>(contribution->centroid.x) *
+      weighted_x += static_cast<long double>(contribution->centroid.x()) *
                     contribution->signed_area;
-      weighted_y += static_cast<long double>(contribution->centroid.y) *
+      weighted_y += static_cast<long double>(contribution->centroid.y()) *
                     contribution->signed_area;
       total_area += contribution->signed_area;
     }
   }
 
   if (std::fabs(static_cast<double>(total_area)) > 1e-12) {
-    return {
-        .x = static_cast<double>(weighted_x / total_area),
-        .y = static_cast<double>(weighted_y / total_area),
-    };
+    return {static_cast<double>(weighted_x / total_area),
+            static_cast<double>(weighted_y / total_area)};
   }
 
   long double average_x = 0.0L;
   long double average_y = 0.0L;
-  for (const auto &point : polygon.outer) {
-    average_x += point.x;
-    average_y += point.y;
+  for (const auto &point : polygon.outer()) {
+    average_x += point.x();
+    average_y += point.y();
   }
-  const auto scale = 1.0L / static_cast<long double>(polygon.outer.size());
-  return {
-      .x = static_cast<double>(average_x * scale),
-      .y = static_cast<double>(average_y * scale),
-  };
+  const auto scale = 1.0L / static_cast<long double>(polygon.outer().size());
+  return {static_cast<double>(average_x * scale),
+          static_cast<double>(average_y * scale)};
 }
 
 [[nodiscard]] auto rotate_about_point(const geom::PolygonWithHoles &polygon,
@@ -132,9 +130,10 @@ struct RingCentroid {
                                       const double degrees)
     -> geom::PolygonWithHoles {
   return geom::translate(
-      geom::rotate(geom::translate(polygon, {.x = -center.x, .y = -center.y}),
-                   geom::ResolvedRotation{.degrees = degrees}),
-      {.x = center.x, .y = center.y});
+      geom::rotate(
+          geom::translate(polygon, geom::Vector2(-center.x(), -center.y())),
+          geom::ResolvedRotation{.degrees = degrees}),
+      geom::Vector2(center.x(), center.y()));
 }
 
 // Coarse:fine = 1:2 of the descent budget. The coarse pass widens the
@@ -195,12 +194,12 @@ auto run_descent_pass(const std::span<const geom::Vector2> axes, ItemMove &best,
     if (translation_active) {
       for (const auto &axis : axes) {
         const auto basis = best.polygon;
-        const auto forward =
-            translate_by_delta(basis, {.x = axis.x * translation_step,
-                                       .y = axis.y * translation_step});
-        const auto backward =
-            translate_by_delta(basis, {.x = -axis.x * translation_step,
-                                       .y = -axis.y * translation_step});
+        const auto forward = translate_by_delta(
+            basis, geom::Vector2(axis.x() * translation_step,
+                                 axis.y() * translation_step));
+        const auto backward = translate_by_delta(
+            basis, geom::Vector2(-axis.x() * translation_step,
+                                 -axis.y() * translation_step));
         if (try_pair(forward, backward)) {
           improved_translation = true;
         }
@@ -229,23 +228,22 @@ auto run_descent_pass(const std::span<const geom::Vector2> axes, ItemMove &best,
 [[nodiscard]] auto sample_point_in_region(const geom::PolygonWithHoles &region,
                                           runtime::DeterministicRng &rng)
     -> std::optional<geom::Point2> {
-  if (region.outer.empty()) {
+  if (region.outer().empty()) {
     return std::nullopt;
   }
 
   const auto bounds = geom::compute_bounds(region);
   for (std::size_t attempt = 0; attempt < kRegionSampleAttempts; ++attempt) {
-    const geom::Point2 sample{
-        .x = bounds.min.x + rng.uniform_real() * geom::box_width(bounds),
-        .y = bounds.min.y + rng.uniform_real() * geom::box_height(bounds),
-    };
+    const geom::Point2 sample(
+        bounds.min.x() + rng.uniform_real() * geom::box_width(bounds),
+        bounds.min.y() + rng.uniform_real() * geom::box_height(bounds));
     if (pred::locate_point_in_polygon(sample, region).location !=
         pred::PointLocation::exterior) {
       return sample;
     }
   }
 
-  for (const auto &vertex : region.outer) {
+  for (const auto &vertex : region.outer()) {
     if (pred::locate_point_in_polygon(vertex, region).location !=
         pred::PointLocation::exterior) {
       return vertex;
@@ -325,9 +323,9 @@ auto move_item(const CollisionTracker &tracker, const std::size_t item_index,
   const auto &current_item = tracker.item(item_index);
   const auto current_bounds = geom::compute_bounds(current_item.polygon);
   const auto container_bounds = geom::compute_bounds(tracker.container());
-  const auto local_piece =
-      geom::translate(current_item.polygon,
-                      {.x = -current_bounds.min.x, .y = -current_bounds.min.y});
+  const auto local_piece = geom::translate(
+      current_item.polygon,
+      geom::Vector2(-current_bounds.min.x(), -current_bounds.min.y()));
   auto move_regions_or =
       nfp::compute_inner_fit_polygon(tracker.container(), local_piece);
   if (!move_regions_or.ok()) {
@@ -359,14 +357,14 @@ auto move_item(const CollisionTracker &tracker, const std::size_t item_index,
       break;
     }
     evaluate_candidate(translate_by_delta(
-        current_item.polygon, {.x = target->x - current_bounds.min.x,
-                               .y = target->y - current_bounds.min.y}));
+        current_item.polygon,
+        geom::Vector2(target->x() - current_bounds.min.x(),
+                      target->y() - current_bounds.min.y())));
   }
 
-  const auto current_center = geom::Point2{
-      .x = (current_bounds.min.x + current_bounds.max.x) / 2.0,
-      .y = (current_bounds.min.y + current_bounds.max.y) / 2.0,
-  };
+  const auto current_center =
+      geom::Point2((current_bounds.min.x() + current_bounds.max.x()) / 2.0,
+                   (current_bounds.min.y() + current_bounds.max.y()) / 2.0);
   for (std::size_t other = 0; other < tracker.item_count(); ++other) {
     if (other == item_index) {
       continue;
@@ -375,15 +373,13 @@ auto move_item(const CollisionTracker &tracker, const std::size_t item_index,
       continue;
     }
     const auto other_bounds = geom::compute_bounds(tracker.item(other).polygon);
-    const auto other_center = geom::Point2{
-        .x = (other_bounds.min.x + other_bounds.max.x) / 2.0,
-        .y = (other_bounds.min.y + other_bounds.max.y) / 2.0,
-    };
+    const auto other_center =
+        geom::Point2((other_bounds.min.x() + other_bounds.max.x()) / 2.0,
+                     (other_bounds.min.y() + other_bounds.max.y()) / 2.0);
     const auto direction = geom::normalize_vector(
         geom::vector_between(other_center, current_center));
-    const auto resolved_direction = direction == geom::Vector2{}
-                                        ? geom::Vector2{.x = 1.0, .y = 0.0}
-                                        : direction;
+    const auto resolved_direction =
+        direction == geom::Vector2{} ? geom::Vector2(1.0, 0.0) : direction;
     const auto step = std::max(geom::box_width(container_bounds),
                                geom::box_height(container_bounds)) *
                       config.coarse_step_ratio;
@@ -407,10 +403,10 @@ auto move_item(const CollisionTracker &tracker, const std::size_t item_index,
   // ItemMoverConfig — an OCP improvement for callers that want, e.g.,
   // additional 30°/60° axes or container-aligned anisotropic probes.
   std::array<geom::Vector2, 4> axes{{
-      {.x = 1.0, .y = 0.0},
-      {.x = 0.0, .y = 1.0},
-      {.x = 1.0, .y = 1.0},
-      {.x = 1.0, .y = -1.0},
+      geom::Vector2(1.0, 0.0),
+      geom::Vector2(0.0, 1.0),
+      geom::Vector2(1.0, 1.0),
+      geom::Vector2(1.0, -1.0),
   }};
   const auto container_diameter = std::max(geom::box_width(container_bounds),
                                            geom::box_height(container_bounds));

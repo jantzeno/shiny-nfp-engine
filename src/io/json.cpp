@@ -37,9 +37,9 @@ constexpr std::uintmax_t kMaxJsonInputBytes = 4U * 1024U * 1024U;
 [[nodiscard]] auto make_point_node(const geom::Point2 &point) -> pt::ptree {
   pt::ptree node;
   pt::ptree x;
-  x.put_value(point.x);
+  x.put_value(point.x());
   pt::ptree y;
-  y.put_value(point.y);
+  y.put_value(point.y());
   node.push_back({"", x});
   node.push_back({"", y});
   return node;
@@ -50,7 +50,7 @@ constexpr std::uintmax_t kMaxJsonInputBytes = 4U * 1024U * 1024U;
   const auto x = iterator->second.get_value<double>();
   ++iterator;
   const auto y = iterator->second.get_value<double>();
-  return {.x = x, .y = y};
+  return {x, y};
 }
 
 [[nodiscard]] auto make_ring_node(const geom::Ring &ring) -> pt::ptree {
@@ -72,10 +72,10 @@ constexpr std::uintmax_t kMaxJsonInputBytes = 4U * 1024U * 1024U;
 [[nodiscard]] auto make_polygon_node(const geom::PolygonWithHoles &polygon)
     -> pt::ptree {
   pt::ptree node;
-  node.add_child("outer", make_ring_node(polygon.outer));
+  node.add_child("outer", make_ring_node(polygon.outer()));
 
   pt::ptree holes;
-  for (const auto &hole : polygon.holes) {
+  for (const auto &hole : polygon.holes()) {
     holes.push_back({"", make_ring_node(hole)});
   }
   node.add_child("holes", holes);
@@ -85,10 +85,10 @@ constexpr std::uintmax_t kMaxJsonInputBytes = 4U * 1024U * 1024U;
 [[nodiscard]] auto parse_polygon_node(const pt::ptree &node)
     -> geom::PolygonWithHoles {
   geom::PolygonWithHoles polygon;
-  polygon.outer = parse_ring_node(node.get_child("outer"));
+  polygon.outer() = parse_ring_node(node.get_child("outer"));
   if (const auto holes = node.get_child_optional("holes")) {
     for (const auto &hole : *holes) {
-      polygon.holes.push_back(parse_ring_node(hole.second));
+      polygon.holes().push_back(parse_ring_node(hole.second));
     }
   }
   return polygon;

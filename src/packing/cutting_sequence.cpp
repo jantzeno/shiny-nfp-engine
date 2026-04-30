@@ -14,8 +14,8 @@ namespace shiny::nesting::pack {
 namespace {
 
 [[nodiscard]] auto box_center(const geom::Box2 &bounds) -> geom::Point2 {
-  return {.x = (bounds.min.x + bounds.max.x) / 2.0,
-          .y = (bounds.min.y + bounds.max.y) / 2.0};
+  return geom::Point2((bounds.min.x() + bounds.max.x()) / 2.0,
+                      (bounds.min.y() + bounds.max.y()) / 2.0);
 }
 
 // 2-opt local search operating on indices into a precomputed centers
@@ -92,8 +92,7 @@ struct ContourNode {
     return false;
   }
 
-  const geom::PolygonWithHoles outer_only{.outer =
-                                              container.owner_polygon.outer};
+  const geom::PolygonWithHoles outer_only(container.owner_polygon.outer());
   bool saw_strict_interior = false;
   for (const auto &point : candidate.ring) {
     const auto location =
@@ -170,7 +169,7 @@ auto build_cutting_sequence(const Layout &layout) -> std::vector<CutContour> {
   for (const auto &bin : layout.bins) {
     std::vector<ContourNode> nodes;
     for (const auto &piece : bin.placements) {
-      for (const auto &hole : piece.polygon.holes) {
+      for (const auto &hole : piece.polygon.holes()) {
         nodes.push_back({
             .contour =
                 {
@@ -190,11 +189,11 @@ auto build_cutting_sequence(const Layout &layout) -> std::vector<CutContour> {
                   .bin_id = bin.bin_id,
                   .piece_id = piece.placement.piece_id,
                   .from_hole = false,
-                  .ring = piece.polygon.outer,
+                  .ring = piece.polygon.outer(),
               },
           .owner_polygon = piece.polygon,
           .bounds = geom::compute_bounds(std::span<const geom::Point2>(
-              piece.polygon.outer.data(), piece.polygon.outer.size())),
+              piece.polygon.outer().data(), piece.polygon.outer().size())),
       });
     }
 

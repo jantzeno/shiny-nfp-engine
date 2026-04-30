@@ -14,12 +14,12 @@ namespace {
   switch (start_corner) {
   case place::PlacementStartCorner::bottom_left:
   case place::PlacementStartCorner::bottom_right:
-    return piece_bounds.min.y - container_bounds.min.y;
+    return piece_bounds.min.y() - container_bounds.min.y();
   case place::PlacementStartCorner::top_left:
   case place::PlacementStartCorner::top_right:
-    return container_bounds.max.y - piece_bounds.max.y;
+    return container_bounds.max.y() - piece_bounds.max.y();
   }
-  return piece_bounds.min.y - container_bounds.min.y;
+  return piece_bounds.min.y() - container_bounds.min.y();
 }
 
 [[nodiscard]] auto secondary_edge_distance(
@@ -28,12 +28,12 @@ namespace {
   switch (start_corner) {
   case place::PlacementStartCorner::bottom_left:
   case place::PlacementStartCorner::top_left:
-    return piece_bounds.min.x - container_bounds.min.x;
+    return piece_bounds.min.x() - container_bounds.min.x();
   case place::PlacementStartCorner::bottom_right:
   case place::PlacementStartCorner::top_right:
-    return container_bounds.max.x - piece_bounds.max.x;
+    return container_bounds.max.x() - piece_bounds.max.x();
   }
-  return piece_bounds.min.x - container_bounds.min.x;
+  return piece_bounds.min.x() - container_bounds.min.x();
 }
 
 [[nodiscard]] auto
@@ -42,25 +42,25 @@ translation_priority(const geom::Point2 &translation,
     -> std::pair<double, double> {
   switch (start_corner) {
   case place::PlacementStartCorner::bottom_left:
-    return {translation.y, translation.x};
+    return {translation.y(), translation.x()};
   case place::PlacementStartCorner::bottom_right:
-    return {translation.y, -translation.x};
+    return {translation.y(), -translation.x()};
   case place::PlacementStartCorner::top_left:
-    return {-translation.y, translation.x};
+    return {-translation.y(), translation.x()};
   case place::PlacementStartCorner::top_right:
-    return {-translation.y, -translation.x};
+    return {-translation.y(), -translation.x()};
   }
-  return {translation.y, translation.x};
+  return {translation.y(), translation.x()};
 }
 
 [[nodiscard]] auto envelope_bounds_with_candidate(
     const WorkingBin &bin, const geom::Box2 &candidate_bounds) -> geom::Box2 {
   geom::Box2 envelope = candidate_bounds;
   for (const auto &bounds : bin.placement_bounds) {
-    envelope.min.x = std::min(envelope.min.x, bounds.min.x);
-    envelope.min.y = std::min(envelope.min.y, bounds.min.y);
-    envelope.max.x = std::max(envelope.max.x, bounds.max.x);
-    envelope.max.y = std::max(envelope.max.y, bounds.max.y);
+    envelope.min.set_x(std::min(envelope.min.x(), bounds.min.x()));
+    envelope.min.set_y(std::min(envelope.min.y(), bounds.min.y()));
+    envelope.max.set_x(std::max(envelope.max.x(), bounds.max.x()));
+    envelope.max.set_y(std::max(envelope.max.y(), bounds.max.y()));
   }
   return envelope;
 }
@@ -91,7 +91,7 @@ candidate_utilization(const WorkingBin &bin,
     return false;
   }
   bool all_interior = true;
-  for (const auto &vertex : piece.outer) {
+  for (const auto &vertex : piece.outer()) {
     const auto loc = pred::locate_point_in_polygon(vertex, region);
     if (loc.location == pred::PointLocation::exterior) {
       return false;
@@ -100,7 +100,7 @@ candidate_utilization(const WorkingBin &bin,
       all_interior = false;
     }
   }
-  if (all_interior && piece.holes.empty()) {
+  if (all_interior && piece.holes().empty()) {
     return true;
   }
   const auto remainder = poly::difference_polygons(piece, region);
@@ -176,7 +176,7 @@ auto better_candidate(const WorkingBin &bin,
                     rhs_translation_priority.second)) {
     return lhs_translation_priority.second < rhs_translation_priority.second;
   }
-  return lhs.placement.translation.x < rhs.placement.translation.x;
+  return lhs.placement.translation.x() < rhs.placement.translation.x();
 }
 
 auto fits_any_region(const geom::PolygonWithHoles &piece,

@@ -53,15 +53,16 @@ auto signed_area(const shiny::nesting::geom::Ring &ring) -> long double {
   long double twice_area = 0.0L;
   for (std::size_t index = 0; index < ring.size(); ++index) {
     const auto next_index = (index + 1U) % ring.size();
-    twice_area += static_cast<long double>(ring[index].x) * ring[next_index].y -
-                  static_cast<long double>(ring[next_index].x) * ring[index].y;
+    twice_area +=
+        static_cast<long double>(ring[index].x()) * ring[next_index].y() -
+        static_cast<long double>(ring[next_index].x()) * ring[index].y();
   }
 
   return twice_area / 2.0L;
 }
 
 auto area_sign(const PolygonWithHoles &polygon) -> int {
-  const auto area = signed_area(polygon.outer);
+  const auto area = signed_area(polygon.outer());
   if (area > 0.0L) {
     return 1;
   }
@@ -93,12 +94,12 @@ TEST_CASE("collinear simplification fixtures",
 
       require_polygon_equal(simplified, expected);
       REQUIRE(area_sign(simplified) == area_sign(normalized_input));
-      REQUIRE(simplified.holes.size() == normalized_input.holes.size());
+      REQUIRE(simplified.holes().size() == normalized_input.holes().size());
 
-      if (input_polygon.holes.empty()) {
-        const Polygon simplified_simple =
-            simplify_polygon(Polygon{.outer = input_polygon.outer});
-        require_ring_equal(simplified_simple.outer, expected.outer);
+      if (input_polygon.holes().empty()) {
+        const Polygon simplified_simple = simplify_polygon(
+            shiny::nesting::geom::Polygon(input_polygon.outer()));
+        require_ring_equal(simplified_simple.outer(), expected.outer());
       }
     }
   }
@@ -119,63 +120,62 @@ TEST_CASE("convex hull fixtures", "[polygon-ops][convex-hull][fixtures]") {
       const auto expected = parse_polygon(fixture.get_child("expected"));
 
       const auto polygon_hull = compute_convex_hull(input_polygon);
-      require_polygon_equal(PolygonWithHoles{.outer = polygon_hull.outer},
-                            expected);
+      require_polygon_equal(
+          shiny::nesting::geom::PolygonWithHoles(polygon_hull.outer()),
+          expected);
 
-      const auto simple_hull =
-          compute_convex_hull(Polygon{.outer = input_polygon.outer});
-      require_polygon_equal(PolygonWithHoles{.outer = simple_hull.outer},
-                            PolygonWithHoles{.outer = expected.outer});
+      const auto simple_hull = compute_convex_hull(
+          shiny::nesting::geom::Polygon(input_polygon.outer()));
+      require_polygon_equal(
+          shiny::nesting::geom::PolygonWithHoles(simple_hull.outer()),
+          shiny::nesting::geom::PolygonWithHoles(expected.outer()));
     }
   }
 }
 
 TEST_CASE("douglas-peucker simplification removes shallow jogs from polygon",
           "[polygon-ops][simplify][douglas-peucker]") {
-  const Polygon input{
-      .outer = {{0.0, 0.0},
-                {4.0, 0.0},
-                {4.0, 0.2},
-                {8.0, 0.0},
-                {12.0, 0.0},
-                {12.0, 6.0},
-                {0.0, 6.0}},
-  };
+  const Polygon input(shiny::nesting::geom::Ring{{0.0, 0.0},
+                                                 {4.0, 0.0},
+                                                 {4.0, 0.2},
+                                                 {8.0, 0.0},
+                                                 {12.0, 0.0},
+                                                 {12.0, 6.0},
+                                                 {0.0, 6.0}});
 
   const Polygon simplified = simplify_polygon_douglas_peucker(input, 0.25);
 
-  require_ring_equal(
-      simplified.outer,
-      Polygon{.outer = {{0.0, 0.0}, {12.0, 0.0}, {12.0, 6.0}, {0.0, 6.0}}}
-          .outer);
+  require_ring_equal(simplified.outer(),
+                     shiny::nesting::geom::Polygon(
+                         shiny::nesting::geom::Ring{
+                             {0.0, 0.0}, {12.0, 0.0}, {12.0, 6.0}, {0.0, 6.0}})
+                         .outer());
 }
 
 TEST_CASE("douglas-peucker simplification preserves polygon holes",
           "[polygon-ops][simplify][douglas-peucker]") {
-  const PolygonWithHoles input{
-      .outer = {{0.0, 0.0},
-                {6.0, 0.0},
-                {6.0, 0.1},
-                {12.0, 0.0},
-                {12.0, 10.0},
-                {0.0, 10.0}},
-      .holes = {{{3.0, 3.0},
-                 {6.0, 3.0},
-                 {6.0, 3.1},
-                 {9.0, 3.0},
-                 {9.0, 7.0},
-                 {3.0, 7.0}}},
-  };
+  const PolygonWithHoles input(shiny::nesting::geom::Ring{{0.0, 0.0},
+                                                          {6.0, 0.0},
+                                                          {6.0, 0.1},
+                                                          {12.0, 0.0},
+                                                          {12.0, 10.0},
+                                                          {0.0, 10.0}},
+                               {shiny::nesting::geom::Ring{{3.0, 3.0},
+                                                           {6.0, 3.0},
+                                                           {6.0, 3.1},
+                                                           {9.0, 3.0},
+                                                           {9.0, 7.0},
+                                                           {3.0, 7.0}}});
 
   const PolygonWithHoles simplified =
       simplify_polygon_douglas_peucker(input, 0.2);
 
   require_polygon_equal(
-      simplified,
-      PolygonWithHoles{
-          .outer = {{0.0, 0.0}, {12.0, 0.0}, {12.0, 10.0}, {0.0, 10.0}},
-          .holes = {{{3.0, 3.0}, {3.0, 7.0}, {9.0, 7.0}, {9.0, 3.0}}},
-      });
+      simplified, shiny::nesting::geom::PolygonWithHoles(
+                      shiny::nesting::geom::Ring{
+                          {0.0, 0.0}, {12.0, 0.0}, {12.0, 10.0}, {0.0, 10.0}},
+                      {shiny::nesting::geom::Ring{
+                          {3.0, 3.0}, {3.0, 7.0}, {9.0, 7.0}, {9.0, 3.0}}}));
 }
 
 TEST_CASE("polygon union fixtures", "[polygon-ops][boolean][fixtures]") {
@@ -203,12 +203,12 @@ TEST_CASE("polygon union fixtures", "[polygon-ops][boolean][fixtures]") {
 
 TEST_CASE("merged region bridge merges prior disjoint components",
           "[polygon-ops][merge-region]") {
-  const PolygonWithHoles lhs{
-      .outer = {{0.0, 0.0}, {2.0, 0.0}, {2.0, 2.0}, {0.0, 2.0}}};
-  const PolygonWithHoles rhs{
-      .outer = {{4.0, 0.0}, {6.0, 0.0}, {6.0, 2.0}, {4.0, 2.0}}};
-  const PolygonWithHoles bridge{
-      .outer = {{2.0, 0.0}, {4.0, 0.0}, {4.0, 2.0}, {2.0, 2.0}}};
+  const PolygonWithHoles lhs(shiny::nesting::geom::Ring{
+      {0.0, 0.0}, {2.0, 0.0}, {2.0, 2.0}, {0.0, 2.0}});
+  const PolygonWithHoles rhs(shiny::nesting::geom::Ring{
+      {4.0, 0.0}, {6.0, 0.0}, {6.0, 2.0}, {4.0, 2.0}});
+  const PolygonWithHoles bridge(shiny::nesting::geom::Ring{
+      {2.0, 0.0}, {4.0, 0.0}, {4.0, 2.0}, {2.0, 2.0}});
 
   MergedRegion region = make_merged_region(lhs);
   region = merge_polygon_into_region(region, rhs);
@@ -218,6 +218,6 @@ TEST_CASE("merged region bridge merges prior disjoint components",
   REQUIRE(region.regions.size() == 1U);
   require_polygon_equal(
       region.regions.front(),
-      PolygonWithHoles{
-          .outer = {{0.0, 0.0}, {6.0, 0.0}, {6.0, 2.0}, {0.0, 2.0}}});
+      shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+          {0.0, 0.0}, {6.0, 0.0}, {6.0, 2.0}, {0.0, 2.0}}));
 }

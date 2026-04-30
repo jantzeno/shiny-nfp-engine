@@ -98,26 +98,26 @@ TEST_CASE("boxes_overlap rejects horizontally separated boxes",
 TEST_CASE("expand_box grows box by clearance", "[packing][aabb]") {
   const auto box = make_box(10.0, 20.0, 30.0, 40.0);
   const auto expanded = expand_box(box, 5.0);
-  CHECK(expanded.min.x == Approx(5.0));
-  CHECK(expanded.min.y == Approx(15.0));
-  CHECK(expanded.max.x == Approx(35.0));
-  CHECK(expanded.max.y == Approx(45.0));
+  CHECK(expanded.min.x() == Approx(5.0));
+  CHECK(expanded.min.y() == Approx(15.0));
+  CHECK(expanded.max.x() == Approx(35.0));
+  CHECK(expanded.max.y() == Approx(45.0));
 }
 
 TEST_CASE("expand_box with zero clearance returns unchanged box",
           "[packing][aabb]") {
   const auto box = make_box(10.0, 20.0, 30.0, 40.0);
   const auto expanded = expand_box(box, 0.0);
-  CHECK(expanded.min.x == Approx(10.0));
-  CHECK(expanded.max.x == Approx(30.0));
+  CHECK(expanded.min.x() == Approx(10.0));
+  CHECK(expanded.max.x() == Approx(30.0));
 }
 
 TEST_CASE("expand_box with negative clearance returns unchanged box",
           "[packing][aabb]") {
   const auto box = make_box(10.0, 20.0, 30.0, 40.0);
   const auto expanded = expand_box(box, -5.0);
-  CHECK(expanded.min.x == Approx(10.0));
-  CHECK(expanded.max.x == Approx(30.0));
+  CHECK(expanded.min.x() == Approx(10.0));
+  CHECK(expanded.max.x() == Approx(30.0));
 }
 
 // ---------------------------------------------------------------------------
@@ -126,26 +126,28 @@ TEST_CASE("expand_box with negative clearance returns unchanged box",
 
 TEST_CASE("compute_bounds returns tight AABB for simple rectangle",
           "[packing][aabb]") {
-  const PolygonWithHoles rect{
-      .outer = {{0.0, 0.0}, {10.0, 0.0}, {10.0, 5.0}, {0.0, 5.0}}};
+  const PolygonWithHoles rect(shiny::nesting::geom::Ring{
+      {0.0, 0.0}, {10.0, 0.0}, {10.0, 5.0}, {0.0, 5.0}});
   const auto bounds = compute_bounds(rect);
-  CHECK(bounds.min.x == Approx(0.0));
-  CHECK(bounds.min.y == Approx(0.0));
-  CHECK(bounds.max.x == Approx(10.0));
-  CHECK(bounds.max.y == Approx(5.0));
+  CHECK(bounds.min.x() == Approx(0.0));
+  CHECK(bounds.min.y() == Approx(0.0));
+  CHECK(bounds.max.x() == Approx(10.0));
+  CHECK(bounds.max.y() == Approx(5.0));
 }
 
 TEST_CASE("compute_bounds encompasses holes", "[packing][aabb]") {
   // Hole vertices outside the outer ring would be unusual, but compute_bounds
   // must still include them.
-  const PolygonWithHoles poly{
-      .outer = {{0.0, 0.0}, {10.0, 0.0}, {10.0, 10.0}, {0.0, 10.0}},
-      .holes = {{{2.0, 2.0}, {8.0, 2.0}, {8.0, 8.0}, {2.0, 8.0}}}};
+  const PolygonWithHoles poly(
+      shiny::nesting::geom::Ring{
+          {0.0, 0.0}, {10.0, 0.0}, {10.0, 10.0}, {0.0, 10.0}},
+      {shiny::nesting::geom::Ring{
+          {2.0, 2.0}, {8.0, 2.0}, {8.0, 8.0}, {2.0, 8.0}}});
   const auto bounds = compute_bounds(poly);
-  CHECK(bounds.min.x == Approx(0.0));
-  CHECK(bounds.min.y == Approx(0.0));
-  CHECK(bounds.max.x == Approx(10.0));
-  CHECK(bounds.max.y == Approx(10.0));
+  CHECK(bounds.min.x() == Approx(0.0));
+  CHECK(bounds.min.y() == Approx(0.0));
+  CHECK(bounds.max.x() == Approx(10.0));
+  CHECK(bounds.max.y() == Approx(10.0));
 }
 
 // ---------------------------------------------------------------------------

@@ -22,19 +22,19 @@ namespace {
   const auto lhs_bounds = geom::compute_bounds(lhs);
   const auto rhs_bounds = geom::compute_bounds(rhs);
 
-  if (lhs_bounds.min.x != rhs_bounds.min.x) {
-    return lhs_bounds.min.x < rhs_bounds.min.x;
+  if (lhs_bounds.min.x() != rhs_bounds.min.x()) {
+    return lhs_bounds.min.x() < rhs_bounds.min.x();
   }
-  if (lhs_bounds.min.y != rhs_bounds.min.y) {
-    return lhs_bounds.min.y < rhs_bounds.min.y;
+  if (lhs_bounds.min.y() != rhs_bounds.min.y()) {
+    return lhs_bounds.min.y() < rhs_bounds.min.y();
   }
   return geom::polygon_area(lhs) < geom::polygon_area(rhs);
 }
 
 [[nodiscard]] auto bounds_may_touch_or_overlap(const geom::Box2 &lhs,
                                                const geom::Box2 &rhs) -> bool {
-  return !(lhs.max.x < rhs.min.x || rhs.max.x < lhs.min.x ||
-           lhs.max.y < rhs.min.y || rhs.max.y < lhs.min.y);
+  return !(lhs.max.x() < rhs.min.x() || rhs.max.x() < lhs.min.x() ||
+           lhs.max.y() < rhs.min.y() || rhs.max.y() < lhs.min.y());
 }
 
 [[nodiscard]] constexpr auto
@@ -65,7 +65,7 @@ auto log_invalid_input(const char *label,
       "nfp: invalid {} polygon issue={} outer={} holes={} duplicates={} "
       "zero_edges={} slivers={}",
       label, validity_issue_name(validity.issue),
-      sanitized.polygon.outer.size(), sanitized.polygon.holes.size(),
+      sanitized.polygon.outer().size(), sanitized.polygon.holes().size(),
       sanitized.duplicate_vertices, sanitized.zero_length_edges,
       sanitized.sliver_rings);
 }
@@ -101,8 +101,8 @@ merge_polygon_set(std::vector<geom::PolygonWithHoles> polygons)
           SHINY_DEBUG(
               "nfp: merge_polygon_set union failed status={} lhs_outer={} "
               "rhs_outer={}",
-              util::status_name(unioned.status()), lhs.outer.size(),
-              rhs.outer.size());
+              util::status_name(unioned.status()), lhs.outer().size(),
+              rhs.outer().size());
           return std::nullopt;
         }
         if (unioned.value().size() != 1U) {
@@ -149,12 +149,12 @@ auto compute_nfp(const geom::PolygonWithHoles &fixed,
     return util::Status::invalid_input;
   }
 
-  if (normalized_fixed.holes.empty() && normalized_moving.holes.empty() &&
-      decomp::is_convex(geom::Polygon{.outer = normalized_fixed.outer}) &&
-      decomp::is_convex(geom::Polygon{.outer = normalized_moving.outer})) {
+  if (normalized_fixed.holes().empty() && normalized_moving.holes().empty() &&
+      geom::polygon_is_convex(geom::Polygon(normalized_fixed.outer())) &&
+      geom::polygon_is_convex(geom::Polygon(normalized_moving.outer()))) {
     auto convex_nfp =
-        compute_convex_nfp(geom::Polygon{.outer = normalized_fixed.outer},
-                           geom::Polygon{.outer = normalized_moving.outer});
+        compute_convex_nfp(geom::Polygon(normalized_fixed.outer()),
+                           geom::Polygon(normalized_moving.outer()));
     if (!convex_nfp.ok()) {
       SHINY_DEBUG("nfp: convex fast path failed status={}",
                   util::status_name(convex_nfp.status()));
@@ -203,10 +203,10 @@ auto compute_nfp(const geom::PolygonWithHoles &fixed,
         SHINY_DEBUG("nfp: convex pair failed status={} fixed_outer={} "
                     "moving_outer={}",
                     util::status_name(pair_nfp.status()),
-                    fixed_part.outer.size(), moving_part.outer.size());
-        auto pair_orbiting = compute_orbiting_nfp(
-            geom::PolygonWithHoles{.outer = fixed_part.outer},
-            geom::PolygonWithHoles{.outer = moving_part.outer});
+                    fixed_part.outer().size(), moving_part.outer().size());
+        auto pair_orbiting =
+            compute_orbiting_nfp(geom::PolygonWithHoles(fixed_part.outer()),
+                                 geom::PolygonWithHoles(moving_part.outer()));
         log_orbiting_fallback("convex_pair_failure_local",
                               pair_orbiting.status());
         if (pair_orbiting.ok()) {

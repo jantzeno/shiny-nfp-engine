@@ -18,24 +18,25 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
                          std::span<const geom::Box2> occupied_bounds,
                          double width) -> std::vector<double> {
   std::vector<double> candidates{
-      container_bounds.min.x,
-      container_bounds.max.x - width,
+      container_bounds.min.x(),
+      container_bounds.max.x() - width,
   };
   candidates.reserve(2U + occupied_bounds.size() * 4U);
   for (const geom::Box2 &occupied_bounds_entry : occupied_bounds) {
-    candidates.push_back(occupied_bounds_entry.min.x);
-    candidates.push_back(occupied_bounds_entry.max.x);
-    candidates.push_back(occupied_bounds_entry.min.x - width);
-    candidates.push_back(occupied_bounds_entry.max.x - width);
+    candidates.push_back(occupied_bounds_entry.min.x());
+    candidates.push_back(occupied_bounds_entry.max.x());
+    candidates.push_back(occupied_bounds_entry.min.x() - width);
+    candidates.push_back(occupied_bounds_entry.max.x() - width);
   }
 
   std::vector<double> unique = unique_sorted_values(std::move(candidates));
   unique.erase(std::remove_if(unique.begin(), unique.end(),
                               [&](double value) {
-                                return value < container_bounds.min.x -
+                                return value < container_bounds.min.x() -
                                                    kCoordinateSnap ||
-                                       value + width > container_bounds.max.x +
-                                                           kCoordinateSnap;
+                                       value + width >
+                                           container_bounds.max.x() +
+                                               kCoordinateSnap;
                               }),
                unique.end());
   return unique;
@@ -70,19 +71,20 @@ auto find_best_skyline_candidate(
 
   for (const double candidate_min_x : skyline_candidate_min_xs(
            canonical_container, canonical_occupied_bounds, width)) {
-    double candidate_min_y = canonical_container.min.y;
+    double candidate_min_y = canonical_container.min.y();
     for (const geom::Box2 &occupied_bounds_entry : canonical_occupied_bounds) {
       if (!intervals_overlap_interior(candidate_min_x, candidate_min_x + width,
-                                      occupied_bounds_entry.min.x,
-                                      occupied_bounds_entry.max.x)) {
+                                      occupied_bounds_entry.min.x(),
+                                      occupied_bounds_entry.max.x())) {
         continue;
       }
-      candidate_min_y = std::max(candidate_min_y, occupied_bounds_entry.max.y);
+      candidate_min_y =
+          std::max(candidate_min_y, occupied_bounds_entry.max.y());
     }
 
     const geom::Box2 canonical_candidate_bounds{
-        .min = {.x = candidate_min_x, .y = candidate_min_y},
-        .max = {.x = candidate_min_x + width, .y = candidate_min_y + height},
+        .min = geom::Point2(candidate_min_x, candidate_min_y),
+        .max = geom::Point2(candidate_min_x + width, candidate_min_y + height),
     };
     const geom::Box2 actual_candidate_bounds =
         box_for_start_corner(canonical_candidate_bounds, state.container_bounds,
@@ -91,10 +93,9 @@ auto find_best_skyline_candidate(
       continue;
     }
 
-    const geom::Point2 translation{
-        .x = actual_candidate_bounds.min.x - rotated_bounds.min.x,
-        .y = actual_candidate_bounds.min.y - rotated_bounds.min.y,
-    };
+    const geom::Point2 translation(
+        actual_candidate_bounds.min.x() - rotated_bounds.min.x(),
+        actual_candidate_bounds.min.y() - rotated_bounds.min.y());
     const auto translated_piece = translate_polygon(rotated_piece, translation);
     if (overlaps_any_occupied_bounds(state.occupied_bounds,
                                      actual_candidate_bounds, clearance) ||

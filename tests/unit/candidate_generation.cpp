@@ -25,6 +25,7 @@ using shiny::nesting::ExecutionPolicy;
 using shiny::nesting::IrregularOptions;
 using shiny::nesting::geom::Point2;
 using shiny::nesting::geom::PolygonWithHoles;
+using shiny::nesting::geom::Ring;
 using shiny::nesting::pack::CandidateGenerationObstacle;
 using shiny::nesting::pack::GeneratedCandidatePoint;
 using shiny::nesting::place::PlacementCandidateSource;
@@ -40,31 +41,25 @@ using shiny::nesting::test::mtg::MtgRequestOptions;
 
 auto rectangle(const double min_x, const double min_y, const double max_x,
                const double max_y) -> PolygonWithHoles {
-  return {
-      .outer =
-          {
-              {min_x, min_y},
-              {max_x, min_y},
-              {max_x, max_y},
-              {min_x, max_y},
-          },
-  };
+  return shiny::nesting::geom::PolygonWithHoles(Ring{
+      {min_x, min_y},
+      {max_x, min_y},
+      {max_x, max_y},
+      {min_x, max_y},
+  });
 }
 
 auto concave_step_piece() -> PolygonWithHoles {
-  return {
-      .outer =
-          {
-              {1.0, 0.0},
-              {4.0, 0.0},
-              {4.0, 1.0},
-              {2.0, 1.0},
-              {2.0, 3.0},
-              {0.0, 3.0},
-              {0.0, 2.0},
-              {1.0, 2.0},
-          },
-  };
+  return shiny::nesting::geom::PolygonWithHoles(Ring{
+      {1.0, 0.0},
+      {4.0, 0.0},
+      {4.0, 1.0},
+      {2.0, 1.0},
+      {2.0, 3.0},
+      {0.0, 3.0},
+      {0.0, 2.0},
+      {1.0, 2.0},
+  });
 }
 
 auto make_baseline_actual_polygon_options() -> MtgRequestOptions {
@@ -132,8 +127,8 @@ auto normalize_candidates(const std::vector<GeneratedCandidatePoint> &points)
   std::vector<std::tuple<std::int64_t, std::int64_t, int>> normalized;
   normalized.reserve(points.size());
   for (const auto &point : points) {
-    normalized.emplace_back(std::llround(point.translation.x * 1'000'000.0),
-                            std::llround(point.translation.y * 1'000'000.0),
+    normalized.emplace_back(std::llround(point.translation.x() * 1'000'000.0),
+                            std::llround(point.translation.y() * 1'000'000.0),
                             static_cast<int>(point.source));
   }
   std::sort(normalized.begin(), normalized.end());
@@ -147,8 +142,8 @@ auto normalize_translations(std::span<const Point2> points)
   std::vector<std::pair<std::int64_t, std::int64_t>> normalized;
   normalized.reserve(points.size());
   for (const auto &point : points) {
-    normalized.emplace_back(std::llround(point.x * 1'000'000.0),
-                            std::llround(point.y * 1'000'000.0));
+    normalized.emplace_back(std::llround(point.x() * 1'000'000.0),
+                            std::llround(point.y() * 1'000'000.0));
   }
   std::sort(normalized.begin(), normalized.end());
   normalized.erase(std::unique(normalized.begin(), normalized.end()),
@@ -171,11 +166,11 @@ auto raw_vertex_anchor_translations(const PolygonWithHoles &container,
                                     const PolygonWithHoles &piece)
     -> std::vector<std::pair<std::int64_t, std::int64_t>> {
   std::vector<Point2> translations;
-  translations.reserve(container.outer.size() * piece.outer.size());
-  for (const auto &container_vertex : container.outer) {
-    for (const auto &piece_vertex : piece.outer) {
-      translations.push_back({.x = container_vertex.x - piece_vertex.x,
-                              .y = container_vertex.y - piece_vertex.y});
+  translations.reserve(container.outer().size() * piece.outer().size());
+  for (const auto &container_vertex : container.outer()) {
+    for (const auto &piece_vertex : piece.outer()) {
+      translations.push_back(Point2(container_vertex.x() - piece_vertex.x(),
+                                    container_vertex.y() - piece_vertex.y()));
     }
   }
   return normalize_translations(translations);
@@ -196,8 +191,10 @@ auto parse_obstacles(const shiny::nesting::test::pt::ptree &inputs)
     obstacles.push_back({
         .geometry_revision = obstacle.get<std::uint64_t>("revision"),
         .polygon = shiny::nesting::geom::translate(
-            base_polygon, {.x = translation.x, .y = translation.y}),
-        .translation = {.x = translation.x, .y = translation.y},
+            base_polygon,
+            shiny::nesting::geom::Vector2(translation.x(), translation.y())),
+        .translation =
+            shiny::nesting::geom::Vector2(translation.x(), translation.y()),
         .rotation = {.degrees = 0.0},
     });
   }
@@ -256,10 +253,10 @@ TEST_CASE("candidate limiting biases stochastic tail toward higher priority",
     REQUIRE(std::is_sorted(points.begin(), points.end(),
                            [](const GeneratedCandidatePoint &lhs,
                               const GeneratedCandidatePoint &rhs) {
-                             return lhs.translation.x < rhs.translation.x;
+                             return lhs.translation.x() < rhs.translation.x();
                            }));
     for (const auto &point : points) {
-      ++selection_counts[static_cast<std::size_t>(point.translation.x)];
+      ++selection_counts[static_cast<std::size_t>(point.translation.x())];
     }
   }
 
@@ -316,7 +313,7 @@ TEST_CASE("hybrid NFP candidate strategy is arrangement union perfect",
   const std::vector<CandidateGenerationObstacle> obstacles{{
       .geometry_revision = 2U,
       .polygon = rectangle(0.0, 0.0, 6.0, 6.0),
-      .translation = {.x = 0.0, .y = 0.0},
+      .translation = shiny::nesting::geom::Vector2(0.0, 0.0),
       .rotation = {.degrees = 0.0},
   }};
   const std::span<const PolygonWithHoles> exclusion_regions{};
@@ -375,11 +372,11 @@ TEST_CASE("NFP perfect-fit candidates stay inside the feasible domain",
   const auto container = rectangle(0.0, 0.0, 10.0, 10.0);
   const auto moving_piece = rectangle(0.0, 0.0, 2.0, 2.0);
   const auto obstacle_polygon = shiny::nesting::geom::translate(
-      rectangle(0.0, 0.0, 3.0, 3.0), {.x = 6.0, .y = 6.0});
+      rectangle(0.0, 0.0, 3.0, 3.0), shiny::nesting::geom::Vector2(6.0, 6.0));
   const std::vector<CandidateGenerationObstacle> obstacles{{
       .geometry_revision = 2U,
       .polygon = obstacle_polygon,
-      .translation = {.x = 6.0, .y = 6.0},
+      .translation = shiny::nesting::geom::Vector2(6.0, 6.0),
       .rotation = {.degrees = 0.0},
   }};
   const std::span<const PolygonWithHoles> exclusion_regions{};
@@ -394,16 +391,18 @@ TEST_CASE("NFP perfect-fit candidates stay inside the feasible domain",
   const auto domain = shiny::nesting::nfp::compute_ifp(container, moving_piece);
   REQUIRE(domain.ok());
   const auto blocked_base = shiny::nesting::geom::translate(
-      obstacles.front().polygon, {.x = -obstacles.front().translation.x,
-                                  .y = -obstacles.front().translation.y});
+      obstacles.front().polygon,
+      shiny::nesting::geom::Vector2(-obstacles.front().translation.x(),
+                                    -obstacles.front().translation.y()));
   auto blocked = shiny::nesting::nfp::compute_nfp(blocked_base, moving_piece);
   REQUIRE(blocked.ok());
   std::vector<PolygonWithHoles> blocked_world;
   blocked_world.reserve(blocked.value().size());
   for (const auto &polygon : blocked.value()) {
     blocked_world.push_back(shiny::nesting::geom::translate(
-        polygon, {.x = obstacles.front().translation.x,
-                  .y = obstacles.front().translation.y}));
+        polygon,
+        shiny::nesting::geom::Vector2(obstacles.front().translation.x(),
+                                      obstacles.front().translation.y())));
   }
   for (const auto &candidate : points.value()) {
     const bool in_domain = std::any_of(
@@ -418,7 +417,7 @@ TEST_CASE("NFP perfect-fit candidates stay inside the feasible domain",
                      candidate.translation, region)
                      .location == shiny::nesting::pred::PointLocation::interior;
         });
-    INFO(candidate.translation.x << "," << candidate.translation.y);
+    INFO(candidate.translation.x() << "," << candidate.translation.y());
     REQUIRE(in_domain);
     REQUIRE_FALSE(inside_blocked_interior);
   }
@@ -485,20 +484,22 @@ TEST_CASE("actual-polygon pair 7 -> 4 returns candidates directly after NFP "
   const auto *moving = find_placed_piece(result, kBed1Id, 4U);
   REQUIRE(fixed != nullptr);
   REQUIRE(moving != nullptr);
-  REQUIRE(std::abs(fixed->placement.translation.x) < 1e-6);
-  REQUIRE(std::abs(fixed->placement.translation.y - 1243.4646072387695) < 1e-6);
+  REQUIRE(std::abs(fixed->placement.translation.x()) < 1e-6);
+  REQUIRE(std::abs(fixed->placement.translation.y() - 1243.4646072387695) <
+          1e-6);
 
   const CandidateGenerationObstacle obstacle{
       .geometry_revision = fixed->piece_geometry_revision,
       .polygon = fixed->polygon,
-      .translation = {.x = fixed->placement.translation.x,
-                      .y = fixed->placement.translation.y},
+      .translation = shiny::nesting::geom::Vector2(
+          fixed->placement.translation.x(), fixed->placement.translation.y()),
       .rotation = fixed->resolved_rotation,
   };
   const std::array<CandidateGenerationObstacle, 1U> obstacles{obstacle};
   const auto moving_local = shiny::nesting::geom::translate(
-      moving->polygon, {.x = -moving->placement.translation.x,
-                        .y = -moving->placement.translation.y});
+      moving->polygon,
+      shiny::nesting::geom::Vector2(-moving->placement.translation.x(),
+                                    -moving->placement.translation.y()));
   const std::span<const PolygonWithHoles> exclusion_regions{};
 
   for (const auto strategy :
@@ -519,7 +520,7 @@ TEST_CASE("anchor strategy skips obstacle NFP generation by default",
   const std::vector<CandidateGenerationObstacle> obstacles{{
       .geometry_revision = 2U,
       .polygon = rectangle(0.0, 0.0, 3.0, 3.0),
-      .translation = {.x = 4.0, .y = 4.0},
+      .translation = shiny::nesting::geom::Vector2(4.0, 4.0),
       .rotation = {.degrees = 0.0},
   }};
   const std::span<const PolygonWithHoles> exclusion_regions{};
@@ -555,7 +556,7 @@ TEST_CASE("exact NFP cache entries stay separate from fallback entries",
   const std::vector<CandidateGenerationObstacle> obstacles{{
       .geometry_revision = 2U,
       .polygon = rectangle(0.0, 0.0, 6.0, 6.0),
-      .translation = {.x = 0.0, .y = 0.0},
+      .translation = shiny::nesting::geom::Vector2(0.0, 0.0),
       .rotation = {.degrees = 0.0},
   }};
   const std::span<const PolygonWithHoles> exclusion_regions{};
@@ -603,14 +604,15 @@ TEST_CASE("bbox fallback cache entries are labeled separately from exact NFPs",
   const CandidateGenerationObstacle obstacle{
       .geometry_revision = fixed->piece_geometry_revision,
       .polygon = fixed->polygon,
-      .translation = {.x = fixed->placement.translation.x,
-                      .y = fixed->placement.translation.y},
+      .translation = shiny::nesting::geom::Vector2(
+          fixed->placement.translation.x(), fixed->placement.translation.y()),
       .rotation = fixed->resolved_rotation,
   };
   const std::array<CandidateGenerationObstacle, 1U> obstacles{obstacle};
   const auto moving_local = shiny::nesting::geom::translate(
-      moving->polygon, {.x = -moving->placement.translation.x,
-                        .y = -moving->placement.translation.y});
+      moving->polygon,
+      shiny::nesting::geom::Vector2(-moving->placement.translation.x(),
+                                    -moving->placement.translation.y()));
   const std::span<const PolygonWithHoles> exclusion_regions{};
   shiny::nesting::cache::NfpCache cache(
       shiny::nesting::cache::default_nfp_cache_config());

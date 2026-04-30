@@ -71,8 +71,8 @@ rotation_set_is_subset(const geom::DiscreteRotationSet &subset,
 
   if (policy.normalize_piece_origins) {
     const auto bounds = geom::compute_bounds(polygon);
-    polygon =
-        geom::translate(polygon, {.x = -bounds.min.x, .y = -bounds.min.y});
+    polygon = geom::translate(polygon,
+                              geom::Vector2{-bounds.min.x(), -bounds.min.y()});
   }
 
   return geom::normalize_polygon(polygon);

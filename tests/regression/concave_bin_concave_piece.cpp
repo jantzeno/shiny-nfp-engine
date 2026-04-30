@@ -11,8 +11,8 @@ auto signed_area(const shiny::nesting::geom::Ring &ring) -> long double {
   long double area = 0.0L;
   for (std::size_t index = 0; index < ring.size(); ++index) {
     const auto next_index = (index + 1U) % ring.size();
-    area += static_cast<long double>(ring[index].x) * ring[next_index].y -
-            static_cast<long double>(ring[next_index].x) * ring[index].y;
+    area += static_cast<long double>(ring[index].x()) * ring[next_index].y() -
+            static_cast<long double>(ring[next_index].x()) * ring[index].y();
   }
   return area / 2.0L;
 }
@@ -34,20 +34,20 @@ TEST_CASE("regression concave host and concave piece keep a single outer loop",
   const auto result = shiny::nesting::compute_nonconvex_graph_nfp({
       .piece_a_id = 10,
       .piece_b_id = 11,
-      .piece_a = {.outer = {{0.0, 0.0},
+      .piece_a = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
                             {8.0, 0.0},
                             {8.0, 2.0},
                             {5.0, 2.0},
                             {5.0, 5.0},
                             {8.0, 5.0},
                             {8.0, 7.0},
-                            {0.0, 7.0}}},
-      .piece_b = {.outer = {{0.0, 0.0},
+                            {0.0, 7.0}}),
+      .piece_b = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
                             {4.0, 0.0},
                             {4.0, 1.0},
                             {2.0, 1.0},
                             {2.0, 3.0},
-                            {0.0, 3.0}}},
+                            {0.0, 3.0}}),
       .algorithm_revision = shiny::nesting::cache::AlgorithmRevision{1},
   });
 

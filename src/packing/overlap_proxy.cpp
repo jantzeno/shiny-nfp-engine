@@ -75,8 +75,8 @@ struct PoleSearchCellOrder {
 [[nodiscard]] auto
 polygon_boundary_distance_squared(const geom::PolygonWithHoles &polygon,
                                   const geom::Point2 &point) -> double {
-  double min_distance = ring_distance_squared(point, polygon.outer);
-  for (const auto &hole : polygon.holes) {
+  double min_distance = ring_distance_squared(point, polygon.outer());
+  for (const auto &hole : polygon.holes()) {
     min_distance = std::min(
         min_distance,
         ring_distance_squared(point, std::span<const geom::Point2>(hole)));
@@ -130,10 +130,10 @@ signed_distance_to_polygon(const geom::PolygonWithHoles &polygon,
   if (lhs.distance != rhs.distance) {
     return lhs.distance > rhs.distance;
   }
-  if (lhs.center.x != rhs.center.x) {
-    return lhs.center.x < rhs.center.x;
+  if (lhs.center.x() != rhs.center.x()) {
+    return lhs.center.x() < rhs.center.x();
   }
-  return lhs.center.y < rhs.center.y;
+  return lhs.center.y() < rhs.center.y();
 }
 
 // Builds the initial grid of square cells covering `bounds` with side
@@ -146,11 +146,11 @@ auto compute_initial_cells(
     std::priority_queue<PoleSearchCell, std::vector<PoleSearchCell>,
                         PoleSearchCellOrder> &queue) -> void {
   const auto half_size = cell_size / 2.0;
-  for (double x = bounds.min.x; x < bounds.max.x; x += cell_size) {
-    for (double y = bounds.min.y; y < bounds.max.y; y += cell_size) {
-      queue.push(make_pole_search_cell(normalized,
-                                       {.x = x + half_size, .y = y + half_size},
-                                       half_size, pd_cache));
+  for (double x = bounds.min.x(); x < bounds.max.x(); x += cell_size) {
+    for (double y = bounds.min.y(); y < bounds.max.y(); y += cell_size) {
+      queue.push(make_pole_search_cell(
+          normalized, geom::Point2{x + half_size, y + half_size}, half_size,
+          pd_cache));
     }
   }
 }
@@ -181,7 +181,7 @@ auto compute_pole_of_inaccessibility(const geom::PolygonWithHoles &polygon,
                                      cache::PenetrationDepthCache *pd_cache,
                                      const double epsilon)
     -> PoleOfInaccessibility {
-  if (polygon.outer.empty()) {
+  if (polygon.outer().empty()) {
     return {};
   }
 
@@ -200,14 +200,14 @@ auto compute_pole_of_inaccessibility(const geom::PolygonWithHoles &polygon,
   const auto height = geom::box_height(bounds);
   const auto initial_cell_size = std::max(0.0, std::min(width, height));
 
-  PoleSearchCell best =
-      make_pole_search_cell(normalized,
-                            {.x = (bounds.min.x + bounds.max.x) / 2.0,
-                             .y = (bounds.min.y + bounds.max.y) / 2.0},
-                            0.0, pd_cache);
-  if (!normalized.outer.empty()) {
+  PoleSearchCell best = make_pole_search_cell(
+      normalized,
+      geom::Point2{(bounds.min.x() + bounds.max.x()) / 2.0,
+                   (bounds.min.y() + bounds.max.y()) / 2.0},
+      0.0, pd_cache);
+  if (!normalized.outer().empty()) {
     const auto vertex_candidate = make_pole_search_cell(
-        normalized, normalized.outer.front(), 0.0, pd_cache);
+        normalized, normalized.outer().front(), 0.0, pd_cache);
     if (better_pole_candidate(vertex_candidate, best)) {
       best = vertex_candidate;
     }
@@ -247,10 +247,11 @@ auto compute_pole_of_inaccessibility(const geom::PolygonWithHoles &polygon,
 
       for (const auto delta_x : {-child_half_size, child_half_size}) {
         for (const auto delta_y : {-child_half_size, child_half_size}) {
-          queue.push(make_pole_search_cell(
-              normalized,
-              {.x = cell.center.x + delta_x, .y = cell.center.y + delta_y},
-              child_half_size, pd_cache));
+          queue.push(
+              make_pole_search_cell(normalized,
+                                    geom::Point2{cell.center.x() + delta_x,
+                                                 cell.center.y() + delta_y},
+                                    child_half_size, pd_cache));
         }
       }
     }

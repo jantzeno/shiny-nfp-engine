@@ -37,10 +37,10 @@ constexpr double kAreaEpsilon = 1e-8;
 
 [[nodiscard]] auto cross(const geom::Point2 &origin, const geom::Point2 &lhs,
                          const geom::Point2 &rhs) -> double {
-  const auto ax = lhs.x - origin.x;
-  const auto ay = lhs.y - origin.y;
-  const auto bx = rhs.x - origin.x;
-  const auto by = rhs.y - origin.y;
+  const auto ax = lhs.x() - origin.x();
+  const auto ay = lhs.y() - origin.y();
+  const auto bx = rhs.x() - origin.x();
+  const auto by = rhs.y() - origin.y();
   return ax * by - ay * bx;
 }
 
@@ -73,21 +73,20 @@ struct PieceState {
 [[nodiscard]] auto try_merge_polygons(const geom::Polygon &lhs,
                                       const geom::Polygon &rhs)
     -> std::optional<geom::Polygon> {
-  const auto merged =
-      poly::union_polygons(geom::PolygonWithHoles{.outer = lhs.outer},
-                           geom::PolygonWithHoles{.outer = rhs.outer});
-  if (merged.size() != 1U || !merged.front().holes.empty()) {
+  const auto merged = poly::union_polygons(geom::PolygonWithHoles{lhs.outer()},
+                                           geom::PolygonWithHoles{rhs.outer()});
+  if (merged.size() != 1U || !merged.front().holes().empty()) {
     return std::nullopt;
   }
 
-  geom::Polygon candidate{.outer = merged.front().outer};
+  geom::Polygon candidate{merged.front().outer()};
   candidate = geom::normalize_polygon(candidate);
   const auto candidate_area = geom::polygon_area(candidate);
   const auto expected_area = geom::polygon_area(lhs) + geom::polygon_area(rhs);
   if (std::fabs(candidate_area - expected_area) > kAreaEpsilon) {
     return std::nullopt;
   }
-  if (!is_convex(candidate)) {
+  if (!geom::polygon_is_convex(candidate)) {
     return std::nullopt;
   }
   return candidate;
@@ -192,20 +191,9 @@ auto merge_pieces(std::vector<PieceState> &pieces, const std::int32_t lhs_index,
 
 } // namespace
 
-// Convexity test for a simple polygon ring.
-//
-// Preconditions:
-//   - `polygon.outer` is a closed ring of any size (after normalization).
-//   - Holes are ignored; only the outer ring is examined.
-// Postconditions:
-//   - Returns `true` for empty/degenerate rings (size < 4 after
-//     normalization), or when every non-collinear turn (|cross| >
-//     `kCrossEpsilon`) shares the same sign.
-//   - Collinear vertices on a merged edge are intentionally skipped so
-//     they are not misread as a reflex turn.
 auto is_convex(const geom::Polygon &polygon) -> bool {
   const auto normalized = geom::normalize_polygon(polygon);
-  const auto &ring = normalized.outer;
+  const auto &ring = normalized.outer();
   if (ring.size() < 4U) {
     return true;
   }
@@ -235,7 +223,7 @@ auto is_convex(const geom::Polygon &polygon) -> bool {
 
 auto decompose_convex(const geom::Polygon &polygon)
     -> util::StatusOr<std::vector<geom::Polygon>> {
-  return decompose_convex(geom::PolygonWithHoles{.outer = polygon.outer});
+  return decompose_convex(geom::PolygonWithHoles{polygon.outer()});
 }
 
 auto decompose_convex(const geom::PolygonWithHoles &polygon)
@@ -245,9 +233,9 @@ auto decompose_convex(const geom::PolygonWithHoles &polygon)
     return util::Status::invalid_input;
   }
 
-  if (normalized.holes.empty() &&
-      is_convex(geom::Polygon{.outer = normalized.outer})) {
-    return std::vector<geom::Polygon>{geom::Polygon{.outer = normalized.outer}};
+  if (normalized.holes().empty() &&
+      is_convex(geom::Polygon{normalized.outer()})) {
+    return std::vector<geom::Polygon>{geom::Polygon{normalized.outer()}};
   }
 
   auto triangulation_or = triangulate_polygon(normalized);

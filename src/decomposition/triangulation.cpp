@@ -67,7 +67,7 @@ using ConstrainedTriangulation =
 constexpr double kAreaEpsilon = 1e-9;
 
 [[nodiscard]] auto to_cgal_point(const geom::Point2 &point) -> Kernel::Point_2 {
-  return {point.x, point.y};
+  return {point.x(), point.y()};
 }
 
 auto insert_ring_constraints(ConstrainedTriangulation &triangulation,
@@ -164,18 +164,9 @@ auto mark_domains(ConstrainedTriangulation &triangulation) -> void {
 
 } // namespace
 
-// Convenience overload: triangulate a hole-free outer ring.
-// `geom::Polygon` does not carry holes (single `outer` Ring member). A
-// `static_assert` guards that invariant: if `Polygon` ever grows a `holes`
-// member, this overload silently dropping them becomes a correctness bug,
-// so the build must fail and force the author to revisit.
 auto triangulate_polygon(const geom::Polygon &polygon)
     -> util::StatusOr<TriangulationResult> {
-  static_assert(sizeof(geom::Polygon) == sizeof(geom::Ring),
-                "geom::Polygon gained a member beyond `outer`. This overload "
-                "would silently drop the new data — promote callers to the "
-                "PolygonWithHoles overload or update this wrapper.");
-  return triangulate_polygon(geom::PolygonWithHoles{.outer = polygon.outer});
+  return triangulate_polygon(geom::PolygonWithHoles(polygon.outer()));
 }
 
 auto triangulate_polygon(const geom::PolygonWithHoles &polygon)
@@ -186,8 +177,8 @@ auto triangulate_polygon(const geom::PolygonWithHoles &polygon)
   }
 
   ConstrainedTriangulation triangulation;
-  insert_ring_constraints(triangulation, normalized.outer);
-  for (const auto &hole : normalized.holes) {
+  insert_ring_constraints(triangulation, normalized.outer());
+  for (const auto &hole : normalized.holes()) {
     insert_ring_constraints(triangulation, hole);
   }
   mark_domains(triangulation);
@@ -201,14 +192,14 @@ auto triangulate_polygon(const geom::PolygonWithHoles &polygon)
       continue;
     }
 
-    geom::Polygon triangle{.outer = {
-                               {.x = face->vertex(0)->point().x(),
-                                .y = face->vertex(0)->point().y()},
-                               {.x = face->vertex(1)->point().x(),
-                                .y = face->vertex(1)->point().y()},
-                               {.x = face->vertex(2)->point().x(),
-                                .y = face->vertex(2)->point().y()},
-                           }};
+    geom::Polygon triangle(geom::Ring{
+        geom::Point2(face->vertex(0)->point().x(),
+                     face->vertex(0)->point().y()),
+        geom::Point2(face->vertex(1)->point().x(),
+                     face->vertex(1)->point().y()),
+        geom::Point2(face->vertex(2)->point().x(),
+                     face->vertex(2)->point().y()),
+    });
     triangle = geom::normalize_polygon(triangle);
     if (geom::polygon_area(triangle) > kAreaEpsilon) {
       face->info().triangle_index = static_cast<std::int32_t>(triangles.size());

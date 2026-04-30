@@ -84,10 +84,10 @@ auto parse_ring_list(const shiny::nesting::test::pt::ptree &node)
 
 auto point_less(const shiny::nesting::geom::Point2 &lhs,
                 const shiny::nesting::geom::Point2 &rhs) -> bool {
-  if (lhs.x != rhs.x) {
-    return lhs.x < rhs.x;
+  if (lhs.x() != rhs.x()) {
+    return lhs.x() < rhs.x();
   }
-  return lhs.y < rhs.y;
+  return lhs.y() < rhs.y();
 }
 
 auto ring_less(const shiny::nesting::geom::Ring &lhs,
@@ -128,11 +128,11 @@ auto inverse_rotate_point(const shiny::nesting::geom::Point2 &point,
   case 0:
     return point;
   case 90:
-    return {.x = point.y, .y = -point.x};
+    return shiny::nesting::geom::Point2(point.y(), -point.x());
   case 180:
-    return {.x = -point.x, .y = -point.y};
+    return shiny::nesting::geom::Point2(-point.x(), -point.y());
   case 270:
-    return {.x = -point.y, .y = point.x};
+    return shiny::nesting::geom::Point2(-point.y(), point.x());
   default:
     throw std::runtime_error(
         "rotation stability fixtures require right-angle rotations");
@@ -147,13 +147,13 @@ auto canonicalize_components(const DecompositionResult &result,
 
   for (const auto &component : result.components) {
     shiny::nesting::geom::Ring rotated;
-    rotated.reserve(component.outer.size());
-    for (const auto &point : component.outer) {
+    rotated.reserve(component.outer().size());
+    for (const auto &point : component.outer()) {
       rotated.push_back(inverse_rotate_point(point, rotation_degrees));
     }
     canonical_components.push_back(
-        normalize_polygon(shiny::nesting::geom::Polygon{.outer = rotated})
-            .outer);
+        normalize_polygon(shiny::nesting::geom::Polygon(rotated))
+            .outer());
   }
 
   std::sort(canonical_components.begin(), canonical_components.end(),
@@ -172,8 +172,8 @@ void require_decomposition_equal(const DecompositionResult &actual,
             expected.components[index].source_component_index);
     REQUIRE(actual.components[index].normalized ==
             expected.components[index].normalized);
-    require_ring_equal(actual.components[index].outer,
-                       expected.components[index].outer);
+    require_ring_equal(actual.components[index].outer(),
+                       expected.components[index].outer());
   }
 }
 
@@ -211,7 +211,7 @@ TEST_CASE("decomposition fixtures", "[decomposition][fixtures]") {
 
       for (const auto &component : result.components) {
         REQUIRE(component.normalized);
-        REQUIRE(component.outer.size() >= 3U);
+        REQUIRE(component.outer().size() >= 3U);
       }
 
       if (const auto expected_components =
@@ -281,7 +281,7 @@ TEST_CASE("convex decomposition returns a single normalized component",
           "[decomposition][convex]") {
   const DecompositionRequest request{
       .piece_id = 41,
-      .polygon = {.outer = {{0.0, 0.0}, {5.0, 0.0}, {5.0, 2.0}, {0.0, 2.0}}},
+      .polygon = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0}, {5.0, 0.0}, {5.0, 2.0}, {0.0, 2.0}}),
       .rotation = {.degrees = 0.0},
       .algorithm = DecompositionAlgorithm::cgal_optimal_convex_partition,
   };
@@ -292,7 +292,7 @@ TEST_CASE("convex decomposition returns a single normalized component",
   REQUIRE(result.components.size() == 1U);
   REQUIRE_FALSE(result.cached);
   REQUIRE(result.components.front().normalized);
-  require_ring_equal(result.components.front().outer,
+  require_ring_equal(result.components.front().outer(),
                      shiny::nesting::geom::Ring{
                          {0.0, 0.0}, {5.0, 0.0}, {5.0, 2.0}, {0.0, 2.0}});
   REQUIRE(validate_decomposition(request.polygon, result) ==
@@ -303,12 +303,12 @@ TEST_CASE("concave decomposition produces valid convex components",
           "[decomposition][concave]") {
   const DecompositionRequest request{
       .piece_id = 42,
-      .polygon = {.outer = {{0.0, 0.0},
+      .polygon = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
                             {4.0, 0.0},
                             {4.0, 1.0},
                             {1.0, 1.0},
                             {1.0, 4.0},
-                            {0.0, 4.0}}},
+                            {0.0, 4.0}}),
       .rotation = {.degrees = 90.0},
       .algorithm = DecompositionAlgorithm::cgal_optimal_convex_partition,
   };
@@ -320,7 +320,7 @@ TEST_CASE("concave decomposition produces valid convex components",
   REQUIRE_FALSE(result.cached);
   for (const auto &component : result.components) {
     REQUIRE(component.normalized);
-    REQUIRE(component.outer.size() >= 3U);
+    REQUIRE(component.outer().size() >= 3U);
   }
   REQUIRE(validate_decomposition(request.polygon, result) ==
           DecompositionValidity::valid);
@@ -330,13 +330,13 @@ TEST_CASE("decomposition falls back for occupied-region roof polygon",
           "[decomposition][concave][regression]") {
   const DecompositionRequest request{
       .piece_id = 43,
-      .polygon = {.outer = {{0.0, 2.0},
+      .polygon = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 2.0},
                             {2.0, 2.0},
                             {2.0, 0.0},
                             {5.0, 0.0},
                             {5.0, 2.0},
                             {3.0, 2.0},
-                            {1.0, 4.0}}},
+                            {1.0, 4.0}}),
       .rotation = {.degrees = 0.0},
       .algorithm = DecompositionAlgorithm::cgal_optimal_convex_partition,
   };
@@ -349,7 +349,7 @@ TEST_CASE("decomposition falls back for occupied-region roof polygon",
   REQUIRE(std::fabs(result.signed_area - 9.0) <= epsilon);
   for (const auto &component : result.components) {
     REQUIRE(component.normalized);
-    REQUIRE(component.outer.size() >= 3U);
+    REQUIRE(component.outer().size() >= 3U);
   }
   REQUIRE(validate_decomposition(request.polygon, result) ==
           DecompositionValidity::valid);
@@ -359,8 +359,7 @@ TEST_CASE("hole-aware decomposition returns valid convex components",
           "[decomposition][holes]") {
   const DecompositionRequest request{
       .piece_id = 51,
-      .polygon = {.outer = {{0.0, 0.0}, {6.0, 0.0}, {6.0, 6.0}, {0.0, 6.0}},
-                  .holes = {{{2.0, 2.0}, {2.0, 4.0}, {4.0, 4.0}, {4.0, 2.0}}}},
+      .polygon = shiny::nesting::geom::PolygonWithHoles({{0.0, 0.0}, {6.0, 0.0}, {6.0, 6.0}, {0.0, 6.0}}, {{{2.0, 2.0}, {2.0, 4.0}, {4.0, 4.0}, {4.0, 2.0}}}),
       .rotation = {.degrees = 0.0},
       .algorithm = DecompositionAlgorithm::cgal_optimal_convex_partition,
   };
@@ -372,7 +371,7 @@ TEST_CASE("hole-aware decomposition returns valid convex components",
   REQUIRE(std::fabs(result.signed_area - 32.0) <= epsilon);
   for (const auto &component : result.components) {
     REQUIRE(component.normalized);
-    REQUIRE(component.outer.size() >= 3U);
+    REQUIRE(component.outer().size() >= 3U);
   }
   REQUIRE(validate_decomposition(request.polygon, result) ==
           DecompositionValidity::valid);
@@ -383,11 +382,11 @@ TEST_CASE("decomposition cache uses piece rotation keys and revisions",
   CacheStore<PieceRotationKey, DecompositionResult> cache_store{};
   const DecompositionRequest request{
       .piece_id = 50,
-      .polygon = {.outer = {{0.0, 0.0},
+      .polygon = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
                             {4.0, 0.0},
                             {4.0, 1.0},
                             {1.0, 4.0},
-                            {0.0, 4.0}}},
+                            {0.0, 4.0}}),
       .rotation = {.degrees = 180.0},
       .algorithm = DecompositionAlgorithm::cgal_approx_convex_partition,
   };
@@ -414,7 +413,7 @@ TEST_CASE("invalid decomposition input is rejected",
           "[decomposition][invalid]") {
   const DecompositionRequest request{
       .piece_id = 52,
-      .polygon = {.outer = {{0.0, 0.0}, {1.0, 0.0}}},
+      .polygon = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0}, {1.0, 0.0}}),
       .rotation = {.degrees = 0.0},
       .algorithm = DecompositionAlgorithm::cgal_optimal_convex_partition,
   };
@@ -438,30 +437,30 @@ TEST_CASE("nfp engine owns convex, nonconvex, and decomposition caches",
   };
   const DecompositionRequest decomposition_request{
       .piece_id = 63,
-      .polygon = {.outer = {{0.0, 0.0},
+      .polygon = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
                             {4.0, 0.0},
                             {4.0, 1.0},
                             {1.0, 1.0},
                             {1.0, 4.0},
-                            {0.0, 4.0}}},
+                            {0.0, 4.0}}),
       .rotation = {.degrees = 0.0},
       .algorithm = DecompositionAlgorithm::cgal_optimal_convex_partition,
   };
   const NonconvexNfpRequest nonconvex_request{
       .piece_a_id = 64,
       .piece_b_id = 65,
-      .piece_a = {.outer = {{0.0, 0.0},
+      .piece_a = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
                             {4.0, 0.0},
                             {4.0, 1.0},
                             {1.0, 1.0},
                             {1.0, 4.0},
-                            {0.0, 4.0}}},
-      .piece_b = {.outer = {{0.0, 0.0},
+                            {0.0, 4.0}}),
+      .piece_b = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
                             {3.0, 0.0},
                             {3.0, 1.0},
                             {2.0, 1.0},
                             {2.0, 3.0},
-                            {0.0, 3.0}}},
+                            {0.0, 3.0}}),
       .rotation_a = {.degrees = 0.0},
       .rotation_b = {.degrees = 90.0},
       .algorithm_revision = AlgorithmRevision{4},

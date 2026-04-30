@@ -27,5 +27,5 @@ TEST_CASE("OR-Datasets explicit-bin schema loads", "[io][or-datasets]") {
   REQUIRE(dataset.value().uses_explicit_bins());
   REQUIRE(dataset.value().bins.size() == 2);
   REQUIRE(dataset.value().bins.front().zones.size() == 1);
-  REQUIRE(dataset.value().bins.front().polygon.holes.size() == 1);
+  REQUIRE(dataset.value().bins.front().polygon.holes().size() == 1);
 }

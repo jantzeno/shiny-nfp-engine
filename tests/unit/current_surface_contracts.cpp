@@ -47,12 +47,12 @@ using shiny::nesting::util::Status;
 auto rectangle(const double min_x, const double min_y, const double max_x,
                const double max_y) -> PolygonWithHoles {
   return shiny::nesting::geom::normalize_polygon(
-      PolygonWithHoles{.outer = {
-                           {.x = min_x, .y = min_y},
-                           {.x = max_x, .y = min_y},
-                           {.x = max_x, .y = max_y},
-                           {.x = min_x, .y = max_y},
-                       }});
+      shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+          shiny::nesting::geom::Point2(min_x, min_y),
+          shiny::nesting::geom::Point2(max_x, min_y),
+          shiny::nesting::geom::Point2(max_x, max_y),
+          shiny::nesting::geom::Point2(min_x, max_y),
+      }));
 }
 
 auto base_request() -> NestingRequest {
@@ -111,9 +111,9 @@ TEST_CASE("api contracts reject invalid request families",
   zero_quantity.pieces.front().quantity = 0;
 
   auto invalid_piece_polygon = base_request();
-  invalid_piece_polygon.pieces.front().polygon = PolygonWithHoles{
-      .outer = {{0.0, 0.0}, {1.0, 0.0}},
-  };
+  invalid_piece_polygon.pieces.front().polygon =
+      shiny::nesting::geom::PolygonWithHoles(
+          shiny::nesting::geom::Ring{{0.0, 0.0}, {1.0, 0.0}});
 
   auto selected_bin_missing = base_request();
   selected_bin_missing.execution.selected_bin_ids = {999};
@@ -137,10 +137,12 @@ TEST_CASE("api contracts reject invalid request families",
   zero_stock.bins.front().stock = 0;
 
   auto invalid_exclusion = base_request();
-  invalid_exclusion.bins.front().exclusion_zones.push_back({
-      .zone_id = 55,
-      .region = {.outer = {{0.0, 0.0}, {1.0, 0.0}}},
-  });
+  invalid_exclusion.bins.front().exclusion_zones.push_back(
+      shiny::nesting::place::BedExclusionZone{
+          .zone_id = 55,
+          .region = shiny::nesting::geom::Polygon(
+              shiny::nesting::geom::Ring{{0.0, 0.0}, {1.0, 0.0}}),
+      });
 
   auto invalid_spacing = base_request();
   invalid_spacing.execution.part_spacing = -0.25;
@@ -242,14 +244,8 @@ TEST_CASE(
 
 TEST_CASE("geometry invariants stay stable under normalization and transforms",
           "[contracts][geometry][property]") {
-  const PolygonWithHoles noisy{
-      .outer = {{0.0, 0.0},
-                {0.0, 0.0},
-                {4.0, 0.0},
-                {4.0, 3.0},
-                {0.0, 3.0},
-                {0.0, 0.0}},
-  };
+  const PolygonWithHoles noisy(shiny::nesting::geom::Ring{
+      {0.0, 0.0}, {0.0, 0.0}, {4.0, 0.0}, {4.0, 3.0}, {0.0, 3.0}, {0.0, 0.0}});
 
   const auto sanitized = shiny::nesting::geom::sanitize_polygon(noisy);
   REQUIRE(sanitized.duplicate_vertices >= 2U);
@@ -272,10 +268,10 @@ TEST_CASE("geometry invariants stay stable under normalization and transforms",
   REQUIRE(shiny::nesting::geom::polygon_area(translated) == Approx(12.0));
   REQUIRE(shiny::nesting::geom::polygon_area(rotated) == Approx(12.0));
   REQUIRE(shiny::nesting::geom::polygon_area(mirrored) == Approx(12.0));
-  REQUIRE(shiny::nesting::geom::normalize_polygon(sanitized.polygon).outer ==
+  REQUIRE(shiny::nesting::geom::normalize_polygon(sanitized.polygon).outer() ==
           shiny::nesting::geom::normalize_polygon(
               shiny::nesting::geom::normalize_polygon(sanitized.polygon))
-              .outer);
+              .outer());
 }
 
 TEST_CASE("boolean topology identities preserve area",

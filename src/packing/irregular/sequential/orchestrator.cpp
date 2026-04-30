@@ -287,6 +287,20 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
             std::rotate(trace.begin() + static_cast<std::ptrdiff_t>(index),
                         trace.end() - 1, trace.end());
           };
+          const auto restore_placement_position = [&](const std::size_t index) {
+            if (bin.state.placements.empty() ||
+                index >= bin.state.placements.size()) {
+              return;
+            }
+            std::rotate(bin.state.placements.begin() +
+                            static_cast<std::ptrdiff_t>(index),
+                        bin.state.placements.end() - 1,
+                        bin.state.placements.end());
+            std::rotate(bin.placement_bounds.begin() +
+                            static_cast<std::ptrdiff_t>(index),
+                        bin.placement_bounds.end() - 1,
+                        bin.placement_bounds.end());
+          };
           const auto trace_index =
               original_trace_index == trace.end()
                   ? std::nullopt
@@ -300,10 +314,20 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
           rebuild_working_bin(bin, request.request.execution);
 
           PlacementAttemptContext compaction_attempt{};
-          const auto search_result = find_best_for_bin(
-              bin, *piece_it->second, request, control, search_throttle,
-              placements_completed, piece_instances.size(), compaction_attempt,
-              &workspace->nfp_cache, &workspace->search_metrics, nullptr);
+          PlacementSearchResult search_result;
+          if (request.request.execution.irregular.candidate_strategy ==
+              CandidateStrategy::nfp_perfect) {
+            search_result = try_exact_fit_candidate(
+                bin, *piece_it->second, request, control, compaction_attempt);
+          }
+          if (!search_result.candidate.has_value() &&
+              search_result.status != PlacementSearchStatus::interrupted) {
+            search_result = find_best_for_bin(
+                bin, *piece_it->second, request, control, search_throttle,
+                placements_completed, piece_instances.size(),
+                compaction_attempt, &workspace->nfp_cache,
+                &workspace->search_metrics, nullptr);
+          }
           candidate_evaluations_completed +=
               compaction_attempt.candidate_evaluations_completed;
 
@@ -312,6 +336,7 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
                                *search_result.candidate, current_candidate)) {
             apply_candidate(bin, *search_result.candidate, trace, false,
                             request.request.execution);
+            restore_placement_position(placement_index);
             if (trace_index.has_value()) {
               restore_trace_position(*trace_index);
             }
@@ -321,6 +346,7 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
 
           apply_candidate(bin, current_candidate, trace, false,
                           request.request.execution);
+          restore_placement_position(placement_index);
           if (trace_index.has_value()) {
             restore_trace_position(*trace_index);
           }

@@ -62,24 +62,24 @@ constexpr std::uint32_t kOverlapPairPieceB = 14U;
 [[nodiscard]] auto polygon_aabb_local(const geom::PolygonWithHoles &polygon)
     -> geom::Box2 {
   geom::Box2 box{{0.0, 0.0}, {0.0, 0.0}};
-  if (polygon.outer.empty()) {
+  if (polygon.outer().empty()) {
     return box;
   }
-  box.min = polygon.outer.front();
-  box.max = polygon.outer.front();
-  for (const auto &p : polygon.outer) {
-    box.min.x = std::min(box.min.x, p.x);
-    box.min.y = std::min(box.min.y, p.y);
-    box.max.x = std::max(box.max.x, p.x);
-    box.max.y = std::max(box.max.y, p.y);
+  box.min = polygon.outer().front();
+  box.max = polygon.outer().front();
+  for (const auto &p : polygon.outer()) {
+    box.min.set_x(std::min(box.min.x(), p.x()));
+    box.min.set_y(std::min(box.min.y(), p.y()));
+    box.max.set_x(std::max(box.max.x(), p.x()));
+    box.max.set_y(std::max(box.max.y(), p.y()));
   }
   return box;
 }
 
 [[nodiscard]] auto rects_strictly_overlap(const geom::Box2 &a,
                                           const geom::Box2 &b) -> bool {
-  return !(a.max.x <= b.min.x || b.max.x <= a.min.x || a.max.y <= b.min.y ||
-           b.max.y <= a.min.y);
+  return !(a.max.x() <= b.min.x() || b.max.x() <= a.min.x() || a.max.y() <= b.min.y() ||
+           b.max.y() <= a.min.y());
 }
 
 [[nodiscard]] auto base_solve_control(const MtgRequestOptions &options)
@@ -347,11 +347,11 @@ TEST_CASE("sequential exclusion-zone overlap attempt advances to next seed",
 
     const double overlap_area =
         exact_intersection_area(piece11->polygon, piece14->polygon);
-    INFO(label << " piece11 tx=" << piece11->placement.translation.x
-               << " ty=" << piece11->placement.translation.y
+    INFO(label << " piece11 tx=" << piece11->placement.translation.x()
+               << " ty=" << piece11->placement.translation.y()
                << " rot=" << piece11->resolved_rotation.degrees
-               << " piece14 tx=" << piece14->placement.translation.x
-               << " ty=" << piece14->placement.translation.y
+               << " piece14 tx=" << piece14->placement.translation.x()
+               << " ty=" << piece14->placement.translation.y()
                << " rot=" << piece14->resolved_rotation.degrees
                << " overlap_area=" << overlap_area);
     if (expect_overlap) {

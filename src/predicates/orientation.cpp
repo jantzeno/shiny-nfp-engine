@@ -8,7 +8,7 @@ namespace {
 using Kernel = CGAL::Exact_predicates_inexact_constructions_kernel;
 
 [[nodiscard]] auto to_cgal_point(const geom::Point2 &point) -> Kernel::Point_2 {
-  return {point.x, point.y};
+  return {point.x(), point.y()};
 }
 
 } // namespace

@@ -10,6 +10,7 @@
 #include "geometry/normalize.hpp"
 #include "geometry/polygon.hpp"
 #include "geometry/sanitize.hpp"
+#include "geometry/transform.hpp"
 #include "geometry/validity.hpp"
 #include "geometry/vector_ops.hpp"
 #include "logging/shiny_log.hpp"
@@ -177,47 +178,36 @@ struct TranslationVector {
   for (std::size_t index = 0; index < ring.size(); ++index) {
     const auto &current = ring[index];
     const auto &next = ring[(index + 1U) % ring.size()];
-    const auto edge_cross = current.x * next.y - next.x * current.y;
+    const auto edge_cross = current.x() * next.y() - next.x() * current.y();
     accumulated_cross += edge_cross;
-    centroid_x += (current.x + next.x) * edge_cross;
-    centroid_y += (current.y + next.y) * edge_cross;
+    centroid_x += (current.x() + next.x()) * edge_cross;
+    centroid_y += (current.y() + next.y()) * edge_cross;
   }
 
   if (near_zero(accumulated_cross)) {
     centroid_x = 0.0;
     centroid_y = 0.0;
     for (const auto &point : ring) {
-      centroid_x += point.x;
-      centroid_y += point.y;
+      centroid_x += point.x();
+      centroid_y += point.y();
     }
     const auto scale = 1.0 / static_cast<double>(ring.size());
-    return {.x = centroid_x * scale, .y = centroid_y * scale};
+    return geom::Point2(centroid_x * scale, centroid_y * scale);
   }
 
   const auto scale = 1.0 / (3.0 * accumulated_cross);
-  return {.x = centroid_x * scale, .y = centroid_y * scale};
-}
-
-[[nodiscard]] auto translate_ring(const geom::Ring &ring,
-                                  const geom::Vector2 &translation)
-    -> geom::Ring {
-  geom::Ring translated;
-  translated.reserve(ring.size());
-  for (const auto &point : ring) {
-    translated.push_back(geom::point_plus_vector(point, translation));
-  }
-  return translated;
+  return geom::Point2(centroid_x * scale, centroid_y * scale);
 }
 
 [[nodiscard]] auto polygon_less(const geom::PolygonWithHoles &lhs,
                                 const geom::PolygonWithHoles &rhs) -> bool {
   const auto lhs_bounds = geom::compute_bounds(lhs);
   const auto rhs_bounds = geom::compute_bounds(rhs);
-  if (lhs_bounds.min.x != rhs_bounds.min.x) {
-    return lhs_bounds.min.x < rhs_bounds.min.x;
+  if (lhs_bounds.min.x() != rhs_bounds.min.x()) {
+    return lhs_bounds.min.x() < rhs_bounds.min.x();
   }
-  if (lhs_bounds.min.y != rhs_bounds.min.y) {
-    return lhs_bounds.min.y < rhs_bounds.min.y;
+  if (lhs_bounds.min.y() != rhs_bounds.min.y()) {
+    return lhs_bounds.min.y() < rhs_bounds.min.y();
   }
   return geom::polygon_area(lhs) < geom::polygon_area(rhs);
 }
@@ -233,8 +223,8 @@ merge_polygon_set(std::vector<geom::PolygonWithHoles> polygons)
         if (!unioned.ok()) {
           SHINY_DEBUG("orbiting_nfp: merge union failed status={} lhs_outer={} "
                       "rhs_outer={}",
-                      util::status_name(unioned.status()), lhs.outer.size(),
-                      rhs.outer.size());
+                      util::status_name(unioned.status()), lhs.outer().size(),
+                      rhs.outer().size());
           return std::nullopt;
         }
         if (unioned.value().size() != 1U) {
@@ -250,8 +240,7 @@ merge_polygon_set(std::vector<geom::PolygonWithHoles> polygons)
                                       const geom::Ring &orbiting)
     -> util::StatusOr<bool> {
   auto overlap = poly::try_intersection_polygons(
-      geom::PolygonWithHoles{.outer = stationary},
-      geom::PolygonWithHoles{.outer = orbiting});
+      geom::PolygonWithHoles(stationary), geom::PolygonWithHoles(orbiting));
   if (!overlap.ok()) {
     SHINY_DEBUG("orbiting_nfp: overlap intersection failed status={}",
                 util::status_name(overlap.status()));
@@ -329,9 +318,9 @@ merge_polygon_set(std::vector<geom::PolygonWithHoles> polygons)
           {.type = ContactType::edge_edge,
            .stationary_index = stationary_index,
            .orbiting_index = orbiting_index,
-           .point = {.x = (orbiting_edge.start.x + orbiting_edge.end.x) / 2.0,
-                     .y =
-                         (orbiting_edge.start.y + orbiting_edge.end.y) / 2.0}});
+           .point = geom::Point2(
+               (orbiting_edge.start.x() + orbiting_edge.end.x()) / 2.0,
+               (orbiting_edge.start.y() + orbiting_edge.end.y()) / 2.0)});
     }
   }
 
@@ -453,7 +442,7 @@ handle_perfect_fit(const TouchingGroup &touching_group,
   const auto radial = geom::normalize_vector(
       geom::vector_between(stationary_centroid, orbiting_position),
       kContactTolerance);
-  const geom::Vector2 ccw_preferred{.x = -radial.y, .y = radial.x};
+  const geom::Vector2 ccw_preferred(-radial.y(), radial.x());
 
   const TranslationVector *best = &vectors.front();
   double best_score = -std::numeric_limits<double>::infinity();
@@ -605,9 +594,8 @@ struct CollisionEvent {
     return util::Status::computation_failed;
   }
 
-  const auto polygon = geom::normalize_polygon(geom::PolygonWithHoles{
-      .outer = std::move(simplified),
-  });
+  const auto polygon =
+      geom::normalize_polygon(geom::PolygonWithHoles(std::move(simplified)));
   if (!geom::validate_polygon(polygon).is_valid() ||
       geom::polygon_area(polygon) <= kContactTolerance * kContactTolerance) {
     return util::Status::computation_failed;
@@ -646,8 +634,8 @@ struct CollisionEvent {
 
   for (std::size_t iteration = 0; iteration < kMaxIterations; ++iteration) {
     (void)iteration;
-    const auto orbiting_current = translate_ring(
-        orbiting, {.x = current_position.x, .y = current_position.y});
+    const auto orbiting_current = geom::translate(
+        orbiting, geom::Vector2(current_position.x(), current_position.y()));
     const auto touching_group =
         create_touching_group(stationary, orbiting_current, current_position);
 
@@ -732,22 +720,22 @@ struct CollisionEvent {
   const auto stationary_it =
       std::min_element(stationary_hull.begin(), stationary_hull.end(),
                        [](const geom::Point2 &lhs, const geom::Point2 &rhs) {
-                         if (lhs.y != rhs.y) {
-                           return lhs.y < rhs.y;
+                         if (lhs.y() != rhs.y()) {
+                           return lhs.y() < rhs.y();
                          }
-                         return lhs.x < rhs.x;
+                         return lhs.x() < rhs.x();
                        });
   const auto orbiting_it =
       std::max_element(orbiting.begin(), orbiting.end(),
                        [](const geom::Point2 &lhs, const geom::Point2 &rhs) {
-                         if (lhs.y != rhs.y) {
-                           return lhs.y < rhs.y;
+                         if (lhs.y() != rhs.y()) {
+                           return lhs.y() < rhs.y();
                          }
-                         return lhs.x > rhs.x;
+                         return lhs.x() > rhs.x();
                        });
 
-  return {.x = stationary_it->x - orbiting_it->x,
-          .y = stationary_it->y - orbiting_it->y};
+  return geom::Point2(stationary_it->x() - orbiting_it->x(),
+                      stationary_it->y() - orbiting_it->y());
 }
 
 enum class ExtremeAxis {
@@ -765,7 +753,7 @@ enum class ExtremeAxis {
   }
 
   auto primary = [&](const geom::Point2 &point) {
-    return axis == ExtremeAxis::x ? point.x : point.y;
+    return axis == ExtremeAxis::x ? point.x() : point.y();
   };
 
   double extreme_value = primary(ring.front());
@@ -792,8 +780,8 @@ auto append_start_positions(std::vector<geom::Point2> &start_positions,
     -> void {
   for (const auto &stationary_point : stationary_points) {
     for (const auto &orbiting_point : orbiting_points) {
-      const geom::Point2 candidate{.x = stationary_point.x - orbiting_point.x,
-                                   .y = stationary_point.y - orbiting_point.y};
+      const geom::Point2 candidate(stationary_point.x() - orbiting_point.x(),
+                                   stationary_point.y() - orbiting_point.y());
       const bool seen = std::any_of(
           start_positions.begin(), start_positions.end(),
           [&](const geom::Point2 &existing) {
@@ -837,16 +825,16 @@ auto append_start_positions(std::vector<geom::Point2> &start_positions,
 compute_simple_orbiting_nfp(const geom::PolygonWithHoles &fixed,
                             const geom::PolygonWithHoles &moving)
     -> util::StatusOr<geom::PolygonWithHoles> {
-  if (!fixed.holes.empty() || !moving.holes.empty()) {
+  if (!fixed.holes().empty() || !moving.holes().empty()) {
     return util::Status::invalid_input;
   }
 
-  const auto stationary = ensure_ccw(fixed.outer);
-  const auto stationary_hull = ensure_ccw(
-      poly::compute_convex_hull(geom::Polygon{.outer = stationary}).outer);
-  const auto orbiting = ensure_ccw(moving.outer);
-  const auto orbiting_hull = ensure_ccw(
-      poly::compute_convex_hull(geom::Polygon{.outer = orbiting}).outer);
+  const auto stationary = ensure_ccw(fixed.outer());
+  const auto stationary_hull =
+      ensure_ccw(poly::compute_convex_hull(geom::Polygon(stationary)).outer());
+  const auto orbiting = ensure_ccw(moving.outer());
+  const auto orbiting_hull =
+      ensure_ccw(poly::compute_convex_hull(geom::Polygon(orbiting)).outer());
   if (stationary.size() < 3U || stationary_hull.size() < 3U ||
       orbiting.size() < 3U || orbiting_hull.size() < 3U) {
     return util::Status::invalid_input;
@@ -854,8 +842,8 @@ compute_simple_orbiting_nfp(const geom::PolygonWithHoles &fixed,
 
   for (const auto &start_position :
        candidate_start_positions(stationary_hull, orbiting_hull)) {
-    const auto orbiting_at_start = translate_ring(
-        orbiting, {.x = start_position.x, .y = start_position.y});
+    const auto orbiting_at_start = geom::translate(
+        orbiting, geom::Vector2(start_position.x(), start_position.y()));
     auto overlap = has_actual_overlap(stationary, orbiting_at_start);
     if (!overlap.ok()) {
       return overlap.status();
@@ -884,24 +872,25 @@ auto compute_orbiting_nfp(const geom::PolygonWithHoles &fixed,
   if (!geom::validate_polygon(normalized_fixed).is_valid() ||
       !geom::validate_polygon(normalized_moving).is_valid()) {
     SHINY_DEBUG("orbiting_nfp: invalid input fixed_outer={} moving_outer={}",
-                normalized_fixed.outer.size(), normalized_moving.outer.size());
+                normalized_fixed.outer().size(),
+                normalized_moving.outer().size());
     return util::Status::invalid_input;
   }
 
   const auto vertex_product =
-      normalized_fixed.outer.size() * normalized_moving.outer.size();
+      normalized_fixed.outer().size() * normalized_moving.outer().size();
   if (vertex_product > kMaxOrbitingVertexProduct) {
     SHINY_DEBUG(
         "orbiting_nfp: skipping high-complexity fallback fixed_outer={} "
         "moving_outer={} vertex_product={}",
-        normalized_fixed.outer.size(), normalized_moving.outer.size(),
+        normalized_fixed.outer().size(), normalized_moving.outer().size(),
         vertex_product);
     return util::Status::computation_failed;
   }
 
-  if (normalized_fixed.holes.empty() && normalized_moving.holes.empty() &&
-      decomp::is_convex(geom::Polygon{.outer = normalized_fixed.outer}) &&
-      decomp::is_convex(geom::Polygon{.outer = normalized_moving.outer})) {
+  if (normalized_fixed.holes().empty() && normalized_moving.holes().empty() &&
+      geom::polygon_is_convex(geom::Polygon(normalized_fixed.outer())) &&
+      geom::polygon_is_convex(geom::Polygon(normalized_moving.outer()))) {
     if (auto simple_nfp =
             compute_simple_orbiting_nfp(normalized_fixed, normalized_moving);
         simple_nfp.ok()) {
@@ -926,8 +915,8 @@ auto compute_orbiting_nfp(const geom::PolygonWithHoles &fixed,
   for (const auto &fixed_part : fixed_parts) {
     for (const auto &moving_part : moving_parts) {
       auto pair_nfp = compute_simple_orbiting_nfp(
-          geom::PolygonWithHoles{.outer = fixed_part.outer},
-          geom::PolygonWithHoles{.outer = moving_part.outer});
+          geom::PolygonWithHoles(fixed_part.outer()),
+          geom::PolygonWithHoles(moving_part.outer()));
       if (pair_nfp.ok()) {
         aggregate.push_back(std::move(pair_nfp).value());
         continue;

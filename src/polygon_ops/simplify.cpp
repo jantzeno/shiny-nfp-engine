@@ -142,23 +142,22 @@ void simplify_open_chain_douglas_peucker(std::span<const geom::Point2> chain,
 
 auto simplify_collinear_ring(std::span<const geom::Point2> ring) -> geom::Ring {
   const auto normalized = geom::normalize_polygon(
-      geom::Polygon{.outer = geom::Ring(ring.begin(), ring.end())});
-  const auto simplified = detail::simplify_normalized_ring(normalized.outer);
-  return geom::normalize_polygon(geom::Polygon{.outer = simplified}).outer;
+      geom::Polygon(geom::Ring(ring.begin(), ring.end())));
+  const auto simplified = detail::simplify_normalized_ring(normalized.outer());
+  return geom::normalize_polygon(geom::Polygon(simplified)).outer();
 }
 
 auto simplify_polygon(const geom::Polygon &polygon) -> geom::Polygon {
   const auto normalized = geom::normalize_polygon(polygon);
-  return geom::normalize_polygon(geom::Polygon{
-      .outer = detail::simplify_normalized_ring(normalized.outer)});
+  return geom::normalize_polygon(
+      geom::Polygon(detail::simplify_normalized_ring(normalized.outer())));
 }
 
 auto simplify_polygon_douglas_peucker(const geom::Polygon &polygon,
                                       double epsilon) -> geom::Polygon {
   const auto normalized = geom::normalize_polygon(polygon);
-  return geom::normalize_polygon(geom::Polygon{
-      .outer =
-          detail::simplify_ring_douglas_peucker(normalized.outer, epsilon)});
+  return geom::normalize_polygon(geom::Polygon(
+      detail::simplify_ring_douglas_peucker(normalized.outer(), epsilon)));
 }
 
 auto simplify_polygon(const geom::PolygonWithHoles &polygon)
@@ -166,11 +165,11 @@ auto simplify_polygon(const geom::PolygonWithHoles &polygon)
   const auto normalized = geom::normalize_polygon(polygon);
 
   geom::PolygonWithHoles simplified{};
-  simplified.outer = detail::simplify_normalized_ring(normalized.outer);
-  simplified.holes.reserve(normalized.holes.size());
+  simplified.outer() = detail::simplify_normalized_ring(normalized.outer());
+  simplified.holes().reserve(normalized.holes().size());
 
-  for (const auto &hole : normalized.holes) {
-    simplified.holes.push_back(detail::simplify_normalized_ring(hole));
+  for (const auto &hole : normalized.holes()) {
+    simplified.holes().push_back(detail::simplify_normalized_ring(hole));
   }
 
   return geom::normalize_polygon(simplified);
@@ -182,12 +181,12 @@ auto simplify_polygon_douglas_peucker(const geom::PolygonWithHoles &polygon,
   const auto normalized = geom::normalize_polygon(polygon);
 
   geom::PolygonWithHoles simplified{};
-  simplified.outer =
-      detail::simplify_ring_douglas_peucker(normalized.outer, epsilon);
-  simplified.holes.reserve(normalized.holes.size());
+  simplified.outer() =
+      detail::simplify_ring_douglas_peucker(normalized.outer(), epsilon);
+  simplified.holes().reserve(normalized.holes().size());
 
-  for (const auto &hole : normalized.holes) {
-    simplified.holes.push_back(
+  for (const auto &hole : normalized.holes()) {
+    simplified.holes().push_back(
         detail::simplify_ring_douglas_peucker(hole, epsilon));
   }
 

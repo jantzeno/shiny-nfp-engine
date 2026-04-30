@@ -36,10 +36,10 @@ TEST_CASE("geometry normalization fixtures",
       const auto normalized_polygon = normalize_polygon(input_polygon);
       require_polygon_equal(normalized_polygon, expected);
 
-      if (input_polygon.holes.empty()) {
+      if (input_polygon.holes().empty()) {
         const Polygon normalized_simple =
-            normalize_polygon(Polygon{.outer = input_polygon.outer});
-        require_ring_equal(normalized_simple.outer, expected.outer);
+            normalize_polygon(shiny::nesting::geom::Polygon(input_polygon.outer()));
+        require_ring_equal(normalized_simple.outer(), expected.outer());
       }
     }
   }

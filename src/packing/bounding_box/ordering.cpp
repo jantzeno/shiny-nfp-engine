@@ -15,8 +15,8 @@ auto piece_metrics_for(const PieceInput &piece,
                        const std::size_t original_index)
     -> PieceOrderingMetrics {
   const geom::Box2 bounds = compute_bounds(piece.polygon);
-  const double width = bounds.max.x - bounds.min.x;
-  const double height = bounds.max.y - bounds.min.y;
+  const double width = bounds.max.x() - bounds.min.x();
+  const double height = bounds.max.y() - bounds.min.y();
   const double polygon_piece_area = polygon_area(piece.polygon);
   const double piece_box_area = width * height;
   return {

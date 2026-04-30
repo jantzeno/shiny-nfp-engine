@@ -83,16 +83,16 @@ TEST_CASE("mtg bed margin request polygons shrink as expected",
   REQUIRE(bed2 != request.bins.end());
 
   const auto bed1_box = geom::compute_bounds(bed1->polygon);
-  REQUIRE(bed1_box.min.x == Catch::Approx(5.0));
-  REQUIRE(bed1_box.min.y == Catch::Approx(35.0));
-  REQUIRE(bed1_box.max.x == Catch::Approx(fixture.bed1.width_mm - 15.0));
-  REQUIRE(bed1_box.max.y == Catch::Approx(fixture.bed1.height_mm - 25.0));
+  REQUIRE(bed1_box.min.x() == Catch::Approx(5.0));
+  REQUIRE(bed1_box.min.y() == Catch::Approx(35.0));
+  REQUIRE(bed1_box.max.x() == Catch::Approx(fixture.bed1.width_mm - 15.0));
+  REQUIRE(bed1_box.max.y() == Catch::Approx(fixture.bed1.height_mm - 25.0));
 
   const auto bed2_box = geom::compute_bounds(bed2->polygon);
-  REQUIRE(bed2_box.min.x == Catch::Approx(0.0));
-  REQUIRE(bed2_box.min.y == Catch::Approx(30.0));
-  REQUIRE(bed2_box.max.x == Catch::Approx(fixture.bed2.width_mm - 10.0));
-  REQUIRE(bed2_box.max.y == Catch::Approx(fixture.bed2.height_mm - 20.0));
+  REQUIRE(bed2_box.min.x() == Catch::Approx(0.0));
+  REQUIRE(bed2_box.min.y() == Catch::Approx(30.0));
+  REQUIRE(bed2_box.max.x() == Catch::Approx(fixture.bed2.width_mm - 10.0));
+  REQUIRE(bed2_box.max.y() == Catch::Approx(fixture.bed2.height_mm - 20.0));
 
   options.bed1_margins_mm = {fixture.bed1.width_mm, 1.0, 0.0, 0.0};
   REQUIRE_THROWS_AS(make_request(fixture, options), std::runtime_error);
@@ -213,28 +213,28 @@ TEST_CASE("mtg asymmetric bed margins respect each side",
   for (const auto &bin : result.layout.bins) {
     if (bin.bin_id == kBed1Id) {
       for (const auto &placed : bin.placements) {
-        for (const auto &pt : placed.polygon.outer) {
+        for (const auto &pt : placed.polygon.outer()) {
           INFO("bed1 left margin (>=50) violated");
-          REQUIRE(pt.x >= bed1_left_min);
+          REQUIRE(pt.x() >= bed1_left_min);
           INFO("bed1 right margin (<=width-10) violated");
-          REQUIRE(pt.x <= bed1_right_max);
+          REQUIRE(pt.x() <= bed1_right_max);
           INFO("bed1 bottom margin (>=50) violated");
-          REQUIRE(pt.y >= bed1_bottom_min);
+          REQUIRE(pt.y() >= bed1_bottom_min);
           INFO("bed1 top margin (<=height-10) violated");
-          REQUIRE(pt.y <= bed1_top_max);
+          REQUIRE(pt.y() <= bed1_top_max);
         }
       }
     } else if (bin.bin_id == kBed2Id) {
       for (const auto &placed : bin.placements) {
-        for (const auto &pt : placed.polygon.outer) {
+        for (const auto &pt : placed.polygon.outer()) {
           INFO("bed2 left margin (>=10) violated");
-          REQUIRE(pt.x >= bed2_left_min);
+          REQUIRE(pt.x() >= bed2_left_min);
           INFO("bed2 right margin (<=width-50) violated");
-          REQUIRE(pt.x <= bed2_right_max);
+          REQUIRE(pt.x() <= bed2_right_max);
           INFO("bed2 bottom margin (>=10) violated");
-          REQUIRE(pt.y >= bed2_bottom_min);
+          REQUIRE(pt.y() >= bed2_bottom_min);
           INFO("bed2 top margin (<=height-50) violated");
-          REQUIRE(pt.y <= bed2_top_max);
+          REQUIRE(pt.y() <= bed2_top_max);
         }
       }
     }

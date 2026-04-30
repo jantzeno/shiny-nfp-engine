@@ -77,8 +77,8 @@ auto compute_penetration_depth_squared(
     return 0.0;
   }
 
-  double distance_squared = ring_distance_squared(point, normalized.outer);
-  for (const auto &hole : normalized.holes) {
+  double distance_squared = ring_distance_squared(point, normalized.outer());
+  for (const auto &hole : normalized.holes()) {
     distance_squared =
         std::min(distance_squared, ring_distance_squared(point, hole));
   }

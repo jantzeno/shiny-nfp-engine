@@ -76,10 +76,10 @@ auto metrics_for_layout(const pack::Layout &layout) -> LayoutMetrics {
         initialized = true;
         continue;
       }
-      envelope.min.x = std::min(envelope.min.x, bounds.min.x);
-      envelope.min.y = std::min(envelope.min.y, bounds.min.y);
-      envelope.max.x = std::max(envelope.max.x, bounds.max.x);
-      envelope.max.y = std::max(envelope.max.y, bounds.max.y);
+      envelope.min.set_x(std::min(envelope.min.x(), bounds.min.x()));
+      envelope.min.set_y(std::min(envelope.min.y(), bounds.min.y()));
+      envelope.max.set_x(std::max(envelope.max.x(), bounds.max.x()));
+      envelope.max.set_y(std::max(envelope.max.y(), bounds.max.y()));
     }
 
     strip_length += geom::box_width(envelope);

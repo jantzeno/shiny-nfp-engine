@@ -64,7 +64,7 @@ constexpr std::uintmax_t kMaxJsonInputBytes = 8U * 1024U * 1024U;
   const auto x = iterator->second.get_value<double>();
   ++iterator;
   const auto y = iterator->second.get_value<double>();
-  return {.x = x, .y = y};
+  return {x, y};
 }
 
 [[nodiscard]] auto parse_ring(const pt::ptree &node) -> geom::Ring {
@@ -80,15 +80,15 @@ constexpr std::uintmax_t kMaxJsonInputBytes = 8U * 1024U * 1024U;
   const auto type = node.get<std::string>("type");
   if (type == "simple_polygon") {
     return geom::normalize_polygon(
-        geom::PolygonWithHoles{.outer = parse_ring(node.get_child("data"))});
+        geom::PolygonWithHoles(parse_ring(node.get_child("data"))));
   }
   if (type == "polygon") {
     geom::PolygonWithHoles polygon;
     const auto &data = node.get_child("data");
-    polygon.outer = parse_ring(data.get_child("outer"));
+    polygon.outer() = parse_ring(data.get_child("outer"));
     if (const auto holes = data.get_child_optional("holes")) {
       for (const auto &hole : *holes) {
-        polygon.holes.push_back(parse_ring(hole.second));
+        polygon.holes().push_back(parse_ring(hole.second));
       }
     }
     return geom::normalize_polygon(polygon);

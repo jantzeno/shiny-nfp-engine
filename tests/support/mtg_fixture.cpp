@@ -89,7 +89,7 @@ validity_issue_name(const geom::PolygonValidityIssue issue) -> const char * {
 [[nodiscard]] auto rect_polygon(double min_x, double min_y, double max_x,
                                 double max_y) -> geom::PolygonWithHoles {
   geom::PolygonWithHoles polygon{};
-  polygon.outer = {
+  polygon.outer() = {
       {min_x, min_y}, {max_x, min_y}, {max_x, max_y}, {min_x, max_y}};
   return polygon;
 }
@@ -97,16 +97,16 @@ validity_issue_name(const geom::PolygonValidityIssue issue) -> const char * {
 [[nodiscard]] auto polygon_aabb(const geom::PolygonWithHoles &polygon)
     -> geom::Box2 {
   geom::Box2 box{{0.0, 0.0}, {0.0, 0.0}};
-  if (polygon.outer.empty()) {
+  if (polygon.outer().empty()) {
     return box;
   }
-  box.min = polygon.outer.front();
-  box.max = polygon.outer.front();
-  for (const auto &p : polygon.outer) {
-    box.min.x = std::min(box.min.x, p.x);
-    box.min.y = std::min(box.min.y, p.y);
-    box.max.x = std::max(box.max.x, p.x);
-    box.max.y = std::max(box.max.y, p.y);
+  box.min = polygon.outer().front();
+  box.max = polygon.outer().front();
+  for (const auto &p : polygon.outer()) {
+    box.min.set_x(std::min(box.min.x(), p.x()));
+    box.min.set_y(std::min(box.min.y(), p.y()));
+    box.max.set_x(std::max(box.max.x(), p.x()));
+    box.max.set_y(std::max(box.max.y(), p.y()));
   }
   return box;
 }
@@ -189,10 +189,10 @@ struct ParsedShape {
     return polygon;
   }
   const auto box = polygon_aabb(polygon);
-  const double min_x = box.min.x + margins.left;
-  const double min_y = box.min.y + margins.bottom;
-  const double max_x = box.max.x - margins.right;
-  const double max_y = box.max.y - margins.top;
+  const double min_x = box.min.x() + margins.left;
+  const double min_y = box.min.y() + margins.bottom;
+  const double max_x = box.max.x() - margins.right;
+  const double max_y = box.max.y() - margins.top;
   if (max_x - min_x <= 0.0 || max_y - min_y <= 0.0) {
     throw std::runtime_error{"mtg_fixture: margins exceed bed extent"};
   }
@@ -210,10 +210,10 @@ struct ParsedShape {
 
 [[nodiscard]] auto contains_box(const geom::Box2 &outer,
                                 const geom::Box2 &inner) -> bool {
-  return inner.min.x >= outer.min.x - kInvariantTolerance &&
-         inner.min.y >= outer.min.y - kInvariantTolerance &&
-         inner.max.x <= outer.max.x + kInvariantTolerance &&
-         inner.max.y <= outer.max.y + kInvariantTolerance;
+  return inner.min.x() >= outer.min.x() - kInvariantTolerance &&
+         inner.min.y() >= outer.min.y() - kInvariantTolerance &&
+         inner.max.x() <= outer.max.x() + kInvariantTolerance &&
+         inner.max.y() <= outer.max.y() + kInvariantTolerance;
 }
 
 struct PieceValidationLookups {
@@ -408,11 +408,11 @@ auto load_mtg_fixture() -> MtgFixture {
     const double cx = 0.5 * (a.min_x + a.max_x);
     const double cy = 0.5 * (a.min_y + a.max_y);
     std::uint32_t source_bed = 0;
-    if (cx >= bed1_box.min.x && cx <= bed1_box.max.x && cy >= bed1_box.min.y &&
-        cy <= bed1_box.max.y) {
+    if (cx >= bed1_box.min.x() && cx <= bed1_box.max.x() && cy >= bed1_box.min.y() &&
+        cy <= bed1_box.max.y()) {
       source_bed = kBed1Id;
-    } else if (cx >= bed2_box.min.x && cx <= bed2_box.max.x &&
-               cy >= bed2_box.min.y && cy <= bed2_box.max.y) {
+    } else if (cx >= bed2_box.min.x() && cx <= bed2_box.max.x() &&
+               cy >= bed2_box.min.y() && cy <= bed2_box.max.y()) {
       source_bed = kBed2Id;
     } else {
       throw std::runtime_error{"mtg_fixture: artwork " +
@@ -453,16 +453,16 @@ namespace {
     return polygon;
   }
   for (int i = 0; i + 1 <= path->npts; i += 3) {
-    polygon.outer.push_back(
+    polygon.outer().push_back(
         geom::Point2{static_cast<double>(path->pts[2 * i]),
                      static_cast<double>(path->pts[2 * i + 1])});
   }
-  if (polygon.outer.size() >= 2 && path->closed != 0) {
-    const auto &front = polygon.outer.front();
-    const auto &back = polygon.outer.back();
-    if (std::abs(front.x - back.x) < 1e-9 &&
-        std::abs(front.y - back.y) < 1e-9) {
-      polygon.outer.pop_back();
+  if (polygon.outer().size() >= 2 && path->closed != 0) {
+    const auto &front = polygon.outer().front();
+    const auto &back = polygon.outer().back();
+    if (std::abs(front.x() - back.x()) < 1e-9 &&
+        std::abs(front.y() - back.y()) < 1e-9) {
+      polygon.outer().pop_back();
     }
   }
   return polygon;
@@ -496,12 +496,12 @@ largest_by_area(const std::vector<geom::PolygonWithHoles> &polygons)
   std::vector<geom::PolygonWithHoles> acc;
   std::size_t start = 0;
   for (; start < subpaths.size(); ++start) {
-    if (subpaths[start].outer.size() >= 3) {
+    if (subpaths[start].outer().size() >= 3) {
       geom::PolygonWithHoles seed{};
-      seed.outer = subpaths[start].outer;
+      seed.outer() = subpaths[start].outer();
       seed = geom::normalize_polygon(seed);
       seed = poly::simplify_polygon(seed);
-      if (!seed.outer.empty()) {
+      if (!seed.outer().empty()) {
         acc.push_back(std::move(seed));
         break;
       }
@@ -512,14 +512,14 @@ largest_by_area(const std::vector<geom::PolygonWithHoles> &polygons)
   }
 
   for (std::size_t i = start + 1; i < subpaths.size(); ++i) {
-    if (subpaths[i].outer.size() < 3) {
+    if (subpaths[i].outer().size() < 3) {
       continue;
     }
     geom::PolygonWithHoles next{};
-    next.outer = subpaths[i].outer;
+    next.outer() = subpaths[i].outer();
     next = geom::normalize_polygon(next);
     next = poly::simplify_polygon(next);
-    if (next.outer.empty()) {
+    if (next.outer().empty()) {
       continue;
     }
 
@@ -547,7 +547,7 @@ largest_by_area(const std::vector<geom::PolygonWithHoles> &polygons)
   auto silhouette = largest_by_area(acc);
   // Drop holes: the test surface is the outer silhouette only; holes from
   // sub-path topology aren't meaningful for the bug-repro use case.
-  silhouette.holes.clear();
+  silhouette.holes().clear();
   return silhouette;
 }
 
@@ -555,9 +555,9 @@ largest_by_area(const std::vector<geom::PolygonWithHoles> &polygons)
                                      double dx, double dy)
     -> geom::PolygonWithHoles {
   geom::PolygonWithHoles out{};
-  out.outer.reserve(polygon.outer.size());
-  for (const auto &p : polygon.outer) {
-    out.outer.push_back(geom::Point2{p.x + dx, p.y + dy});
+  out.outer().reserve(polygon.outer().size());
+  for (const auto &p : polygon.outer()) {
+    out.outer().push_back(geom::Point2{p.x() + dx, p.y() + dy});
   }
   return out;
 }
@@ -609,7 +609,7 @@ struct ParsedArtwork {
     }
     for (const auto *p = shape->paths; p != nullptr; p = p->next) {
       auto poly = extract_path_polygon(p);
-      if (poly.outer.size() >= 3) {
+      if (poly.outer().size() >= 3) {
         accum.subpaths.push_back(std::move(poly));
       }
     }
@@ -660,7 +660,7 @@ auto load_mtg_fixture_with_actual_polygons() -> MtgFixture {
     // Origin-normalize: translate so that AABB.min == (0,0). The
     // rectangle fixture stores piece geometry in the same convention.
     const auto box = polygon_aabb(silhouette);
-    silhouette = translate_polygon(silhouette, -box.min.x, -box.min.y);
+    silhouette = translate_polygon(silhouette, -box.min.x(), -box.min.y());
     const auto local_box = polygon_aabb(silhouette);
 
     auto &piece = fixture.pieces[i];
@@ -670,8 +670,8 @@ auto load_mtg_fixture_with_actual_polygons() -> MtgFixture {
     // mismatch larger than 1e-3 mm indicates a silently-dropped
     // sub-path or extraction bug.
     constexpr double kAabbTolerance = 1e-3;
-    const double width = local_box.max.x - local_box.min.x;
-    const double height = local_box.max.y - local_box.min.y;
+    const double width = local_box.max.x() - local_box.min.x();
+    const double height = local_box.max.y() - local_box.min.y();
     if (std::abs(width - piece.width_mm) > kAabbTolerance ||
         std::abs(height - piece.height_mm) > kAabbTolerance) {
       throw std::runtime_error{
@@ -680,7 +680,7 @@ auto load_mtg_fixture_with_actual_polygons() -> MtgFixture {
           std::to_string(art_id)};
     }
 
-    if (silhouette.outer.size() < 3) {
+    if (silhouette.outer().size() < 3) {
       throw std::runtime_error{
           "mtg_fixture: extracted polygon has fewer than 3 vertices for "
           "artwork " +
@@ -781,7 +781,7 @@ auto make_rect_exclusion(std::uint32_t zone_id, std::uint32_t bin_id,
   place::BedExclusionZone zone{};
   zone.zone_id = zone_id;
   zone.bin_id = bin_id;
-  zone.region.outer = {
+  zone.region.outer() = {
       {min_x, min_y}, {max_x, min_y}, {max_x, max_y}, {min_x, max_y}};
   return zone;
 }
@@ -836,8 +836,8 @@ void validate_layout(const MtgFixture &fixture, const NestingRequest &request,
     INFO("Result bin " << bin.bin_id << " not found in request bins");
     REQUIRE(box_it != bin_box_lookup.end());
     const auto &bin_box = box_it->second;
-    REQUIRE(bin_box.max.x > bin_box.min.x);
-    REQUIRE(bin_box.max.y > bin_box.min.y);
+    REQUIRE(bin_box.max.x() > bin_box.min.x());
+    REQUIRE(bin_box.max.y() > bin_box.min.y());
 
     // No-overlap + inside-bin checks within this bin.
     std::vector<geom::Box2> placement_boxes;
@@ -848,8 +848,8 @@ void validate_layout(const MtgFixture &fixture, const NestingRequest &request,
       placement_boxes.push_back(piece_box);
 
       INFO("Piece " << placement.placement.piece_id << " bin " << bin.bin_id
-                    << " AABB [" << piece_box.min.x << "," << piece_box.min.y
-                    << "]-[" << piece_box.max.x << "," << piece_box.max.y
+                    << " AABB [" << piece_box.min.x() << "," << piece_box.min.y()
+                    << "]-[" << piece_box.max.x() << "," << piece_box.max.y()
                     << "]");
       REQUIRE(contains_box(bin_box, piece_box));
 
@@ -924,7 +924,7 @@ void validate_layout(const MtgFixture &fixture, const NestingRequest &request,
         continue;
       }
       const auto zone_box =
-          polygon_aabb(geom::PolygonWithHoles{.outer = zone.region.outer});
+          polygon_aabb(geom::PolygonWithHoles(zone.region.outer()));
       for (std::size_t i = 0; i < placement_boxes.size(); ++i) {
         INFO("Piece " << bin.placements[i].placement.piece_id
                       << " overlaps exclusion zone " << zone.zone_id);
@@ -1011,8 +1011,8 @@ auto hash_bin_placements(const NestingResult &result, std::uint32_t bin_id)
     for (const auto &p : bin.placements) {
       mix(p.placement.piece_id);
       mix(p.placement.rotation_index.value);
-      mix_double(p.placement.translation.x);
-      mix_double(p.placement.translation.y);
+      mix_double(p.placement.translation.x());
+      mix_double(p.placement.translation.y());
     }
   }
   return hash;

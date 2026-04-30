@@ -26,10 +26,10 @@ using shiny::nesting::test::require_ring_equal;
 
 auto point_less(const shiny::nesting::geom::Point2 &lhs,
                 const shiny::nesting::geom::Point2 &rhs) -> bool {
-  if (lhs.x != rhs.x) {
-    return lhs.x < rhs.x;
+  if (lhs.x() != rhs.x()) {
+    return lhs.x() < rhs.x();
   }
-  return lhs.y < rhs.y;
+  return lhs.y() < rhs.y();
 }
 
 TEST_CASE("orbital verifier engine reuses cached decomposition inputs",
@@ -39,18 +39,18 @@ TEST_CASE("orbital verifier engine reuses cached decomposition inputs",
   const NonconvexNfpRequest request{
       .piece_a_id = 101,
       .piece_b_id = 102,
-      .piece_a = {.outer = {{0.0, 0.0},
+      .piece_a = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
                             {4.0, 0.0},
                             {4.0, 1.0},
                             {1.0, 1.0},
                             {1.0, 4.0},
-                            {0.0, 4.0}}},
-      .piece_b = {.outer = {{0.0, 0.0},
+                            {0.0, 4.0}}),
+      .piece_b = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
                             {3.0, 0.0},
                             {3.0, 1.0},
                             {2.0, 1.0},
                             {2.0, 3.0},
-                            {0.0, 3.0}}},
+                            {0.0, 3.0}}),
       .rotation_a = {.degrees = 0.0},
       .rotation_b = {.degrees = 90.0},
       .algorithm_revision = AlgorithmRevision{9},
@@ -81,8 +81,8 @@ auto ring_signed_area(const shiny::nesting::geom::Ring &ring) -> long double {
   long double twice_area = 0.0L;
   for (std::size_t index = 0; index < ring.size(); ++index) {
     const auto next_index = (index + 1U) % ring.size();
-    twice_area += static_cast<long double>(ring[index].x) * ring[next_index].y -
-                  static_cast<long double>(ring[next_index].x) * ring[index].y;
+    twice_area += static_cast<long double>(ring[index].x()) * ring[next_index].y() -
+                  static_cast<long double>(ring[next_index].x()) * ring[index].y();
   }
   return twice_area / 2.0L;
 }
@@ -94,7 +94,7 @@ auto segment_less(const shiny::nesting::geom::Segment2 &lhs,
   const auto rhs_start = point_less(rhs.start, rhs.end) ? rhs.start : rhs.end;
   const auto rhs_end = point_less(rhs.start, rhs.end) ? rhs.end : rhs.start;
 
-  if (!((lhs_start.x == rhs_start.x) && (lhs_start.y == rhs_start.y))) {
+  if (!((lhs_start.x() == rhs_start.x()) && (lhs_start.y() == rhs_start.y()))) {
     return point_less(lhs_start, rhs_start);
   }
   return point_less(lhs_end, rhs_end);

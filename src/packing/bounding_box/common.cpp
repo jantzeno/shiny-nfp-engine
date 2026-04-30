@@ -19,10 +19,10 @@ auto point_for_start_corner(const geom::Point2 &point,
       start_corner == place::PlacementStartCorner::top_right;
   const bool on_top = start_corner == place::PlacementStartCorner::top_left ||
                       start_corner == place::PlacementStartCorner::top_right;
-  return {
-      .x = on_right ? container.min.x + (container.max.x - point.x) : point.x,
-      .y = on_top ? container.min.y + (container.max.y - point.y) : point.y,
-  };
+  return {on_right ? container.min.x() + (container.max.x() - point.x())
+                   : point.x(),
+          on_top ? container.min.y() + (container.max.y() - point.y())
+                 : point.y()};
 }
 
 auto box_for_start_corner(const geom::Box2 &box, const geom::Box2 &container,
@@ -69,28 +69,24 @@ auto split_free_rectangles(std::vector<geom::Box2> &free_rectangles,
     }
 
     const geom::Box2 intersection{
-        .min = {.x = std::max(free_rectangle.min.x, used_bounds.min.x),
-                .y = std::max(free_rectangle.min.y, used_bounds.min.y)},
-        .max = {.x = std::min(free_rectangle.max.x, used_bounds.max.x),
-                .y = std::min(free_rectangle.max.y, used_bounds.max.y)},
+        geom::Point2{std::max(free_rectangle.min.x(), used_bounds.min.x()),
+                     std::max(free_rectangle.min.y(), used_bounds.min.y())},
+        geom::Point2{std::min(free_rectangle.max.x(), used_bounds.max.x()),
+                     std::min(free_rectangle.max.y(), used_bounds.max.y())},
     };
 
-    const geom::Box2 left = {
-        .min = free_rectangle.min,
-        .max = {.x = intersection.min.x, .y = free_rectangle.max.y},
-    };
-    const geom::Box2 right = {
-        .min = {.x = intersection.max.x, .y = free_rectangle.min.y},
-        .max = free_rectangle.max,
-    };
-    const geom::Box2 bottom = {
-        .min = {.x = free_rectangle.min.x, .y = free_rectangle.min.y},
-        .max = {.x = free_rectangle.max.x, .y = intersection.min.y},
-    };
-    const geom::Box2 top = {
-        .min = {.x = free_rectangle.min.x, .y = intersection.max.y},
-        .max = {.x = free_rectangle.max.x, .y = free_rectangle.max.y},
-    };
+    const geom::Box2 left{
+        free_rectangle.min,
+        geom::Point2{intersection.min.x(), free_rectangle.max.y()}};
+    const geom::Box2 right{
+        geom::Point2{intersection.max.x(), free_rectangle.min.y()},
+        free_rectangle.max};
+    const geom::Box2 bottom{
+        geom::Point2{free_rectangle.min.x(), free_rectangle.min.y()},
+        geom::Point2{free_rectangle.max.x(), intersection.min.y()}};
+    const geom::Box2 top{
+        geom::Point2{free_rectangle.min.x(), intersection.max.y()},
+        geom::Point2{free_rectangle.max.x(), free_rectangle.max.y()}};
 
     for (const geom::Box2 &candidate : {left, right, bottom, top}) {
       if (box_has_area(candidate)) {
@@ -128,14 +124,16 @@ auto split_free_rectangles(std::vector<geom::Box2> &free_rectangles,
         const geom::Box2 &lhs = reduced[index];
         const geom::Box2 &rhs = reduced[other_index];
 
-        const bool same_vertical_span = almost_equal(lhs.min.y, rhs.min.y) &&
-                                        almost_equal(lhs.max.y, rhs.max.y);
-        const bool horizontally_adjacent = almost_equal(lhs.max.x, rhs.min.x) ||
-                                           almost_equal(rhs.max.x, lhs.min.x);
+        const bool same_vertical_span =
+            almost_equal(lhs.min.y(), rhs.min.y()) &&
+            almost_equal(lhs.max.y(), rhs.max.y());
+        const bool horizontally_adjacent =
+            almost_equal(lhs.max.x(), rhs.min.x()) ||
+            almost_equal(rhs.max.x(), lhs.min.x());
         if (same_vertical_span && horizontally_adjacent) {
-          reduced[index] = {
-              .min = {.x = std::min(lhs.min.x, rhs.min.x), .y = lhs.min.y},
-              .max = {.x = std::max(lhs.max.x, rhs.max.x), .y = lhs.max.y},
+          reduced[index] = geom::Box2{
+              geom::Point2{std::min(lhs.min.x(), rhs.min.x()), lhs.min.y()},
+              geom::Point2{std::max(lhs.max.x(), rhs.max.x()), lhs.max.y()},
           };
           reduced.erase(reduced.begin() +
                         static_cast<std::ptrdiff_t>(other_index));
@@ -143,14 +141,16 @@ auto split_free_rectangles(std::vector<geom::Box2> &free_rectangles,
           break;
         }
 
-        const bool same_horizontal_span = almost_equal(lhs.min.x, rhs.min.x) &&
-                                          almost_equal(lhs.max.x, rhs.max.x);
-        const bool vertically_adjacent = almost_equal(lhs.max.y, rhs.min.y) ||
-                                         almost_equal(rhs.max.y, lhs.min.y);
+        const bool same_horizontal_span =
+            almost_equal(lhs.min.x(), rhs.min.x()) &&
+            almost_equal(lhs.max.x(), rhs.max.x());
+        const bool vertically_adjacent =
+            almost_equal(lhs.max.y(), rhs.min.y()) ||
+            almost_equal(rhs.max.y(), lhs.min.y());
         if (same_horizontal_span && vertically_adjacent) {
-          reduced[index] = {
-              .min = {.x = lhs.min.x, .y = std::min(lhs.min.y, rhs.min.y)},
-              .max = {.x = lhs.max.x, .y = std::max(lhs.max.y, rhs.max.y)},
+          reduced[index] = geom::Box2{
+              geom::Point2{lhs.min.x(), std::min(lhs.min.y(), rhs.min.y())},
+              geom::Point2{lhs.max.x(), std::max(lhs.max.y(), rhs.max.y())},
           };
           reduced.erase(reduced.begin() +
                         static_cast<std::ptrdiff_t>(other_index));
@@ -219,9 +219,9 @@ auto decode_result_better(const DecoderResult &lhs, const DecoderResult &rhs)
 
 auto resulting_envelope_area(const BinPackingState &state,
                              const geom::Box2 &candidate_bounds) -> double {
-  double min_x = candidate_bounds.min.x;
-  double max_x = candidate_bounds.max.x;
-  double max_y = candidate_bounds.max.y;
+  double min_x = candidate_bounds.min.x();
+  double max_x = candidate_bounds.max.x();
+  double max_y = candidate_bounds.max.y();
   for (const auto &shelf : state.shelves) {
     min_x = std::min(min_x, shelf.used_min_x);
     max_x = std::max(max_x, shelf.used_max_x);
@@ -229,7 +229,7 @@ auto resulting_envelope_area(const BinPackingState &state,
   }
 
   return std::max(0.0, max_x - min_x) *
-         std::max(0.0, max_y - state.container_bounds.min.y);
+         std::max(0.0, max_y - state.container_bounds.min.y());
 }
 
 auto start_corner_on_right(const place::PlacementStartCorner start_corner)
@@ -249,9 +249,9 @@ auto primary_edge_distance(const geom::Box2 &container_bounds,
                            const place::PlacementStartCorner start_corner)
     -> double {
   if (start_corner_on_top(start_corner)) {
-    return container_bounds.max.y - piece_bounds.max.y;
+    return container_bounds.max.y() - piece_bounds.max.y();
   }
-  return piece_bounds.min.y - container_bounds.min.y;
+  return piece_bounds.min.y() - container_bounds.min.y();
 }
 
 auto secondary_edge_distance(const geom::Box2 &container_bounds,
@@ -259,9 +259,9 @@ auto secondary_edge_distance(const geom::Box2 &container_bounds,
                              const place::PlacementStartCorner start_corner)
     -> double {
   if (start_corner_on_right(start_corner)) {
-    return container_bounds.max.x - piece_bounds.max.x;
+    return container_bounds.max.x() - piece_bounds.max.x();
   }
-  return piece_bounds.min.x - container_bounds.min.x;
+  return piece_bounds.min.x() - container_bounds.min.x();
 }
 
 auto better_candidate(const BinPackingState &state,
@@ -290,9 +290,9 @@ auto better_candidate(const BinPackingState &state,
     }
     break;
   case place::PlacementPolicy::minimum_length:
-    if (!almost_equal(lhs.translated_bounds.max.x,
-                      rhs.translated_bounds.max.x)) {
-      return lhs.translated_bounds.max.x < rhs.translated_bounds.max.x;
+    if (!almost_equal(lhs.translated_bounds.max.x(),
+                      rhs.translated_bounds.max.x())) {
+      return lhs.translated_bounds.max.x() < rhs.translated_bounds.max.x();
     }
     if (!almost_equal(lhs_primary, rhs_primary)) {
       return lhs_primary < rhs_primary;

@@ -16,10 +16,10 @@ constexpr double kQuantizationScale = 1'000.0;
 auto make_penetration_depth_cache_key(const std::uint64_t nfp_revision,
                                       const geom::Point2 &point)
     -> PenetrationDepthCacheKey {
-  return {
-      .nfp_revision = nfp_revision,
-      .x_quantized = quantize(point.x),
-      .y_quantized = quantize(point.y),
+  return PenetrationDepthCacheKey{
+      nfp_revision,
+      quantize(point.x()),
+      quantize(point.y()),
   };
 }
 

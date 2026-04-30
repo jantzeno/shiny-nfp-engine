@@ -11,8 +11,8 @@ auto signed_area(const shiny::nesting::geom::Ring &ring) -> long double {
   long double area = 0.0L;
   for (std::size_t index = 0; index < ring.size(); ++index) {
     const auto next_index = (index + 1U) % ring.size();
-    area += static_cast<long double>(ring[index].x) * ring[next_index].y -
-            static_cast<long double>(ring[next_index].x) * ring[index].y;
+    area += static_cast<long double>(ring[index].x()) * ring[next_index].y() -
+            static_cast<long double>(ring[next_index].x()) * ring[index].y();
   }
   return area / 2.0L;
 }

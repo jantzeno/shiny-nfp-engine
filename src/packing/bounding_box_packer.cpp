@@ -70,7 +70,7 @@ struct PieceOrderingMetrics {
 
 [[nodiscard]] auto as_polygon_with_holes(const place::BedExclusionZone &zone)
     -> geom::PolygonWithHoles {
-  return {.outer = zone.region.outer};
+  return geom::PolygonWithHoles{zone.region.outer()};
 }
 
 [[nodiscard]] auto snap_coordinate(double value) -> double {
@@ -84,13 +84,22 @@ struct PieceOrderingMetrics {
   return std::fabs(lhs - rhs) <= kCoordinateSnap;
 }
 
+[[nodiscard]] auto make_point(double x, double y) -> geom::Point2 {
+  return {x, y};
+}
+
+[[nodiscard]] auto make_box(double min_x, double min_y, double max_x,
+                            double max_y) -> geom::Box2 {
+  return {
+      .min = make_point(min_x, min_y),
+      .max = make_point(max_x, max_y),
+  };
+}
+
 [[nodiscard]] auto translate_point(const geom::Point2 &point,
                                    const geom::Point2 &translation)
     -> geom::Point2 {
-  return {
-      .x = point.x + translation.x,
-      .y = point.y + translation.y,
-  };
+  return make_point(point.x() + translation.x(), point.y() + translation.y());
 }
 
 [[nodiscard]] auto translate_ring(const geom::Ring &ring,
@@ -107,11 +116,11 @@ struct PieceOrderingMetrics {
 [[nodiscard]] auto translate_polygon(const geom::PolygonWithHoles &polygon,
                                      const geom::Point2 &translation)
     -> geom::PolygonWithHoles {
-  geom::PolygonWithHoles translated{};
-  translated.outer = translate_ring(polygon.outer, translation);
-  translated.holes.reserve(polygon.holes.size());
-  for (const auto &hole : polygon.holes) {
-    translated.holes.push_back(translate_ring(hole, translation));
+  geom::PolygonWithHoles translated{
+      translate_ring(polygon.outer(), translation)};
+  translated.holes().reserve(polygon.holes().size());
+  for (const auto &hole : polygon.holes()) {
+    translated.holes().push_back(translate_ring(hole, translation));
   }
   return translated;
 }
@@ -125,10 +134,8 @@ struct PieceOrderingMetrics {
   cosine = snap_coordinate(cosine);
   sine = snap_coordinate(sine);
 
-  return {
-      .x = snap_coordinate(point.x * cosine - point.y * sine),
-      .y = snap_coordinate(point.x * sine + point.y * cosine),
-  };
+  return make_point(snap_coordinate(point.x() * cosine - point.y() * sine),
+                    snap_coordinate(point.x() * sine + point.y() * cosine));
 }
 
 [[nodiscard]] auto rotate_ring(const geom::Ring &ring, double degrees)
@@ -143,11 +150,10 @@ struct PieceOrderingMetrics {
 
 [[nodiscard]] auto rotate_polygon(const geom::PolygonWithHoles &polygon,
                                   double degrees) -> geom::PolygonWithHoles {
-  geom::PolygonWithHoles rotated{};
-  rotated.outer = rotate_ring(polygon.outer, degrees);
-  rotated.holes.reserve(polygon.holes.size());
-  for (const auto &hole : polygon.holes) {
-    rotated.holes.push_back(rotate_ring(hole, degrees));
+  geom::PolygonWithHoles rotated{rotate_ring(polygon.outer(), degrees)};
+  rotated.holes().reserve(polygon.holes().size());
+  for (const auto &hole : polygon.holes()) {
+    rotated.holes().push_back(rotate_ring(hole, degrees));
   }
   return geom::normalize_polygon(rotated);
 }
@@ -160,16 +166,17 @@ struct PieceOrderingMetrics {
   long double twice_area = 0.0L;
   for (std::size_t index = 0; index < ring.size(); ++index) {
     const auto next_index = (index + 1U) % ring.size();
-    twice_area += static_cast<long double>(ring[index].x) * ring[next_index].y -
-                  static_cast<long double>(ring[next_index].x) * ring[index].y;
+    twice_area +=
+        static_cast<long double>(ring[index].x()) * ring[next_index].y() -
+        static_cast<long double>(ring[next_index].x()) * ring[index].y();
   }
   return twice_area / 2.0L;
 }
 
 [[nodiscard]] auto polygon_area(const geom::PolygonWithHoles &polygon)
     -> double {
-  long double area = std::abs(signed_area(polygon.outer));
-  for (const auto &hole : polygon.holes) {
+  long double area = std::abs(signed_area(polygon.outer()));
+  for (const auto &hole : polygon.holes()) {
     area -= std::abs(signed_area(hole));
   }
   return static_cast<double>(area);
@@ -189,15 +196,15 @@ struct PieceOrderingMetrics {
         continue;
       }
 
-      bounds.min.x = std::min(bounds.min.x, point.x);
-      bounds.min.y = std::min(bounds.min.y, point.y);
-      bounds.max.x = std::max(bounds.max.x, point.x);
-      bounds.max.y = std::max(bounds.max.y, point.y);
+      bounds.min.set_x(std::min(bounds.min.x(), point.x()));
+      bounds.min.set_y(std::min(bounds.min.y(), point.y()));
+      bounds.max.set_x(std::max(bounds.max.x(), point.x()));
+      bounds.max.set_y(std::max(bounds.max.y(), point.y()));
     }
   };
 
-  include_ring(polygon.outer);
-  for (const auto &hole : polygon.holes) {
+  include_ring(polygon.outer());
+  for (const auto &hole : polygon.holes()) {
     include_ring(hole);
   }
 
@@ -206,10 +213,10 @@ struct PieceOrderingMetrics {
 
 [[nodiscard]] auto boxes_overlap(const geom::Box2 &lhs, const geom::Box2 &rhs)
     -> bool {
-  return !(lhs.max.x < rhs.min.x - kCoordinateSnap ||
-           rhs.max.x < lhs.min.x - kCoordinateSnap ||
-           lhs.max.y < rhs.min.y - kCoordinateSnap ||
-           rhs.max.y < lhs.min.y - kCoordinateSnap);
+  return !(lhs.max.x() < rhs.min.x() - kCoordinateSnap ||
+           rhs.max.x() < lhs.min.x() - kCoordinateSnap ||
+           lhs.max.y() < rhs.min.y() - kCoordinateSnap ||
+           rhs.max.y() < lhs.min.y() - kCoordinateSnap);
 }
 
 [[nodiscard]] auto intervals_overlap_interior(double lhs_min, double lhs_max,
@@ -221,17 +228,18 @@ struct PieceOrderingMetrics {
 
 [[nodiscard]] auto boxes_overlap_interior(const geom::Box2 &lhs,
                                           const geom::Box2 &rhs) -> bool {
-  return intervals_overlap_interior(lhs.min.x, lhs.max.x, rhs.min.x,
-                                    rhs.max.x) &&
-         intervals_overlap_interior(lhs.min.y, lhs.max.y, rhs.min.y, rhs.max.y);
+  return intervals_overlap_interior(lhs.min.x(), lhs.max.x(), rhs.min.x(),
+                                    rhs.max.x()) &&
+         intervals_overlap_interior(lhs.min.y(), lhs.max.y(), rhs.min.y(),
+                                    rhs.max.y());
 }
 
 [[nodiscard]] auto box_width(const geom::Box2 &box) -> double {
-  return box.max.x - box.min.x;
+  return box.max.x() - box.min.x();
 }
 
 [[nodiscard]] auto box_height(const geom::Box2 &box) -> double {
-  return box.max.y - box.min.y;
+  return box.max.y() - box.min.y();
 }
 
 [[nodiscard]] auto box_has_area(const geom::Box2 &box) -> bool {
@@ -240,20 +248,17 @@ struct PieceOrderingMetrics {
 
 [[nodiscard]] auto normalize_box(const geom::Point2 &first,
                                  const geom::Point2 &second) -> geom::Box2 {
-  return {
-      .min = {.x = std::min(first.x, second.x),
-              .y = std::min(first.y, second.y)},
-      .max = {.x = std::max(first.x, second.x),
-              .y = std::max(first.y, second.y)},
-  };
+  return make_box(
+      std::min(first.x(), second.x()), std::min(first.y(), second.y()),
+      std::max(first.x(), second.x()), std::max(first.y(), second.y()));
 }
 
 [[nodiscard]] auto contains_box(const geom::Box2 &container,
                                 const geom::Box2 &candidate) -> bool {
-  return candidate.min.x >= container.min.x - kCoordinateSnap &&
-         candidate.min.y >= container.min.y - kCoordinateSnap &&
-         candidate.max.x <= container.max.x + kCoordinateSnap &&
-         candidate.max.y <= container.max.y + kCoordinateSnap;
+  return candidate.min.x() >= container.min.x() - kCoordinateSnap &&
+         candidate.min.y() >= container.min.y() - kCoordinateSnap &&
+         candidate.max.x() <= container.max.x() + kCoordinateSnap &&
+         candidate.max.y() <= container.max.y() + kCoordinateSnap;
 }
 
 [[nodiscard]] auto
@@ -265,10 +270,10 @@ point_for_start_corner(const geom::Point2 &point, const geom::Box2 &container,
       start_corner == place::PlacementStartCorner::top_right;
   const bool on_top = start_corner == place::PlacementStartCorner::top_left ||
                       start_corner == place::PlacementStartCorner::top_right;
-  return {
-      .x = on_right ? container.min.x + (container.max.x - point.x) : point.x,
-      .y = on_top ? container.min.y + (container.max.y - point.y) : point.y,
-  };
+  return make_point(
+      on_right ? container.min.x() + (container.max.x() - point.x())
+               : point.x(),
+      on_top ? container.min.y() + (container.max.y() - point.y()) : point.y());
 }
 
 [[nodiscard]] auto
@@ -312,29 +317,24 @@ auto split_free_rectangles(std::vector<geom::Box2> &free_rectangles,
       continue;
     }
 
-    const geom::Box2 intersection{
-        .min = {.x = std::max(free_rectangle.min.x, used_bounds.min.x),
-                .y = std::max(free_rectangle.min.y, used_bounds.min.y)},
-        .max = {.x = std::min(free_rectangle.max.x, used_bounds.max.x),
-                .y = std::min(free_rectangle.max.y, used_bounds.max.y)},
-    };
+    const geom::Box2 intersection =
+        make_box(std::max(free_rectangle.min.x(), used_bounds.min.x()),
+                 std::max(free_rectangle.min.y(), used_bounds.min.y()),
+                 std::min(free_rectangle.max.x(), used_bounds.max.x()),
+                 std::min(free_rectangle.max.y(), used_bounds.max.y()));
 
-    const geom::Box2 left = {
-        .min = free_rectangle.min,
-        .max = {.x = intersection.min.x, .y = free_rectangle.max.y},
-    };
-    const geom::Box2 right = {
-        .min = {.x = intersection.max.x, .y = free_rectangle.min.y},
-        .max = free_rectangle.max,
-    };
-    const geom::Box2 bottom = {
-        .min = {.x = intersection.min.x, .y = free_rectangle.min.y},
-        .max = {.x = intersection.max.x, .y = intersection.min.y},
-    };
-    const geom::Box2 top = {
-        .min = {.x = intersection.min.x, .y = intersection.max.y},
-        .max = {.x = intersection.max.x, .y = free_rectangle.max.y},
-    };
+    const geom::Box2 left =
+        make_box(free_rectangle.min.x(), free_rectangle.min.y(),
+                 intersection.min.x(), free_rectangle.max.y());
+    const geom::Box2 right =
+        make_box(intersection.max.x(), free_rectangle.min.y(),
+                 free_rectangle.max.x(), free_rectangle.max.y());
+    const geom::Box2 bottom =
+        make_box(intersection.min.x(), free_rectangle.min.y(),
+                 intersection.max.x(), intersection.min.y());
+    const geom::Box2 top =
+        make_box(intersection.min.x(), intersection.max.y(),
+                 intersection.max.x(), free_rectangle.max.y());
 
     for (const geom::Box2 &candidate : {left, right, bottom, top}) {
       if (box_has_area(candidate)) {
@@ -376,7 +376,7 @@ total_polygon_area(std::span<const geom::PolygonWithHoles> polygons) -> double {
                                            const place::BedExclusionZone &zone)
     -> bool {
   const auto zone_polygon = as_polygon_with_holes(zone);
-  if (piece.outer.empty() || zone_polygon.outer.empty() ||
+  if (piece.outer().empty() || zone_polygon.outer().empty() ||
       !boxes_overlap(piece_bounds, compute_bounds(zone_polygon))) {
     return false;
   }
@@ -403,9 +403,9 @@ total_polygon_area(std::span<const geom::PolygonWithHoles> polygons) -> double {
 [[nodiscard]] auto resulting_envelope_area(const BinPackingState &state,
                                            const geom::Box2 &candidate_bounds)
     -> double {
-  double min_x = candidate_bounds.min.x;
-  double max_x = candidate_bounds.max.x;
-  double max_y = candidate_bounds.max.y;
+  double min_x = candidate_bounds.min.x();
+  double max_x = candidate_bounds.max.x();
+  double max_y = candidate_bounds.max.y();
   for (const auto &shelf : state.shelves) {
     min_x = std::min(min_x, shelf.used_min_x);
     max_x = std::max(max_x, shelf.used_max_x);
@@ -413,7 +413,7 @@ total_polygon_area(std::span<const geom::PolygonWithHoles> polygons) -> double {
   }
 
   return std::max(0.0, max_x - min_x) *
-         std::max(0.0, max_y - state.container_bounds.min.y);
+         std::max(0.0, max_y - state.container_bounds.min.y());
 }
 
 [[nodiscard]] auto
@@ -432,18 +432,18 @@ start_corner_on_top(const place::PlacementStartCorner start_corner) -> bool {
     const geom::Box2 &container_bounds, const geom::Box2 &piece_bounds,
     const place::PlacementStartCorner start_corner) -> double {
   if (start_corner_on_top(start_corner)) {
-    return container_bounds.max.y - piece_bounds.max.y;
+    return container_bounds.max.y() - piece_bounds.max.y();
   }
-  return piece_bounds.min.y - container_bounds.min.y;
+  return piece_bounds.min.y() - container_bounds.min.y();
 }
 
 [[nodiscard]] auto secondary_edge_distance(
     const geom::Box2 &container_bounds, const geom::Box2 &piece_bounds,
     const place::PlacementStartCorner start_corner) -> double {
   if (start_corner_on_right(start_corner)) {
-    return container_bounds.max.x - piece_bounds.max.x;
+    return container_bounds.max.x() - piece_bounds.max.x();
   }
-  return piece_bounds.min.x - container_bounds.min.x;
+  return piece_bounds.min.x() - container_bounds.min.x();
 }
 
 [[nodiscard]] auto better_candidate(const BinPackingState &state,
@@ -472,9 +472,9 @@ start_corner_on_top(const place::PlacementStartCorner start_corner) -> bool {
     }
     break;
   case place::PlacementPolicy::minimum_length:
-    if (!almost_equal(lhs.translated_bounds.max.x,
-                      rhs.translated_bounds.max.x)) {
-      return lhs.translated_bounds.max.x < rhs.translated_bounds.max.x;
+    if (!almost_equal(lhs.translated_bounds.max.x(),
+                      rhs.translated_bounds.max.x())) {
+      return lhs.translated_bounds.max.x() < rhs.translated_bounds.max.x();
     }
     if (!almost_equal(lhs_primary, rhs_primary)) {
       return lhs_primary < rhs_primary;
@@ -508,8 +508,8 @@ start_corner_on_top(const place::PlacementStartCorner start_corner) -> bool {
 [[nodiscard]] auto fits_on_existing_shelf(const ShelfState &shelf,
                                           const geom::Box2 &rotated_bounds)
     -> bool {
-  const auto width = rotated_bounds.max.x - rotated_bounds.min.x;
-  const auto height = rotated_bounds.max.y - rotated_bounds.min.y;
+  const auto width = box_width(rotated_bounds);
+  const auto height = box_height(rotated_bounds);
   return height <= shelf.height + kCoordinateSnap && width >= 0.0 &&
          height >= 0.0;
 }
@@ -530,8 +530,8 @@ start_corner_on_top(const place::PlacementStartCorner start_corner) -> bool {
                                      const std::size_t original_index)
     -> PieceOrderingMetrics {
   const geom::Box2 bounds = compute_bounds(piece.polygon);
-  const double width = bounds.max.x - bounds.min.x;
-  const double height = bounds.max.y - bounds.min.y;
+  const double width = box_width(bounds);
+  const double height = box_height(bounds);
   const double polygon_piece_area = polygon_area(piece.polygon);
   const double piece_box_area = width * height;
   return {
@@ -745,10 +745,9 @@ find_best_shelf_candidate(const BinPackingState &state, const PieceInput &piece,
   const auto consider_candidate = [&](double target_min_x, double target_min_y,
                                       std::size_t shelf_index,
                                       bool starts_new_shelf) {
-    const geom::Box2 translated_bounds{
-        .min = {.x = target_min_x, .y = target_min_y},
-        .max = {.x = target_min_x + width, .y = target_min_y + height},
-    };
+    const geom::Box2 translated_bounds =
+        make_box(target_min_x, target_min_y, target_min_x + width,
+                 target_min_y + height);
     if (!contains_box(state.container_bounds, translated_bounds) ||
         overlaps_any_occupied_bounds(state.occupied_bounds, translated_bounds,
                                      clearance)) {
@@ -756,8 +755,8 @@ find_best_shelf_candidate(const BinPackingState &state, const PieceInput &piece,
     }
 
     const geom::Point2 translation{
-        .x = target_min_x - rotated_bounds.min.x,
-        .y = target_min_y - rotated_bounds.min.y,
+        target_min_x - rotated_bounds.min.x(),
+        target_min_y - rotated_bounds.min.y(),
     };
     const auto translated_piece = translate_polygon(rotated_piece, translation);
     if (overlaps_any_exclusion_zone(translated_piece, translated_bounds,
@@ -811,16 +810,16 @@ find_best_shelf_candidate(const BinPackingState &state, const PieceInput &piece,
   const double next_shelf_y =
       state.shelves.empty()
           ? (start_corner_on_top(state.bin_state.start_corner)
-                 ? state.container_bounds.max.y - height
-                 : state.container_bounds.min.y)
+                 ? state.container_bounds.max.y() - height
+                 : state.container_bounds.min.y())
           : (start_corner_on_top(state.bin_state.start_corner)
                  ? state.shelves.back().y - height - clearance
                  : state.shelves.back().y + state.shelves.back().height +
                        clearance);
   const double new_shelf_min_x =
       start_corner_on_right(state.bin_state.start_corner)
-          ? state.container_bounds.max.x - width
-          : state.container_bounds.min.x;
+          ? state.container_bounds.max.x() - width
+          : state.container_bounds.min.x();
   consider_candidate(new_shelf_min_x, next_shelf_y, state.shelves.size(), true);
   return best;
 }
@@ -830,24 +829,25 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
                          std::span<const geom::Box2> occupied_bounds,
                          double width) -> std::vector<double> {
   std::vector<double> candidates{
-      container_bounds.min.x,
-      container_bounds.max.x - width,
+      container_bounds.min.x(),
+      container_bounds.max.x() - width,
   };
   candidates.reserve(2U + occupied_bounds.size() * 4U);
   for (const geom::Box2 &occupied_bounds_entry : occupied_bounds) {
-    candidates.push_back(occupied_bounds_entry.min.x);
-    candidates.push_back(occupied_bounds_entry.max.x);
-    candidates.push_back(occupied_bounds_entry.min.x - width);
-    candidates.push_back(occupied_bounds_entry.max.x - width);
+    candidates.push_back(occupied_bounds_entry.min.x());
+    candidates.push_back(occupied_bounds_entry.max.x());
+    candidates.push_back(occupied_bounds_entry.min.x() - width);
+    candidates.push_back(occupied_bounds_entry.max.x() - width);
   }
 
   std::vector<double> unique = unique_sorted_values(std::move(candidates));
   unique.erase(std::remove_if(unique.begin(), unique.end(),
                               [&](double value) {
-                                return value < container_bounds.min.x -
+                                return value < container_bounds.min.x() -
                                                    kCoordinateSnap ||
-                                       value + width > container_bounds.max.x +
-                                                           kCoordinateSnap;
+                                       value + width >
+                                           container_bounds.max.x() +
+                                               kCoordinateSnap;
                               }),
                unique.end());
   return unique;
@@ -880,20 +880,20 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
 
   for (const double candidate_min_x : skyline_candidate_min_xs(
            canonical_container, canonical_occupied_bounds, width)) {
-    double candidate_min_y = canonical_container.min.y;
+    double candidate_min_y = canonical_container.min.y();
     for (const geom::Box2 &occupied_bounds_entry : canonical_occupied_bounds) {
       if (!intervals_overlap_interior(candidate_min_x, candidate_min_x + width,
-                                      occupied_bounds_entry.min.x,
-                                      occupied_bounds_entry.max.x)) {
+                                      occupied_bounds_entry.min.x(),
+                                      occupied_bounds_entry.max.x())) {
         continue;
       }
-      candidate_min_y = std::max(candidate_min_y, occupied_bounds_entry.max.y);
+      candidate_min_y =
+          std::max(candidate_min_y, occupied_bounds_entry.max.y());
     }
 
-    const geom::Box2 canonical_candidate_bounds{
-        .min = {.x = candidate_min_x, .y = candidate_min_y},
-        .max = {.x = candidate_min_x + width, .y = candidate_min_y + height},
-    };
+    const geom::Box2 canonical_candidate_bounds =
+        make_box(candidate_min_x, candidate_min_y, candidate_min_x + width,
+                 candidate_min_y + height);
     const geom::Box2 actual_candidate_bounds =
         box_for_start_corner(canonical_candidate_bounds, state.container_bounds,
                              state.bin_state.start_corner);
@@ -902,8 +902,8 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
     }
 
     const geom::Point2 translation{
-        .x = actual_candidate_bounds.min.x - rotated_bounds.min.x,
-        .y = actual_candidate_bounds.min.y - rotated_bounds.min.y,
+        actual_candidate_bounds.min.x() - rotated_bounds.min.x(),
+        actual_candidate_bounds.min.y() - rotated_bounds.min.y(),
     };
     const auto translated_piece = translate_polygon(rotated_piece, translation);
     if (overlaps_any_occupied_bounds(state.occupied_bounds,
@@ -999,11 +999,10 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
       continue;
     }
 
-    const geom::Box2 canonical_candidate_bounds{
-        .min = canonical_free_rectangle.min,
-        .max = {.x = canonical_free_rectangle.min.x + width,
-                .y = canonical_free_rectangle.min.y + height},
-    };
+    const geom::Box2 canonical_candidate_bounds = make_box(
+        canonical_free_rectangle.min.x(), canonical_free_rectangle.min.y(),
+        canonical_free_rectangle.min.x() + width,
+        canonical_free_rectangle.min.y() + height);
     const geom::Box2 actual_candidate_bounds =
         box_for_start_corner(canonical_candidate_bounds, state.container_bounds,
                              state.bin_state.start_corner);
@@ -1015,8 +1014,8 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
     }
 
     const geom::Point2 translation{
-        .x = actual_candidate_bounds.min.x - rotated_bounds.min.x,
-        .y = actual_candidate_bounds.min.y - rotated_bounds.min.y,
+        actual_candidate_bounds.min.x() - rotated_bounds.min.x(),
+        actual_candidate_bounds.min.y() - rotated_bounds.min.y(),
     };
     const auto translated_piece = translate_polygon(rotated_piece, translation);
     if (overlaps_any_exclusion_zone(translated_piece, actual_candidate_bounds,
@@ -1094,13 +1093,13 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
           mirrored ? geom::mirror(piece.polygon) : piece.polygon;
       const auto rotated_piece =
           rotate_polygon(source_polygon, resolved_rotation->degrees);
-      if (rotated_piece.outer.empty()) {
+      if (rotated_piece.outer().empty()) {
         continue;
       }
 
       const auto rotated_bounds = compute_bounds(rotated_piece);
-      const auto width = rotated_bounds.max.x - rotated_bounds.min.x;
-      const auto height = rotated_bounds.max.y - rotated_bounds.min.y;
+      const auto width = box_width(rotated_bounds);
+      const auto height = box_height(rotated_bounds);
       if (width < 0.0 || height < 0.0) {
         continue;
       }
@@ -1141,8 +1140,8 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
                 piece.piece_id, state.bin_state.bin_id, best->shelf_index,
                 best->starts_new_shelf ? 1 : 0,
                 best->placement.rotation_index.value,
-                best->resulting_utilization, best->placement.translation.x,
-                best->placement.translation.y);
+                best->resulting_utilization, best->placement.translation.x(),
+                best->placement.translation.y());
   } else {
     SHINY_DEBUG(
         "BoundingBoxPacker::find_best_for_bin: no fit piece_id={} bin_id={}",
@@ -1186,29 +1185,27 @@ void apply_selection(BinPackingState &state, const PieceInput &piece,
       spacing_reservation_bounds(selection.translated_bounds, clearance);
   split_free_rectangles(state.free_rectangles, clearance_bounds);
 
-  const auto width =
-      selection.translated_bounds.max.x - selection.translated_bounds.min.x;
-  const auto height =
-      selection.translated_bounds.max.y - selection.translated_bounds.min.y;
+  const auto width = box_width(selection.translated_bounds);
+  const auto height = box_height(selection.translated_bounds);
   if (selection.starts_new_shelf) {
     state.shelves.push_back({
-        .y = selection.translated_bounds.min.y,
+        .y = selection.translated_bounds.min.y(),
         .height = height,
         .next_x = start_corner_on_right(state.bin_state.start_corner)
-                      ? selection.translated_bounds.min.x - clearance
-                      : selection.translated_bounds.min.x + width + clearance,
-        .used_min_x = selection.translated_bounds.min.x,
-        .used_max_x = selection.translated_bounds.max.x,
+                      ? selection.translated_bounds.min.x() - clearance
+                      : selection.translated_bounds.min.x() + width + clearance,
+        .used_min_x = selection.translated_bounds.min.x(),
+        .used_max_x = selection.translated_bounds.max.x(),
     });
   } else if (selection.shelf_index < state.shelves.size()) {
     ShelfState &shelf = state.shelves[selection.shelf_index];
     shelf.next_x = start_corner_on_right(state.bin_state.start_corner)
-                       ? selection.translated_bounds.min.x - clearance
-                       : selection.translated_bounds.max.x + clearance;
+                       ? selection.translated_bounds.min.x() - clearance
+                       : selection.translated_bounds.max.x() + clearance;
     shelf.used_min_x =
-        std::min(shelf.used_min_x, selection.translated_bounds.min.x);
+        std::min(shelf.used_min_x, selection.translated_bounds.min.x());
     shelf.used_max_x =
-        std::max(shelf.used_max_x, selection.translated_bounds.max.x);
+        std::max(shelf.used_max_x, selection.translated_bounds.max.x());
   }
 
   state.bin_state.utilization = summarize_bin(state.bin_state);

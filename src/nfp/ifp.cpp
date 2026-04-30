@@ -26,25 +26,25 @@ constexpr double kMinimumRegionArea = 1e-12;
 [[nodiscard]] auto
 is_axis_aligned_rectangle(const geom::PolygonWithHoles &polygon)
     -> std::optional<geom::Box2> {
-  if (!polygon.holes.empty() || polygon.outer.size() != 4U) {
+  if (!polygon.holes().empty() || polygon.outer().size() != 4U) {
     return std::nullopt;
   }
 
   const auto bounds = geom::compute_bounds(polygon);
-  for (std::size_t index = 0; index < polygon.outer.size(); ++index) {
-    const auto &current = polygon.outer[index];
-    const auto &next = polygon.outer[(index + 1U) % polygon.outer.size()];
+  for (std::size_t index = 0; index < polygon.outer().size(); ++index) {
+    const auto &current = polygon.outer()[index];
+    const auto &next = polygon.outer()[(index + 1U) % polygon.outer().size()];
 
-    const bool x_is_corner = nearly_equal(current.x, bounds.min.x) ||
-                             nearly_equal(current.x, bounds.max.x);
-    const bool y_is_corner = nearly_equal(current.y, bounds.min.y) ||
-                             nearly_equal(current.y, bounds.max.y);
+    const bool x_is_corner = nearly_equal(current.x(), bounds.min.x()) ||
+                             nearly_equal(current.x(), bounds.max.x());
+    const bool y_is_corner = nearly_equal(current.y(), bounds.min.y()) ||
+                             nearly_equal(current.y(), bounds.max.y());
     if (!x_is_corner || !y_is_corner) {
       return std::nullopt;
     }
 
-    const bool vertical = nearly_equal(current.x, next.x);
-    const bool horizontal = nearly_equal(current.y, next.y);
+    const bool vertical = nearly_equal(current.x(), next.x());
+    const bool horizontal = nearly_equal(current.y(), next.y());
     if (vertical == horizontal) {
       return std::nullopt;
     }
@@ -57,11 +57,11 @@ is_axis_aligned_rectangle(const geom::PolygonWithHoles &polygon)
                                 const geom::PolygonWithHoles &rhs) -> bool {
   const auto lhs_bounds = geom::compute_bounds(lhs);
   const auto rhs_bounds = geom::compute_bounds(rhs);
-  if (lhs_bounds.min.x != rhs_bounds.min.x) {
-    return lhs_bounds.min.x < rhs_bounds.min.x;
+  if (lhs_bounds.min.x() != rhs_bounds.min.x()) {
+    return lhs_bounds.min.x() < rhs_bounds.min.x();
   }
-  if (lhs_bounds.min.y != rhs_bounds.min.y) {
-    return lhs_bounds.min.y < rhs_bounds.min.y;
+  if (lhs_bounds.min.y() != rhs_bounds.min.y()) {
+    return lhs_bounds.min.y() < rhs_bounds.min.y();
   }
   return geom::polygon_area(lhs) < geom::polygon_area(rhs);
 }
@@ -92,8 +92,8 @@ normalize_regions(std::vector<geom::PolygonWithHoles> regions)
   const auto piece_bounds = geom::compute_bounds(piece);
   const auto move_bounds =
       inner_fit_rectangle_bounds(container_bounds, piece_bounds);
-  if (move_bounds.max.x < move_bounds.min.x - kAxisEpsilon ||
-      move_bounds.max.y < move_bounds.min.y - kAxisEpsilon) {
+  if (move_bounds.max.x() < move_bounds.min.x() - kAxisEpsilon ||
+      move_bounds.max.y() < move_bounds.min.y() - kAxisEpsilon) {
     return std::vector<geom::PolygonWithHoles>{};
   }
 
@@ -148,10 +148,10 @@ normalize_regions(std::vector<geom::PolygonWithHoles> regions)
 auto inner_fit_rectangle_bounds(const geom::Box2 &container_bounds,
                                 const geom::Box2 &piece_bounds) -> geom::Box2 {
   return {
-      .min = {.x = container_bounds.min.x - piece_bounds.min.x,
-              .y = container_bounds.min.y - piece_bounds.min.y},
-      .max = {.x = container_bounds.max.x - piece_bounds.max.x,
-              .y = container_bounds.max.y - piece_bounds.max.y},
+      .min = geom::Point2(container_bounds.min.x() - piece_bounds.min.x(),
+                          container_bounds.min.y() - piece_bounds.min.y()),
+      .max = geom::Point2(container_bounds.max.x() - piece_bounds.max.x(),
+                          container_bounds.max.y() - piece_bounds.max.y()),
   };
 }
 
@@ -164,8 +164,8 @@ auto compute_inner_fit_polygon(const geom::PolygonWithHoles &container,
   if (!geom::validate_polygon(normalized_container).is_valid() ||
       !geom::validate_polygon(normalized_piece).is_valid()) {
     SHINY_DEBUG("ifp: invalid input container_outer={} piece_outer={}",
-                normalized_container.outer.size(),
-                normalized_piece.outer.size());
+                normalized_container.outer().size(),
+                normalized_piece.outer().size());
     return util::Status::invalid_input;
   }
 
@@ -177,18 +177,18 @@ auto compute_inner_fit_polygon(const geom::PolygonWithHoles &container,
   const auto piece_bounds = geom::compute_bounds(normalized_piece);
   const auto ifr = inner_fit_rectangle_bounds(*container_bounds, piece_bounds);
 
-  if (ifr.max.x < ifr.min.x - kAxisEpsilon ||
-      ifr.max.y < ifr.min.y - kAxisEpsilon) {
+  if (ifr.max.x() < ifr.min.x() - kAxisEpsilon ||
+      ifr.max.y() < ifr.min.y() - kAxisEpsilon) {
     return std::vector<geom::PolygonWithHoles>{};
   }
 
-  return std::vector<geom::PolygonWithHoles>{geom::normalize_polygon(
-      geom::PolygonWithHoles{.outer = {
-                                 ifr.min,
-                                 {.x = ifr.max.x, .y = ifr.min.y},
-                                 ifr.max,
-                                 {.x = ifr.min.x, .y = ifr.max.y},
-                             }})};
+  return std::vector<geom::PolygonWithHoles>{
+      geom::normalize_polygon(geom::PolygonWithHoles(geom::Ring{
+          ifr.min,
+          geom::Point2(ifr.max.x(), ifr.min.y()),
+          ifr.max,
+          geom::Point2(ifr.min.x(), ifr.max.y()),
+      }))};
 }
 
 auto compute_ifp(const geom::PolygonWithHoles &container,

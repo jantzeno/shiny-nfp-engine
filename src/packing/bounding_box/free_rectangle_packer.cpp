@@ -74,8 +74,8 @@ auto find_best_free_rectangle_candidate(
 
     const geom::Box2 canonical_candidate_bounds{
         .min = canonical_free_rectangle.min,
-        .max = {.x = canonical_free_rectangle.min.x + width,
-                .y = canonical_free_rectangle.min.y + height},
+        .max = geom::Point2(canonical_free_rectangle.min.x() + width,
+                            canonical_free_rectangle.min.y() + height),
     };
     const geom::Box2 actual_candidate_bounds =
         box_for_start_corner(canonical_candidate_bounds, state.container_bounds,
@@ -87,10 +87,9 @@ auto find_best_free_rectangle_candidate(
       continue;
     }
 
-    const geom::Point2 translation{
-        .x = actual_candidate_bounds.min.x - rotated_bounds.min.x,
-        .y = actual_candidate_bounds.min.y - rotated_bounds.min.y,
-    };
+    const geom::Point2 translation(
+        actual_candidate_bounds.min.x() - rotated_bounds.min.x(),
+        actual_candidate_bounds.min.y() - rotated_bounds.min.y());
     const auto translated_piece = translate_polygon(rotated_piece, translation);
     if (overlaps_any_exclusion_zone(translated_piece, actual_candidate_bounds,
                                     request.config.placement.exclusion_zones,

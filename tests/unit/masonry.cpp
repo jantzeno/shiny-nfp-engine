@@ -34,33 +34,26 @@ using shiny::nesting::test::require_fixture_metadata;
 
 auto make_rectangle(double min_x, double min_y, double max_x, double max_y)
     -> PolygonWithHoles {
-  return {
-      .outer =
-          {
-              {.x = min_x, .y = min_y},
-              {.x = max_x, .y = min_y},
-              {.x = max_x, .y = max_y},
-              {.x = min_x, .y = max_y},
-          },
-  };
+  return shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+              shiny::nesting::geom::Point2(min_x, min_y),
+              shiny::nesting::geom::Point2(max_x, min_y),
+              shiny::nesting::geom::Point2(max_x, max_y),
+              shiny::nesting::geom::Point2(min_x, max_y),
+          });
 }
 
 auto make_donut() -> PolygonWithHoles {
-  return {
-      .outer =
-          {
-              {.x = 0.0, .y = 0.0},
-              {.x = 6.0, .y = 0.0},
-              {.x = 6.0, .y = 6.0},
-              {.x = 0.0, .y = 6.0},
-          },
-      .holes = {{
-          {.x = 2.0, .y = 2.0},
-          {.x = 4.0, .y = 2.0},
-          {.x = 4.0, .y = 4.0},
-          {.x = 2.0, .y = 4.0},
-      }},
-  };
+  return shiny::nesting::geom::PolygonWithHoles({
+              shiny::nesting::geom::Point2(0.0, 0.0),
+              shiny::nesting::geom::Point2(6.0, 0.0),
+              shiny::nesting::geom::Point2(6.0, 6.0),
+              shiny::nesting::geom::Point2(0.0, 6.0),
+          }, {{
+          shiny::nesting::geom::Point2(2.0, 2.0),
+          shiny::nesting::geom::Point2(4.0, 2.0),
+          shiny::nesting::geom::Point2(4.0, 4.0),
+          shiny::nesting::geom::Point2(2.0, 4.0),
+      }});
 }
 
 auto make_piece(std::uint32_t piece_id, PolygonWithHoles polygon,
@@ -77,22 +70,20 @@ auto make_piece(std::uint32_t piece_id, PolygonWithHoles polygon,
 
 auto compute_bounds(const PolygonWithHoles &polygon)
     -> std::pair<Point2, Point2> {
-  Point2 minimum{.x = std::numeric_limits<double>::infinity(),
-                 .y = std::numeric_limits<double>::infinity()};
-  Point2 maximum{.x = -std::numeric_limits<double>::infinity(),
-                 .y = -std::numeric_limits<double>::infinity()};
+  Point2 minimumPoint2(std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity());
+  Point2 maximumPoint2(-std::numeric_limits<double>::infinity(), -std::numeric_limits<double>::infinity());
 
   auto accumulate = [&](const auto &ring) {
     for (const auto &point : ring) {
-      minimum.x = std::min(minimum.x, point.x);
-      minimum.y = std::min(minimum.y, point.y);
-      maximum.x = std::max(maximum.x, point.x);
-      maximum.y = std::max(maximum.y, point.y);
+      minimum.set_x(std::min(minimum.x(), point.x()));
+      minimum.set_y(std::min(minimum.y(), point.y()));
+      maximum.set_x(std::max(maximum.x(), point.x()));
+      maximum.set_y(std::max(maximum.y(), point.y()));
     }
   };
 
-  accumulate(polygon.outer);
-  for (const auto &hole : polygon.holes) {
+  accumulate(polygon.outer());
+  for (const auto &hole : polygon.holes()) {
     accumulate(hole);
   }
 
@@ -141,7 +132,7 @@ auto parse_exclusion_zones(const shiny::nesting::test::pt::ptree &node)
   for (const auto &child : node) {
     zones.push_back({
         .zone_id = child.second.get<std::uint32_t>("zone_id", 0),
-        .region = {.outer = parse_ring(child.second.get_child("region"))},
+        .region = shiny::nesting::geom::PolygonWithHoles(parse_ring(child.second.get_child("region"))),
     });
   }
   return zones;
@@ -352,18 +343,18 @@ TEST_CASE("masonry builder fills shelves deterministically",
   REQUIRE(first.trace[0].opened_new_bin);
   REQUIRE(first.trace[0].started_new_shelf);
   REQUIRE(first.trace[0].shelf_index == 0);
-  REQUIRE(first.trace[0].translation == Point2{.x = 0.0, .y = 0.0});
+  REQUIRE(first.trace[0].translation == shiny::nesting::geom::Point2(0.0, 0.0));
 
   REQUIRE_FALSE(first.trace[1].opened_new_bin);
   REQUIRE_FALSE(first.trace[1].started_new_shelf);
   REQUIRE(first.trace[1].shelf_index == 0);
-  REQUIRE(first.trace[1].translation == Point2{.x = 6.0, .y = 0.0});
+  REQUIRE(first.trace[1].translation == shiny::nesting::geom::Point2(6.0, 0.0));
 
   REQUIRE_FALSE(first.trace[2].opened_new_bin);
   REQUIRE(first.trace[2].started_new_shelf);
   REQUIRE(first.trace[2].shelf_index == 1);
   REQUIRE(first.trace[2].resolved_rotation.degrees == 90.0);
-  REQUIRE(first.trace[2].translation == Point2{.x = 3.0, .y = 5.0});
+  REQUIRE(first.trace[2].translation == shiny::nesting::geom::Point2(3.0, 5.0));
 
   require_same_trace(first, second);
 }
@@ -400,7 +391,7 @@ TEST_CASE("masonry builder uses hole-aware placement when enabled",
   REQUIRE(result.progress.size() == 2);
   REQUIRE(result.trace[1].inside_hole);
   REQUIRE(result.trace[1].hole_index == 0);
-  REQUIRE(result.trace[1].translation == Point2{.x = 2.0, .y = 2.0});
+  REQUIRE(result.trace[1].translation == shiny::nesting::geom::Point2(2.0, 2.0));
   REQUIRE(result.bins.front().placements.size() == 2);
   REQUIRE(result.bins.front().placements[1].inside_hole);
 }
@@ -415,7 +406,7 @@ TEST_CASE("masonry builder respects grain and exclusion constraints",
   config.placement.exclusion_zones = {
       BedExclusionZone{
           .zone_id = 1,
-          .region = {.outer = make_rectangle(0.0, 0.0, 4.0, 2.0).outer},
+          .region = shiny::nesting::geom::PolygonWithHoles(make_rectangle(0.0, 0.0, 4.0, 2.0).outer()),
       },
   };
 
@@ -441,12 +432,12 @@ TEST_CASE("masonry builder respects grain and exclusion constraints",
   REQUIRE(result.trace.size() == 1);
   REQUIRE(result.progress.size() == 1);
   REQUIRE(result.trace.front().resolved_rotation.degrees == 90.0);
-  REQUIRE(result.trace.front().translation == Point2{.x = 10.0, .y = 0.0});
+  REQUIRE(result.trace.front().translation == shiny::nesting::geom::Point2(10.0, 0.0));
 
   const auto &placed_piece = result.bins.front().placements.front().polygon;
   const auto [minimum, maximum] = compute_bounds(placed_piece);
-  REQUIRE(minimum == Point2{.x = 8.0, .y = 0.0});
-  REQUIRE(maximum == Point2{.x = 10.0, .y = 4.0});
+  REQUIRE(minimum == shiny::nesting::geom::Point2(8.0, 0.0));
+  REQUIRE(maximum == shiny::nesting::geom::Point2(10.0, 4.0));
 }
 
 TEST_CASE("masonry builder honors top-right start corner",
@@ -477,10 +468,10 @@ TEST_CASE("masonry builder honors top-right start corner",
   REQUIRE(result.trace.size() == 2);
   REQUIRE(result.trace[0].opened_new_bin);
   REQUIRE(result.trace[0].started_new_shelf);
-  REQUIRE(result.trace[0].translation == Point2{.x = 4.0, .y = 6.0});
+  REQUIRE(result.trace[0].translation == shiny::nesting::geom::Point2(4.0, 6.0));
   REQUIRE_FALSE(result.trace[1].opened_new_bin);
   REQUIRE_FALSE(result.trace[1].started_new_shelf);
-  REQUIRE(result.trace[1].translation == Point2{.x = 0.0, .y = 6.0});
+  REQUIRE(result.trace[1].translation == shiny::nesting::geom::Point2(0.0, 6.0));
 }
 
 TEST_CASE("masonry fixture cases", "[packing][masonry][fixtures]") {

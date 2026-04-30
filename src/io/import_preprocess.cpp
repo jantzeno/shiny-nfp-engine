@@ -14,22 +14,23 @@ constexpr int kMaxBezierDepth = 12;
 [[nodiscard]] auto distance_point_to_line(const geom::Point2 &point,
                                           const geom::Point2 &start,
                                           const geom::Point2 &end) -> double {
-  const double dx = end.x - start.x;
-  const double dy = end.y - start.y;
+  const double dx = end.x() - start.x();
+  const double dy = end.y() - start.y();
   const double denominator = dx * dx + dy * dy;
   if (denominator <= std::numeric_limits<double>::epsilon()) {
-    const double px = point.x - start.x;
-    const double py = point.y - start.y;
+    const double px = point.x() - start.x();
+    const double py = point.y() - start.y();
     return std::sqrt(px * px + py * py);
   }
 
-  const double t = std::clamp(
-      ((point.x - start.x) * dx + (point.y - start.y) * dy) / denominator, 0.0,
-      1.0);
-  const double projected_x = start.x + dx * t;
-  const double projected_y = start.y + dy * t;
-  const double px = point.x - projected_x;
-  const double py = point.y - projected_y;
+  const double t =
+      std::clamp(((point.x() - start.x()) * dx + (point.y() - start.y()) * dy) /
+                     denominator,
+                 0.0, 1.0);
+  const double projected_x = start.x() + dx * t;
+  const double projected_y = start.y() + dy * t;
+  const double px = point.x() - projected_x;
+  const double py = point.y() - projected_y;
   return std::sqrt(px * px + py * py);
 }
 
@@ -47,30 +48,18 @@ auto append_cubic_bezier_points(const geom::Point2 &start,
     return;
   }
 
-  const geom::Point2 start_control{
-      .x = (start.x + control1.x) * 0.5,
-      .y = (start.y + control1.y) * 0.5,
-  };
-  const geom::Point2 control_mid{
-      .x = (control1.x + control2.x) * 0.5,
-      .y = (control1.y + control2.y) * 0.5,
-  };
-  const geom::Point2 control_end{
-      .x = (control2.x + end.x) * 0.5,
-      .y = (control2.y + end.y) * 0.5,
-  };
-  const geom::Point2 left_mid{
-      .x = (start_control.x + control_mid.x) * 0.5,
-      .y = (start_control.y + control_mid.y) * 0.5,
-  };
-  const geom::Point2 right_mid{
-      .x = (control_mid.x + control_end.x) * 0.5,
-      .y = (control_mid.y + control_end.y) * 0.5,
-  };
-  const geom::Point2 split{
-      .x = (left_mid.x + right_mid.x) * 0.5,
-      .y = (left_mid.y + right_mid.y) * 0.5,
-  };
+  const geom::Point2 start_control{(start.x() + control1.x()) * 0.5,
+                                   (start.y() + control1.y()) * 0.5};
+  const geom::Point2 control_mid{(control1.x() + control2.x()) * 0.5,
+                                 (control1.y() + control2.y()) * 0.5};
+  const geom::Point2 control_end{(control2.x() + end.x()) * 0.5,
+                                 (control2.y() + end.y()) * 0.5};
+  const geom::Point2 left_mid{(start_control.x() + control_mid.x()) * 0.5,
+                              (start_control.y() + control_mid.y()) * 0.5};
+  const geom::Point2 right_mid{(control_mid.x() + control_end.x()) * 0.5,
+                               (control_mid.y() + control_end.y()) * 0.5};
+  const geom::Point2 split{(left_mid.x() + right_mid.x()) * 0.5,
+                           (left_mid.y() + right_mid.y()) * 0.5};
 
   append_cubic_bezier_points(start, start_control, left_mid, split, tolerance,
                              samples, depth + 1);
@@ -103,13 +92,13 @@ auto append_segment_samples(const ImportedPathSegment &segment,
   }
 
   geom::PolygonWithHoles polygon;
-  polygon.outer = std::move(outer_or.value());
+  polygon.outer() = std::move(outer_or.value());
   for (const auto &hole : shape.holes) {
     auto hole_or = flatten_ring(hole, options.flatten_tolerance);
     if (!hole_or.ok()) {
       return hole_or.status();
     }
-    polygon.holes.push_back(std::move(hole_or.value()));
+    polygon.holes().push_back(std::move(hole_or.value()));
   }
 
   polygon = geom::normalize_polygon(polygon);
@@ -122,8 +111,8 @@ auto append_segment_samples(const ImportedPathSegment &segment,
 
   if (normalize_piece_origins) {
     const auto bounds = geom::compute_bounds(polygon);
-    polygon =
-        geom::translate(polygon, {.x = -bounds.min.x, .y = -bounds.min.y});
+    polygon = geom::translate(polygon,
+                              geom::Vector2{-bounds.min.x(), -bounds.min.y()});
   }
   return geom::normalize_polygon(polygon);
 }

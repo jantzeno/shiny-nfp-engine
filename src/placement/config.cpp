@@ -24,7 +24,7 @@ constexpr double kGrainAngleEpsilon = 1e-9;
 
 [[nodiscard]] auto point_is_finite(const shiny::nesting::geom::Point2 &point)
     -> bool {
-  return std::isfinite(point.x) && std::isfinite(point.y);
+  return std::isfinite(point.x()) && std::isfinite(point.y());
 }
 
 } // namespace
@@ -32,11 +32,12 @@ constexpr double kGrainAngleEpsilon = 1e-9;
 namespace shiny::nesting::place {
 
 auto BedExclusionZone::is_valid() const -> bool {
-  if (region.outer.size() < 3U) {
+  if (region.outer().size() < 3U) {
     return false;
   }
 
-  return std::all_of(region.outer.begin(), region.outer.end(), point_is_finite);
+  return std::all_of(region.outer().begin(), region.outer().end(),
+                     point_is_finite);
 }
 
 auto PlacementConfig::is_valid() const -> bool {

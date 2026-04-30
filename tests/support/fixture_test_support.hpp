@@ -70,11 +70,11 @@ inline auto parse_ring(const pt::ptree &node) -> geom::Ring {
 
 inline auto parse_polygon(const pt::ptree &node) -> geom::PolygonWithHoles {
   geom::PolygonWithHoles polygon;
-  polygon.outer = parse_ring(node.get_child("outer"));
+  polygon.outer() = parse_ring(node.get_child("outer"));
 
   if (const auto holes = node.get_child_optional("holes")) {
     for (const auto &child : *holes) {
-      polygon.holes.push_back(parse_ring(child.second));
+      polygon.holes().push_back(parse_ring(child.second));
     }
   }
 
@@ -83,8 +83,8 @@ inline auto parse_polygon(const pt::ptree &node) -> geom::PolygonWithHoles {
 
 inline void require_point_equal(const geom::Point2 &actual,
                                 const geom::Point2 &expected) {
-  REQUIRE(actual.x == expected.x);
-  REQUIRE(actual.y == expected.y);
+  REQUIRE(actual.x() == expected.x());
+  REQUIRE(actual.y() == expected.y());
 }
 
 inline void require_ring_equal(const geom::Ring &actual,
@@ -97,10 +97,10 @@ inline void require_ring_equal(const geom::Ring &actual,
 
 inline void require_polygon_equal(const geom::PolygonWithHoles &actual,
                                   const geom::PolygonWithHoles &expected) {
-  require_ring_equal(actual.outer, expected.outer);
-  REQUIRE(actual.holes.size() == expected.holes.size());
-  for (std::size_t index = 0; index < actual.holes.size(); ++index) {
-    require_ring_equal(actual.holes[index], expected.holes[index]);
+  require_ring_equal(actual.outer(), expected.outer());
+  REQUIRE(actual.holes().size() == expected.holes().size());
+  for (std::size_t index = 0; index < actual.holes().size(); ++index) {
+    require_ring_equal(actual.holes()[index], expected.holes()[index]);
   }
 }
 

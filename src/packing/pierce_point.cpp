@@ -15,35 +15,35 @@ constexpr double kLeadRadiusFloor = 1e-6;
 
 [[nodiscard]] auto normalized_vector(const geom::Point2 &from,
                                      const geom::Point2 &to) -> geom::Vector2 {
-  const auto dx = to.x - from.x;
-  const auto dy = to.y - from.y;
+  const auto dx = to.x() - from.x();
+  const auto dy = to.y() - from.y();
   const auto length = std::sqrt(dx * dx + dy * dy);
   if (length <= kLeadRadiusFloor) {
     return {};
   }
-  return {.x = dx / length, .y = dy / length};
+  return {dx / length, dy / length};
 }
 
 [[nodiscard]] auto add_scaled(const geom::Point2 &point,
                               const geom::Vector2 &vector, double scale)
     -> geom::Point2 {
-  return {.x = point.x + vector.x * scale, .y = point.y + vector.y * scale};
+  return {point.x() + vector.x() * scale, point.y() + vector.y() * scale};
 }
 
 [[nodiscard]] auto midpoint(const geom::Point2 &lhs, const geom::Point2 &rhs)
     -> geom::Point2 {
-  return {.x = (lhs.x + rhs.x) / 2.0, .y = (lhs.y + rhs.y) / 2.0};
+  return {(lhs.x() + rhs.x()) / 2.0, (lhs.y() + rhs.y()) / 2.0};
 }
 
 [[nodiscard]] auto right_normal(const geom::Vector2 &tangent) -> geom::Vector2 {
-  return {.x = tangent.y, .y = -tangent.x};
+  return {tangent.y(), -tangent.x()};
 }
 
 [[nodiscard]] auto tangent_turn_penalty(const geom::Vector2 &incoming_tangent,
                                         const geom::Vector2 &outgoing_tangent)
     -> double {
-  const auto dot = std::clamp(incoming_tangent.x * outgoing_tangent.x +
-                                  incoming_tangent.y * outgoing_tangent.y,
+  const auto dot = std::clamp(incoming_tangent.x() * outgoing_tangent.x() +
+                                  incoming_tangent.y() * outgoing_tangent.y(),
                               -1.0, 1.0);
   return 1.0 - dot;
 }
@@ -71,13 +71,13 @@ struct PierceCandidate {
                                  double radius, double outward)
     -> CutContourOrder::LeadArc {
   if (radius <= kLeadRadiusFloor ||
-      (outgoing_tangent.x == 0.0 && outgoing_tangent.y == 0.0)) {
+      (outgoing_tangent.x() == 0.0 && outgoing_tangent.y() == 0.0)) {
     return {};
   }
 
   const auto base_normal = right_normal(outgoing_tangent);
-  const geom::Vector2 normal{.x = base_normal.x * outward,
-                             .y = base_normal.y * outward};
+  const geom::Vector2 normal(base_normal.x() * outward,
+                             base_normal.y() * outward);
   const auto center = add_scaled(pierce_point, normal, radius);
   return {
       .enabled = true,
@@ -93,13 +93,13 @@ struct PierceCandidate {
                                   double radius, double outward)
     -> CutContourOrder::LeadArc {
   if (radius <= kLeadRadiusFloor ||
-      (incoming_tangent.x == 0.0 && incoming_tangent.y == 0.0)) {
+      (incoming_tangent.x() == 0.0 && incoming_tangent.y() == 0.0)) {
     return {};
   }
 
   const auto base_normal = right_normal(incoming_tangent);
-  const geom::Vector2 normal{.x = base_normal.x * outward,
-                             .y = base_normal.y * outward};
+  const geom::Vector2 normal(base_normal.x() * outward,
+                             base_normal.y() * outward);
   const auto center = add_scaled(pierce_point, normal, radius);
   return {
       .enabled = true,

@@ -28,36 +28,29 @@ namespace {
 
 [[nodiscard]] auto rectangle(double min_x, double min_y, double max_x,
                              double max_y) -> geom::PolygonWithHoles {
-  return {
-      .outer =
-          {
+  return shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
               {min_x, min_y},
               {max_x, min_y},
               {max_x, max_y},
               {min_x, max_y},
-          },
-  };
+          });
 }
 
 [[nodiscard]] auto frame(double min_x, double min_y, double max_x, double max_y,
                          double hole_min_x, double hole_min_y,
                          double hole_max_x, double hole_max_y)
     -> geom::PolygonWithHoles {
-  return {
-      .outer =
-          {
+  return shiny::nesting::geom::PolygonWithHoles({
               {min_x, min_y},
               {max_x, min_y},
               {max_x, max_y},
               {min_x, max_y},
-          },
-      .holes = {{
+          }, {{
           {hole_min_x, hole_min_y},
           {hole_min_x, hole_max_y},
           {hole_max_x, hole_max_y},
           {hole_max_x, hole_min_y},
-      }},
-  };
+      }});
 }
 
 [[nodiscard]] auto four_rotations() -> geom::DiscreteRotationSet {
@@ -354,10 +347,10 @@ TEST_CASE("sequential-backtrack creates overflow bins after exhausting the "
 
   const auto source_bounds = geom::compute_bounds(source_bin->container);
   const auto overflow_bounds = geom::compute_bounds(overflow_bin->container);
-  REQUIRE(source_bounds.min.x == overflow_bounds.min.x);
-  REQUIRE(source_bounds.min.y == overflow_bounds.min.y);
-  REQUIRE(source_bounds.max.x == overflow_bounds.max.x);
-  REQUIRE(source_bounds.max.y == overflow_bounds.max.y);
+  REQUIRE(source_bounds.min.x() == overflow_bounds.min.x());
+  REQUIRE(source_bounds.min.y() == overflow_bounds.min.y());
+  REQUIRE(source_bounds.max.x() == overflow_bounds.max.x());
+  REQUIRE(source_bounds.max.y() == overflow_bounds.max.y());
 }
 
 TEST_CASE("sequential-backtrack leaves pieces unplaced when overflow is "
@@ -407,10 +400,10 @@ TEST_CASE("sequential-backtrack overflow bins clone the exhausted template "
 
   const auto template_bounds = geom::compute_bounds(template_bin->container);
   const auto overflow_bounds = geom::compute_bounds(overflow_bin->container);
-  REQUIRE(template_bounds.min.x == overflow_bounds.min.x);
-  REQUIRE(template_bounds.min.y == overflow_bounds.min.y);
-  REQUIRE(template_bounds.max.x == overflow_bounds.max.x);
-  REQUIRE(template_bounds.max.y == overflow_bounds.max.y);
+  REQUIRE(template_bounds.min.x() == overflow_bounds.min.x());
+  REQUIRE(template_bounds.min.y() == overflow_bounds.min.y());
+  REQUIRE(template_bounds.max.x() == overflow_bounds.max.x());
+  REQUIRE(template_bounds.max.y() == overflow_bounds.max.y());
 
   const auto *third_piece = find_piece_placement(solved.value(), 3U);
   REQUIRE(third_piece != nullptr);

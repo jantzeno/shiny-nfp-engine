@@ -68,8 +68,8 @@ auto parse_exclusion_zones(const shiny::nesting::test::pt::ptree &node)
   for (const auto &child : node) {
     zones.push_back({
         .zone_id = child.second.get<std::uint32_t>("zone_id", 0),
-        .region = {.outer = shiny::nesting::test::parse_ring(
-                       child.second.get_child("region"))},
+        .region = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::test::parse_ring(
+                       child.second.get_child("region"))),
     });
   }
   return zones;

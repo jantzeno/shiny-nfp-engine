@@ -78,9 +78,8 @@ TEST_CASE("NfpCache round-trips polygon payloads with accuracy metadata",
   const auto key = cn::make_nfp_cache_key(1U, 2U, 0.0, 90.0);
   const cn::NfpCacheValue value{
       .polygons = {shiny::nesting::geom::normalize_polygon(
-          shiny::nesting::geom::PolygonWithHoles{
-              .outer = {{0.0, 0.0}, {2.0, 0.0}, {2.0, 2.0}, {0.0, 2.0}},
-          })},
+          shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+              {0.0, 0.0}, {2.0, 0.0}, {2.0, 2.0}, {0.0, 2.0}}))},
       .accuracy = cn::NfpCacheAccuracy::exact,
       .status = shiny::nesting::util::Status::ok,
   };
@@ -112,7 +111,7 @@ TEST_CASE("PenetrationDepthCache round-trips scalar payloads",
   cn::PenetrationDepthCache pd_cache(
       {.policy = cn::CachePolicy::lru_bounded, .max_entries = 2});
   const auto key = cn::make_penetration_depth_cache_key(
-      10U, shiny::nesting::geom::Point2{.x = 1.0, .y = 2.0});
+      10U, shiny::nesting::geom::Point2(1.0, 2.0));
   pd_cache.put(key, 3.25);
   const auto cached = pd_cache.get(key);
   REQUIRE(cached != nullptr);

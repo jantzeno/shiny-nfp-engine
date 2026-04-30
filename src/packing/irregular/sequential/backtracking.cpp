@@ -192,11 +192,26 @@ auto try_place_piece(
     cache::NfpCache *nfp_cache, PackerSearchMetrics *search_metrics,
     runtime::DeterministicRng *rng_ptr,
     const TrialStateRecorder *trial_recorder) -> PlacementSearchStatus {
+  const auto candidate_strategy =
+      request.request.execution.irregular.candidate_strategy;
+
   // Shared per-bin candidate evaluator: both the existing-bin loop and
   // the open-new-bin loop need to call `find_best_for_bin` with the
   // same long argument list. Capture once so the call sites stay short
   // and any future signature change happens in one place.
   const auto find_best = [&](WorkingBin &bin) {
+    if (candidate_strategy == CandidateStrategy::nfp_perfect) {
+      PlacementAttemptContext exact_fit_attempt{};
+      auto exact_fit_result = try_exact_fit_candidate(
+          bin, piece, request, control, exact_fit_attempt);
+      attempt_context.candidate_evaluations_completed +=
+          exact_fit_attempt.candidate_evaluations_completed;
+      if (exact_fit_result.status == PlacementSearchStatus::interrupted ||
+          exact_fit_result.candidate.has_value()) {
+        return exact_fit_result;
+      }
+    }
+
     return find_best_for_bin(bin, piece, request, control, search_throttle,
                              placed_parts, total_parts, attempt_context,
                              nfp_cache, search_metrics, rng_ptr);
@@ -223,23 +238,25 @@ auto try_place_piece(
         return PlacementSearchStatus::found;
       }
 
-      PlacementAttemptContext exact_fit_attempt{};
-      auto exact_fit_result =
-          try_exact_fit_candidate(opened_bins[frontier_index], piece, request,
-                                  control, exact_fit_attempt);
-      attempt_context.candidate_evaluations_completed +=
-          exact_fit_attempt.candidate_evaluations_completed;
-      if (exact_fit_result.status == PlacementSearchStatus::interrupted) {
-        return exact_fit_result.status;
-      }
-      if (exact_fit_result.candidate.has_value()) {
-        if (trial_recorder != nullptr && trial_recorder->snapshot_bin) {
-          trial_recorder->snapshot_bin(frontier_index);
+      if (candidate_strategy != CandidateStrategy::nfp_perfect) {
+        PlacementAttemptContext exact_fit_attempt{};
+        auto exact_fit_result =
+            try_exact_fit_candidate(opened_bins[frontier_index], piece, request,
+                                    control, exact_fit_attempt);
+        attempt_context.candidate_evaluations_completed +=
+            exact_fit_attempt.candidate_evaluations_completed;
+        if (exact_fit_result.status == PlacementSearchStatus::interrupted) {
+          return exact_fit_result.status;
         }
-        apply_candidate(opened_bins[frontier_index],
-                        *exact_fit_result.candidate, trace, false,
-                        request.request.execution, trial_recorder);
-        return PlacementSearchStatus::found;
+        if (exact_fit_result.candidate.has_value()) {
+          if (trial_recorder != nullptr && trial_recorder->snapshot_bin) {
+            trial_recorder->snapshot_bin(frontier_index);
+          }
+          apply_candidate(opened_bins[frontier_index],
+                          *exact_fit_result.candidate, trace, false,
+                          request.request.execution, trial_recorder);
+          return PlacementSearchStatus::found;
+        }
       }
 
       const auto frontier_status = frontier_exhaustion_status_for_piece(

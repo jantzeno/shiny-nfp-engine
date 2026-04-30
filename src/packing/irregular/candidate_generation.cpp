@@ -50,9 +50,9 @@ struct CandidateAccumulator {
                    const place::PlacementCandidateSource source,
                    const cache::NfpCacheAccuracy nfp_accuracy) -> void {
     const auto qx = static_cast<std::int64_t>(
-        std::llround(translation.x / kCandidateEpsilon));
+        std::llround(translation.x() / kCandidateEpsilon));
     const auto qy = static_cast<std::int64_t>(
-        std::llround(translation.y / kCandidateEpsilon));
+        std::llround(translation.y() / kCandidateEpsilon));
     const auto key = std::make_tuple(qx, qy, static_cast<int>(source));
     if (const auto it = seen.find(key); it != seen.end()) {
       auto &existing = points[it->second];
@@ -88,15 +88,15 @@ candidate_point_priority(const geom::Point2 &translation,
     -> std::pair<double, double> {
   switch (start_corner) {
   case place::PlacementStartCorner::bottom_left:
-    return {translation.y, translation.x};
+    return {translation.y(), translation.x()};
   case place::PlacementStartCorner::bottom_right:
-    return {translation.y, -translation.x};
+    return {translation.y(), -translation.x()};
   case place::PlacementStartCorner::top_left:
-    return {-translation.y, translation.x};
+    return {-translation.y(), translation.x()};
   case place::PlacementStartCorner::top_right:
-    return {-translation.y, -translation.x};
+    return {-translation.y(), -translation.x()};
   }
-  return {translation.y, translation.x};
+  return {translation.y(), translation.x()};
 }
 
 [[nodiscard]] auto half_normal_weight(const std::size_t rank_offset,
@@ -152,22 +152,12 @@ auto append_unique_translation(
   accumulator.try_emplace(translation, source, nfp_accuracy);
 }
 
-template <typename Fn>
-auto for_each_polygon_vertex(const geom::PolygonWithHoles &polygon, Fn &&fn)
-    -> void {
-  geom::for_each_ring(polygon, [&](std::span<const geom::Point2> ring) {
-    for (const auto &vertex : ring) {
-      fn(vertex);
-    }
-  });
-}
-
 auto append_polygon_vertices(CandidateAccumulator &accumulator,
                              const geom::PolygonWithHoles &polygon,
                              const place::PlacementCandidateSource source,
                              const cache::NfpCacheAccuracy nfp_accuracy)
     -> void {
-  for_each_polygon_vertex(polygon, [&](const geom::Point2 &vertex) {
+  geom::for_each_vertex(polygon, [&](const geom::Point2 &vertex) {
     append_unique_translation(accumulator, vertex, source, nfp_accuracy);
   });
 }
@@ -192,8 +182,8 @@ build_base_domain(const geom::PolygonWithHoles &container,
       SHINY_DEBUG(
           "candidate_generation: exclusion subtraction failed status={} "
           "domain_outer={} obstacle_outer={}",
-          util::status_name(subtract_status), container.outer.size(),
-          region.outer.size());
+          util::status_name(subtract_status), container.outer().size(),
+          region.outer().size());
       return subtract_status;
     }
   }
@@ -221,10 +211,10 @@ auto append_arrangement_intersections(
     const cache::NfpCacheAccuracy nfp_accuracy) -> util::Status {
   std::vector<geom::Segment2> domain_edges;
   for (const auto &polygon : domain) {
-    const auto outer_edges = ring_edges(polygon.outer);
+    const auto outer_edges = ring_edges(polygon.outer());
     domain_edges.insert(domain_edges.end(), outer_edges.begin(),
                         outer_edges.end());
-    for (const auto &hole : polygon.holes) {
+    for (const auto &hole : polygon.holes()) {
       const auto hole_edges = ring_edges(hole);
       domain_edges.insert(domain_edges.end(), hole_edges.begin(),
                           hole_edges.end());
@@ -233,8 +223,8 @@ auto append_arrangement_intersections(
 
   for (const auto &blocked_polygon : blocked) {
     std::vector<geom::Segment2> blocked_edges =
-        ring_edges(blocked_polygon.outer);
-    for (const auto &hole : blocked_polygon.holes) {
+        ring_edges(blocked_polygon.outer());
+    for (const auto &hole : blocked_polygon.holes()) {
       const auto hole_edges = ring_edges(hole);
       blocked_edges.insert(blocked_edges.end(), hole_edges.begin(),
                            hole_edges.end());
@@ -265,7 +255,7 @@ auto append_points_inside_domain(
     const std::vector<geom::PolygonWithHoles> &blocked,
     const cache::NfpCacheAccuracy nfp_accuracy) -> util::Status {
   for (const auto &blocked_polygon : blocked) {
-    for (const auto &vertex : blocked_polygon.outer) {
+    for (const auto &vertex : blocked_polygon.outer()) {
       const auto inside_domain =
           std::any_of(domain.begin(), domain.end(), [&](const auto &region) {
             return pred::locate_point_in_polygon(vertex, region).location !=
@@ -307,7 +297,7 @@ auto append_boundary_feasible_vertices(
     const place::PlacementCandidateSource source,
     const cache::NfpCacheAccuracy nfp_accuracy) -> util::Status {
   for (const auto &region : domain) {
-    for_each_polygon_vertex(region, [&](const geom::Point2 &vertex) {
+    geom::for_each_vertex(region, [&](const geom::Point2 &vertex) {
       if (point_is_feasible(vertex, domain, blocked)) {
         append_unique_translation(accumulator, vertex, source, nfp_accuracy);
       }
@@ -487,15 +477,16 @@ auto limit_candidate_points(std::vector<GeneratedCandidatePoint> &points,
                      static_cast<int>(rhs.source);
             });
 
-  points.erase(
-      std::unique(points.begin(), points.end(),
-                  [](const GeneratedCandidatePoint &lhs,
-                     const GeneratedCandidatePoint &rhs) {
-                    return almost_equal(lhs.translation.x, rhs.translation.x) &&
-                           almost_equal(lhs.translation.y, rhs.translation.y) &&
-                           lhs.source == rhs.source;
-                  }),
-      points.end());
+  points.erase(std::unique(points.begin(), points.end(),
+                           [](const GeneratedCandidatePoint &lhs,
+                              const GeneratedCandidatePoint &rhs) {
+                             return almost_equal(lhs.translation.x(),
+                                                 rhs.translation.x()) &&
+                                    almost_equal(lhs.translation.y(),
+                                                 rhs.translation.y()) &&
+                                    lhs.source == rhs.source;
+                           }),
+               points.end());
 
   const auto max_points = execution.irregular.max_candidate_points;
   if (points.size() <= max_points) {

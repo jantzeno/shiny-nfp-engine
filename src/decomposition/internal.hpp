@@ -14,11 +14,11 @@ namespace shiny::nesting::decomp::detail {
   const auto lhs_bounds = geom::compute_bounds(lhs);
   const auto rhs_bounds = geom::compute_bounds(rhs);
 
-  if (lhs_bounds.min.x != rhs_bounds.min.x) {
-    return lhs_bounds.min.x < rhs_bounds.min.x;
+  if (lhs_bounds.min.x() != rhs_bounds.min.x()) {
+    return lhs_bounds.min.x() < rhs_bounds.min.x();
   }
-  if (lhs_bounds.min.y != rhs_bounds.min.y) {
-    return lhs_bounds.min.y < rhs_bounds.min.y;
+  if (lhs_bounds.min.y() != rhs_bounds.min.y()) {
+    return lhs_bounds.min.y() < rhs_bounds.min.y();
   }
   return geom::polygon_area(lhs) < geom::polygon_area(rhs);
 }

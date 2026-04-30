@@ -25,15 +25,12 @@ using shiny::nesting::search::SearchRunStatus;
 
 auto make_rectangle(double min_x, double min_y, double max_x, double max_y)
     -> PolygonWithHoles {
-  return {
-      .outer =
-          {
-              {.x = min_x, .y = min_y},
-              {.x = max_x, .y = min_y},
-              {.x = max_x, .y = max_y},
-              {.x = min_x, .y = max_y},
-          },
-  };
+  return shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+              shiny::nesting::geom::Point2(min_x, min_y),
+              shiny::nesting::geom::Point2(max_x, min_y),
+              shiny::nesting::geom::Point2(max_x, max_y),
+              shiny::nesting::geom::Point2(min_x, max_y),
+          });
 }
 
 auto make_piece(std::uint32_t piece_id, PolygonWithHoles polygon,

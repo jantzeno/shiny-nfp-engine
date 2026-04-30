@@ -39,22 +39,21 @@ namespace {
 
 [[nodiscard]] auto rect_polygon(const double width, const double height)
     -> geom::PolygonWithHoles {
-  return geom::PolygonWithHoles{
-      .outer = {{0.0, 0.0}, {width, 0.0}, {width, height}, {0.0, height}}};
+  return geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0}, {width, 0.0}, {width, height}, {0.0, height}});
 }
 
 [[nodiscard]] auto aabb_of(const geom::PolygonWithHoles &p) -> geom::Box2 {
   geom::Box2 box{};
-  if (p.outer.empty()) {
+  if (p.outer().empty()) {
     return box;
   }
-  box.min = p.outer.front();
-  box.max = p.outer.front();
-  for (const auto &pt : p.outer) {
-    box.min.x = std::min(box.min.x, pt.x);
-    box.min.y = std::min(box.min.y, pt.y);
-    box.max.x = std::max(box.max.x, pt.x);
-    box.max.y = std::max(box.max.y, pt.y);
+  box.min = p.outer().front();
+  box.max = p.outer().front();
+  for (const auto &pt : p.outer()) {
+    box.min.set_x(std::min(box.min.x(), pt.x()));
+    box.min.set_y(std::min(box.min.y(), pt.y()));
+    box.max.set_x(std::max(box.max.x(), pt.x()));
+    box.max.set_y(std::max(box.max.y(), pt.y()));
   }
   return box;
 }
@@ -600,11 +599,11 @@ TEST_CASE("REGRESSION: bb heuristic honors requested spacing",
       for (std::size_t j = i + 1; j < bin.placements.size(); ++j) {
         const auto box_b = aabb_of(bin.placements[j].polygon);
         INFO("bin1 spacing-violation pair pieces "
-             << bin.placements[i].placement.piece_id << " [" << box_a.min.x
-             << "," << box_a.min.y << "]-[" << box_a.max.x << "," << box_a.max.y
+             << bin.placements[i].placement.piece_id << " [" << box_a.min.x()
+             << "," << box_a.min.y() << "]-[" << box_a.max.x() << "," << box_a.max.y()
              << "] vs " << bin.placements[j].placement.piece_id << " ["
-             << box_b.min.x << "," << box_b.min.y << "]-[" << box_b.max.x << ","
-             << box_b.max.y << "] (required spacing " << options.part_spacing_mm
+             << box_b.min.x() << "," << box_b.min.y() << "]-[" << box_b.max.x() << ","
+             << box_b.max.y() << "] (required spacing " << options.part_spacing_mm
              << " mm)");
         REQUIRE_FALSE(
             boxes_violate_spacing(box_a, box_b, options.part_spacing_mm, 1e-3));

@@ -25,22 +25,22 @@ TEST_CASE("masonry observer events stay aligned with retained progress",
       .bins = {{
           .bin_id = 70,
           .polygon =
-              {.outer = {{0.0, 0.0}, {10.0, 0.0}, {10.0, 10.0}, {0.0, 10.0}}},
+              shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0}, {10.0, 0.0}, {10.0, 10.0}, {0.0, 10.0}}),
           .geometry_revision = 700,
       }},
       .pieces =
           {
               {.piece_id = 1,
                .polygon =
-                   {.outer = {{0.0, 0.0}, {6.0, 0.0}, {6.0, 4.0}, {0.0, 4.0}}},
+                   shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0}, {6.0, 0.0}, {6.0, 4.0}, {0.0, 4.0}}),
                .geometry_revision = 1},
               {.piece_id = 2,
                .polygon =
-                   {.outer = {{0.0, 0.0}, {4.0, 0.0}, {4.0, 4.0}, {0.0, 4.0}}},
+                   shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0}, {4.0, 0.0}, {4.0, 4.0}, {0.0, 4.0}}),
                .geometry_revision = 2},
               {.piece_id = 3,
                .polygon =
-                   {.outer = {{0.0, 0.0}, {5.0, 0.0}, {5.0, 3.0}, {0.0, 3.0}}},
+                   shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0}, {5.0, 0.0}, {5.0, 3.0}, {0.0, 3.0}}),
                .geometry_revision = 3},
           },
       .policy = shiny::nesting::place::PlacementPolicy::bottom_left,

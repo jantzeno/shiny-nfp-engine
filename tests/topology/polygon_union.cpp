@@ -28,10 +28,10 @@ auto parse_polygon_list(const shiny::nesting::test::pt::ptree &node)
 }
 
 auto point_less(const Point2 &lhs, const Point2 &rhs) -> bool {
-  if (lhs.x != rhs.x) {
-    return lhs.x < rhs.x;
+  if (lhs.x() != rhs.x()) {
+    return lhs.x() < rhs.x();
   }
-  return lhs.y < rhs.y;
+  return lhs.y() < rhs.y();
 }
 
 auto ring_less(const shiny::nesting::geom::Ring &lhs,
@@ -53,12 +53,12 @@ auto ring_less(const shiny::nesting::geom::Ring &lhs,
 
 auto polygon_less(const PolygonWithHoles &lhs, const PolygonWithHoles &rhs)
     -> bool {
-  return ring_less(lhs.outer, rhs.outer);
+  return ring_less(lhs.outer(), rhs.outer());
 }
 
 auto canonicalize_polygon(const PolygonWithHoles &polygon) -> PolygonWithHoles {
   auto normalized = shiny::nesting::geom::normalize_polygon(polygon);
-  std::sort(normalized.holes.begin(), normalized.holes.end(), ring_less);
+  std::sort(normalized.holes().begin(), normalized.holes().end(), ring_less);
   return normalized;
 }
 

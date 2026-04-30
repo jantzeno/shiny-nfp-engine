@@ -22,7 +22,7 @@ TEST_CASE("decomposition headers expose the planned milestone 4 surface",
   using shiny::nesting::decomp::DecompositionValidity;
 
   const ConvexComponent component{
-      .outer = {{0.0, 0.0}, {4.0, 0.0}, {0.0, 2.0}},
+      .outer() = {{0.0, 0.0}, {4.0, 0.0}, {0.0, 2.0}},
       .source_component_index = 3,
       .normalized = true,
   };
@@ -34,12 +34,12 @@ TEST_CASE("decomposition headers expose the planned milestone 4 surface",
   };
   const DecompositionRequest request{
       .piece_id = 17,
-      .polygon = {.outer = {{0.0, 0.0},
+      .polygon = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
                             {4.0, 0.0},
                             {4.0, 1.0},
                             {1.0, 1.0},
                             {1.0, 4.0},
-                            {0.0, 4.0}}},
+                            {0.0, 4.0}}),
       .rotation = {.degrees = 180.0},
       .algorithm = DecompositionAlgorithm::cgal_approx_convex_partition,
   };
@@ -47,7 +47,7 @@ TEST_CASE("decomposition headers expose the planned milestone 4 surface",
   DecompositionEngine decomposition_engine{};
   NfpEngine nfp_engine{};
 
-  REQUIRE(component.outer.size() == 3U);
+  REQUIRE(component.outer().size() == 3U);
   REQUIRE(component.source_component_index == 3U);
   REQUIRE(component.normalized);
   REQUIRE(result.components.size() == 1U);

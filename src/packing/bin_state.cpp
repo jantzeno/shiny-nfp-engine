@@ -13,16 +13,17 @@ namespace {
   long double twice_area = 0.0L;
   for (std::size_t index = 0; index < ring.size(); ++index) {
     const auto next_index = (index + 1U) % ring.size();
-    twice_area += static_cast<long double>(ring[index].x) * ring[next_index].y -
-                  static_cast<long double>(ring[next_index].x) * ring[index].y;
+    twice_area +=
+        static_cast<long double>(ring[index].x()) * ring[next_index].y() -
+        static_cast<long double>(ring[next_index].x()) * ring[index].y();
   }
   return twice_area / 2.0L;
 }
 
 [[nodiscard]] auto polygon_area(const geom::PolygonWithHoles &polygon)
     -> double {
-  long double area = std::abs(signed_area(polygon.outer));
-  for (const auto &hole : polygon.holes) {
+  long double area = std::abs(signed_area(polygon.outer()));
+  for (const auto &hole : polygon.holes()) {
     area -= std::abs(signed_area(hole));
   }
   return static_cast<double>(area);

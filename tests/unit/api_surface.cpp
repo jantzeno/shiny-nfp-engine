@@ -23,31 +23,17 @@ using shiny::nesting::api::NestingRequestBuilder;
 using shiny::nesting::api::SolveControlBuilder;
 using shiny::nesting::geom::DiscreteRotationSet;
 using shiny::nesting::geom::PolygonWithHoles;
+using shiny::nesting::geom::Ring;
 using shiny::nesting::geom::RotationRange;
 
 auto rectangle(double min_x, double min_y, double max_x, double max_y)
     -> PolygonWithHoles {
-  return {
-      .outer =
-          {
-              {min_x, min_y},
-              {max_x, min_y},
-              {max_x, max_y},
-              {min_x, max_y},
-          },
-  };
+  return shiny::nesting::geom::PolygonWithHoles(
+      Ring{{min_x, min_y}, {max_x, min_y}, {max_x, max_y}, {min_x, max_y}});
 }
 
 auto trapezoid() -> PolygonWithHoles {
-  return {
-      .outer =
-          {
-              {0.0, 0.0},
-              {4.0, 0.0},
-              {3.0, 2.0},
-              {0.0, 3.0},
-          },
-  };
+  return shiny::nesting::geom::PolygonWithHoles(Ring{{0.0, 0.0}, {4.0, 0.0}, {3.0, 2.0}, {0.0, 3.0}});
 }
 
 auto simple_request() -> NestingRequest {

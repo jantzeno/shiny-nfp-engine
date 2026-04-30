@@ -4,6 +4,8 @@
 
 namespace {
 
+using shiny::nesting::geom::Point2;
+using shiny::nesting::geom::PolygonWithHoles;
 using shiny::nesting::io::ImportedBin;
 using shiny::nesting::io::ImportedPathSegment;
 using shiny::nesting::io::ImportedPathSegmentKind;
@@ -15,8 +17,8 @@ auto line(const double x1, const double y1, const double x2, const double y2)
     -> ImportedPathSegment {
   return {
       .kind = ImportedPathSegmentKind::line,
-      .start = {.x = x1, .y = y1},
-      .end = {.x = x2, .y = y2},
+      .start = shiny::nesting::geom::Point2(x1, y1),
+      .end = shiny::nesting::geom::Point2(x2, y2),
   };
 }
 
@@ -41,10 +43,10 @@ TEST_CASE("import preprocessing flattens bezier rings", "[io][preprocess]") {
       .segments =
           {
               {.kind = ImportedPathSegmentKind::cubic_bezier,
-               .start = {.x = 0.0, .y = 0.0},
-               .control1 = {.x = 1.0, .y = 2.0},
-               .control2 = {.x = 2.0, .y = 2.0},
-               .end = {.x = 3.0, .y = 0.0}},
+               .start = shiny::nesting::geom::Point2(0.0, 0.0),
+               .control1 = shiny::nesting::geom::Point2(1.0, 2.0),
+               .control2 = shiny::nesting::geom::Point2(2.0, 2.0),
+               .end = shiny::nesting::geom::Point2(3.0, 0.0)},
               line(3.0, 0.0, 3.0, -1.0),
               line(3.0, -1.0, 0.0, -1.0),
               line(0.0, -1.0, 0.0, 0.0),
@@ -67,15 +69,15 @@ TEST_CASE("import preprocessing owns bin filtering and piece normalization",
   request.bins = {
       {.bin_id = 1,
        .stock = 0,
-       .shape = {.outer = rectangle_ring(0, 0, 10, 10)}},
+       .shape = ImportedShape{.outer = rectangle_ring(0, 0, 10, 10)}},
       {.bin_id = 2,
        .stock = 1,
-       .shape = {.outer = rectangle_ring(0, 0, 20, 20)}},
+       .shape = ImportedShape{.outer = rectangle_ring(0, 0, 20, 20)}},
   };
   request.pieces = {{
       .piece_id = 9,
       .quantity = 1,
-      .shape = {.outer = rectangle_ring(10, 15, 13, 19)},
+      .shape = ImportedShape{.outer = rectangle_ring(10, 15, 13, 19)},
       .allowed_bin_ids = {2},
   }};
 
@@ -88,8 +90,8 @@ TEST_CASE("import preprocessing owns bin filtering and piece normalization",
 
   const auto bounds = shiny::nesting::geom::compute_bounds(
       normalized.value().request.pieces.front().polygon);
-  REQUIRE(bounds.min.x == 0.0);
-  REQUIRE(bounds.min.y == 0.0);
-  REQUIRE(bounds.max.x == 3.0);
-  REQUIRE(bounds.max.y == 4.0);
+  REQUIRE(bounds.min.x() == 0.0);
+  REQUIRE(bounds.min.y() == 0.0);
+  REQUIRE(bounds.max.x() == 3.0);
+  REQUIRE(bounds.max.y() == 4.0);
 }

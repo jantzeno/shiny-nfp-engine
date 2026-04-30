@@ -27,35 +27,30 @@ using shiny::nesting::geom::PolygonWithHoles;
 
 auto rectangle(double min_x, double min_y, double max_x, double max_y)
     -> PolygonWithHoles {
-  return {
-      .outer =
-          {
-              {min_x, min_y},
-              {max_x, min_y},
-              {max_x, max_y},
-              {min_x, max_y},
-          },
-  };
+  return shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+      {min_x, min_y},
+      {max_x, min_y},
+      {max_x, max_y},
+      {min_x, max_y},
+  });
 }
 
 auto frame(double min_x, double min_y, double max_x, double max_y,
            double hole_min_x, double hole_min_y, double hole_max_x,
            double hole_max_y) -> PolygonWithHoles {
-  return {
-      .outer =
-          {
-              {min_x, min_y},
-              {max_x, min_y},
-              {max_x, max_y},
-              {min_x, max_y},
-          },
-      .holes = {{
+  return shiny::nesting::geom::PolygonWithHoles(
+      {
+          {min_x, min_y},
+          {max_x, min_y},
+          {max_x, max_y},
+          {min_x, max_y},
+      },
+      {{
           {hole_min_x, hole_min_y},
           {hole_min_x, hole_max_y},
           {hole_max_x, hole_max_y},
           {hole_max_x, hole_min_y},
-      }},
-  };
+      }});
 }
 
 auto improvement_request() -> NestingRequest {
@@ -373,10 +368,11 @@ TEST_CASE("shared validation reports every issue kind",
   request.bins.push_back(BinRequest{
       .bin_id = 50,
       .polygon = rectangle(0.0, 0.0, 10.0, 10.0),
-      .exclusion_zones = {{
+      .exclusion_zones = {shiny::nesting::place::BedExclusionZone{
           .zone_id = 1,
           .bin_id = 50,
-          .region = rectangle(0.0, 0.0, 4.0, 4.0).outer,
+          .region = shiny::nesting::geom::Polygon(
+              rectangle(0.0, 0.0, 4.0, 4.0).outer()),
       }},
   });
   request.bins.push_back(BinRequest{

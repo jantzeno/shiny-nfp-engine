@@ -96,23 +96,23 @@ struct Parser {
 
 [[nodiscard]] auto midpoint(const geom::Point2 &lhs, const geom::Point2 &rhs)
     -> geom::Point2 {
-  return {.x = (lhs.x + rhs.x) * 0.5, .y = (lhs.y + rhs.y) * 0.5};
+  return {(lhs.x() + rhs.x()) * 0.5, (lhs.y() + rhs.y()) * 0.5};
 }
 
 [[nodiscard]] auto point_line_distance(const geom::Point2 &point,
                                        const geom::Point2 &line_start,
                                        const geom::Point2 &line_end) -> double {
-  const auto dx = line_end.x - line_start.x;
-  const auto dy = line_end.y - line_start.y;
+  const auto dx = line_end.x() - line_start.x();
+  const auto dy = line_end.y() - line_start.y();
   if (dx == 0.0 && dy == 0.0) {
-    const auto px = point.x - line_start.x;
-    const auto py = point.y - line_start.y;
+    const auto px = point.x() - line_start.x();
+    const auto py = point.y() - line_start.y();
     return std::sqrt(px * px + py * py);
   }
 
   const auto numerator =
-      std::fabs(dy * point.x - dx * point.y + line_end.x * line_start.y -
-                line_end.y * line_start.x);
+      std::fabs(dy * point.x() - dx * point.y() +
+                line_end.x() * line_start.y() - line_end.y() * line_start.x());
   return numerator / std::sqrt(dx * dx + dy * dy);
 }
 
@@ -159,7 +159,7 @@ auto append_cubic_points(std::vector<geom::Point2> &ring,
 }
 
 [[nodiscard]] auto make_point(double x, double y) -> geom::Point2 {
-  return {.x = x, .y = y};
+  return {x, y};
 }
 
 [[nodiscard]] auto resolve_point(const geom::Point2 &origin, bool relative,
@@ -167,7 +167,7 @@ auto append_cubic_points(std::vector<geom::Point2> &ring,
   if (!relative) {
     return make_point(x, y);
   }
-  return {.x = origin.x + x, .y = origin.y + y};
+  return {origin.x() + x, origin.y() + y};
 }
 
 } // namespace
@@ -289,13 +289,13 @@ auto polygonize_svg_path(std::string_view svg_path_data,
   }
 
   geom::PolygonWithHoles polygon;
-  polygon.outer = std::move(rings.front());
+  polygon.outer() = std::move(rings.front());
   for (std::size_t index = 1; index < rings.size(); ++index) {
-    polygon.holes.push_back(std::move(rings[index]));
+    polygon.holes().push_back(std::move(rings[index]));
   }
 
   polygon = geom::normalize_polygon(polygon);
-  if (polygon.outer.size() < 3U) {
+  if (polygon.outer().size() < 3U) {
     return util::Status::invalid_input;
   }
 

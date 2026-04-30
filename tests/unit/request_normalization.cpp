@@ -18,12 +18,12 @@ using shiny::nesting::place::PartGrainCompatibility;
 auto rectangle(const double min_x, const double min_y, const double max_x,
                const double max_y) -> shiny::nesting::geom::PolygonWithHoles {
   return shiny::nesting::geom::normalize_polygon(
-      shiny::nesting::geom::PolygonWithHoles{.outer = {
-                                                 {.x = min_x, .y = min_y},
-                                                 {.x = max_x, .y = min_y},
-                                                 {.x = max_x, .y = max_y},
-                                                 {.x = min_x, .y = max_y},
-                                             }});
+      shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+          shiny::nesting::geom::Point2(min_x, min_y),
+          shiny::nesting::geom::Point2(max_x, min_y),
+          shiny::nesting::geom::Point2(max_x, max_y),
+          shiny::nesting::geom::Point2(min_x, max_y),
+      }));
 }
 
 } // namespace
@@ -54,15 +54,15 @@ TEST_CASE("normalized requests preserve engine-owned constraints",
           .bin_id = 20,
           .polygon = rectangle(0.0, 0.0, 30.0, 15.0),
           .stock = 2,
-          .exclusion_zones = {{
+          .exclusion_zones = {shiny::nesting::place::BedExclusionZone{
               .zone_id = 7,
-              .region = {.outer =
-                             {
-                                 {.x = 2.0, .y = 2.0},
-                                 {.x = 4.0, .y = 2.0},
-                                 {.x = 4.0, .y = 4.0},
-                                 {.x = 2.0, .y = 4.0},
-                             }},
+              .region =
+                  shiny::nesting::geom::Polygon(shiny::nesting::geom::Ring{
+                      shiny::nesting::geom::Point2(2.0, 2.0),
+                      shiny::nesting::geom::Point2(4.0, 2.0),
+                      shiny::nesting::geom::Point2(4.0, 4.0),
+                      shiny::nesting::geom::Point2(2.0, 4.0),
+                  }),
           }},
       },
   };
@@ -93,10 +93,10 @@ TEST_CASE("normalized requests preserve engine-owned constraints",
 
   const auto piece_bounds = shiny::nesting::geom::compute_bounds(
       normalized.value().request.pieces.front().polygon);
-  REQUIRE(piece_bounds.min.x == 0.0);
-  REQUIRE(piece_bounds.min.y == 0.0);
-  REQUIRE(piece_bounds.max.x == 3.0);
-  REQUIRE(piece_bounds.max.y == 4.0);
+  REQUIRE(piece_bounds.min.x() == 0.0);
+  REQUIRE(piece_bounds.min.y() == 0.0);
+  REQUIRE(piece_bounds.max.x() == 3.0);
+  REQUIRE(piece_bounds.max.y() == 4.0);
 
   const auto decoder_request =
       shiny::nesting::to_bounding_box_decoder_request(normalized.value());

@@ -13,8 +13,9 @@ namespace {
 [[nodiscard]] auto
 obstacle_base_polygon(const CandidateGenerationObstacle &obstacle)
     -> geom::PolygonWithHoles {
-  return geom::translate(obstacle.polygon, {.x = -obstacle.translation.x,
-                                            .y = -obstacle.translation.y});
+  return geom::translate(
+      obstacle.polygon,
+      geom::Vector2(-obstacle.translation.x(), -obstacle.translation.y()));
 }
 
 [[nodiscard]] auto
@@ -25,10 +26,10 @@ build_bbox_blocked_region_fallback(const geom::PolygonWithHoles &fixed_polygon,
   const auto fixed_bounds = geom::compute_bounds(fixed_polygon);
   const auto moving_bounds = geom::compute_bounds(moving_piece);
   const geom::Box2 overlap_domain{
-      .min = {.x = fixed_bounds.min.x - moving_bounds.max.x,
-              .y = fixed_bounds.min.y - moving_bounds.max.y},
-      .max = {.x = fixed_bounds.max.x - moving_bounds.min.x,
-              .y = fixed_bounds.max.y - moving_bounds.min.y},
+      .min = geom::Point2(fixed_bounds.min.x() - moving_bounds.max.x(),
+                          fixed_bounds.min.y() - moving_bounds.max.y()),
+      .max = geom::Point2(fixed_bounds.max.x() - moving_bounds.min.x(),
+                          fixed_bounds.max.y() - moving_bounds.min.y()),
   };
   return {
       .polygons = {geom::box_to_polygon(overlap_domain)},
@@ -142,8 +143,9 @@ auto build_blocked_regions(
       blocked.accuracy = cache::NfpCacheAccuracy::conservative_bbox_fallback;
     }
     for (const auto &polygon : base_nfp_ptr->polygons) {
-      blocked.polygons.push_back(geom::translate(
-          polygon, {.x = obstacle.translation.x, .y = obstacle.translation.y}));
+      blocked.polygons.push_back(
+          geom::translate(polygon, geom::Vector2(obstacle.translation.x(),
+                                                 obstacle.translation.y())));
     }
   }
 

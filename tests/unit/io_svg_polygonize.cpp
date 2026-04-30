@@ -12,8 +12,8 @@ auto polygon_signed_area(const shiny::nesting::geom::Ring &ring)
   long double area = 0.0L;
   for (std::size_t index = 0; index < ring.size(); ++index) {
     const auto next_index = (index + 1U) % ring.size();
-    area += static_cast<long double>(ring[index].x) * ring[next_index].y -
-            static_cast<long double>(ring[next_index].x) * ring[index].y;
+    area += static_cast<long double>(ring[index].x()) * ring[next_index].y() -
+            static_cast<long double>(ring[next_index].x()) * ring[index].y();
   }
   return area / 2.0L;
 }
@@ -36,14 +36,14 @@ TEST_CASE("svg path polygonization covers line and curve commands",
                fixture.get<double>("tolerance", 0.25)});
 
       REQUIRE(result.ok());
-      REQUIRE(result.value().holes.size() ==
+      REQUIRE(result.value().holes().size() ==
               fixture.get<std::size_t>("expected.hole_count", 0));
-      REQUIRE(result.value().outer.size() >=
+      REQUIRE(result.value().outer().size() >=
               fixture.get<std::size_t>("expected.min_vertex_count", 4));
-      REQUIRE(result.value().outer.front() ==
+      REQUIRE(result.value().outer().front() ==
               shiny::nesting::test::parse_point(
                   fixture.get_child("expected.first_vertex")));
-      REQUIRE(polygon_signed_area(result.value().outer) > 0.0L);
+      REQUIRE(polygon_signed_area(result.value().outer()) > 0.0L);
 
       if (const auto expected_polygon =
               fixture.get_child_optional("expected.polygon")) {

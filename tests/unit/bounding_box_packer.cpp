@@ -18,6 +18,7 @@ using shiny::nesting::SolveControl;
 using shiny::nesting::StopReason;
 using shiny::nesting::StrategyKind;
 using shiny::nesting::geom::PolygonWithHoles;
+using shiny::nesting::geom::Ring;
 using shiny::nesting::pack::BinInput;
 using shiny::nesting::pack::BoundingBoxHeuristic;
 using shiny::nesting::pack::BoundingBoxPacker;
@@ -26,29 +27,13 @@ using shiny::nesting::pack::PieceInput;
 
 auto make_rectangle(double min_x, double min_y, double max_x, double max_y)
     -> PolygonWithHoles {
-  return {
-      .outer =
-          {
-              {.x = min_x, .y = min_y},
-              {.x = max_x, .y = min_y},
-              {.x = max_x, .y = max_y},
-              {.x = min_x, .y = max_y},
-          },
-  };
+  return shiny::nesting::geom::PolygonWithHoles(
+      Ring{{min_x, min_y}, {max_x, min_y}, {max_x, max_y}, {min_x, max_y}});
 }
 
 auto make_l_shape() -> PolygonWithHoles {
-  return {
-      .outer =
-          {
-              {.x = 0.0, .y = 0.0},
-              {.x = 2.0, .y = 0.0},
-              {.x = 2.0, .y = 2.0},
-              {.x = 1.0, .y = 2.0},
-              {.x = 1.0, .y = 1.0},
-              {.x = 0.0, .y = 1.0},
-          },
-  };
+  return shiny::nesting::geom::PolygonWithHoles(Ring{
+      {0.0, 0.0}, {2.0, 0.0}, {2.0, 2.0}, {1.0, 2.0}, {1.0, 1.0}, {0.0, 1.0}});
 }
 
 auto make_piece(std::uint32_t piece_id, PolygonWithHoles polygon,
@@ -128,12 +113,12 @@ TEST_CASE("bounding box packer packs rectangles on a single bin",
   REQUIRE(result.bins.size() == 1);
   REQUIRE(result.layout.unplaced_piece_ids.empty());
   REQUIRE(result.bins.front().placements.size() == 3);
-  REQUIRE(result.bins.front().placements[0].placement.translation.x == 0.0);
-  REQUIRE(result.bins.front().placements[0].placement.translation.y == 0.0);
-  REQUIRE(result.bins.front().placements[1].placement.translation.x == 3.0);
-  REQUIRE(result.bins.front().placements[1].placement.translation.y == 0.0);
-  REQUIRE(result.bins.front().placements[2].placement.translation.x == 0.0);
-  REQUIRE(result.bins.front().placements[2].placement.translation.y == 2.0);
+  REQUIRE(result.bins.front().placements[0].placement.translation.x() == 0.0);
+  REQUIRE(result.bins.front().placements[0].placement.translation.y() == 0.0);
+  REQUIRE(result.bins.front().placements[1].placement.translation.x() == 3.0);
+  REQUIRE(result.bins.front().placements[1].placement.translation.y() == 0.0);
+  REQUIRE(result.bins.front().placements[2].placement.translation.x() == 0.0);
+  REQUIRE(result.bins.front().placements[2].placement.translation.y() == 2.0);
 }
 
 TEST_CASE("bounding box packer uses AABB for non-rectangular pieces",
@@ -207,8 +192,8 @@ TEST_CASE("bounding box packer respects piece spacing",
   REQUIRE(result.bins.size() == 1);
   REQUIRE(result.layout.unplaced_piece_ids.empty());
   REQUIRE(result.bins.front().placements.size() == 2);
-  REQUIRE(result.bins.front().placements[0].placement.translation.x == 0.0);
-  REQUIRE(result.bins.front().placements[1].placement.translation.x == 3.0);
+  REQUIRE(result.bins.front().placements[0].placement.translation.x() == 0.0);
+  REQUIRE(result.bins.front().placements[1].placement.translation.x() == 3.0);
 }
 
 TEST_CASE("bounding box free rectangle heuristic respects piece spacing",
@@ -234,10 +219,10 @@ TEST_CASE("bounding box free rectangle heuristic respects piece spacing",
   REQUIRE(result.bins.size() == 1);
   REQUIRE(result.layout.unplaced_piece_ids.empty());
   REQUIRE(result.bins.front().placements.size() == 2);
-  REQUIRE(result.bins.front().placements[0].placement.translation.x == 0.0);
-  REQUIRE(result.bins.front().placements[0].placement.translation.y == 0.0);
-  REQUIRE(result.bins.front().placements[1].placement.translation.x == 3.0);
-  REQUIRE(result.bins.front().placements[1].placement.translation.y == 0.0);
+  REQUIRE(result.bins.front().placements[0].placement.translation.x() == 0.0);
+  REQUIRE(result.bins.front().placements[0].placement.translation.y() == 0.0);
+  REQUIRE(result.bins.front().placements[1].placement.translation.x() == 3.0);
+  REQUIRE(result.bins.front().placements[1].placement.translation.y() == 0.0);
 }
 
 TEST_CASE("bounding box skyline heuristic respects piece spacing",
@@ -262,10 +247,10 @@ TEST_CASE("bounding box skyline heuristic respects piece spacing",
   REQUIRE(result.bins.size() == 1);
   REQUIRE(result.layout.unplaced_piece_ids.empty());
   REQUIRE(result.bins.front().placements.size() == 2);
-  REQUIRE(result.bins.front().placements[0].placement.translation.x == 0.0);
-  REQUIRE(result.bins.front().placements[0].placement.translation.y == 0.0);
-  REQUIRE(result.bins.front().placements[1].placement.translation.x == 3.0);
-  REQUIRE(result.bins.front().placements[1].placement.translation.y == 0.0);
+  REQUIRE(result.bins.front().placements[0].placement.translation.x() == 0.0);
+  REQUIRE(result.bins.front().placements[0].placement.translation.y() == 0.0);
+  REQUIRE(result.bins.front().placements[1].placement.translation.x() == 3.0);
+  REQUIRE(result.bins.front().placements[1].placement.translation.y() == 0.0);
 }
 
 TEST_CASE("bounding box solve selects the best deterministic attempt and emits "
@@ -343,16 +328,11 @@ TEST_CASE("bounding box packer respects exclusion zones",
       },
       1);
   request.config.placement.exclusion_zones.push_back(
-      {.zone_id = 7,
-       .region = {
-           .outer =
-               {
-                   {.x = 2.0, .y = 0.0},
-                   {.x = 5.0, .y = 0.0},
-                   {.x = 5.0, .y = 2.0},
-                   {.x = 2.0, .y = 2.0},
-               },
-       }});
+      shiny::nesting::place::BedExclusionZone{
+          .zone_id = 7,
+          .region = shiny::nesting::geom::Polygon(
+              Ring{{2.0, 0.0}, {5.0, 0.0}, {5.0, 2.0}, {2.0, 2.0}}),
+      });
 
   const auto result = packer.decode(request);
 
@@ -376,17 +356,12 @@ TEST_CASE("bounding box packer scopes exclusion zones to their bin",
       },
       2);
   request.config.placement.exclusion_zones.push_back(
-      {.zone_id = 9,
-       .bin_id = 70,
-       .region = {
-           .outer =
-               {
-                   {.x = 0.0, .y = 0.0},
-                   {.x = 2.0, .y = 0.0},
-                   {.x = 2.0, .y = 2.0},
-                   {.x = 0.0, .y = 2.0},
-               },
-       }});
+      shiny::nesting::place::BedExclusionZone{
+          .zone_id = 9,
+          .bin_id = 70,
+          .region = shiny::nesting::geom::Polygon(
+              Ring{{0.0, 0.0}, {2.0, 0.0}, {2.0, 2.0}, {0.0, 2.0}}),
+      });
 
   const auto result = packer.decode(request);
 
@@ -418,10 +393,10 @@ TEST_CASE("bounding box packer always starts from top-right origin corner",
   REQUIRE(result.bins.size() == 1);
   REQUIRE(result.layout.unplaced_piece_ids.empty());
   REQUIRE(result.bins.front().placements.size() == 2);
-  REQUIRE(result.bins.front().placements[0].placement.translation.x == 4.0);
-  REQUIRE(result.bins.front().placements[0].placement.translation.y == 6.0);
-  REQUIRE(result.bins.front().placements[1].placement.translation.x == 0.0);
-  REQUIRE(result.bins.front().placements[1].placement.translation.y == 6.0);
+  REQUIRE(result.bins.front().placements[0].placement.translation.x() == 4.0);
+  REQUIRE(result.bins.front().placements[0].placement.translation.y() == 6.0);
+  REQUIRE(result.bins.front().placements[1].placement.translation.x() == 0.0);
+  REQUIRE(result.bins.front().placements[1].placement.translation.y() == 6.0);
 }
 
 TEST_CASE("bounding box packer evaluates bounded deterministic attempts",
@@ -524,13 +499,13 @@ TEST_CASE("bounding box skyline heuristic fills a vertical gap that shelf "
   REQUIRE(skyline_result.bins.size() == 1);
   REQUIRE(skyline_result.bins.front().placements.size() == 5);
   REQUIRE(skyline_result.layout.unplaced_piece_ids.empty());
-  REQUIRE(skyline_result.bins.front().placements[1].placement.translation.x ==
+  REQUIRE(skyline_result.bins.front().placements[1].placement.translation.x() ==
           3.0);
-  REQUIRE(skyline_result.bins.front().placements[2].placement.translation.x ==
+  REQUIRE(skyline_result.bins.front().placements[2].placement.translation.x() ==
           3.0);
-  REQUIRE(skyline_result.bins.front().placements[3].placement.translation.x ==
+  REQUIRE(skyline_result.bins.front().placements[3].placement.translation.x() ==
           3.0);
-  REQUIRE(skyline_result.bins.front().placements[4].placement.translation.x ==
+  REQUIRE(skyline_result.bins.front().placements[4].placement.translation.x() ==
           3.0);
 }
 
@@ -560,11 +535,11 @@ TEST_CASE("bounding box skyline heuristic honors top-right start corners",
   REQUIRE(result.bins.size() == 1);
   REQUIRE(result.layout.unplaced_piece_ids.empty());
   REQUIRE(result.bins.front().placements.size() == 5);
-  REQUIRE(result.bins.front().placements[0].placement.translation.x == 1.0);
-  REQUIRE(result.bins.front().placements[1].placement.translation.x == 0.0);
-  REQUIRE(result.bins.front().placements[1].placement.translation.y == 3.0);
-  REQUIRE(result.bins.front().placements[4].placement.translation.x == 0.0);
-  REQUIRE(result.bins.front().placements[4].placement.translation.y == 0.0);
+  REQUIRE(result.bins.front().placements[0].placement.translation.x() == 1.0);
+  REQUIRE(result.bins.front().placements[1].placement.translation.x() == 0.0);
+  REQUIRE(result.bins.front().placements[1].placement.translation.y() == 3.0);
+  REQUIRE(result.bins.front().placements[4].placement.translation.x() == 0.0);
+  REQUIRE(result.bins.front().placements[4].placement.translation.y() == 0.0);
 }
 
 TEST_CASE(
@@ -593,8 +568,8 @@ TEST_CASE(
   REQUIRE(result.bins.size() == 1);
   REQUIRE(result.layout.unplaced_piece_ids.empty());
   REQUIRE(result.bins.front().placements.size() == 5);
-  REQUIRE(result.bins.front().placements[1].placement.translation.x == 3.0);
-  REQUIRE(result.bins.front().placements[2].placement.translation.x == 3.0);
-  REQUIRE(result.bins.front().placements[3].placement.translation.x == 3.0);
-  REQUIRE(result.bins.front().placements[4].placement.translation.x == 3.0);
+  REQUIRE(result.bins.front().placements[1].placement.translation.x() == 3.0);
+  REQUIRE(result.bins.front().placements[2].placement.translation.x() == 3.0);
+  REQUIRE(result.bins.front().placements[3].placement.translation.x() == 3.0);
+  REQUIRE(result.bins.front().placements[4].placement.translation.x() == 3.0);
 }

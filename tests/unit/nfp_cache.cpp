@@ -104,8 +104,8 @@ TEST_CASE("convex ifp cached overload keeps inside queries distinct",
   const ConvexIfpRequest ifp_request{
       .container_id = 31,
       .piece_id = 32,
-      .container = {.outer = {{0.0, 0.0}, {6.0, 0.0}, {6.0, 5.0}, {0.0, 5.0}}},
-      .piece = {.outer = {{0.0, 0.0}, {2.0, 0.0}, {2.0, 1.0}, {0.0, 1.0}}},
+      .container = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0}, {6.0, 0.0}, {6.0, 5.0}, {0.0, 5.0}}),
+      .piece = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0}, {2.0, 0.0}, {2.0, 1.0}, {0.0, 1.0}}),
       .container_rotation = {.degrees = 0.0},
       .piece_rotation = {.degrees = 0.0},
   };

@@ -24,6 +24,7 @@ using shiny::nesting::geom::normalize_polygon;
 using shiny::nesting::geom::Point2;
 using shiny::nesting::geom::Polygon;
 using shiny::nesting::geom::polygon_area;
+using shiny::nesting::geom::Ring;
 using shiny::nesting::poly::greedy_pairwise_merge;
 using shiny::nesting::poly::union_polygons;
 using shiny::nesting::test::require_ring_equal;
@@ -34,25 +35,26 @@ constexpr double kAreaEpsilon = 1.0e-8;
     -> bool {
   const auto lhs_bounds = compute_bounds(lhs);
   const auto rhs_bounds = compute_bounds(rhs);
-  if (lhs_bounds.min.x != rhs_bounds.min.x) {
-    return lhs_bounds.min.x < rhs_bounds.min.x;
+  if (lhs_bounds.min.x() != rhs_bounds.min.x()) {
+    return lhs_bounds.min.x() < rhs_bounds.min.x();
   }
-  if (lhs_bounds.min.y != rhs_bounds.min.y) {
-    return lhs_bounds.min.y < rhs_bounds.min.y;
+  if (lhs_bounds.min.y() != rhs_bounds.min.y()) {
+    return lhs_bounds.min.y() < rhs_bounds.min.y();
   }
   return polygon_area(lhs) < polygon_area(rhs);
 }
 
 [[nodiscard]] auto try_merge_polygons(const Polygon &lhs, const Polygon &rhs)
     -> std::optional<Polygon> {
-  const auto merged = union_polygons(
-      shiny::nesting::geom::PolygonWithHoles{.outer = lhs.outer},
-      shiny::nesting::geom::PolygonWithHoles{.outer = rhs.outer});
-  if (merged.size() != 1U || !merged.front().holes.empty()) {
+  const auto merged =
+      union_polygons(shiny::nesting::geom::PolygonWithHoles(lhs.outer()),
+                     shiny::nesting::geom::PolygonWithHoles(rhs.outer()));
+  if (merged.size() != 1U || !merged.front().holes().empty()) {
     return std::nullopt;
   }
 
-  auto candidate = normalize_polygon(Polygon{.outer = merged.front().outer});
+  auto candidate =
+      normalize_polygon(shiny::nesting::geom::Polygon(merged.front().outer()));
   const auto candidate_area = polygon_area(candidate);
   const auto expected_area = polygon_area(lhs) + polygon_area(rhs);
   if (std::fabs(candidate_area - expected_area) > kAreaEpsilon) {
@@ -94,7 +96,7 @@ constexpr double kAreaEpsilon = 1.0e-8;
     ring.push_back({xs[x_index - 1U], ys[index + 1U]});
   }
 
-  return normalize_polygon(Polygon{.outer = std::move(ring)});
+  return normalize_polygon(shiny::nesting::geom::Polygon(std::move(ring)));
 }
 
 // TODO(perf): add an opt-in micro-benchmark that compares the
@@ -106,14 +108,8 @@ constexpr double kAreaEpsilon = 1.0e-8;
 
 TEST_CASE("triangulation exposes deterministic adjacency",
           "[decomposition][internal][triangulation]") {
-  const Polygon polygon{
-      .outer = {{0.0, 0.0},
-                {4.0, 0.0},
-                {4.0, 1.0},
-                {1.0, 1.0},
-                {1.0, 4.0},
-                {0.0, 4.0}},
-  };
+  const Polygon polygon(Ring{
+      {0.0, 0.0}, {4.0, 0.0}, {4.0, 1.0}, {1.0, 1.0}, {1.0, 4.0}, {0.0, 4.0}});
 
   auto triangulation_or = triangulate_polygon(polygon);
   REQUIRE(triangulation_or.ok());
@@ -151,14 +147,8 @@ TEST_CASE("triangulation exposes deterministic adjacency",
 
 TEST_CASE("regression keeps the deterministic L-shape partition",
           "[decomposition][internal][regression]") {
-  const Polygon polygon{
-      .outer = {{0.0, 0.0},
-                {4.0, 0.0},
-                {4.0, 1.0},
-                {1.0, 1.0},
-                {1.0, 4.0},
-                {0.0, 4.0}},
-  };
+  const Polygon polygon(Ring{
+      {0.0, 0.0}, {4.0, 0.0}, {4.0, 1.0}, {1.0, 1.0}, {1.0, 4.0}, {0.0, 4.0}});
 
   auto pieces_or = decompose_convex(polygon);
   REQUIRE(pieces_or.ok());
@@ -166,10 +156,10 @@ TEST_CASE("regression keeps the deterministic L-shape partition",
 
   REQUIRE(pieces.size() == 2U);
   std::sort(pieces.begin(), pieces.end(), polygon_less);
-  require_ring_equal(pieces[0].outer,
+  require_ring_equal(pieces[0].outer(),
                      shiny::nesting::geom::Ring{
                          {0.0, 0.0}, {4.0, 0.0}, {4.0, 1.0}, {1.0, 1.0}});
-  require_ring_equal(pieces[1].outer,
+  require_ring_equal(pieces[1].outer(),
                      shiny::nesting::geom::Ring{
                          {0.0, 0.0}, {1.0, 1.0}, {1.0, 4.0}, {0.0, 4.0}});
 }

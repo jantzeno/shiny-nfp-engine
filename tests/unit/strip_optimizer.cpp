@@ -30,15 +30,12 @@ using shiny::nesting::search::SolutionPoolEntry;
 
 auto rectangle(double min_x, double min_y, double max_x, double max_y)
     -> PolygonWithHoles {
-  return {
-      .outer =
-          {
+  return shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
               {min_x, min_y},
               {max_x, min_y},
               {max_x, max_y},
               {min_x, max_y},
-          },
-  };
+          });
 }
 
 auto strip_case_request() -> NestingRequest {

@@ -97,10 +97,7 @@ auto rotation_count(const DiscreteRotationSet &rotations) -> std::size_t {
 
 auto detail::translate_geometry(const Point2 &point, const Vector2 translation)
     -> Point2 {
-  return {
-      .x = point.x + translation.x,
-      .y = point.y + translation.y,
-  };
+  return Point2{point.x() + translation.x(), point.y() + translation.y()};
 }
 
 auto detail::translate_geometry(const Ring &ring, const Vector2 translation)
@@ -115,25 +112,22 @@ auto detail::translate_geometry(const Ring &ring, const Vector2 translation)
 
 auto detail::translate_geometry(const Polygon &polygon,
                                 const Vector2 translation) -> Polygon {
-  return {.outer = translate(polygon.outer, translation)};
+  return Polygon{translate(polygon.outer(), translation)};
 }
 
 auto detail::translate_geometry(const PolygonWithHoles &polygon,
                                 const Vector2 translation) -> PolygonWithHoles {
   PolygonWithHoles translated{};
-  translated.outer = translate(polygon.outer, translation);
-  translated.holes.reserve(polygon.holes.size());
-  for (const auto &hole : polygon.holes) {
-    translated.holes.push_back(translate(hole, translation));
+  translated.outer() = translate(polygon.outer(), translation);
+  translated.holes().reserve(polygon.holes().size());
+  for (const auto &hole : polygon.holes()) {
+    translated.holes().push_back(translate(hole, translation));
   }
   return translated;
 }
 
 auto detail::mirror_geometry(const Point2 &point) -> Point2 {
-  return {
-      .x = detail::snap_coordinate(-point.x),
-      .y = point.y,
-  };
+  return Point2{detail::snap_coordinate(-point.x()), point.y()};
 }
 
 auto detail::mirror_geometry(const Ring &ring) -> Ring {
@@ -146,16 +140,16 @@ auto detail::mirror_geometry(const Ring &ring) -> Ring {
 }
 
 auto detail::mirror_geometry(const Polygon &polygon) -> Polygon {
-  return normalize_polygon(Polygon{.outer = mirror(polygon.outer)});
+  return normalize_polygon(Polygon{mirror(polygon.outer())});
 }
 
 auto detail::mirror_geometry(const PolygonWithHoles &polygon)
     -> PolygonWithHoles {
   PolygonWithHoles mirrored{};
-  mirrored.outer = mirror(polygon.outer);
-  mirrored.holes.reserve(polygon.holes.size());
-  for (const auto &hole : polygon.holes) {
-    mirrored.holes.push_back(mirror(hole));
+  mirrored.outer() = mirror(polygon.outer());
+  mirrored.holes().reserve(polygon.holes().size());
+  for (const auto &hole : polygon.holes()) {
+    mirrored.holes().push_back(mirror(hole));
   }
   return normalize_polygon(mirrored);
 }
@@ -169,10 +163,8 @@ auto detail::rotate_geometry(const Point2 &point,
   cosine = detail::snap_coordinate(cosine);
   sine = detail::snap_coordinate(sine);
 
-  return {
-      .x = detail::snap_coordinate(point.x * cosine - point.y * sine),
-      .y = detail::snap_coordinate(point.x * sine + point.y * cosine),
-  };
+  return Point2{detail::snap_coordinate(point.x() * cosine - point.y() * sine),
+                detail::snap_coordinate(point.x() * sine + point.y() * cosine)};
 }
 
 auto detail::rotate_geometry(const Ring &ring, const ResolvedRotation rotation)
@@ -187,17 +179,17 @@ auto detail::rotate_geometry(const Ring &ring, const ResolvedRotation rotation)
 
 auto detail::rotate_geometry(const Polygon &polygon,
                              const ResolvedRotation rotation) -> Polygon {
-  return normalize_polygon(Polygon{.outer = rotate(polygon.outer, rotation)});
+  return normalize_polygon(Polygon{rotate(polygon.outer(), rotation)});
 }
 
 auto detail::rotate_geometry(const PolygonWithHoles &polygon,
                              const ResolvedRotation rotation)
     -> PolygonWithHoles {
   PolygonWithHoles rotated{};
-  rotated.outer = rotate(polygon.outer, rotation);
-  rotated.holes.reserve(polygon.holes.size());
-  for (const auto &hole : polygon.holes) {
-    rotated.holes.push_back(rotate(hole, rotation));
+  rotated.outer() = rotate(polygon.outer(), rotation);
+  rotated.holes().reserve(polygon.holes().size());
+  for (const auto &hole : polygon.holes()) {
+    rotated.holes().push_back(rotate(hole, rotation));
   }
   return normalize_polygon(rotated);
 }

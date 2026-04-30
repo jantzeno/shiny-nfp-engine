@@ -19,6 +19,7 @@ namespace {
 
 using shiny::nesting::geom::Point2;
 using shiny::nesting::geom::PolygonWithHoles;
+using shiny::nesting::geom::Ring;
 using shiny::nesting::geom::Segment2;
 using shiny::nesting::pack::CutContour;
 using shiny::nesting::pack::CutContourOrder;
@@ -29,16 +30,14 @@ using shiny::nesting::pack::SharedCutOptimizationMode;
 
 auto make_rectangle(double min_x, double min_y, double max_x, double max_y)
     -> PolygonWithHoles {
-  return shiny::nesting::geom::normalize_polygon(PolygonWithHoles{
-      .outer = {{min_x, min_y}, {max_x, min_y}, {max_x, max_y}, {min_x, max_y}},
-  });
+  return shiny::nesting::geom::normalize_polygon(shiny::nesting::geom::PolygonWithHoles(
+      Ring{{min_x, min_y}, {max_x, min_y}, {max_x, max_y}, {min_x, max_y}}));
 }
 
 auto make_frame_piece() -> PolygonWithHoles {
-  return shiny::nesting::geom::normalize_polygon(PolygonWithHoles{
-      .outer = {{0.0, 0.0}, {4.0, 0.0}, {4.0, 4.0}, {0.0, 4.0}},
-      .holes = {{{1.0, 1.0}, {1.0, 3.0}, {3.0, 3.0}, {3.0, 1.0}}},
-  });
+  return shiny::nesting::geom::normalize_polygon(
+      shiny::nesting::geom::PolygonWithHoles(Ring{{0.0, 0.0}, {4.0, 0.0}, {4.0, 4.0}, {0.0, 4.0}},
+                       {Ring{{1.0, 1.0}, {1.0, 3.0}, {3.0, 3.0}, {3.0, 1.0}}}));
 }
 
 auto make_piece(std::uint32_t piece_id, PolygonWithHoles polygon)
@@ -59,10 +58,10 @@ auto make_layout(std::vector<PlacedPiece> placements) -> Layout {
 }
 
 auto segment_matches(const Segment2 &lhs, const Segment2 &rhs) -> bool {
-  return (lhs.start.x == rhs.start.x && lhs.start.y == rhs.start.y &&
-          lhs.end.x == rhs.end.x && lhs.end.y == rhs.end.y) ||
-         (lhs.start.x == rhs.end.x && lhs.start.y == rhs.end.y &&
-          lhs.end.x == rhs.start.x && lhs.end.y == rhs.start.y);
+  return (lhs.start.x() == rhs.start.x() && lhs.start.y() == rhs.start.y() &&
+          lhs.end.x() == rhs.end.x() && lhs.end.y() == rhs.end.y()) ||
+         (lhs.start.x() == rhs.end.x() && lhs.start.y() == rhs.end.y() &&
+          lhs.end.x() == rhs.start.x() && lhs.end.y() == rhs.start.y());
 }
 
 auto count_segment(const CutPlan &plan, const Segment2 &segment)
@@ -80,15 +79,15 @@ auto make_contour(std::uint32_t piece_id, PolygonWithHoles polygon)
       .bin_id = 1,
       .piece_id = piece_id,
       .from_hole = false,
-      .ring = std::move(normalized.outer),
+      .ring = std::move(normalized.outer()),
   };
 }
 
 auto sample_arc_midpoint(const CutContourOrder::LeadArc &arc) -> Point2 {
-  const auto start_angle =
-      std::atan2(arc.start.y - arc.center.y, arc.start.x - arc.center.x);
+  const auto start_angle = std::atan2(arc.start.y() - arc.center.y(),
+                                      arc.start.x() - arc.center.x());
   const auto end_angle =
-      std::atan2(arc.end.y - arc.center.y, arc.end.x - arc.center.x);
+      std::atan2(arc.end.y() - arc.center.y(), arc.end.x() - arc.center.x());
   auto delta = end_angle - start_angle;
   if (arc.clockwise) {
     if (delta >= 0.0) {
@@ -99,12 +98,10 @@ auto sample_arc_midpoint(const CutContourOrder::LeadArc &arc) -> Point2 {
   }
 
   const auto mid_angle = start_angle + delta * 0.5;
-  const auto radius =
-      std::hypot(arc.start.x - arc.center.x, arc.start.y - arc.center.y);
-  return {
-      .x = arc.center.x + std::cos(mid_angle) * radius,
-      .y = arc.center.y + std::sin(mid_angle) * radius,
-  };
+  const auto radius = std::hypot(arc.start.x() - arc.center.x(),
+                                 arc.start.y() - arc.center.y());
+  return {arc.center.x() + std::cos(mid_angle) * radius,
+          arc.center.y() + std::sin(mid_angle) * radius};
 }
 
 } // namespace
@@ -187,20 +184,20 @@ TEST_CASE(
   const auto plan = shiny::nesting::pack::build_cut_plan(
       layout, {.mode = SharedCutOptimizationMode::off});
   REQUIRE(plan.contour_order.size() == 3U);
-  REQUIRE(plan.contour_order[0].pierce_point.x == 0.0);
-  REQUIRE(plan.contour_order[0].pierce_point.y == 0.0);
+  REQUIRE(plan.contour_order[0].pierce_point.x() == 0.0);
+  REQUIRE(plan.contour_order[0].pierce_point.y() == 0.0);
   REQUIRE(plan.contour_order[0].lead_in.enabled);
   REQUIRE(plan.contour_order[0].lead_out.enabled);
-  REQUIRE(plan.contour_order[0].lead_in.start.x == Catch::Approx(-0.25));
-  REQUIRE(plan.contour_order[0].lead_in.start.y == Catch::Approx(-0.25));
-  REQUIRE(plan.contour_order[0].lead_out.end.x == Catch::Approx(-0.25));
-  REQUIRE(plan.contour_order[0].lead_out.end.y == Catch::Approx(-0.25));
-  REQUIRE(plan.contour_order[1].pierce_point.x == 3.0);
-  REQUIRE(plan.contour_order[1].pierce_point.y == 0.5);
+  REQUIRE(plan.contour_order[0].lead_in.start.x() == Catch::Approx(-0.25));
+  REQUIRE(plan.contour_order[0].lead_in.start.y() == Catch::Approx(-0.25));
+  REQUIRE(plan.contour_order[0].lead_out.end.x() == Catch::Approx(-0.25));
+  REQUIRE(plan.contour_order[0].lead_out.end.y() == Catch::Approx(-0.25));
+  REQUIRE(plan.contour_order[1].pierce_point.x() == 3.0);
+  REQUIRE(plan.contour_order[1].pierce_point.y() == 0.5);
   REQUIRE(plan.contour_order[1].lead_in.enabled);
   REQUIRE(plan.contour_order[1].lead_out.enabled);
-  REQUIRE(plan.contour_order[2].pierce_point.x == 10.0);
-  REQUIRE(plan.contour_order[2].pierce_point.y == 0.5);
+  REQUIRE(plan.contour_order[2].pierce_point.x() == 10.0);
+  REQUIRE(plan.contour_order[2].pierce_point.y() == 0.5);
   REQUIRE(plan.contour_order[2].lead_in.enabled);
   REQUIRE(plan.contour_order[2].lead_out.enabled);
 }
@@ -212,10 +209,10 @@ TEST_CASE("pierce plan can select an edge midpoint and keep lead arcs outside "
   const auto contour = make_contour(1U, polygon);
 
   const auto plan =
-      shiny::nesting::pack::select_pierce_plan(contour, {.x = 3.05, .y = -0.2});
+      shiny::nesting::pack::select_pierce_plan(contour, shiny::nesting::geom::Point2(3.05, -0.2));
 
-  REQUIRE(plan.pierce_point.x == Catch::Approx(3.0));
-  REQUIRE(plan.pierce_point.y == Catch::Approx(0.0));
+  REQUIRE(plan.pierce_point.x() == Catch::Approx(3.0));
+  REQUIRE(plan.pierce_point.y() == Catch::Approx(0.0));
   REQUIRE(plan.lead_in.enabled);
   REQUIRE(plan.lead_out.enabled);
 
@@ -279,18 +276,18 @@ TEST_CASE("pierce plan emits non-collapsed lead arcs for a degenerate "
   };
 
   const auto plan =
-      shiny::nesting::pack::select_pierce_plan(contour, {.x = -1.0, .y = 0.0});
+      shiny::nesting::pack::select_pierce_plan(contour, shiny::nesting::geom::Point2(-1.0, 0.0));
 
-  REQUIRE(std::isfinite(plan.pierce_point.x));
-  REQUIRE(std::isfinite(plan.pierce_point.y));
+  REQUIRE(std::isfinite(plan.pierce_point.x()));
+  REQUIRE(std::isfinite(plan.pierce_point.y()));
   if (plan.lead_in.enabled) {
-    const auto dx = plan.lead_in.start.x - plan.lead_in.end.x;
-    const auto dy = plan.lead_in.start.y - plan.lead_in.end.y;
+    const auto dx = plan.lead_in.start.x() - plan.lead_in.end.x();
+    const auto dy = plan.lead_in.start.y() - plan.lead_in.end.y();
     REQUIRE(std::sqrt(dx * dx + dy * dy) > 1e-6);
   }
   if (plan.lead_out.enabled) {
-    const auto dx = plan.lead_out.start.x - plan.lead_out.end.x;
-    const auto dy = plan.lead_out.start.y - plan.lead_out.end.y;
+    const auto dx = plan.lead_out.start.x() - plan.lead_out.end.x();
+    const auto dy = plan.lead_out.start.y() - plan.lead_out.end.y();
     REQUIRE(std::sqrt(dx * dx + dy * dy) > 1e-6);
   }
 }
