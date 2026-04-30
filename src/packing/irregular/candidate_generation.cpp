@@ -10,12 +10,12 @@
 #include <vector>
 
 #include "cache/nfp_cache.hpp"
+#include "geometry/operations/boolean_ops.hpp"
 #include "geometry/polygon.hpp"
 #include "logging/shiny_log.hpp"
 #include "nfp/ifp.hpp"
 #include "packing/common.hpp"
 #include "packing/irregular/blocked_regions.hpp"
-#include "polygon_ops/boolean_ops.hpp"
 #include "predicates/point_location.hpp"
 #include "predicates/segment_intersection.hpp"
 #include "runtime/deterministic_rng.hpp"
@@ -177,7 +177,7 @@ build_base_domain(const geom::PolygonWithHoles &container,
 
   std::vector<geom::PolygonWithHoles> domain{container};
   for (const auto &region : exclusion_regions) {
-    const auto subtract_status = poly::try_subtract_region_set(domain, region);
+    const auto subtract_status = geom::try_subtract_region_set(domain, region);
     if (subtract_status != util::Status::ok) {
       SHINY_DEBUG(
           "candidate_generation: exclusion subtraction failed status={} "
@@ -328,7 +328,7 @@ auto append_feasible_region_vertices(
   std::vector<geom::PolygonWithHoles> feasible = domain;
   for (const auto &blocked_polygon : blocked) {
     const auto subtract_status =
-        poly::try_subtract_region_set(feasible, blocked_polygon);
+        geom::try_subtract_region_set(feasible, blocked_polygon);
     if (subtract_status != util::Status::ok) {
       return subtract_status;
     }

@@ -1,6 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "geometry/normalize.hpp"
+#include "geometry/queries/normalize.hpp"
 #include "packing/common.hpp"
 #include "placement/types.hpp"
 #include "request.hpp"

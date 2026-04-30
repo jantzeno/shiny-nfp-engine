@@ -5,8 +5,8 @@
 #include <span>
 
 #include "cache/penetration_depth_cache.hpp"
-#include "geometry/normalize.hpp"
 #include "geometry/polygon.hpp"
+#include "geometry/queries/normalize.hpp"
 #include "geometry/vector_ops.hpp"
 #include "predicates/point_location.hpp"
 

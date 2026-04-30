@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include "geometry/normalize.hpp"
+#include "geometry/queries/normalize.hpp"
 #include "request.hpp"
 #include "result.hpp"
 #include "solve.hpp"
@@ -31,35 +31,35 @@ auto rectangle(const double min_x, const double min_y, const double max_x,
                const double max_y) -> PolygonWithHoles {
   return shiny::nesting::geom::normalize_polygon(
       shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
-                           {min_x, min_y},
-                           {max_x, min_y},
-                           {max_x, max_y},
-                           {min_x, max_y},
-                       }));
+          {min_x, min_y},
+          {max_x, min_y},
+          {max_x, max_y},
+          {min_x, max_y},
+      }));
 }
 
 auto l_shape() -> PolygonWithHoles {
   return shiny::nesting::geom::normalize_polygon(
       shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
-                           {0.0, 0.0},
-                           {3.0, 0.0},
-                           {3.0, 1.0},
-                           {1.0, 1.0},
-                           {1.0, 3.0},
-                           {0.0, 3.0},
-                       }));
+          {0.0, 0.0},
+          {3.0, 0.0},
+          {3.0, 1.0},
+          {1.0, 1.0},
+          {1.0, 3.0},
+          {0.0, 3.0},
+      }));
 }
 
 auto concave_bin() -> PolygonWithHoles {
   return shiny::nesting::geom::normalize_polygon(
       shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
-                           {0.0, 0.0},
-                           {8.0, 0.0},
-                           {8.0, 3.0},
-                           {3.0, 3.0},
-                           {3.0, 8.0},
-                           {0.0, 8.0},
-                       }));
+          {0.0, 0.0},
+          {8.0, 0.0},
+          {8.0, 3.0},
+          {3.0, 3.0},
+          {3.0, 8.0},
+          {0.0, 8.0},
+      }));
 }
 
 auto count_placements(const shiny::nesting::NestingResult &result)

@@ -6,12 +6,12 @@
 #include <optional>
 #include <vector>
 
-#include "decomposition/convex_decomposition.hpp"
-#include "decomposition/triangulation.hpp"
-#include "geometry/normalize.hpp"
+#include "geometry/decomposition/convex_decomposition.hpp"
+#include "geometry/decomposition/triangulation.hpp"
+#include "geometry/operations/boolean_ops.hpp"
+#include "geometry/operations/greedy_merge.hpp"
 #include "geometry/polygon.hpp"
-#include "polygon_ops/boolean_ops.hpp"
-#include "polygon_ops/greedy_merge.hpp"
+#include "geometry/queries/normalize.hpp"
 #include "support/fixture_test_support.hpp"
 
 namespace {
@@ -20,13 +20,13 @@ using shiny::nesting::decomp::decompose_convex;
 using shiny::nesting::decomp::is_convex;
 using shiny::nesting::decomp::triangulate_polygon;
 using shiny::nesting::geom::compute_bounds;
+using shiny::nesting::geom::greedy_pairwise_merge;
 using shiny::nesting::geom::normalize_polygon;
 using shiny::nesting::geom::Point2;
 using shiny::nesting::geom::Polygon;
 using shiny::nesting::geom::polygon_area;
 using shiny::nesting::geom::Ring;
-using shiny::nesting::poly::greedy_pairwise_merge;
-using shiny::nesting::poly::union_polygons;
+using shiny::nesting::geom::union_polygons;
 using shiny::nesting::test::require_ring_equal;
 
 constexpr double kAreaEpsilon = 1.0e-8;

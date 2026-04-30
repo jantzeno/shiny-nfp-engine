@@ -6,7 +6,7 @@
 
 #include "cache/nfp_cache.hpp"
 #include "geometry/polygon.hpp"
-#include "geometry/transform.hpp"
+#include "geometry/transforms/transform.hpp"
 #include "packing/irregular/candidate_generation.hpp"
 #include "util/status.hpp"
 

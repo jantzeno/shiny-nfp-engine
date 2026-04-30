@@ -1,6 +1,6 @@
 #include "predicates/classify.hpp"
 
-#include "geometry/detail/point_compare.hpp"
+#include "predicates/detail/point_compare.hpp"
 
 namespace shiny::nesting::pred {
 

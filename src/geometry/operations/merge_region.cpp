@@ -1,15 +1,15 @@
-#include "polygon_ops/merge_region.hpp"
+#include "geometry/operations/merge_region.hpp"
 
 #include <algorithm>
 
-#include "geometry/normalize.hpp"
-#include "polygon_ops/boolean_ops.hpp"
+#include "geometry/operations/boolean_ops.hpp"
+#include "geometry/queries/normalize.hpp"
 
-namespace shiny::nesting::poly {
+namespace shiny::nesting::geom {
 namespace {
 
-[[nodiscard]] auto polygon_less(const geom::PolygonWithHoles &lhs,
-                                const geom::PolygonWithHoles &rhs) -> bool {
+[[nodiscard]] auto polygon_less(const PolygonWithHoles &lhs,
+                                const PolygonWithHoles &rhs) -> bool {
   if (lhs.outer().empty()) {
     return !rhs.outer().empty();
   }
@@ -29,39 +29,39 @@ namespace {
   return lhs.holes().size() < rhs.holes().size();
 }
 
-void sort_regions(std::vector<geom::PolygonWithHoles> &regions) {
+void sort_regions(std::vector<PolygonWithHoles> &regions) {
   std::sort(regions.begin(), regions.end(), polygon_less);
 }
 
 } // namespace
 
-auto make_merged_region(const geom::PolygonWithHoles &polygon) -> MergedRegion {
+auto make_merged_region(const PolygonWithHoles &polygon) -> MergedRegion {
   if (polygon.outer().empty()) {
     return {};
   }
 
-  return {.regions = {geom::normalize_polygon(polygon)}};
+  return {.regions = {normalize_polygon(polygon)}};
 }
 
-auto merge_region(const geom::PolygonWithHoles &lhs,
-                  const geom::PolygonWithHoles &rhs) -> MergedRegion {
+auto merge_region(const PolygonWithHoles &lhs, const PolygonWithHoles &rhs)
+    -> MergedRegion {
   return merge_polygon_into_region(make_merged_region(lhs), rhs);
 }
 
 auto merge_polygon_into_region(const MergedRegion &region,
-                               const geom::PolygonWithHoles &polygon)
+                               const PolygonWithHoles &polygon)
     -> MergedRegion {
   if (polygon.outer().empty()) {
     return region;
   }
 
-  geom::PolygonWithHoles accumulator = geom::normalize_polygon(polygon);
-  std::vector<geom::PolygonWithHoles> pending = region.regions;
+  PolygonWithHoles accumulator = normalize_polygon(polygon);
+  std::vector<PolygonWithHoles> pending = region.regions;
 
   bool merged_any = false;
   do {
     merged_any = false;
-    std::vector<geom::PolygonWithHoles> next_pending;
+    std::vector<PolygonWithHoles> next_pending;
     next_pending.reserve(pending.size());
 
     for (const auto &existing : pending) {
@@ -82,4 +82,4 @@ auto merge_polygon_into_region(const MergedRegion &region,
   return {.regions = std::move(pending)};
 }
 
-} // namespace shiny::nesting::poly
+} // namespace shiny::nesting::geom

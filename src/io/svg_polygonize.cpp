@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "geometry/normalize.hpp"
+#include "geometry/queries/normalize.hpp"
 
 namespace shiny::nesting::io {
 namespace {

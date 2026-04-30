@@ -16,8 +16,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
-#include "geometry/transform.hpp"
-#include "polygon_ops/boolean_ops.hpp"
+#include "geometry/operations/boolean_ops.hpp"
+#include "geometry/transforms/transform.hpp"
 #include "runtime/cancellation.hpp"
 #include "support/mtg_fixture.hpp"
 
@@ -29,23 +29,25 @@ namespace {
 [[nodiscard]] auto rectangle(double min_x, double min_y, double max_x,
                              double max_y) -> geom::PolygonWithHoles {
   return shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
-              {min_x, min_y},
-              {max_x, min_y},
-              {max_x, max_y},
-              {min_x, max_y},
-          });
+      {min_x, min_y},
+      {max_x, min_y},
+      {max_x, max_y},
+      {min_x, max_y},
+  });
 }
 
 [[nodiscard]] auto frame(double min_x, double min_y, double max_x, double max_y,
                          double hole_min_x, double hole_min_y,
                          double hole_max_x, double hole_max_y)
     -> geom::PolygonWithHoles {
-  return shiny::nesting::geom::PolygonWithHoles({
-              {min_x, min_y},
-              {max_x, min_y},
-              {max_x, max_y},
-              {min_x, max_y},
-          }, {{
+  return shiny::nesting::geom::PolygonWithHoles(
+      {
+          {min_x, min_y},
+          {max_x, min_y},
+          {max_x, max_y},
+          {min_x, max_y},
+      },
+      {{
           {hole_min_x, hole_min_y},
           {hole_min_x, hole_max_y},
           {hole_max_x, hole_max_y},
@@ -634,7 +636,7 @@ TEST_CASE("metaheuristic-search enable_part_in_part_placement fills the hole",
   REQUIRE(placements[1].inside_hole);
 
   const auto overlap =
-      poly::intersection_polygons(placements[0].polygon, placements[1].polygon);
+      geom::intersection_polygons(placements[0].polygon, placements[1].polygon);
   REQUIRE(overlap.empty());
 }
 

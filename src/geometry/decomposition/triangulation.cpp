@@ -9,11 +9,11 @@
 
 #include <mapbox/earcut.hpp>
 
-#include "decomposition/internal.hpp"
-#include "decomposition/triangulation.hpp"
-#include "geometry/normalize.hpp"
+#include "geometry/decomposition/internal.hpp"
+#include "geometry/decomposition/triangulation.hpp"
 #include "geometry/polygon.hpp"
-#include "geometry/validity.hpp"
+#include "geometry/queries/normalize.hpp"
+#include "geometry/queries/validity.hpp"
 
 // Triangulation for polygons with holes via earcut.hpp.
 //

@@ -5,22 +5,22 @@
 #include <utility>
 #include <vector>
 
-namespace shiny::nesting::poly {
+namespace shiny::nesting::geom {
 
 // Greedy pairwise merge with restart-on-success.
 //
-// Repeatedly scans all O(N²) ordered pairs of items in `items`. For each
+// Repeatedly scans all O(N^2) ordered pairs of items in `items`. For each
 // pair `(lhs, rhs)`, invokes `merger(lhs, rhs)`. If it returns a value,
 // item `lhs` is replaced by the merged result, item `rhs` is erased, and
 // the scan restarts from the beginning (index validity after erase). The
 // loop terminates when a full pass produces no successful merge.
 //
-// Worst-case O(N³) calls to `merger`; in practice merges drop the count
+// Worst-case O(N^3) calls to `merger`; in practice merges drop the count
 // quickly so the bound is loose. Used by:
 //   - decomposition/convex_decomposition.cpp (convex sub-polygon fusion)
 //   - nfp/nfp.cpp + nfp/orbiting_nfp.cpp (NFP fragment unification)
 //
-// `Merger` must be callable as `std::optional<T>(const T &, const T &)`.
+// `Merger` must be callable as `std::optional<T>(const T &, const T &) `.
 // Returning `std::nullopt` rejects the pair (no merge). The returned T
 // replaces the lhs operand.
 template <typename T, typename Merger>
@@ -45,4 +45,4 @@ template <typename T, typename Merger>
   return items;
 }
 
-} // namespace shiny::nesting::poly
+} // namespace shiny::nesting::geom

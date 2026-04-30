@@ -1,28 +1,15 @@
-#include "geometry/transform.hpp"
+#include "geometry/transforms/transform.hpp"
 
 #include <cmath>
 #include <vector>
 
-#include "geometry/normalize.hpp"
+#include "geometry/queries/normalize.hpp"
 
 namespace shiny::nesting::geom {
 namespace detail {
 
 constexpr double kPi = 3.14159265358979323846;
-// Coordinate-snap threshold used after rotations / mirrors to collapse
-// near-zero values to exactly 0. This is an ABSOLUTE tolerance, NOT
-// scale-aware: it assumes coordinates live in roughly the [-10^4, 10^4]
-// range typical of CNC sheet/part dimensions in millimetres or inches.
-// Inputs scaled by orders of magnitude beyond that may either fail to
-// snap cleanly (when very large) or be over-snapped (when very small).
-// Callers working in unusual units should normalise to that range
-// before invoking the transform helpers.
 constexpr double kSnapEpsilon = 1e-10;
-// Hard ceiling on the size of the angle vector materialised from a
-// `RotationRange`. Bounds pathological inputs (tiny step relative to
-// span, or repeated near-zero step that survives the `<= 0.0` guard
-// because of accumulated floating-point error) so we never allocate
-// unbounded memory while resolving rotations.
 constexpr std::size_t kMaxMaterializedRotations = 100'000;
 
 [[nodiscard]] auto snap_coordinate(const double value) -> double {
@@ -64,11 +51,6 @@ auto materialize_rotations(const DiscreteRotationSet &rotations)
     return {};
   }
 
-  // Bound the predicted sample count BEFORE iterating so an ill-formed
-  // range (e.g. step ~ 1e-300 from arithmetic underflow that still
-  // survives `<= 0.0`, or an enormous span / tiny step ratio) cannot
-  // run a near-infinite loop or balloon allocation. Cast through long
-  // double to avoid overflow when the ratio itself is huge.
   const long double span = static_cast<long double>(range.max_degrees) -
                            static_cast<long double>(range.min_degrees);
   const long double predicted_count =

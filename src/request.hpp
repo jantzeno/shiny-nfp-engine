@@ -7,13 +7,13 @@
 #include <variant>
 #include <vector>
 
+#include "geometry/operations/simplify.hpp"
 #include "geometry/polygon.hpp"
 #include "packing/bin_identity.hpp"
 #include "packing/config.hpp"
 #include "packing/decoder.hpp"
 #include "placement/config.hpp"
 #include "placement/types.hpp"
-#include "polygon_ops/simplify.hpp"
 #include "util/status.hpp"
 
 namespace shiny::nesting {

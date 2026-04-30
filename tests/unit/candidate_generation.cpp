@@ -8,7 +8,7 @@
 #include <tuple>
 #include <vector>
 
-#include "geometry/transform.hpp"
+#include "geometry/transforms/transform.hpp"
 #include "nfp/ifp.hpp"
 #include "nfp/nfp.hpp"
 #include "packing/irregular/blocked_regions.hpp"

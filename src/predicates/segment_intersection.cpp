@@ -4,7 +4,7 @@
 #include <cmath>
 #include <vector>
 
-#include "geometry/detail/point_compare.hpp"
+#include "predicates/detail/point_compare.hpp"
 #include "predicates/orientation.hpp"
 
 namespace shiny::nesting::pred {

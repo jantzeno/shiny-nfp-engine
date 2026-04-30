@@ -2,8 +2,8 @@
 
 #include <cmath>
 
+#include "geometry/operations/convex_hull.hpp"
 #include "geometry/polygon.hpp"
-#include "polygon_ops/convex_hull.hpp"
 
 namespace shiny::nesting::pack {
 
@@ -18,9 +18,9 @@ namespace shiny::nesting::pack {
 auto shape_penalty(const geom::PolygonWithHoles &lhs,
                    const geom::PolygonWithHoles &rhs) -> double {
   const auto lhs_hull_area =
-      std::max(0.0, geom::polygon_area(poly::compute_convex_hull(lhs)));
+      std::max(0.0, geom::polygon_area(geom::compute_convex_hull(lhs)));
   const auto rhs_hull_area =
-      std::max(0.0, geom::polygon_area(poly::compute_convex_hull(rhs)));
+      std::max(0.0, geom::polygon_area(geom::compute_convex_hull(rhs)));
   return std::sqrt(std::sqrt(lhs_hull_area) * std::sqrt(rhs_hull_area));
 }
 

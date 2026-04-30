@@ -3,10 +3,10 @@
 #include <cstdint>
 #include <vector>
 
+#include "geometry/operations/merge_region.hpp"
 #include "geometry/types.hpp"
 #include "packing/layout.hpp"
 #include "placement/config.hpp"
-#include "polygon_ops/merge_region.hpp"
 
 namespace shiny::nesting::pack {
 
@@ -30,7 +30,7 @@ struct BinState {
   std::uint64_t container_geometry_revision{0};
   place::PlacementStartCorner start_corner{
       place::PlacementStartCorner::bottom_left};
-  poly::MergedRegion occupied{};
+  geom::MergedRegion occupied{};
   std::uint64_t occupied_region_revision{0};
   std::vector<geom::PolygonWithHoles> holes{};
   std::uint64_t hole_set_revision{0};

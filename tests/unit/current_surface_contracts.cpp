@@ -10,15 +10,15 @@
 #include <vector>
 
 #include "api/request_builder.hpp"
-#include "geometry/normalize.hpp"
+#include "geometry/operations/boolean_ops.hpp"
 #include "geometry/polygon.hpp"
-#include "geometry/sanitize.hpp"
-#include "geometry/transform.hpp"
-#include "geometry/validity.hpp"
+#include "geometry/queries/normalize.hpp"
+#include "geometry/queries/sanitize.hpp"
+#include "geometry/queries/validity.hpp"
+#include "geometry/transforms/transform.hpp"
 #include "io/json.hpp"
 #include "io/layout_svg.hpp"
 #include "packing/layout.hpp"
-#include "polygon_ops/boolean_ops.hpp"
 #include "request.hpp"
 #include "solve.hpp"
 #include "util/status.hpp"
@@ -280,12 +280,12 @@ TEST_CASE("boolean topology identities preserve area",
   const auto b = rectangle(2.0, 0.0, 6.0, 4.0);
   const auto far = rectangle(10.0, 10.0, 11.0, 11.0);
 
-  const auto union_ab = shiny::nesting::poly::union_polygons(a, b);
+  const auto union_ab = shiny::nesting::geom::union_polygons(a, b);
   const auto intersection_ab =
-      shiny::nesting::poly::intersection_polygons(a, b);
-  const auto difference_aa = shiny::nesting::poly::difference_polygons(a, a);
+      shiny::nesting::geom::intersection_polygons(a, b);
+  const auto difference_aa = shiny::nesting::geom::difference_polygons(a, a);
   const auto intersection_far =
-      shiny::nesting::poly::intersection_polygons(a, far);
+      shiny::nesting::geom::intersection_polygons(a, far);
 
   REQUIRE(shiny::nesting::geom::polygon_area_sum(union_ab) +
               shiny::nesting::geom::polygon_area_sum(intersection_ab) ==
@@ -293,7 +293,7 @@ TEST_CASE("boolean topology identities preserve area",
                  shiny::nesting::geom::polygon_area(b)));
   REQUIRE(difference_aa.empty());
   REQUIRE(intersection_far.empty());
-  REQUIRE(shiny::nesting::poly::polygon_distance(a, far) > 0.0);
+  REQUIRE(shiny::nesting::geom::polygon_distance(a, far) > 0.0);
 }
 
 TEST_CASE("packing and search contracts preserve bins, seeds, and validity",

@@ -12,8 +12,8 @@
 #pragma GCC diagnostic pop
 #endif
 
-#include "geometry/normalize.hpp"
-#include "geometry/validity.hpp"
+#include "geometry/queries/normalize.hpp"
+#include "geometry/queries/validity.hpp"
 
 namespace shiny::nesting::io {
 namespace detail {

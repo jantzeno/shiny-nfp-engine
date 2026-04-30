@@ -5,8 +5,8 @@
 #include <cmath>
 
 #include "cache/penetration_depth_cache.hpp"
-#include "geometry/normalize.hpp"
 #include "geometry/polygon.hpp"
+#include "geometry/queries/normalize.hpp"
 #include "nfp/convex_nfp.hpp"
 #include "nfp/penetration_depth.hpp"
 #include "packing/collision_tracker.hpp"
@@ -22,19 +22,22 @@ using shiny::nesting::pack::PoleOfInaccessibility;
 
 auto rectangle(const double min_x, const double min_y, const double max_x,
                const double max_y) -> PolygonWithHoles {
-  return shiny::nesting::geom::normalize_polygon(shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
-              shiny::nesting::geom::Point2(min_x, min_y),
-              shiny::nesting::geom::Point2(max_x, min_y),
-              shiny::nesting::geom::Point2(max_x, max_y),
-              shiny::nesting::geom::Point2(min_x, max_y),
-          }));
+  return shiny::nesting::geom::normalize_polygon(
+      shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+          shiny::nesting::geom::Point2(min_x, min_y),
+          shiny::nesting::geom::Point2(max_x, min_y),
+          shiny::nesting::geom::Point2(max_x, max_y),
+          shiny::nesting::geom::Point2(min_x, max_y),
+      }));
 }
 
 auto brute_force_pole(const PolygonWithHoles &polygon,
                       const std::size_t resolution) -> PoleOfInaccessibility {
   const auto bounds = shiny::nesting::geom::compute_bounds(polygon);
   PoleOfInaccessibility best{
-      .center = shiny::nesting::geom::Point2((bounds.min.x() + bounds.max.x()) / 2.0, (bounds.min.y() + bounds.max.y()) / 2.0),
+      .center =
+          shiny::nesting::geom::Point2((bounds.min.x() + bounds.max.x()) / 2.0,
+                                       (bounds.min.y() + bounds.max.y()) / 2.0),
       .radius = 0.0,
   };
 
@@ -62,7 +65,9 @@ auto brute_force_pole(const PolygonWithHoles &polygon,
                       static_cast<double>(safe_resolution);
   for (std::size_t row = 0; row <= safe_resolution; ++row) {
     for (std::size_t column = 0; column <= safe_resolution; ++column) {
-      evaluate(shiny::nesting::geom::Point2(bounds.min.x() + static_cast<double>(column) * step_x, bounds.min.y() + static_cast<double>(row) * step_y));
+      evaluate(shiny::nesting::geom::Point2(
+          bounds.min.x() + static_cast<double>(column) * step_x,
+          bounds.min.y() + static_cast<double>(row) * step_y));
     }
   }
   return best;
@@ -111,14 +116,15 @@ TEST_CASE("overlap proxy distinguishes overlapping and separated shapes",
 
 TEST_CASE("pole of inaccessibility cache reuses cached result",
           "[packing][overlap-proxy]") {
-  const auto polygon = shiny::nesting::geom::normalize_polygon(shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
-              shiny::nesting::geom::Point2(0.0, 0.0),
-              shiny::nesting::geom::Point2(6.0, 0.0),
-              shiny::nesting::geom::Point2(6.0, 1.0),
-              shiny::nesting::geom::Point2(2.0, 1.0),
-              shiny::nesting::geom::Point2(2.0, 5.0),
-              shiny::nesting::geom::Point2(0.0, 5.0),
-          }));
+  const auto polygon = shiny::nesting::geom::normalize_polygon(
+      shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+          shiny::nesting::geom::Point2(0.0, 0.0),
+          shiny::nesting::geom::Point2(6.0, 0.0),
+          shiny::nesting::geom::Point2(6.0, 1.0),
+          shiny::nesting::geom::Point2(2.0, 1.0),
+          shiny::nesting::geom::Point2(2.0, 5.0),
+          shiny::nesting::geom::Point2(0.0, 5.0),
+      }));
   shiny::nesting::cache::PoleCache pole_cache;
   shiny::nesting::cache::PenetrationDepthCache pd_cache;
 
@@ -141,14 +147,15 @@ TEST_CASE("pole of inaccessibility cache reuses cached result",
 TEST_CASE("pole of inaccessibility matches high resolution reference on "
           "concave polygon",
           "[packing][overlap-proxy]") {
-  const auto polygon = shiny::nesting::geom::normalize_polygon(shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
-              shiny::nesting::geom::Point2(0.0, 0.0),
-              shiny::nesting::geom::Point2(7.0, 0.0),
-              shiny::nesting::geom::Point2(7.0, 2.0),
-              shiny::nesting::geom::Point2(3.0, 2.0),
-              shiny::nesting::geom::Point2(3.0, 7.0),
-              shiny::nesting::geom::Point2(0.0, 7.0),
-          }));
+  const auto polygon = shiny::nesting::geom::normalize_polygon(
+      shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+          shiny::nesting::geom::Point2(0.0, 0.0),
+          shiny::nesting::geom::Point2(7.0, 0.0),
+          shiny::nesting::geom::Point2(7.0, 2.0),
+          shiny::nesting::geom::Point2(3.0, 2.0),
+          shiny::nesting::geom::Point2(3.0, 7.0),
+          shiny::nesting::geom::Point2(0.0, 7.0),
+      }));
 
   const auto reference = brute_force_pole(polygon, 256U);
   const auto polylabel =
@@ -161,7 +168,10 @@ TEST_CASE("pole of inaccessibility matches high resolution reference on "
 
 TEST_CASE("pole of inaccessibility respects hole boundaries",
           "[packing][overlap-proxy]") {
-  const auto polygon = shiny::nesting::geom::normalize_polygon(shiny::nesting::geom::PolygonWithHoles(rectangle(0.0, 0.0, 6.0, 6.0).outer(), {rectangle(2.0, 2.0, 4.0, 4.0).outer()}));
+  const auto polygon = shiny::nesting::geom::normalize_polygon(
+      shiny::nesting::geom::PolygonWithHoles(
+          rectangle(0.0, 0.0, 6.0, 6.0).outer(),
+          {rectangle(2.0, 2.0, 4.0, 4.0).outer()}));
 
   const auto pole =
       shiny::nesting::pack::compute_pole_of_inaccessibility(polygon);

@@ -4,7 +4,7 @@
 #include <boost/geometry.hpp>
 #include <cmath>
 
-#include "geometry/normalize.hpp"
+#include "geometry/queries/normalize.hpp"
 #include "runtime/hash.hpp"
 
 namespace shiny::nesting::geom {

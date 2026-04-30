@@ -6,8 +6,8 @@
 #include <utility>
 #include <vector>
 
-#include "geometry/normalize.hpp"
-#include "polygon_ops/boolean_ops.hpp"
+#include "geometry/operations/boolean_ops.hpp"
+#include "geometry/queries/normalize.hpp"
 
 namespace shiny::nesting::pack::detail {
 namespace {
@@ -16,7 +16,7 @@ auto subtract_region(std::vector<geom::PolygonWithHoles> &regions,
                      const geom::PolygonWithHoles &obstacle) -> void {
   std::vector<geom::PolygonWithHoles> next_regions;
   for (const auto &region : regions) {
-    auto difference = poly::difference_polygons(region, obstacle);
+    auto difference = geom::difference_polygons(region, obstacle);
     next_regions.insert(next_regions.end(), difference.begin(),
                         difference.end());
   }
@@ -25,9 +25,9 @@ auto subtract_region(std::vector<geom::PolygonWithHoles> &regions,
 
 auto merge_touching_regions(std::vector<geom::PolygonWithHoles> &regions)
     -> void {
-  poly::MergedRegion merged;
+  geom::MergedRegion merged;
   for (const auto &region : regions) {
-    merged = poly::merge_polygon_into_region(merged, region);
+    merged = geom::merge_polygon_into_region(merged, region);
   }
   regions = std::move(merged.regions);
 }
@@ -36,7 +36,7 @@ auto subtract_obstacle(std::vector<geom::PolygonWithHoles> &regions,
                        const geom::PolygonWithHoles &obstacle,
                        const double part_spacing) -> void {
   if (part_spacing > 0.0) {
-    const auto inflated = poly::buffer_polygon(obstacle, part_spacing);
+    const auto inflated = geom::buffer_polygon(obstacle, part_spacing);
     for (const auto &buffered : inflated) {
       subtract_region(regions, buffered);
     }
@@ -150,9 +150,9 @@ auto rebuild_working_bin(WorkingBin &bin, const ExecutionPolicy &execution)
   for (const auto &placement : bin.state.placements) {
     bin.placement_bounds.push_back(geom::compute_bounds(placement.polygon));
     if (bin.state.occupied.regions.empty()) {
-      bin.state.occupied = poly::make_merged_region(placement.polygon);
+      bin.state.occupied = geom::make_merged_region(placement.polygon);
     } else {
-      bin.state.occupied = poly::merge_polygon_into_region(bin.state.occupied,
+      bin.state.occupied = geom::merge_polygon_into_region(bin.state.occupied,
                                                            placement.polygon);
     }
   }
@@ -243,10 +243,10 @@ auto apply_candidate(WorkingBin &bin, const CandidatePlacement &candidate,
   });
   bin.placement_bounds.push_back(candidate.bounds);
   if (bin.state.occupied.regions.empty()) {
-    bin.state.occupied = poly::make_merged_region(candidate.polygon);
+    bin.state.occupied = geom::make_merged_region(candidate.polygon);
   } else {
     bin.state.occupied =
-        poly::merge_polygon_into_region(bin.state.occupied, candidate.polygon);
+        geom::merge_polygon_into_region(bin.state.occupied, candidate.polygon);
   }
   ++bin.state.occupied_region_revision;
   refresh_bin_state(bin, execution);

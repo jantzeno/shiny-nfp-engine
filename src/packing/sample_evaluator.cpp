@@ -1,8 +1,8 @@
 #include "packing/sample_evaluator.hpp"
 
+#include "geometry/operations/boolean_ops.hpp"
 #include "geometry/polygon.hpp"
 #include "packing/collision_tracker.hpp"
-#include "polygon_ops/boolean_ops.hpp"
 
 namespace shiny::nesting::pack {
 
@@ -21,7 +21,7 @@ auto evaluate_sample(const CollisionTracker &tracker,
   const auto candidate_revision = geom::polygon_revision(candidate_polygon);
 
   const auto outside_loss = geom::polygon_area_sum(
-      poly::difference_polygons(candidate_polygon, tracker.container()));
+      geom::difference_polygons(candidate_polygon, tracker.container()));
   result.weighted_loss += tracker.container_weight(moving_index) * outside_loss;
   if (result.weighted_loss > best_known_loss) {
     result.early_terminated = true;

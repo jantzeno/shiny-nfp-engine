@@ -3,13 +3,13 @@
 #include <algorithm>
 #include <vector>
 
-#include "geometry/normalize.hpp"
+#include "geometry/operations/convex_hull.hpp"
+#include "geometry/operations/simplify.hpp"
 #include "geometry/polygon.hpp"
-#include "geometry/sanitize.hpp"
-#include "geometry/validity.hpp"
+#include "geometry/queries/normalize.hpp"
+#include "geometry/queries/sanitize.hpp"
+#include "geometry/queries/validity.hpp"
 #include "logging/shiny_log.hpp"
-#include "polygon_ops/convex_hull.hpp"
-#include "polygon_ops/simplify.hpp"
 
 namespace shiny::nesting::nfp {
 namespace {
@@ -43,9 +43,9 @@ namespace {
     }
   }
 
-  const auto hull = poly::compute_convex_hull(
+  const auto hull = geom::compute_convex_hull(
       std::span<const geom::Point2>(point_cloud.data(), point_cloud.size()));
-  auto simplified = poly::simplify_collinear_ring(hull.outer());
+  auto simplified = geom::simplify_collinear_ring(hull.outer());
   if (simplified.size() < 3U) {
     return util::Status::computation_failed;
   }

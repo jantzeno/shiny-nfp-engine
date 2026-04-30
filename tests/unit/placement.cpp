@@ -8,7 +8,7 @@
 #include <string_view>
 #include <vector>
 
-#include "geometry/transform.hpp"
+#include "geometry/transforms/transform.hpp"
 #include "placement/engine.hpp"
 #include "support/fixture_test_support.hpp"
 
@@ -38,11 +38,11 @@ using shiny::nesting::test::require_point_equal;
 auto make_rectangle(double min_x, double min_y, double max_x, double max_y)
     -> shiny::nesting::geom::PolygonWithHoles {
   return shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
-              shiny::nesting::geom::Point2(min_x, min_y),
-              shiny::nesting::geom::Point2(max_x, min_y),
-              shiny::nesting::geom::Point2(max_x, max_y),
-              shiny::nesting::geom::Point2(min_x, max_y),
-          });
+      shiny::nesting::geom::Point2(min_x, min_y),
+      shiny::nesting::geom::Point2(max_x, min_y),
+      shiny::nesting::geom::Point2(max_x, max_y),
+      shiny::nesting::geom::Point2(min_x, max_y),
+  });
 }
 
 auto parse_points(const shiny::nesting::test::pt::ptree &node)
@@ -114,7 +114,8 @@ auto parse_exclusion_zones(const shiny::nesting::test::pt::ptree &node)
   for (const auto &child : node) {
     zones.push_back({
         .zone_id = child.second.get<std::uint32_t>("zone_id", 0),
-        .region = shiny::nesting::geom::PolygonWithHoles(parse_ring(child.second.get_child("region"))),
+        .region = shiny::nesting::geom::PolygonWithHoles(
+            parse_ring(child.second.get_child("region"))),
     });
   }
   return zones;
@@ -352,7 +353,8 @@ TEST_CASE("placement config rejects invalid exclusion zones",
   PlacementConfig config{};
   config.exclusion_zones.push_back({
       .zone_id = 3,
-      .region = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0}, {1.0, 0.0}}),
+      .region = shiny::nesting::geom::PolygonWithHoles(
+          shiny::nesting::geom::Ring{{0.0, 0.0}, {1.0, 0.0}}),
   });
 
   REQUIRE_FALSE(config.is_valid());
@@ -480,10 +482,9 @@ TEST_CASE("placement filtering rejects candidates that overlap keep-outs",
               .allowed_rotations = {.angles_degrees = {0.0}},
               .exclusion_zones = {{
                   .zone_id = 9,
-                  .region = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
-                                       {3.0, 0.0},
-                                       {3.0, 3.0},
-                                       {0.0, 3.0}}),
+                  .region = shiny::nesting::geom::PolygonWithHoles(
+                      shiny::nesting::geom::Ring{
+                          {0.0, 0.0}, {3.0, 0.0}, {3.0, 3.0}, {0.0, 3.0}}),
               }},
           },
   };

@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include "geometry/normalize.hpp"
+#include "geometry/queries/normalize.hpp"
 #include "packing/common_edge.hpp"
 #include "packing/cutting_sequence.hpp"
 #include "packing/layout.hpp"
@@ -30,14 +30,16 @@ using shiny::nesting::pack::SharedCutOptimizationMode;
 
 auto make_rectangle(double min_x, double min_y, double max_x, double max_y)
     -> PolygonWithHoles {
-  return shiny::nesting::geom::normalize_polygon(shiny::nesting::geom::PolygonWithHoles(
-      Ring{{min_x, min_y}, {max_x, min_y}, {max_x, max_y}, {min_x, max_y}}));
+  return shiny::nesting::geom::normalize_polygon(
+      shiny::nesting::geom::PolygonWithHoles(Ring{
+          {min_x, min_y}, {max_x, min_y}, {max_x, max_y}, {min_x, max_y}}));
 }
 
 auto make_frame_piece() -> PolygonWithHoles {
   return shiny::nesting::geom::normalize_polygon(
-      shiny::nesting::geom::PolygonWithHoles(Ring{{0.0, 0.0}, {4.0, 0.0}, {4.0, 4.0}, {0.0, 4.0}},
-                       {Ring{{1.0, 1.0}, {1.0, 3.0}, {3.0, 3.0}, {3.0, 1.0}}}));
+      shiny::nesting::geom::PolygonWithHoles(
+          Ring{{0.0, 0.0}, {4.0, 0.0}, {4.0, 4.0}, {0.0, 4.0}},
+          {Ring{{1.0, 1.0}, {1.0, 3.0}, {3.0, 3.0}, {3.0, 1.0}}}));
 }
 
 auto make_piece(std::uint32_t piece_id, PolygonWithHoles polygon)
@@ -208,8 +210,8 @@ TEST_CASE("pierce plan can select an edge midpoint and keep lead arcs outside "
   const auto polygon = make_rectangle(0.0, 0.0, 6.0, 1.0);
   const auto contour = make_contour(1U, polygon);
 
-  const auto plan =
-      shiny::nesting::pack::select_pierce_plan(contour, shiny::nesting::geom::Point2(3.05, -0.2));
+  const auto plan = shiny::nesting::pack::select_pierce_plan(
+      contour, shiny::nesting::geom::Point2(3.05, -0.2));
 
   REQUIRE(plan.pierce_point.x() == Catch::Approx(3.0));
   REQUIRE(plan.pierce_point.y() == Catch::Approx(0.0));
@@ -275,8 +277,8 @@ TEST_CASE("pierce plan emits non-collapsed lead arcs for a degenerate "
       .ring = {{0.0, 0.0}, {1.0, 0.0}, {2.0, 0.0}},
   };
 
-  const auto plan =
-      shiny::nesting::pack::select_pierce_plan(contour, shiny::nesting::geom::Point2(-1.0, 0.0));
+  const auto plan = shiny::nesting::pack::select_pierce_plan(
+      contour, shiny::nesting::geom::Point2(-1.0, 0.0));
 
   REQUIRE(std::isfinite(plan.pierce_point.x()));
   REQUIRE(std::isfinite(plan.pierce_point.y()));

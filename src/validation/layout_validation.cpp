@@ -5,8 +5,8 @@
 #include <cstddef>
 #include <unordered_set>
 
+#include "geometry/operations/boolean_ops.hpp"
 #include "packing/common.hpp"
-#include "polygon_ops/boolean_ops.hpp"
 
 namespace shiny::nesting::validation {
 namespace {
@@ -14,7 +14,7 @@ namespace {
 [[nodiscard]] auto exact_overlap_area(const geom::PolygonWithHoles &lhs,
                                       const geom::PolygonWithHoles &rhs)
     -> double {
-  return geom::polygon_area_sum(poly::intersection_polygons(lhs, rhs));
+  return geom::polygon_area_sum(geom::intersection_polygons(lhs, rhs));
 }
 
 [[nodiscard]] auto exact_area_outside(const geom::PolygonWithHoles &container,
@@ -22,7 +22,7 @@ namespace {
     -> double {
   const auto piece_area = geom::polygon_area(piece);
   const auto contained_area =
-      geom::polygon_area_sum(poly::intersection_polygons(container, piece));
+      geom::polygon_area_sum(geom::intersection_polygons(container, piece));
   return piece_area - contained_area;
 }
 
@@ -250,7 +250,7 @@ auto validate_layout(const NormalizedRequest &request,
                 lhs_bounds, rhs_bounds,
                 request.request.execution.part_spacing)) {
           const auto distance =
-              poly::polygon_distance(lhs.polygon, rhs.polygon);
+              geom::polygon_distance(lhs.polygon, rhs.polygon);
           if (distance + options.spacing_tolerance <
               request.request.execution.part_spacing) {
             add_issue(report, LayoutValidationIssueKind::spacing_violation,

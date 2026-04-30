@@ -1,4 +1,4 @@
-#include "polygon_ops/simplify.hpp"
+#include "geometry/operations/simplify.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -6,30 +6,29 @@
 #include <span>
 #include <vector>
 
-#include "geometry/normalize.hpp"
 #include "geometry/polygon.hpp"
+#include "geometry/queries/normalize.hpp"
 #include "geometry/types.hpp"
 #include "geometry/vector_ops.hpp"
 #include "predicates/orientation.hpp"
 #include "predicates/point_location.hpp"
 
-namespace shiny::nesting::poly {
+namespace shiny::nesting::geom {
 namespace detail {
 
-[[nodiscard]] auto distance_to_segment(const geom::Point2 &point,
-                                       const geom::Segment2 &segment)
-    -> double {
-  const auto edge = geom::vector_between(segment.start, segment.end);
-  const auto length_squared = geom::dot(edge, edge);
+[[nodiscard]] auto distance_to_segment(const Point2 &point,
+                                       const Segment2 &segment) -> double {
+  const auto edge = vector_between(segment.start, segment.end);
+  const auto length_squared = dot(edge, edge);
   if (length_squared <= std::numeric_limits<double>::epsilon()) {
-    return geom::point_distance(point, segment.start);
+    return point_distance(point, segment.start);
   }
-  return geom::point_to_segment_distance(point, segment);
+  return point_to_segment_distance(point, segment);
 }
 
-void simplify_open_chain_douglas_peucker(std::span<const geom::Point2> chain,
+void simplify_open_chain_douglas_peucker(std::span<const Point2> chain,
                                          double epsilon,
-                                         std::vector<geom::Point2> &output) {
+                                         std::vector<Point2> &output) {
   if (chain.empty()) {
     return;
   }
@@ -38,7 +37,7 @@ void simplify_open_chain_douglas_peucker(std::span<const geom::Point2> chain,
     return;
   }
 
-  const geom::Segment2 baseline{.start = chain.front(), .end = chain.back()};
+  const Segment2 baseline{.start = chain.front(), .end = chain.back()};
   double max_distance = -1.0;
   std::size_t split_index = 0U;
   for (std::size_t index = 1U; index + 1U < chain.size(); ++index) {
@@ -62,13 +61,12 @@ void simplify_open_chain_douglas_peucker(std::span<const geom::Point2> chain,
   output.push_back(chain.back());
 }
 
-[[nodiscard]] auto simplify_normalized_ring(const geom::Ring &ring)
-    -> geom::Ring {
+[[nodiscard]] auto simplify_normalized_ring(const Ring &ring) -> Ring {
   if (ring.size() < 4U) {
     return ring;
   }
 
-  geom::Ring simplified = ring;
+  Ring simplified = ring;
 
   while (simplified.size() >= 4U) {
     std::vector<bool> remove_vertex(simplified.size(), false);
@@ -87,7 +85,7 @@ void simplify_open_chain_douglas_peucker(std::span<const geom::Point2> chain,
 
       const auto on_segment = pred::locate_point_on_segment(
           simplified[index],
-          geom::Segment2{simplified[prev_index], simplified[next_index]});
+          Segment2{simplified[prev_index], simplified[next_index]});
       if (on_segment.relation == pred::BoundaryRelation::off_boundary) {
         continue;
       }
@@ -100,7 +98,7 @@ void simplify_open_chain_douglas_peucker(std::span<const geom::Point2> chain,
       break;
     }
 
-    geom::Ring next_ring;
+    Ring next_ring;
     next_ring.reserve(simplified.size() - removed_count);
     for (std::size_t index = 0; index < simplified.size(); ++index) {
       if (!remove_vertex[index]) {
@@ -114,16 +112,16 @@ void simplify_open_chain_douglas_peucker(std::span<const geom::Point2> chain,
   return simplified;
 }
 
-[[nodiscard]] auto simplify_ring_douglas_peucker(const geom::Ring &ring,
-                                                 double epsilon) -> geom::Ring {
+[[nodiscard]] auto simplify_ring_douglas_peucker(const Ring &ring,
+                                                 double epsilon) -> Ring {
   if (ring.size() <= 3U || epsilon <= 0.0) {
     return simplify_normalized_ring(ring);
   }
 
-  geom::Ring closed_ring = ring;
+  Ring closed_ring = ring;
   closed_ring.push_back(ring.front());
 
-  geom::Ring simplified;
+  Ring simplified;
   simplified.reserve(closed_ring.size());
   simplify_open_chain_douglas_peucker(closed_ring, epsilon, simplified);
 
@@ -140,31 +138,30 @@ void simplify_open_chain_douglas_peucker(std::span<const geom::Point2> chain,
 
 } // namespace detail
 
-auto simplify_collinear_ring(std::span<const geom::Point2> ring) -> geom::Ring {
-  const auto normalized = geom::normalize_polygon(
-      geom::Polygon(geom::Ring(ring.begin(), ring.end())));
+auto simplify_collinear_ring(std::span<const Point2> ring) -> Ring {
+  const auto normalized =
+      normalize_polygon(Polygon(Ring(ring.begin(), ring.end())));
   const auto simplified = detail::simplify_normalized_ring(normalized.outer());
-  return geom::normalize_polygon(geom::Polygon(simplified)).outer();
+  return normalize_polygon(Polygon(simplified)).outer();
 }
 
-auto simplify_polygon(const geom::Polygon &polygon) -> geom::Polygon {
-  const auto normalized = geom::normalize_polygon(polygon);
-  return geom::normalize_polygon(
-      geom::Polygon(detail::simplify_normalized_ring(normalized.outer())));
+auto simplify_polygon(const Polygon &polygon) -> Polygon {
+  const auto normalized = normalize_polygon(polygon);
+  return normalize_polygon(
+      Polygon(detail::simplify_normalized_ring(normalized.outer())));
 }
 
-auto simplify_polygon_douglas_peucker(const geom::Polygon &polygon,
-                                      double epsilon) -> geom::Polygon {
-  const auto normalized = geom::normalize_polygon(polygon);
-  return geom::normalize_polygon(geom::Polygon(
+auto simplify_polygon_douglas_peucker(const Polygon &polygon, double epsilon)
+    -> Polygon {
+  const auto normalized = normalize_polygon(polygon);
+  return normalize_polygon(Polygon(
       detail::simplify_ring_douglas_peucker(normalized.outer(), epsilon)));
 }
 
-auto simplify_polygon(const geom::PolygonWithHoles &polygon)
-    -> geom::PolygonWithHoles {
-  const auto normalized = geom::normalize_polygon(polygon);
+auto simplify_polygon(const PolygonWithHoles &polygon) -> PolygonWithHoles {
+  const auto normalized = normalize_polygon(polygon);
 
-  geom::PolygonWithHoles simplified{};
+  PolygonWithHoles simplified{};
   simplified.outer() = detail::simplify_normalized_ring(normalized.outer());
   simplified.holes().reserve(normalized.holes().size());
 
@@ -172,15 +169,14 @@ auto simplify_polygon(const geom::PolygonWithHoles &polygon)
     simplified.holes().push_back(detail::simplify_normalized_ring(hole));
   }
 
-  return geom::normalize_polygon(simplified);
+  return normalize_polygon(simplified);
 }
 
-auto simplify_polygon_douglas_peucker(const geom::PolygonWithHoles &polygon,
-                                      double epsilon)
-    -> geom::PolygonWithHoles {
-  const auto normalized = geom::normalize_polygon(polygon);
+auto simplify_polygon_douglas_peucker(const PolygonWithHoles &polygon,
+                                      double epsilon) -> PolygonWithHoles {
+  const auto normalized = normalize_polygon(polygon);
 
-  geom::PolygonWithHoles simplified{};
+  PolygonWithHoles simplified{};
   simplified.outer() =
       detail::simplify_ring_douglas_peucker(normalized.outer(), epsilon);
   simplified.holes().reserve(normalized.holes().size());
@@ -190,7 +186,7 @@ auto simplify_polygon_douglas_peucker(const geom::PolygonWithHoles &polygon,
         detail::simplify_ring_douglas_peucker(hole, epsilon));
   }
 
-  return geom::normalize_polygon(simplified);
+  return normalize_polygon(simplified);
 }
 
-} // namespace shiny::nesting::poly
+} // namespace shiny::nesting::geom

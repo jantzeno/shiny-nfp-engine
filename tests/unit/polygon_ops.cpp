@@ -3,25 +3,25 @@
 #include <string>
 #include <vector>
 
-#include "geometry/normalize.hpp"
-#include "polygon_ops/boolean_ops.hpp"
-#include "polygon_ops/convex_hull.hpp"
-#include "polygon_ops/merge_region.hpp"
-#include "polygon_ops/simplify.hpp"
+#include "geometry/operations/boolean_ops.hpp"
+#include "geometry/operations/convex_hull.hpp"
+#include "geometry/operations/merge_region.hpp"
+#include "geometry/operations/simplify.hpp"
+#include "geometry/queries/normalize.hpp"
 #include "support/fixture_test_support.hpp"
 
 namespace {
 
+using shiny::nesting::geom::compute_convex_hull;
+using shiny::nesting::geom::make_merged_region;
+using shiny::nesting::geom::merge_polygon_into_region;
+using shiny::nesting::geom::MergedRegion;
 using shiny::nesting::geom::normalize_polygon;
 using shiny::nesting::geom::Polygon;
 using shiny::nesting::geom::PolygonWithHoles;
-using shiny::nesting::poly::compute_convex_hull;
-using shiny::nesting::poly::make_merged_region;
-using shiny::nesting::poly::merge_polygon_into_region;
-using shiny::nesting::poly::MergedRegion;
-using shiny::nesting::poly::simplify_polygon;
-using shiny::nesting::poly::simplify_polygon_douglas_peucker;
-using shiny::nesting::poly::union_polygons;
+using shiny::nesting::geom::simplify_polygon;
+using shiny::nesting::geom::simplify_polygon_douglas_peucker;
+using shiny::nesting::geom::union_polygons;
 using shiny::nesting::test::load_fixture_file;
 using shiny::nesting::test::parse_polygon;
 using shiny::nesting::test::require_fixture_metadata;

@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "geometry/polygon.hpp"
-#include "geometry/rtree_index.hpp"
+#include "geometry/transforms/rtree_index.hpp"
 #include "predicates/orientation.hpp"
 #include "predicates/point_location.hpp"
 

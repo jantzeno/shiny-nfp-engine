@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "cache/nfp_cache.hpp"
-#include "geometry/transform.hpp"
+#include "geometry/transforms/transform.hpp"
 #include "geometry/types.hpp"
 #include "placement/types.hpp"
 #include "request.hpp"

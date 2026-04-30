@@ -11,9 +11,9 @@
 #include <unordered_set>
 #include <vector>
 
+#include "geometry/operations/boolean_ops.hpp"
 #include "geometry/polygon.hpp"
 #include "geometry/types.hpp"
-#include "polygon_ops/boolean_ops.hpp"
 
 #include "solve.hpp"
 #include "support/mtg_fixture.hpp"
@@ -78,8 +78,8 @@ constexpr std::uint32_t kOverlapPairPieceB = 14U;
 
 [[nodiscard]] auto rects_strictly_overlap(const geom::Box2 &a,
                                           const geom::Box2 &b) -> bool {
-  return !(a.max.x() <= b.min.x() || b.max.x() <= a.min.x() || a.max.y() <= b.min.y() ||
-           b.max.y() <= a.min.y());
+  return !(a.max.x() <= b.min.x() || b.max.x() <= a.min.x() ||
+           a.max.y() <= b.min.y() || b.max.y() <= a.min.y());
 }
 
 [[nodiscard]] auto base_solve_control(const MtgRequestOptions &options)
@@ -101,7 +101,7 @@ constexpr std::uint32_t kOverlapPairPieceB = 14U;
 [[nodiscard]] auto exact_intersection_area(const geom::PolygonWithHoles &lhs,
                                            const geom::PolygonWithHoles &rhs)
     -> double {
-  return geom::polygon_area_sum(poly::intersection_polygons(lhs, rhs));
+  return geom::polygon_area_sum(geom::intersection_polygons(lhs, rhs));
 }
 
 [[nodiscard]] auto find_piece_on_bin(const NestingResult &result,

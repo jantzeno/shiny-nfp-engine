@@ -1,12 +1,12 @@
-#include "geometry/validity.hpp"
+#include "geometry/queries/validity.hpp"
 
 #include <algorithm>
 
 #include <boost/geometry.hpp>
 #include <cmath>
 
-#include "geometry/normalize.hpp"
 #include "geometry/polygon.hpp"
+#include "geometry/queries/normalize.hpp"
 #include "geometry/types.hpp"
 #include "predicates/segment_intersection.hpp"
 

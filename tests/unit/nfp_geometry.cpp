@@ -6,12 +6,12 @@
 #include <vector>
 
 #include "cache/nfp_cache.hpp"
-#include "decomposition/convex_decomposition.hpp"
-#include "geometry/normalize.hpp"
+#include "geometry/decomposition/convex_decomposition.hpp"
 #include "geometry/polygon.hpp"
-#include "geometry/sanitize.hpp"
-#include "geometry/transform.hpp"
-#include "geometry/validity.hpp"
+#include "geometry/queries/normalize.hpp"
+#include "geometry/queries/sanitize.hpp"
+#include "geometry/queries/validity.hpp"
+#include "geometry/transforms/transform.hpp"
 #include "nfp/convex_nfp.hpp"
 #include "nfp/ifp.hpp"
 #include "nfp/nfp.hpp"
@@ -31,11 +31,11 @@ using shiny::nesting::geom::PolygonWithHoles;
 auto rectangle(const double width, const double height) -> PolygonWithHoles {
   return shiny::nesting::geom::normalize_polygon(
       shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
-                           shiny::nesting::geom::Point2(0.0, 0.0),
-                           shiny::nesting::geom::Point2(width, 0.0),
-                           shiny::nesting::geom::Point2(width, height),
-                           shiny::nesting::geom::Point2(0.0, height),
-                       }));
+          shiny::nesting::geom::Point2(0.0, 0.0),
+          shiny::nesting::geom::Point2(width, 0.0),
+          shiny::nesting::geom::Point2(width, height),
+          shiny::nesting::geom::Point2(0.0, height),
+      }));
 }
 
 auto sum_area(const std::vector<Polygon> &polygons) -> double {
@@ -88,14 +88,15 @@ TEST_CASE("convex decomposition preserves area across convex, concave, and "
   REQUIRE(approx_equal(sum_area(convex_parts.value()),
                        shiny::nesting::geom::polygon_area(convex)));
 
-  const auto l_shape = shiny::nesting::geom::normalize_polygon(shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
-              shiny::nesting::geom::Point2(0.0, 0.0),
-              shiny::nesting::geom::Point2(4.0, 0.0),
-              shiny::nesting::geom::Point2(4.0, 1.0),
-              shiny::nesting::geom::Point2(1.0, 1.0),
-              shiny::nesting::geom::Point2(1.0, 4.0),
-              shiny::nesting::geom::Point2(0.0, 4.0),
-          }));
+  const auto l_shape = shiny::nesting::geom::normalize_polygon(
+      shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+          shiny::nesting::geom::Point2(0.0, 0.0),
+          shiny::nesting::geom::Point2(4.0, 0.0),
+          shiny::nesting::geom::Point2(4.0, 1.0),
+          shiny::nesting::geom::Point2(1.0, 1.0),
+          shiny::nesting::geom::Point2(1.0, 4.0),
+          shiny::nesting::geom::Point2(0.0, 4.0),
+      }));
   auto l_parts = decompose_convex(l_shape);
   REQUIRE(l_parts.ok());
   REQUIRE(l_parts.value().size() == 2U);
@@ -105,10 +106,13 @@ TEST_CASE("convex decomposition preserves area across convex, concave, and "
     REQUIRE(is_convex(part));
   }
 
-  const auto holed = shiny::nesting::geom::normalize_polygon(shiny::nesting::geom::PolygonWithHoles(rectangle(6.0, 6.0).outer(), {{shiny::nesting::geom::Point2(2.0, 2.0),
-                 shiny::nesting::geom::Point2(2.0, 4.0),
-                 shiny::nesting::geom::Point2(4.0, 4.0),
-                 shiny::nesting::geom::Point2(4.0, 2.0)}}));
+  const auto holed = shiny::nesting::geom::normalize_polygon(
+      shiny::nesting::geom::PolygonWithHoles(
+          rectangle(6.0, 6.0).outer(),
+          {{shiny::nesting::geom::Point2(2.0, 2.0),
+            shiny::nesting::geom::Point2(2.0, 4.0),
+            shiny::nesting::geom::Point2(4.0, 4.0),
+            shiny::nesting::geom::Point2(4.0, 2.0)}}));
   auto holed_parts = decompose_convex(holed);
   REQUIRE(holed_parts.ok());
   REQUIRE(!holed_parts.value().empty());
@@ -140,14 +144,15 @@ TEST_CASE("nfp helpers compute convex NFP, decomposition NFP, orbiting "
   REQUIRE(approx_equal(shiny::nesting::geom::polygon_area(convex_nfp.value()),
                        9.0));
 
-  const auto concave = shiny::nesting::geom::normalize_polygon(shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
-              shiny::nesting::geom::Point2(0.0, 0.0),
-              shiny::nesting::geom::Point2(3.0, 0.0),
-              shiny::nesting::geom::Point2(3.0, 1.0),
-              shiny::nesting::geom::Point2(1.0, 1.0),
-              shiny::nesting::geom::Point2(1.0, 3.0),
-              shiny::nesting::geom::Point2(0.0, 3.0),
-          }));
+  const auto concave = shiny::nesting::geom::normalize_polygon(
+      shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+          shiny::nesting::geom::Point2(0.0, 0.0),
+          shiny::nesting::geom::Point2(3.0, 0.0),
+          shiny::nesting::geom::Point2(3.0, 1.0),
+          shiny::nesting::geom::Point2(1.0, 1.0),
+          shiny::nesting::geom::Point2(1.0, 3.0),
+          shiny::nesting::geom::Point2(0.0, 3.0),
+      }));
 
   auto concave_nfp = shiny::nesting::nfp::compute_nfp(concave, moving_square);
   REQUIRE(concave_nfp.ok());
@@ -187,14 +192,15 @@ TEST_CASE("nfp helpers compute convex NFP, decomposition NFP, orbiting "
 }
 
 TEST_CASE("general IFP excludes concave container notches", "[nfp][ifp]") {
-  const auto l_shape = shiny::nesting::geom::normalize_polygon(shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
-              shiny::nesting::geom::Point2(0.0, 0.0),
-              shiny::nesting::geom::Point2(4.0, 0.0),
-              shiny::nesting::geom::Point2(4.0, 1.0),
-              shiny::nesting::geom::Point2(1.0, 1.0),
-              shiny::nesting::geom::Point2(1.0, 4.0),
-              shiny::nesting::geom::Point2(0.0, 4.0),
-          }));
+  const auto l_shape = shiny::nesting::geom::normalize_polygon(
+      shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+          shiny::nesting::geom::Point2(0.0, 0.0),
+          shiny::nesting::geom::Point2(4.0, 0.0),
+          shiny::nesting::geom::Point2(4.0, 1.0),
+          shiny::nesting::geom::Point2(1.0, 1.0),
+          shiny::nesting::geom::Point2(1.0, 4.0),
+          shiny::nesting::geom::Point2(0.0, 4.0),
+      }));
   const auto moving_square = rectangle(0.5, 0.5);
 
   auto ifp =
@@ -205,11 +211,16 @@ TEST_CASE("general IFP excludes concave container notches", "[nfp][ifp]") {
     REQUIRE(shiny::nesting::geom::validate_polygon(polygon).is_valid());
   }
 
-  REQUIRE(point_in_region_set(shiny::nesting::geom::Point2(0.25, 0.25), ifp.value()));
-  REQUIRE(point_in_region_set(shiny::nesting::geom::Point2(0.25, 3.0), ifp.value()));
-  REQUIRE(point_in_region_set(shiny::nesting::geom::Point2(3.0, 0.25), ifp.value()));
-  REQUIRE_FALSE(point_in_region_set(shiny::nesting::geom::Point2(1.0, 1.0), ifp.value()));
-  REQUIRE_FALSE(point_in_region_set(shiny::nesting::geom::Point2(2.0, 2.0), ifp.value()));
+  REQUIRE(point_in_region_set(shiny::nesting::geom::Point2(0.25, 0.25),
+                              ifp.value()));
+  REQUIRE(point_in_region_set(shiny::nesting::geom::Point2(0.25, 3.0),
+                              ifp.value()));
+  REQUIRE(point_in_region_set(shiny::nesting::geom::Point2(3.0, 0.25),
+                              ifp.value()));
+  REQUIRE_FALSE(
+      point_in_region_set(shiny::nesting::geom::Point2(1.0, 1.0), ifp.value()));
+  REQUIRE_FALSE(
+      point_in_region_set(shiny::nesting::geom::Point2(2.0, 2.0), ifp.value()));
 }
 
 TEST_CASE("MTG actual-polygon CGAL regression pairs return typed NFP outcomes",
@@ -301,7 +312,8 @@ TEST_CASE("nfp cache stores hits and evicts least recently used entries",
   REQUIRE(cached != nullptr);
   REQUIRE(cached->polygons.size() == 1U);
   REQUIRE(shiny::nesting::geom::compute_bounds(cached->polygons.front()) ==
-          Box2{.min = shiny::nesting::geom::Point2(0.0, 0.0), .max = shiny::nesting::geom::Point2(6.0, 4.0)});
+          Box2{.min = shiny::nesting::geom::Point2(0.0, 0.0),
+               .max = shiny::nesting::geom::Point2(6.0, 4.0)});
 
   const auto second_value = shiny::nesting::nfp::compute_ifp(
       rectangle(6.0, 4.0), rectangle(1.0, 1.0));
@@ -319,15 +331,16 @@ TEST_CASE("nfp cache stores hits and evicts least recently used entries",
 
 TEST_CASE("compute_nfp sanitizes duplicate and collinear user geometry",
           "[nfp][sanitize]") {
-  const auto noisy_fixed = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
-              shiny::nesting::geom::Point2(0.0, 0.0),
-              shiny::nesting::geom::Point2(3.0, 0.0),
-              shiny::nesting::geom::Point2(3.0, 0.0),
-              shiny::nesting::geom::Point2(3.0, 1.0),
-              shiny::nesting::geom::Point2(3.0, 2.0),
-              shiny::nesting::geom::Point2(0.0, 2.0),
-              shiny::nesting::geom::Point2(0.0, 0.0),
-          });
+  const auto noisy_fixed =
+      shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+          shiny::nesting::geom::Point2(0.0, 0.0),
+          shiny::nesting::geom::Point2(3.0, 0.0),
+          shiny::nesting::geom::Point2(3.0, 0.0),
+          shiny::nesting::geom::Point2(3.0, 1.0),
+          shiny::nesting::geom::Point2(3.0, 2.0),
+          shiny::nesting::geom::Point2(0.0, 2.0),
+          shiny::nesting::geom::Point2(0.0, 0.0),
+      });
   const auto moving = rectangle(1.0, 1.0);
 
   const auto sanitized = shiny::nesting::geom::sanitize_polygon(noisy_fixed);

@@ -3,12 +3,12 @@
 
 #include <cmath>
 
-#include "geometry/normalize.hpp"
+#include "geometry/operations/boolean_ops.hpp"
 #include "geometry/polygon.hpp"
-#include "geometry/transform.hpp"
+#include "geometry/queries/normalize.hpp"
+#include "geometry/transforms/transform.hpp"
 #include "packing/item_mover.hpp"
 #include "packing/separator.hpp"
-#include "polygon_ops/boolean_ops.hpp"
 #include "runtime/deterministic_rng.hpp"
 
 namespace {
@@ -17,19 +17,20 @@ using shiny::nesting::geom::PolygonWithHoles;
 
 auto rectangle(const double min_x, const double min_y, const double max_x,
                const double max_y) -> PolygonWithHoles {
-  return shiny::nesting::geom::normalize_polygon(shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
-              shiny::nesting::geom::Point2(min_x, min_y),
-              shiny::nesting::geom::Point2(max_x, min_y),
-              shiny::nesting::geom::Point2(max_x, max_y),
-              shiny::nesting::geom::Point2(min_x, max_y),
-          }));
+  return shiny::nesting::geom::normalize_polygon(
+      shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+          shiny::nesting::geom::Point2(min_x, min_y),
+          shiny::nesting::geom::Point2(max_x, min_y),
+          shiny::nesting::geom::Point2(max_x, max_y),
+          shiny::nesting::geom::Point2(min_x, max_y),
+      }));
 }
 
 auto overlap_area(const PolygonWithHoles &lhs, const PolygonWithHoles &rhs)
     -> double {
   double area = 0.0;
   for (const auto &polygon :
-       shiny::nesting::poly::intersection_polygons(lhs, rhs)) {
+       shiny::nesting::geom::intersection_polygons(lhs, rhs)) {
     area += shiny::nesting::geom::polygon_area(polygon);
   }
   return area;
@@ -44,7 +45,8 @@ auto rotated(const PolygonWithHoles &polygon, const double degrees)
 auto bounds_center(const PolygonWithHoles &polygon)
     -> shiny::nesting::geom::Point2 {
   const auto bounds = shiny::nesting::geom::compute_bounds(polygon);
-  return shiny::nesting::geom::Point2((bounds.min.x() + bounds.max.x()) / 2.0, (bounds.min.y() + bounds.max.y()) / 2.0);
+  return shiny::nesting::geom::Point2((bounds.min.x() + bounds.max.x()) / 2.0,
+                                      (bounds.min.y() + bounds.max.y()) / 2.0);
 }
 
 auto polygon_matches(const PolygonWithHoles &lhs, const PolygonWithHoles &rhs)

@@ -6,19 +6,19 @@
 #include <optional>
 #include <vector>
 
-#include "decomposition/convex_decomposition.hpp"
-#include "geometry/normalize.hpp"
+#include "geometry/decomposition/convex_decomposition.hpp"
+#include "geometry/operations/boolean_ops.hpp"
+#include "geometry/operations/convex_hull.hpp"
+#include "geometry/operations/greedy_merge.hpp"
+#include "geometry/operations/simplify.hpp"
 #include "geometry/polygon.hpp"
-#include "geometry/sanitize.hpp"
-#include "geometry/transform.hpp"
-#include "geometry/validity.hpp"
+#include "geometry/queries/normalize.hpp"
+#include "geometry/queries/sanitize.hpp"
+#include "geometry/queries/validity.hpp"
+#include "geometry/transforms/transform.hpp"
 #include "geometry/vector_ops.hpp"
 #include "logging/shiny_log.hpp"
 #include "nfp/convex_nfp.hpp"
-#include "polygon_ops/boolean_ops.hpp"
-#include "polygon_ops/convex_hull.hpp"
-#include "polygon_ops/greedy_merge.hpp"
-#include "polygon_ops/simplify.hpp"
 
 // Burke et al. orbital NFP — computes No-Fit Polygon by sliding the
 // "orbiting" polygon around the boundary of the "stationary" polygon and
@@ -215,11 +215,11 @@ struct TranslationVector {
 [[nodiscard]] auto
 merge_polygon_set(std::vector<geom::PolygonWithHoles> polygons)
     -> std::vector<geom::PolygonWithHoles> {
-  polygons = poly::greedy_pairwise_merge(
+  polygons = geom::greedy_pairwise_merge(
       std::move(polygons),
       [](const geom::PolygonWithHoles &lhs, const geom::PolygonWithHoles &rhs)
           -> std::optional<geom::PolygonWithHoles> {
-        auto unioned = poly::try_union_polygons(lhs, rhs);
+        auto unioned = geom::try_union_polygons(lhs, rhs);
         if (!unioned.ok()) {
           SHINY_DEBUG("orbiting_nfp: merge union failed status={} lhs_outer={} "
                       "rhs_outer={}",
@@ -239,7 +239,7 @@ merge_polygon_set(std::vector<geom::PolygonWithHoles> polygons)
 [[nodiscard]] auto has_actual_overlap(const geom::Ring &stationary,
                                       const geom::Ring &orbiting)
     -> util::StatusOr<bool> {
-  auto overlap = poly::try_intersection_polygons(
+  auto overlap = geom::try_intersection_polygons(
       geom::PolygonWithHoles(stationary), geom::PolygonWithHoles(orbiting));
   if (!overlap.ok()) {
     SHINY_DEBUG("orbiting_nfp: overlap intersection failed status={}",
@@ -589,7 +589,7 @@ struct CollisionEvent {
     return util::Status::computation_failed;
   }
 
-  auto simplified = poly::simplify_collinear_ring(path);
+  auto simplified = geom::simplify_collinear_ring(path);
   if (simplified.size() < 3U) {
     return util::Status::computation_failed;
   }
@@ -831,10 +831,10 @@ compute_simple_orbiting_nfp(const geom::PolygonWithHoles &fixed,
 
   const auto stationary = ensure_ccw(fixed.outer());
   const auto stationary_hull =
-      ensure_ccw(poly::compute_convex_hull(geom::Polygon(stationary)).outer());
+      ensure_ccw(geom::compute_convex_hull(geom::Polygon(stationary)).outer());
   const auto orbiting = ensure_ccw(moving.outer());
   const auto orbiting_hull =
-      ensure_ccw(poly::compute_convex_hull(geom::Polygon(orbiting)).outer());
+      ensure_ccw(geom::compute_convex_hull(geom::Polygon(orbiting)).outer());
   if (stationary.size() < 3U || stationary_hull.size() < 3U ||
       orbiting.size() < 3U || orbiting_hull.size() < 3U) {
     return util::Status::invalid_input;

@@ -5,7 +5,7 @@
 #include <span>
 #include <vector>
 
-#include "geometry/normalize.hpp"
+#include "geometry/queries/normalize.hpp"
 #include "packing/common.hpp"
 
 namespace shiny::nesting::pack {

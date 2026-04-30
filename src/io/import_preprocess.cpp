@@ -4,7 +4,7 @@
 #include <cmath>
 #include <limits>
 
-#include "geometry/normalize.hpp"
+#include "geometry/queries/normalize.hpp"
 
 namespace shiny::nesting::io {
 namespace detail {
@@ -103,10 +103,10 @@ auto append_segment_samples(const ImportedPathSegment &segment,
 
   polygon = geom::normalize_polygon(polygon);
   if (options.simplify_epsilon > 0.0) {
-    polygon = poly::simplify_polygon_douglas_peucker(polygon,
+    polygon = geom::simplify_polygon_douglas_peucker(polygon,
                                                      options.simplify_epsilon);
   } else {
-    polygon = poly::simplify_polygon(polygon);
+    polygon = geom::simplify_polygon(polygon);
   }
 
   if (normalize_piece_origins) {

@@ -19,7 +19,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
-#include "geometry/transform.hpp"
+#include "geometry/transforms/transform.hpp"
 #include "observer.hpp"
 #include "solve.hpp"
 #include "support/mtg_fixture.hpp"

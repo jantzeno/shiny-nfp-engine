@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "geometry/normalize.hpp"
+#include "geometry/queries/normalize.hpp"
 #include "geometry/types.hpp"
 #include "support/fixture_test_support.hpp"
 
@@ -37,8 +37,8 @@ TEST_CASE("geometry normalization fixtures",
       require_polygon_equal(normalized_polygon, expected);
 
       if (input_polygon.holes().empty()) {
-        const Polygon normalized_simple =
-            normalize_polygon(shiny::nesting::geom::Polygon(input_polygon.outer()));
+        const Polygon normalized_simple = normalize_polygon(
+            shiny::nesting::geom::Polygon(input_polygon.outer()));
         require_ring_equal(normalized_simple.outer(), expected.outer());
       }
     }

@@ -5,13 +5,13 @@
 #include <optional>
 #include <vector>
 
-#include "geometry/normalize.hpp"
+#include "geometry/operations/boolean_ops.hpp"
 #include "geometry/polygon.hpp"
-#include "geometry/sanitize.hpp"
-#include "geometry/validity.hpp"
+#include "geometry/queries/normalize.hpp"
+#include "geometry/queries/sanitize.hpp"
+#include "geometry/queries/validity.hpp"
 #include "logging/shiny_log.hpp"
 #include "nfp/nfp.hpp"
-#include "polygon_ops/boolean_ops.hpp"
 
 namespace shiny::nesting::nfp {
 namespace {
@@ -101,7 +101,7 @@ normalize_regions(std::vector<geom::PolygonWithHoles> regions)
       geom::normalize_polygon(geom::box_to_polygon(move_bounds))};
   const auto container_bbox =
       geom::normalize_polygon(geom::box_to_polygon(container_bounds));
-  auto obstacles = poly::try_difference_polygons(container_bbox, container);
+  auto obstacles = geom::try_difference_polygons(container_bbox, container);
   if (!obstacles.ok()) {
     SHINY_DEBUG("ifp: container obstacle extraction failed status={}",
                 util::status_name(obstacles.status()));
@@ -116,7 +116,7 @@ normalize_regions(std::vector<geom::PolygonWithHoles> regions)
     }
     for (const auto &blocked_region : blocked.value()) {
       const auto subtract_status =
-          poly::try_subtract_region_set(feasible_regions, blocked_region);
+          geom::try_subtract_region_set(feasible_regions, blocked_region);
       if (subtract_status != util::Status::ok) {
         SHINY_DEBUG("ifp: subtract blocked region failed status={}",
                     util::status_name(subtract_status));

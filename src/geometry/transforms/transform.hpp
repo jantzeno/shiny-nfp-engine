@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "geometry/concepts.hpp"
-#include "types.hpp"
+#include "geometry/types.hpp"
 
 namespace shiny::nesting::geom {
 

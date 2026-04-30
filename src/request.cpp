@@ -5,9 +5,9 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "geometry/normalize.hpp"
-#include "geometry/transform.hpp"
-#include "geometry/validity.hpp"
+#include "geometry/queries/normalize.hpp"
+#include "geometry/queries/validity.hpp"
+#include "geometry/transforms/transform.hpp"
 #include "runtime/hash.hpp"
 
 namespace shiny::nesting {
@@ -63,10 +63,10 @@ rotation_set_is_subset(const geom::DiscreteRotationSet &subset,
     -> geom::PolygonWithHoles {
   auto polygon = geom::normalize_polygon(piece.polygon);
   if (policy.simplify_epsilon > 0.0) {
-    polygon = poly::simplify_polygon_douglas_peucker(polygon,
+    polygon = geom::simplify_polygon_douglas_peucker(polygon,
                                                      policy.simplify_epsilon);
   } else {
-    polygon = poly::simplify_polygon(polygon);
+    polygon = geom::simplify_polygon(polygon);
   }
 
   if (policy.normalize_piece_origins) {
@@ -83,10 +83,10 @@ rotation_set_is_subset(const geom::DiscreteRotationSet &subset,
     -> geom::PolygonWithHoles {
   auto polygon = geom::normalize_polygon(bin.polygon);
   if (policy.simplify_epsilon > 0.0) {
-    polygon = poly::simplify_polygon_douglas_peucker(polygon,
+    polygon = geom::simplify_polygon_douglas_peucker(polygon,
                                                      policy.simplify_epsilon);
   } else {
-    polygon = poly::simplify_polygon(polygon);
+    polygon = geom::simplify_polygon(polygon);
   }
   return geom::normalize_polygon(polygon);
 }

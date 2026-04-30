@@ -9,7 +9,7 @@
 #include <utility>
 
 #include "geometry/polygon.hpp"
-#include "geometry/transform.hpp"
+#include "geometry/transforms/transform.hpp"
 #include "geometry/vector_ops.hpp"
 #include "nfp/ifp.hpp"
 #include "predicates/point_location.hpp"

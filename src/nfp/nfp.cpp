@@ -4,15 +4,15 @@
 #include <optional>
 #include <vector>
 
-#include "decomposition/convex_decomposition.hpp"
+#include "geometry/decomposition/convex_decomposition.hpp"
+#include "geometry/operations/boolean_ops.hpp"
+#include "geometry/operations/greedy_merge.hpp"
 #include "geometry/polygon.hpp"
-#include "geometry/sanitize.hpp"
-#include "geometry/validity.hpp"
+#include "geometry/queries/sanitize.hpp"
+#include "geometry/queries/validity.hpp"
 #include "logging/shiny_log.hpp"
 #include "nfp/convex_nfp.hpp"
 #include "nfp/orbiting_nfp.hpp"
-#include "polygon_ops/boolean_ops.hpp"
-#include "polygon_ops/greedy_merge.hpp"
 
 namespace shiny::nesting::nfp {
 namespace {
@@ -87,7 +87,7 @@ auto log_orbiting_fallback(const char *reason, const util::Status status)
 [[nodiscard]] auto
 merge_polygon_set(std::vector<geom::PolygonWithHoles> polygons)
     -> std::vector<geom::PolygonWithHoles> {
-  polygons = poly::greedy_pairwise_merge(
+  polygons = geom::greedy_pairwise_merge(
       std::move(polygons),
       [](const geom::PolygonWithHoles &lhs, const geom::PolygonWithHoles &rhs)
           -> std::optional<geom::PolygonWithHoles> {
@@ -96,7 +96,7 @@ merge_polygon_set(std::vector<geom::PolygonWithHoles> polygons)
           return std::nullopt;
         }
 
-        auto unioned = poly::try_union_polygons(lhs, rhs);
+        auto unioned = geom::try_union_polygons(lhs, rhs);
         if (!unioned.ok()) {
           SHINY_DEBUG(
               "nfp: merge_polygon_set union failed status={} lhs_outer={} "

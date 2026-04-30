@@ -6,7 +6,7 @@
 #include <span>
 #include <vector>
 
-#include "geometry/transform.hpp"
+#include "geometry/transforms/transform.hpp"
 #include "result.hpp"
 #include "runtime/deterministic_rng.hpp"
 

@@ -7,10 +7,10 @@
 #include <span>
 #include <vector>
 
+#include "geometry/operations/boolean_ops.hpp"
 #include "geometry/polygon.hpp"
-#include "geometry/transform.hpp"
+#include "geometry/transforms/transform.hpp"
 #include "placement/config.hpp"
-#include "polygon_ops/boolean_ops.hpp"
 
 namespace shiny::nesting::pack {
 
@@ -152,7 +152,7 @@ auto overlaps_exclusion_zone(const geom::PolygonWithHoles &piece,
     return false;
   }
 
-  const auto remaining = poly::difference_polygons(piece, zone_polygon);
+  const auto remaining = geom::difference_polygons(piece, zone_polygon);
   return total_polygon_area(remaining) + kAreaEpsilon <
          geom::polygon_area(piece);
 }

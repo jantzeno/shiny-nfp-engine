@@ -23,9 +23,9 @@
 #pragma GCC diagnostic pop
 #endif
 
-#include "geometry/normalize.hpp"
 #include "geometry/polygon.hpp"
-#include "geometry/transform.hpp"
+#include "geometry/queries/normalize.hpp"
+#include "geometry/transforms/transform.hpp"
 #include "io/json.hpp"
 #include "io/layout_svg.hpp"
 #include "io/or_dataset_json.hpp"

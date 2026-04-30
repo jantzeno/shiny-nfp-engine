@@ -10,11 +10,11 @@
 #include <utility>
 #include <vector>
 
+#include "geometry/operations/merge_region.hpp"
 #include "geometry/polygon.hpp"
 #include "packing/irregular/constructive_packer.hpp"
 #include "packing/irregular/workspace.hpp"
 #include "packing/separator.hpp"
-#include "polygon_ops/merge_region.hpp"
 #include "runtime/hash.hpp"
 #include "search/detail/neighborhood_search.hpp"
 #include "search/disruption.hpp"
@@ -223,10 +223,10 @@ auto refresh_layout_bin(pack::LayoutBin &bin) -> void {
   bin.utilization.container_area = geom::polygon_area(bin.container);
   for (const auto &placement : bin.placements) {
     if (bin.occupied.regions.empty()) {
-      bin.occupied = poly::make_merged_region(placement.polygon);
+      bin.occupied = geom::make_merged_region(placement.polygon);
     } else {
       bin.occupied =
-          poly::merge_polygon_into_region(bin.occupied, placement.polygon);
+          geom::merge_polygon_into_region(bin.occupied, placement.polygon);
     }
     bin.utilization.occupied_area += geom::polygon_area(placement.polygon);
   }

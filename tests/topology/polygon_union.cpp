@@ -4,15 +4,15 @@
 #include <string>
 #include <vector>
 
-#include "geometry/normalize.hpp"
-#include "polygon_ops/boolean_ops.hpp"
+#include "geometry/operations/boolean_ops.hpp"
+#include "geometry/queries/normalize.hpp"
 #include "support/fixture_test_support.hpp"
 
 namespace {
 
 using shiny::nesting::geom::Point2;
 using shiny::nesting::geom::PolygonWithHoles;
-using shiny::nesting::poly::union_polygons;
+using shiny::nesting::geom::union_polygons;
 using shiny::nesting::test::load_fixture_file;
 using shiny::nesting::test::parse_polygon;
 using shiny::nesting::test::require_fixture_metadata;

@@ -21,19 +21,19 @@
 #define NANOSVG_IMPLEMENTATION
 #include "nanosvg.h"
 
-#include "geometry/normalize.hpp"
-#include "geometry/sanitize.hpp"
-#include "geometry/transform.hpp"
+#include "geometry/operations/boolean_ops.hpp"
+#include "geometry/operations/simplify.hpp"
+#include "geometry/queries/normalize.hpp"
+#include "geometry/queries/sanitize.hpp"
+#include "geometry/queries/validity.hpp"
+#include "geometry/transforms/transform.hpp"
 #include "geometry/types.hpp"
-#include "geometry/validity.hpp"
 #include "observer.hpp"
 #include "packing/common.hpp"
 #include "packing/config.hpp"
 #include "packing/layout.hpp"
 #include "placement/config.hpp"
 #include "placement/types.hpp"
-#include "polygon_ops/boolean_ops.hpp"
-#include "polygon_ops/simplify.hpp"
 #include "request.hpp"
 #include "result.hpp"
 
@@ -408,8 +408,8 @@ auto load_mtg_fixture() -> MtgFixture {
     const double cx = 0.5 * (a.min_x + a.max_x);
     const double cy = 0.5 * (a.min_y + a.max_y);
     std::uint32_t source_bed = 0;
-    if (cx >= bed1_box.min.x() && cx <= bed1_box.max.x() && cy >= bed1_box.min.y() &&
-        cy <= bed1_box.max.y()) {
+    if (cx >= bed1_box.min.x() && cx <= bed1_box.max.x() &&
+        cy >= bed1_box.min.y() && cy <= bed1_box.max.y()) {
       source_bed = kBed1Id;
     } else if (cx >= bed2_box.min.x() && cx <= bed2_box.max.x() &&
                cy >= bed2_box.min.y() && cy <= bed2_box.max.y()) {
@@ -500,7 +500,7 @@ largest_by_area(const std::vector<geom::PolygonWithHoles> &polygons)
       geom::PolygonWithHoles seed{};
       seed.outer() = subpaths[start].outer();
       seed = geom::normalize_polygon(seed);
-      seed = poly::simplify_polygon(seed);
+      seed = geom::simplify_polygon(seed);
       if (!seed.outer().empty()) {
         acc.push_back(std::move(seed));
         break;
@@ -518,7 +518,7 @@ largest_by_area(const std::vector<geom::PolygonWithHoles> &polygons)
     geom::PolygonWithHoles next{};
     next.outer() = subpaths[i].outer();
     next = geom::normalize_polygon(next);
-    next = poly::simplify_polygon(next);
+    next = geom::simplify_polygon(next);
     if (next.outer().empty()) {
       continue;
     }
@@ -527,7 +527,7 @@ largest_by_area(const std::vector<geom::PolygonWithHoles> &polygons)
     rebuilt.reserve(acc.size());
     geom::PolygonWithHoles current = std::move(next);
     for (const auto &existing : acc) {
-      auto merged = poly::union_polygons(existing, current);
+      auto merged = geom::union_polygons(existing, current);
       if (merged.size() == 1) {
         current = std::move(merged.front());
       } else {
@@ -848,9 +848,9 @@ void validate_layout(const MtgFixture &fixture, const NestingRequest &request,
       placement_boxes.push_back(piece_box);
 
       INFO("Piece " << placement.placement.piece_id << " bin " << bin.bin_id
-                    << " AABB [" << piece_box.min.x() << "," << piece_box.min.y()
-                    << "]-[" << piece_box.max.x() << "," << piece_box.max.y()
-                    << "]");
+                    << " AABB [" << piece_box.min.x() << ","
+                    << piece_box.min.y() << "]-[" << piece_box.max.x() << ","
+                    << piece_box.max.y() << "]");
       REQUIRE(contains_box(bin_box, piece_box));
 
       INFO("Placement bin_id "
@@ -906,11 +906,11 @@ void validate_layout(const MtgFixture &fixture, const NestingRequest &request,
              << bin.bin_id << " pieces " << bin.placements[i].placement.piece_id
              << " vs " << bin.placements[j].placement.piece_id);
         const auto overlap_area =
-            geom::polygon_area_sum(poly::intersection_polygons(
+            geom::polygon_area_sum(geom::intersection_polygons(
                 bin.placements[i].polygon, bin.placements[j].polygon));
         REQUIRE(overlap_area <= spacing_tolerance);
         if (options.part_spacing_mm > 0.0) {
-          const auto clearance = poly::polygon_distance(
+          const auto clearance = geom::polygon_distance(
               bin.placements[i].polygon, bin.placements[j].polygon);
           REQUIRE(clearance + spacing_tolerance >= options.part_spacing_mm);
         }

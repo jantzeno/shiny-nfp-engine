@@ -8,13 +8,13 @@
 #include <string>
 #include <utility>
 
+#include "geometry/operations/boolean_ops.hpp"
 #include "logging/shiny_log.hpp"
 #include "logging/solve_summary.hpp"
 #include "packing/bounding_box_packer.hpp"
 #include "packing/common.hpp"
 #include "packing/irregular/sequential/packer.hpp"
 #include "packing/irregular/workspace.hpp"
-#include "polygon_ops/boolean_ops.hpp"
 #include "runtime/deterministic_rng.hpp"
 #include "runtime/timing.hpp"
 #include "search/alns_search.hpp"

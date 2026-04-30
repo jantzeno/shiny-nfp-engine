@@ -3,11 +3,11 @@
 #include <algorithm>
 #include <cmath>
 
-#include "geometry/normalize.hpp"
+#include "geometry/operations/boolean_ops.hpp"
 #include "geometry/polygon.hpp"
+#include "geometry/queries/normalize.hpp"
 #include "packing/overlap_proxy.hpp"
 #include "packing/shape_penalty.hpp"
-#include "polygon_ops/boolean_ops.hpp"
 
 namespace shiny::nesting::pack {
 namespace {
@@ -123,7 +123,7 @@ auto compute_polygon_pair_loss(const geom::PolygonWithHoles &lhs,
                                cache::PenetrationDepthCache *pd_cache)
     -> std::pair<double, double> {
   const auto overlap =
-      geom::polygon_area_sum(poly::intersection_polygons(lhs, rhs));
+      geom::polygon_area_sum(geom::intersection_polygons(lhs, rhs));
   if (overlap <= 0.0) {
     return {overlap_proxy_loss(lhs, lhs_revision, rhs, rhs_revision, pole_cache,
                                pd_cache),
@@ -173,7 +173,7 @@ auto CollisionTracker::compute_pair_loss(const std::size_t lhs,
 auto CollisionTracker::compute_container_loss(const std::size_t index) const
     -> double {
   return geom::polygon_area_sum(
-      poly::difference_polygons(items_[index].polygon, container_));
+      geom::difference_polygons(items_[index].polygon, container_));
 }
 
 auto CollisionTracker::register_item_move(const std::size_t index,

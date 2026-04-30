@@ -5,13 +5,13 @@
 #include <optional>
 #include <vector>
 
-#include "decomposition/convex_decomposition.hpp"
-#include "decomposition/internal.hpp"
-#include "decomposition/triangulation.hpp"
-#include "geometry/normalize.hpp"
+#include "geometry/decomposition/convex_decomposition.hpp"
+#include "geometry/decomposition/internal.hpp"
+#include "geometry/decomposition/triangulation.hpp"
+#include "geometry/operations/boolean_ops.hpp"
 #include "geometry/polygon.hpp"
-#include "geometry/validity.hpp"
-#include "polygon_ops/boolean_ops.hpp"
+#include "geometry/queries/normalize.hpp"
+#include "geometry/queries/validity.hpp"
 
 // Convex decomposition via triangulate-then-adjacency-merge.
 //
@@ -73,7 +73,7 @@ struct PieceState {
 [[nodiscard]] auto try_merge_polygons(const geom::Polygon &lhs,
                                       const geom::Polygon &rhs)
     -> std::optional<geom::Polygon> {
-  const auto merged = poly::union_polygons(geom::PolygonWithHoles{lhs.outer()},
+  const auto merged = geom::union_polygons(geom::PolygonWithHoles{lhs.outer()},
                                            geom::PolygonWithHoles{rhs.outer()});
   if (merged.size() != 1U || !merged.front().holes().empty()) {
     return std::nullopt;

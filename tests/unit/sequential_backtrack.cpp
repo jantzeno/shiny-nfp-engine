@@ -6,8 +6,8 @@
 #include <span>
 #include <vector>
 
+#include "geometry/operations/boolean_ops.hpp"
 #include "packing/irregular/workspace.hpp"
-#include "polygon_ops/boolean_ops.hpp"
 #include "solve.hpp"
 
 namespace {
@@ -59,7 +59,7 @@ auto total_intersection_area(std::span<const PolygonWithHoles> polygons)
   for (std::size_t lhs_index = 0; lhs_index < polygons.size(); ++lhs_index) {
     for (std::size_t rhs_index = lhs_index + 1U; rhs_index < polygons.size();
          ++rhs_index) {
-      const auto overlap = shiny::nesting::poly::intersection_polygons(
+      const auto overlap = shiny::nesting::geom::intersection_polygons(
           polygons[lhs_index], polygons[rhs_index]);
       for (const auto &polygon : overlap) {
         total += shiny::nesting::geom::polygon_area(polygon);
@@ -189,7 +189,7 @@ TEST_CASE(
   const auto exclusion =
       shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
           {0.0, 0.0}, {5.0, 0.0}, {5.0, 5.0}, {0.0, 5.0}});
-  REQUIRE(shiny::nesting::poly::polygon_distance(
+  REQUIRE(shiny::nesting::geom::polygon_distance(
               first_bin.placements.front().polygon, exclusion) ==
           Catch::Approx(0.0).margin(1e-8));
 

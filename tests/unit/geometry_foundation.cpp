@@ -3,10 +3,10 @@
 #include <algorithm>
 
 #include "geometry/concepts.hpp"
-#include "geometry/normalize.hpp"
 #include "geometry/polygon.hpp"
-#include "geometry/transform.hpp"
-#include "geometry/validity.hpp"
+#include "geometry/queries/normalize.hpp"
+#include "geometry/queries/validity.hpp"
+#include "geometry/transforms/transform.hpp"
 
 namespace {
 
@@ -125,6 +125,7 @@ TEST_CASE("geometry validity rejects invalid input", "[geometry][validity]") {
 TEST_CASE("geometry spatial index queries overlapping boxes",
           "[geometry][spatial-index]") {
   // Removed: bucket-grid `SpatialIndex` was superseded by Boost.Geometry
-  // `RTreeIndex`. See `geometry/rtree_index.hpp` and its dedicated tests.
+  // `RTreeIndex`. See `geometry/transforms/rtree_index.hpp` and its dedicated
+  // tests.
   SUCCEED("SpatialIndex deleted in favour of RTreeIndex");
 }

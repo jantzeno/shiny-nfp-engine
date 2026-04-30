@@ -1,4 +1,4 @@
-#include "geometry/rtree_index.hpp"
+#include "geometry/transforms/rtree_index.hpp"
 
 #include <algorithm>
 #include <utility>
@@ -18,9 +18,6 @@ using BoostValue = std::pair<Box2, std::uint32_t>;
 
 } // namespace
 
-// PIMPL hides Boost.Geometry from the public header; the rtree is
-// built lazily on the first query after a mutation and reused across
-// subsequent queries until clear()/insert() marks it dirty again.
 struct RTreeIndex::Impl {
   bgi::rtree<BoostValue, bgi::quadratic<16>> rtree;
 };

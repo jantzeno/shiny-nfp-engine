@@ -9,7 +9,7 @@
 
 #include "cache/stores.hpp"
 #include "decomposition/decompose.hpp"
-#include "geometry/normalize.hpp"
+#include "geometry/queries/normalize.hpp"
 #include "nfp/cache_keys.hpp"
 #include "nfp/convex_nfp.hpp"
 #include "nfp/engine.hpp"
@@ -152,8 +152,7 @@ auto canonicalize_components(const DecompositionResult &result,
       rotated.push_back(inverse_rotate_point(point, rotation_degrees));
     }
     canonical_components.push_back(
-        normalize_polygon(shiny::nesting::geom::Polygon(rotated))
-            .outer());
+        normalize_polygon(shiny::nesting::geom::Polygon(rotated)).outer());
   }
 
   std::sort(canonical_components.begin(), canonical_components.end(),
@@ -281,7 +280,9 @@ TEST_CASE("convex decomposition returns a single normalized component",
           "[decomposition][convex]") {
   const DecompositionRequest request{
       .piece_id = 41,
-      .polygon = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0}, {5.0, 0.0}, {5.0, 2.0}, {0.0, 2.0}}),
+      .polygon =
+          shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+              {0.0, 0.0}, {5.0, 0.0}, {5.0, 2.0}, {0.0, 2.0}}),
       .rotation = {.degrees = 0.0},
       .algorithm = DecompositionAlgorithm::cgal_optimal_convex_partition,
   };
@@ -303,12 +304,13 @@ TEST_CASE("concave decomposition produces valid convex components",
           "[decomposition][concave]") {
   const DecompositionRequest request{
       .piece_id = 42,
-      .polygon = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
-                            {4.0, 0.0},
-                            {4.0, 1.0},
-                            {1.0, 1.0},
-                            {1.0, 4.0},
-                            {0.0, 4.0}}),
+      .polygon = shiny::nesting::geom::PolygonWithHoles(
+          shiny::nesting::geom::Ring{{0.0, 0.0},
+                                     {4.0, 0.0},
+                                     {4.0, 1.0},
+                                     {1.0, 1.0},
+                                     {1.0, 4.0},
+                                     {0.0, 4.0}}),
       .rotation = {.degrees = 90.0},
       .algorithm = DecompositionAlgorithm::cgal_optimal_convex_partition,
   };
@@ -330,13 +332,14 @@ TEST_CASE("decomposition falls back for occupied-region roof polygon",
           "[decomposition][concave][regression]") {
   const DecompositionRequest request{
       .piece_id = 43,
-      .polygon = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 2.0},
-                            {2.0, 2.0},
-                            {2.0, 0.0},
-                            {5.0, 0.0},
-                            {5.0, 2.0},
-                            {3.0, 2.0},
-                            {1.0, 4.0}}),
+      .polygon = shiny::nesting::geom::PolygonWithHoles(
+          shiny::nesting::geom::Ring{{0.0, 2.0},
+                                     {2.0, 2.0},
+                                     {2.0, 0.0},
+                                     {5.0, 0.0},
+                                     {5.0, 2.0},
+                                     {3.0, 2.0},
+                                     {1.0, 4.0}}),
       .rotation = {.degrees = 0.0},
       .algorithm = DecompositionAlgorithm::cgal_optimal_convex_partition,
   };
@@ -359,7 +362,9 @@ TEST_CASE("hole-aware decomposition returns valid convex components",
           "[decomposition][holes]") {
   const DecompositionRequest request{
       .piece_id = 51,
-      .polygon = shiny::nesting::geom::PolygonWithHoles({{0.0, 0.0}, {6.0, 0.0}, {6.0, 6.0}, {0.0, 6.0}}, {{{2.0, 2.0}, {2.0, 4.0}, {4.0, 4.0}, {4.0, 2.0}}}),
+      .polygon = shiny::nesting::geom::PolygonWithHoles(
+          {{0.0, 0.0}, {6.0, 0.0}, {6.0, 6.0}, {0.0, 6.0}},
+          {{{2.0, 2.0}, {2.0, 4.0}, {4.0, 4.0}, {4.0, 2.0}}}),
       .rotation = {.degrees = 0.0},
       .algorithm = DecompositionAlgorithm::cgal_optimal_convex_partition,
   };
@@ -382,11 +387,9 @@ TEST_CASE("decomposition cache uses piece rotation keys and revisions",
   CacheStore<PieceRotationKey, DecompositionResult> cache_store{};
   const DecompositionRequest request{
       .piece_id = 50,
-      .polygon = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
-                            {4.0, 0.0},
-                            {4.0, 1.0},
-                            {1.0, 4.0},
-                            {0.0, 4.0}}),
+      .polygon =
+          shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+              {0.0, 0.0}, {4.0, 0.0}, {4.0, 1.0}, {1.0, 4.0}, {0.0, 4.0}}),
       .rotation = {.degrees = 180.0},
       .algorithm = DecompositionAlgorithm::cgal_approx_convex_partition,
   };
@@ -413,7 +416,8 @@ TEST_CASE("invalid decomposition input is rejected",
           "[decomposition][invalid]") {
   const DecompositionRequest request{
       .piece_id = 52,
-      .polygon = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0}, {1.0, 0.0}}),
+      .polygon = shiny::nesting::geom::PolygonWithHoles(
+          shiny::nesting::geom::Ring{{0.0, 0.0}, {1.0, 0.0}}),
       .rotation = {.degrees = 0.0},
       .algorithm = DecompositionAlgorithm::cgal_optimal_convex_partition,
   };
@@ -437,30 +441,33 @@ TEST_CASE("nfp engine owns convex, nonconvex, and decomposition caches",
   };
   const DecompositionRequest decomposition_request{
       .piece_id = 63,
-      .polygon = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
-                            {4.0, 0.0},
-                            {4.0, 1.0},
-                            {1.0, 1.0},
-                            {1.0, 4.0},
-                            {0.0, 4.0}}),
+      .polygon = shiny::nesting::geom::PolygonWithHoles(
+          shiny::nesting::geom::Ring{{0.0, 0.0},
+                                     {4.0, 0.0},
+                                     {4.0, 1.0},
+                                     {1.0, 1.0},
+                                     {1.0, 4.0},
+                                     {0.0, 4.0}}),
       .rotation = {.degrees = 0.0},
       .algorithm = DecompositionAlgorithm::cgal_optimal_convex_partition,
   };
   const NonconvexNfpRequest nonconvex_request{
       .piece_a_id = 64,
       .piece_b_id = 65,
-      .piece_a = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
-                            {4.0, 0.0},
-                            {4.0, 1.0},
-                            {1.0, 1.0},
-                            {1.0, 4.0},
-                            {0.0, 4.0}}),
-      .piece_b = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
-                            {3.0, 0.0},
-                            {3.0, 1.0},
-                            {2.0, 1.0},
-                            {2.0, 3.0},
-                            {0.0, 3.0}}),
+      .piece_a = shiny::nesting::geom::PolygonWithHoles(
+          shiny::nesting::geom::Ring{{0.0, 0.0},
+                                     {4.0, 0.0},
+                                     {4.0, 1.0},
+                                     {1.0, 1.0},
+                                     {1.0, 4.0},
+                                     {0.0, 4.0}}),
+      .piece_b = shiny::nesting::geom::PolygonWithHoles(
+          shiny::nesting::geom::Ring{{0.0, 0.0},
+                                     {3.0, 0.0},
+                                     {3.0, 1.0},
+                                     {2.0, 1.0},
+                                     {2.0, 3.0},
+                                     {0.0, 3.0}}),
       .rotation_a = {.degrees = 0.0},
       .rotation_b = {.degrees = 90.0},
       .algorithm_revision = AlgorithmRevision{4},

@@ -1,4 +1,4 @@
-#include "geometry/normalize.hpp"
+#include "geometry/queries/normalize.hpp"
 
 #include <algorithm>
 

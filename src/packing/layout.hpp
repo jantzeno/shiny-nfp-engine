@@ -4,12 +4,12 @@
 #include <vector>
 
 #include "cache/nfp_cache.hpp"
-#include "geometry/transform.hpp"
+#include "geometry/operations/merge_region.hpp"
+#include "geometry/transforms/transform.hpp"
 #include "geometry/types.hpp"
 #include "packing/bin_identity.hpp"
 #include "packing/config.hpp"
 #include "placement/types.hpp"
-#include "polygon_ops/merge_region.hpp"
 
 namespace shiny::nesting::pack {
 
@@ -100,7 +100,7 @@ struct LayoutBin {
   std::uint32_t bin_id{0};
   BinIdentity identity{};
   geom::PolygonWithHoles container{};
-  poly::MergedRegion occupied{};
+  geom::MergedRegion occupied{};
   std::vector<PlacedPiece> placements{};
   BinUtilizationSummary utilization{};
 };

@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-#include "polygon_ops/boolean_ops.hpp"
+#include "geometry/operations/boolean_ops.hpp"
 #include "predicates/point_location.hpp"
 
 namespace shiny::nesting::pack::detail {
@@ -103,7 +103,7 @@ candidate_utilization(const WorkingBin &bin,
   if (all_interior && piece.holes().empty()) {
     return true;
   }
-  const auto remainder = poly::difference_polygons(piece, region);
+  const auto remainder = geom::difference_polygons(piece, region);
   return geom::polygon_area_sum(remainder) <= kAreaEpsilon;
 }
 
@@ -198,13 +198,13 @@ auto fits_bin_direct(const geom::PolygonWithHoles &piece,
   if (!geom::box_contains(container_bounds, piece_bbox)) {
     return false;
   }
-  if (geom::polygon_area_sum(poly::difference_polygons(
+  if (geom::polygon_area_sum(geom::difference_polygons(
           piece, bin.state.container)) > kAreaEpsilon) {
     return false;
   }
 
   for (const auto &zone : bin.exclusion_regions) {
-    if (geom::polygon_area_sum(poly::intersection_polygons(piece, zone)) >
+    if (geom::polygon_area_sum(geom::intersection_polygons(piece, zone)) >
         kAreaEpsilon) {
       return false;
     }
@@ -213,7 +213,7 @@ auto fits_bin_direct(const geom::PolygonWithHoles &piece,
     const auto obstacle = execution.enable_part_in_part_placement
                               ? placement.polygon
                               : fill_polygon_holes(placement.polygon);
-    if (geom::polygon_area_sum(poly::intersection_polygons(piece, obstacle)) >
+    if (geom::polygon_area_sum(geom::intersection_polygons(piece, obstacle)) >
         kAreaEpsilon) {
       return false;
     }
@@ -241,13 +241,13 @@ auto respects_spacing(const geom::PolygonWithHoles &piece,
   }
 
   for (const auto &zone : bin.exclusion_regions) {
-    if (poly::polygon_distance(piece, zone) + kDistanceEpsilon <
+    if (geom::polygon_distance(piece, zone) + kDistanceEpsilon <
         execution.part_spacing) {
       return false;
     }
   }
   for (const auto &placement : bin.state.placements) {
-    if (poly::polygon_distance(piece, placement.polygon) + kDistanceEpsilon <
+    if (geom::polygon_distance(piece, placement.polygon) + kDistanceEpsilon <
         execution.part_spacing) {
       return false;
     }

@@ -7,7 +7,7 @@
 #include <string_view>
 #include <vector>
 
-#include "geometry/transform.hpp"
+#include "geometry/transforms/transform.hpp"
 #include "packing/irregular/workspace.hpp"
 #include "request.hpp"
 #include "runtime/deterministic_rng.hpp"

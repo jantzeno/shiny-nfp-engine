@@ -6,7 +6,7 @@
 #include <unordered_map>
 
 #include "geometry/polygon.hpp"
-#include "geometry/rtree_index.hpp"
+#include "geometry/transforms/rtree_index.hpp"
 #include "logging/shiny_log.hpp"
 #include "predicates/point_location.hpp"
 

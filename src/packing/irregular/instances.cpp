@@ -6,8 +6,8 @@
 #include <utility>
 #include <vector>
 
+#include "geometry/operations/convex_hull.hpp"
 #include "geometry/polygon.hpp"
-#include "polygon_ops/convex_hull.hpp"
 
 namespace shiny::nesting::pack::detail {
 namespace {
@@ -25,7 +25,7 @@ struct PieceOrderingMetrics {
                                            const std::size_t original_index)
     -> PieceOrderingMetrics {
   const auto bounds = geom::compute_bounds(piece.source->polygon);
-  const auto hull = poly::compute_convex_hull(piece.source->polygon);
+  const auto hull = geom::compute_convex_hull(piece.source->polygon);
   const auto hull_area = geom::polygon_area(hull);
   const auto max_dimension =
       std::max(geom::box_width(bounds), geom::box_height(bounds));

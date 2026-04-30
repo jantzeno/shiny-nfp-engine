@@ -1,10 +1,10 @@
-#include "geometry/sanitize.hpp"
+#include "geometry/queries/sanitize.hpp"
 
 #include <cmath>
 
-#include "geometry/normalize.hpp"
+#include "geometry/operations/simplify.hpp"
 #include "geometry/polygon.hpp"
-#include "polygon_ops/simplify.hpp"
+#include "geometry/queries/normalize.hpp"
 
 namespace shiny::nesting::geom {
 namespace {
@@ -62,7 +62,7 @@ auto sanitize_polygon(const PolygonWithHoles &polygon) -> PolygonSanitization {
   });
 
   report.polygon =
-      normalize_polygon(poly::simplify_polygon(normalize_polygon(polygon)));
+      normalize_polygon(simplify_polygon(normalize_polygon(polygon)));
   return report;
 }
 

@@ -8,12 +8,12 @@
 #include <span>
 #include <vector>
 
-#include "geometry/normalize.hpp"
+#include "geometry/operations/boolean_ops.hpp"
+#include "geometry/operations/merge_region.hpp"
+#include "geometry/queries/normalize.hpp"
 #include "logging/shiny_log.hpp"
 #include "packing/common.hpp"
 #include "placement/config.hpp"
-#include "polygon_ops/boolean_ops.hpp"
-#include "polygon_ops/merge_region.hpp"
 #include "runtime/hash.hpp"
 
 namespace shiny::nesting::pack {
@@ -381,7 +381,7 @@ total_polygon_area(std::span<const geom::PolygonWithHoles> polygons) -> double {
     return false;
   }
 
-  const auto remaining = poly::difference_polygons(piece, zone_polygon);
+  const auto remaining = geom::difference_polygons(piece, zone_polygon);
   return total_polygon_area(remaining) + kAreaEpsilon < polygon_area(piece);
 }
 
@@ -1171,9 +1171,9 @@ void apply_selection(BinPackingState &state, const PieceInput &piece,
   });
 
   if (state.bin_state.occupied.regions.empty()) {
-    state.bin_state.occupied = poly::make_merged_region(translated_piece);
+    state.bin_state.occupied = geom::make_merged_region(translated_piece);
   } else {
-    state.bin_state.occupied = poly::merge_polygon_into_region(
+    state.bin_state.occupied = geom::merge_polygon_into_region(
         state.bin_state.occupied, translated_piece);
   }
   ++state.bin_state.occupied_region_revision;

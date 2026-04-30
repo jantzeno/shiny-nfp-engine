@@ -8,9 +8,9 @@
 #include <string_view>
 #include <vector>
 
+#include "geometry/operations/merge_region.hpp"
 #include "packing/bounding_box_packer.hpp"
 #include "packing/decoder.hpp"
-#include "polygon_ops/merge_region.hpp"
 #include "support/fixture_test_support.hpp"
 
 namespace {
@@ -76,8 +76,8 @@ auto parse_exclusion_zones(const shiny::nesting::test::pt::ptree &node)
   for (const auto &child : node) {
     zones.push_back({
         .zone_id = child.second.get<std::uint32_t>("zone_id", 0),
-        .region = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::test::parse_ring(
-                       child.second.get_child("region"))),
+        .region = shiny::nesting::geom::PolygonWithHoles(
+            shiny::nesting::test::parse_ring(child.second.get_child("region"))),
     });
   }
   return zones;
@@ -258,9 +258,9 @@ auto parse_layout_bin(const shiny::nesting::test::pt::ptree &node)
 
   for (const auto &piece : bin.placements) {
     if (bin.occupied.regions.empty()) {
-      bin.occupied = shiny::nesting::poly::make_merged_region(piece.polygon);
+      bin.occupied = shiny::nesting::geom::make_merged_region(piece.polygon);
     } else {
-      bin.occupied = shiny::nesting::poly::merge_polygon_into_region(
+      bin.occupied = shiny::nesting::geom::merge_polygon_into_region(
           bin.occupied, piece.polygon);
     }
   }
@@ -357,11 +357,11 @@ auto has_segment(const CutPlan &plan, std::uint32_t piece_id,
 auto make_rectangle(double min_x, double min_y, double max_x, double max_y)
     -> shiny::nesting::geom::PolygonWithHoles {
   return shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
-              shiny::nesting::geom::Point2(min_x, min_y),
-              shiny::nesting::geom::Point2(max_x, min_y),
-              shiny::nesting::geom::Point2(max_x, max_y),
-              shiny::nesting::geom::Point2(min_x, max_y),
-          });
+      shiny::nesting::geom::Point2(min_x, min_y),
+      shiny::nesting::geom::Point2(max_x, min_y),
+      shiny::nesting::geom::Point2(max_x, max_y),
+      shiny::nesting::geom::Point2(min_x, max_y),
+  });
 }
 
 } // namespace
@@ -624,10 +624,11 @@ TEST_CASE("packing decoder treats exclusion zones as keep-outs",
                       .enable_part_in_part_placement = true,
                       .exclusion_zones = {{
                           .zone_id = 11,
-                          .region = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
-                                               {3.0, 0.0},
-                                               {3.0, 3.0},
-                                               {0.0, 3.0}}),
+                          .region = shiny::nesting::geom::PolygonWithHoles(
+                              shiny::nesting::geom::Ring{{0.0, 0.0},
+                                                         {3.0, 0.0},
+                                                         {3.0, 3.0},
+                                                         {0.0, 3.0}}),
                       }},
                   },
               .enable_hole_first_placement = true,
@@ -708,10 +709,11 @@ TEST_CASE("packing decoder allows placements tangent to exclusion zones",
                       .allowed_rotations = {.angles_degrees = {0.0}},
                       .exclusion_zones = {{
                           .zone_id = 21,
-                          .region = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
-                                               {3.0, 0.0},
-                                               {3.0, 3.0},
-                                               {0.0, 3.0}}),
+                          .region = shiny::nesting::geom::PolygonWithHoles(
+                              shiny::nesting::geom::Ring{{0.0, 0.0},
+                                                         {3.0, 0.0},
+                                                         {3.0, 3.0},
+                                                         {0.0, 3.0}}),
                       }},
                   },
               .enable_hole_first_placement = false,

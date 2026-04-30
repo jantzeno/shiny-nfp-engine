@@ -27,9 +27,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
+#include "geometry/operations/boolean_ops.hpp"
 #include "geometry/types.hpp"
 #include "packing/irregular/sequential/packer.hpp"
-#include "polygon_ops/boolean_ops.hpp"
 #include "support/mtg_fixture.hpp"
 
 using namespace shiny::nesting;
@@ -39,7 +39,8 @@ namespace {
 
 [[nodiscard]] auto rect_polygon(const double width, const double height)
     -> geom::PolygonWithHoles {
-  return geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0}, {width, 0.0}, {width, height}, {0.0, height}});
+  return geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+      {0.0, 0.0}, {width, 0.0}, {width, height}, {0.0, height}});
 }
 
 [[nodiscard]] auto aabb_of(const geom::PolygonWithHoles &p) -> geom::Box2 {
@@ -139,11 +140,11 @@ auto assert_placed_layout_invariants(const NestingResult &result,
                     << bin.placements[i].placement.piece_id << " vs "
                     << bin.placements[j].placement.piece_id);
         const auto overlap_area =
-            geom::polygon_area_sum(poly::intersection_polygons(
+            geom::polygon_area_sum(geom::intersection_polygons(
                 bin.placements[i].polygon, bin.placements[j].polygon));
         REQUIRE(overlap_area <= 1e-6);
         if (spacing_mm > 0.0) {
-          const auto clearance = poly::polygon_distance(
+          const auto clearance = geom::polygon_distance(
               bin.placements[i].polygon, bin.placements[j].polygon);
           REQUIRE(clearance + 1e-3 >= spacing_mm);
         }
@@ -600,11 +601,11 @@ TEST_CASE("REGRESSION: bb heuristic honors requested spacing",
         const auto box_b = aabb_of(bin.placements[j].polygon);
         INFO("bin1 spacing-violation pair pieces "
              << bin.placements[i].placement.piece_id << " [" << box_a.min.x()
-             << "," << box_a.min.y() << "]-[" << box_a.max.x() << "," << box_a.max.y()
-             << "] vs " << bin.placements[j].placement.piece_id << " ["
-             << box_b.min.x() << "," << box_b.min.y() << "]-[" << box_b.max.x() << ","
-             << box_b.max.y() << "] (required spacing " << options.part_spacing_mm
-             << " mm)");
+             << "," << box_a.min.y() << "]-[" << box_a.max.x() << ","
+             << box_a.max.y() << "] vs " << bin.placements[j].placement.piece_id
+             << " [" << box_b.min.x() << "," << box_b.min.y() << "]-["
+             << box_b.max.x() << "," << box_b.max.y() << "] (required spacing "
+             << options.part_spacing_mm << " mm)");
         REQUIRE_FALSE(
             boxes_violate_spacing(box_a, box_b, options.part_spacing_mm, 1e-3));
       }

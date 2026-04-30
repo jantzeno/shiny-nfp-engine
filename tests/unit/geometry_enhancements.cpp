@@ -2,10 +2,10 @@
 
 #include <vector>
 
-#include "geometry/normalize.hpp"
-#include "geometry/rotation_refinement.hpp"
-#include "geometry/rtree_index.hpp"
-#include "geometry/transform.hpp"
+#include "geometry/queries/normalize.hpp"
+#include "geometry/transforms/rotation_refinement.hpp"
+#include "geometry/transforms/rtree_index.hpp"
+#include "geometry/transforms/transform.hpp"
 #include "request.hpp"
 #include "solve.hpp"
 
@@ -24,13 +24,19 @@ using shiny::nesting::geom::RotationRange;
 using shiny::nesting::geom::RTreeIndex;
 
 auto rectangle(double width, double height) -> PolygonWithHoles {
-  return shiny::nesting::geom::normalize_polygon(shiny::nesting::geom::PolygonWithHoles(
-      Ring{{0.0, 0.0}, {width, 0.0}, {width, height}, {0.0, height}}));
+  return shiny::nesting::geom::normalize_polygon(
+      shiny::nesting::geom::PolygonWithHoles(
+          Ring{{0.0, 0.0}, {width, 0.0}, {width, height}, {0.0, height}}));
 }
 
 auto right_notch() -> PolygonWithHoles {
-  return shiny::nesting::geom::normalize_polygon(shiny::nesting::geom::PolygonWithHoles(Ring{
-      {0.0, 0.0}, {3.0, 0.0}, {3.0, 3.0}, {2.0, 3.0}, {2.0, 1.0}, {0.0, 1.0}}));
+  return shiny::nesting::geom::normalize_polygon(
+      shiny::nesting::geom::PolygonWithHoles(Ring{{0.0, 0.0},
+                                                  {3.0, 0.0},
+                                                  {3.0, 3.0},
+                                                  {2.0, 3.0},
+                                                  {2.0, 1.0},
+                                                  {0.0, 1.0}}));
 }
 
 auto left_notch() -> PolygonWithHoles {
@@ -162,11 +168,15 @@ TEST_CASE("rtree index queries overlapping bounds", "[geometry][rtree]") {
   // TODO: add an rtree microbench (insert / query at scale) — see review
   // Phase 9 §4. Skipped here to keep the unit suite fast.
   RTreeIndex index;
-  index.insert(1, Box2{.min = shiny::nesting::geom::Point2(0.0, 0.0), .max = shiny::nesting::geom::Point2(4.0, 4.0)});
-  index.insert(2, Box2{.min = shiny::nesting::geom::Point2(7.0, 7.0), .max = shiny::nesting::geom::Point2(9.0, 9.0)});
-  index.insert(3, Box2{.min = shiny::nesting::geom::Point2(3.0, 3.0), .max = shiny::nesting::geom::Point2(8.0, 8.0)});
+  index.insert(1, Box2{.min = shiny::nesting::geom::Point2(0.0, 0.0),
+                       .max = shiny::nesting::geom::Point2(4.0, 4.0)});
+  index.insert(2, Box2{.min = shiny::nesting::geom::Point2(7.0, 7.0),
+                       .max = shiny::nesting::geom::Point2(9.0, 9.0)});
+  index.insert(3, Box2{.min = shiny::nesting::geom::Point2(3.0, 3.0),
+                       .max = shiny::nesting::geom::Point2(8.0, 8.0)});
 
-  REQUIRE(index.query(Box2{.min = shiny::nesting::geom::Point2(2.0, 2.0), .max = shiny::nesting::geom::Point2(6.0, 6.0)}) ==
+  REQUIRE(index.query(Box2{.min = shiny::nesting::geom::Point2(2.0, 2.0),
+                           .max = shiny::nesting::geom::Point2(6.0, 6.0)}) ==
           std::vector<std::uint32_t>{1U, 3U});
 }
 

@@ -8,8 +8,8 @@
 #include <span>
 #include <vector>
 
-#include "geometry/normalize.hpp"
 #include "geometry/polygon.hpp"
+#include "geometry/queries/normalize.hpp"
 #include "geometry/vector_ops.hpp"
 #include "nfp/penetration_depth.hpp"
 #include "predicates/point_location.hpp"

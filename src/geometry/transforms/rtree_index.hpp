@@ -9,12 +9,6 @@
 
 namespace shiny::nesting::geom {
 
-// Spatial bounding-box index backed by Boost.Geometry's R-tree.
-//
-// Inserts buffer entries into a flat vector; the underlying rtree
-// is built lazily on the first query() after a mutation and kept
-// alive across subsequent queries. Mutations (`insert`, `clear`)
-// invalidate the cached rtree.
 class RTreeIndex {
 public:
   RTreeIndex();

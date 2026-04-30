@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "cache/nfp_cache.hpp"
-#include "geometry/rotation_refinement.hpp"
+#include "geometry/transforms/rotation_refinement.hpp"
 #include "observer.hpp"
 #include "packing/bin_state.hpp"
 #include "packing/irregular/workspace.hpp"

@@ -6,7 +6,7 @@
 #include <optional>
 #include <vector>
 
-#include "geometry/transform.hpp"
+#include "geometry/transforms/transform.hpp"
 #include "packing/bin_state.hpp"
 #include "packing/config.hpp"
 
