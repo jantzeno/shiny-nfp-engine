@@ -123,7 +123,8 @@ auto build_polygon_from_result(const NfpResult &result)
 auto midpoint(const shiny::nesting::geom::Point2 &lhs,
               const shiny::nesting::geom::Point2 &rhs)
     -> shiny::nesting::geom::Point2 {
-  return shiny::nesting::geom::Point2((lhs.x() + rhs.x()) / 2.0, (lhs.y() + rhs.y()) / 2.0);
+  return shiny::nesting::geom::Point2((lhs.x() + rhs.x()) / 2.0,
+                                      (lhs.y() + rhs.y()) / 2.0);
 }
 
 auto translate_ring(const shiny::nesting::geom::Ring &ring,
@@ -132,7 +133,8 @@ auto translate_ring(const shiny::nesting::geom::Ring &ring,
   shiny::nesting::geom::Ring translated;
   translated.reserve(ring.size());
   for (const auto &point : ring) {
-    translated.push_back({point.x() + translation.x(), point.y() + translation.y()});
+    translated.push_back(
+        {point.x() + translation.x(), point.y() + translation.y()});
   }
   return translated;
 }
@@ -154,11 +156,12 @@ auto distance_to_segment(const shiny::nesting::geom::Point2 &point,
     return std::sqrt(squared_distance(point, segment.start));
   }
 
-  const auto projection =
-      ((point.x() - segment.start.x()) * dx + (point.y() - segment.start.y()) * dy) /
-      length_squared;
+  const auto projection = ((point.x() - segment.start.x()) * dx +
+                           (point.y() - segment.start.y()) * dy) /
+                          length_squared;
   const auto clamped = std::clamp(projection, 0.0, 1.0);
-  const shiny::nesting::geom::Point2 closestPoint2(segment.start.x() + clamped * dx, segment.start.y() + clamped * dy);
+  const shiny::nesting::geom::Point2 closestPoint2(
+      segment.start.x() + clamped * dx, segment.start.y() + clamped * dy);
   return std::sqrt(squared_distance(point, closest));
 }
 
@@ -449,8 +452,8 @@ TEST_CASE("convex ifp fixtures", "[nfp][convex][ifp][fixtures]") {
       REQUIRE(actual.holes().size() == expected.holes().size());
       require_ring_approx_equal(actual.outer(), expected.outer(), 1e-4);
       for (std::size_t index = 0; index < actual.holes().size(); ++index) {
-        require_ring_approx_equal(actual.holes()[index], expected.holes()[index],
-                                  1e-4);
+        require_ring_approx_equal(actual.holes()[index],
+                                  expected.holes()[index], 1e-4);
       }
 
       for (const auto &loop : result.loops) {

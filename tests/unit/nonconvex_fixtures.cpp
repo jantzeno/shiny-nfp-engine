@@ -42,8 +42,9 @@ auto ring_signed_area(const shiny::nesting::geom::Ring &ring) -> long double {
   long double twice_area = 0.0L;
   for (std::size_t index = 0; index < ring.size(); ++index) {
     const auto next_index = (index + 1U) % ring.size();
-    twice_area += static_cast<long double>(ring[index].x()) * ring[next_index].y() -
-                  static_cast<long double>(ring[next_index].x()) * ring[index].y();
+    twice_area +=
+        static_cast<long double>(ring[index].x()) * ring[next_index].y() -
+        static_cast<long double>(ring[next_index].x()) * ring[index].y();
   }
   return twice_area / 2.0L;
 }
@@ -174,8 +175,8 @@ void require_loops_equal(
           REQUIRE(ring.size() >= 3U);
           for (std::size_t lhs = 0; lhs < ring.size(); ++lhs) {
             for (std::size_t rhs = lhs + 1U; rhs < ring.size(); ++rhs) {
-              const auto duplicate_vertex =
-                  ring[lhs].x() == ring[rhs].x() && ring[lhs].y() == ring[rhs].y();
+              const auto duplicate_vertex = ring[lhs].x() == ring[rhs].x() &&
+                                            ring[lhs].y() == ring[rhs].y();
               REQUIRE_FALSE(duplicate_vertex);
             }
           }

@@ -33,7 +33,8 @@ auto rectangle(double min_x, double min_y, double max_x, double max_y)
 }
 
 auto trapezoid() -> PolygonWithHoles {
-  return shiny::nesting::geom::PolygonWithHoles(Ring{{0.0, 0.0}, {4.0, 0.0}, {3.0, 2.0}, {0.0, 3.0}});
+  return shiny::nesting::geom::PolygonWithHoles(
+      Ring{{0.0, 0.0}, {4.0, 0.0}, {3.0, 2.0}, {0.0, 3.0}});
 }
 
 auto simple_request() -> NestingRequest {

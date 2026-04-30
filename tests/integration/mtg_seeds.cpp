@@ -24,11 +24,11 @@ namespace {
 [[nodiscard]] auto rectangle(double width_mm, double height_mm)
     -> geom::PolygonWithHoles {
   return shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
-              {0.0, 0.0},
-              {width_mm, 0.0},
-              {width_mm, height_mm},
-              {0.0, height_mm},
-          });
+      {0.0, 0.0},
+      {width_mm, 0.0},
+      {width_mm, height_mm},
+      {0.0, height_mm},
+  });
 }
 
 [[nodiscard]] auto make_piece(std::uint32_t piece_id, std::string label,

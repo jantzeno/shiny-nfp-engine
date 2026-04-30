@@ -91,8 +91,8 @@ auto parse_exclusion_zones(const shiny::nesting::test::pt::ptree &node)
   for (const auto &child : node) {
     zones.push_back({
         .zone_id = child.second.get<std::uint32_t>("zone_id", 0),
-        .region = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::test::parse_ring(
-                       child.second.get_child("region"))),
+        .region = shiny::nesting::geom::PolygonWithHoles(
+            shiny::nesting::test::parse_ring(child.second.get_child("region"))),
     });
   }
   return zones;
@@ -1019,7 +1019,9 @@ TEST_CASE("search cache identity changes when manufacturing constraints change",
       shiny::nesting::place::PartGrainCompatibility::parallel_to_bed;
   request.decoder_request.config.placement.exclusion_zones = {
       {.zone_id = 41,
-       .region = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{4.0, 0.0}, {6.0, 0.0}, {6.0, 4.0}, {4.0, 4.0}})}};
+       .region =
+           shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+               {4.0, 0.0}, {6.0, 0.0}, {6.0, 4.0}, {4.0, 4.0}})}};
 
   const auto constrained = search.improve(request);
   REQUIRE(constrained.evaluated_layout_count > 0U);

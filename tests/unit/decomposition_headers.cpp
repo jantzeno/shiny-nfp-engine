@@ -34,12 +34,13 @@ TEST_CASE("decomposition headers expose the planned milestone 4 surface",
   };
   const DecompositionRequest request{
       .piece_id = 17,
-      .polygon = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
-                            {4.0, 0.0},
-                            {4.0, 1.0},
-                            {1.0, 1.0},
-                            {1.0, 4.0},
-                            {0.0, 4.0}}),
+      .polygon = shiny::nesting::geom::PolygonWithHoles(
+          shiny::nesting::geom::Ring{{0.0, 0.0},
+                                     {4.0, 0.0},
+                                     {4.0, 1.0},
+                                     {1.0, 1.0},
+                                     {1.0, 4.0},
+                                     {0.0, 4.0}}),
       .rotation = {.degrees = 180.0},
       .algorithm = DecompositionAlgorithm::cgal_approx_convex_partition,
   };

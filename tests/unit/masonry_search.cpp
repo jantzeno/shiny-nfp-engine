@@ -26,11 +26,11 @@ using shiny::nesting::search::SearchRunStatus;
 auto make_rectangle(double min_x, double min_y, double max_x, double max_y)
     -> PolygonWithHoles {
   return shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
-              shiny::nesting::geom::Point2(min_x, min_y),
-              shiny::nesting::geom::Point2(max_x, min_y),
-              shiny::nesting::geom::Point2(max_x, max_y),
-              shiny::nesting::geom::Point2(min_x, max_y),
-          });
+      shiny::nesting::geom::Point2(min_x, min_y),
+      shiny::nesting::geom::Point2(max_x, min_y),
+      shiny::nesting::geom::Point2(max_x, max_y),
+      shiny::nesting::geom::Point2(min_x, max_y),
+  });
 }
 
 auto make_piece(std::uint32_t piece_id, PolygonWithHoles polygon,

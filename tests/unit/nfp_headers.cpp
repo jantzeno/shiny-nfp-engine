@@ -79,8 +79,11 @@ TEST_CASE("nfp headers expose the planned milestone 3, 5, and 6 surfaces",
   const ConvexIfpRequest convex_ifp_request{
       .container_id = 7,
       .piece_id = 9,
-      .container = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0}, {8.0, 0.0}, {8.0, 8.0}, {0.0, 8.0}}),
-      .piece = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0}, {2.0, 0.0}, {1.0, 1.0}}),
+      .container =
+          shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+              {0.0, 0.0}, {8.0, 0.0}, {8.0, 8.0}, {0.0, 8.0}}),
+      .piece = shiny::nesting::geom::PolygonWithHoles(
+          shiny::nesting::geom::Ring{{0.0, 0.0}, {2.0, 0.0}, {1.0, 1.0}}),
       .container_rotation = {.degrees = 0.0},
       .piece_rotation = {.degrees = 180.0},
   };
@@ -92,17 +95,16 @@ TEST_CASE("nfp headers expose the planned milestone 3, 5, and 6 surfaces",
   const NonconvexNfpRequest nonconvex_request{
       .piece_a_id = 41,
       .piece_b_id = 42,
-      .piece_a = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
-                            {4.0, 0.0},
-                            {4.0, 1.0},
-                            {1.0, 1.0},
-                            {1.0, 4.0},
-                            {0.0, 4.0}}),
-      .piece_b = shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{{0.0, 0.0},
-                            {2.0, 0.0},
-                            {2.0, 2.0},
-                            {1.0, 1.0},
-                            {0.0, 2.0}}),
+      .piece_a = shiny::nesting::geom::PolygonWithHoles(
+          shiny::nesting::geom::Ring{{0.0, 0.0},
+                                     {4.0, 0.0},
+                                     {4.0, 1.0},
+                                     {1.0, 1.0},
+                                     {1.0, 4.0},
+                                     {0.0, 4.0}}),
+      .piece_b =
+          shiny::nesting::geom::PolygonWithHoles(shiny::nesting::geom::Ring{
+              {0.0, 0.0}, {2.0, 0.0}, {2.0, 2.0}, {1.0, 1.0}, {0.0, 2.0}}),
       .rotation_a = {.degrees = 180.0},
       .rotation_b = {.degrees = 90.0},
       .algorithm_revision = AlgorithmRevision{3},
