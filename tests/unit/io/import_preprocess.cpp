@@ -55,7 +55,7 @@ TEST_CASE("import preprocessing flattens bezier rings", "[io][preprocess]") {
   };
 
   const auto flattened = shiny::nesting::io::flatten_ring(ring, 0.1);
-  REQUIRE(flattened.ok());
+  REQUIRE(flattened.has_value());
   REQUIRE(flattened.value().size() > 4);
 }
 
@@ -83,7 +83,7 @@ TEST_CASE("import preprocessing owns bin filtering and piece normalization",
 
   const auto normalized =
       shiny::nesting::io::preprocess_import_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
   REQUIRE(normalized.value().request.bins.size() == 1);
   REQUIRE(normalized.value().request.bins.front().bin_id == 2);
   REQUIRE(normalized.value().request.pieces.size() == 1);

@@ -46,7 +46,7 @@ auto build_blocked_regions(
     const std::uint64_t moving_piece_revision,
     const geom::ResolvedRotation moving_rotation, cache::NfpCache *cache_ptr,
     CandidateGenerationDiagnostics *diagnostics)
-    -> util::StatusOr<BlockedRegions> {
+    -> std::expected<BlockedRegions, util::Status> {
   BlockedRegions blocked;
 
   for (const auto &obstacle : obstacles) {
@@ -74,8 +74,8 @@ auto build_blocked_regions(
     cache::NfpCacheValue exact_storage;
     cache::NfpCacheValue fallback_storage;
     if (base_nfp_ptr == nullptr) {
-      auto computed = util::StatusOr<std::vector<geom::PolygonWithHoles>>(
-          util::Status::computation_failed);
+      auto computed = std::expected<std::vector<geom::PolygonWithHoles>, util::Status>(
+          std::unexpected(util::Status::computation_failed));
       try {
         computed = nfp::compute_nfp(fixed_polygon, moving_piece);
       } catch (const std::exception &ex) {
@@ -93,7 +93,7 @@ auto build_blocked_regions(
                     obstacle.rotation.degrees, moving_rotation.degrees);
       }
 
-      if (computed.ok()) {
+      if (computed.has_value()) {
         if (diagnostics != nullptr) {
           ++diagnostics->exact_nfp_computations;
         }
@@ -107,7 +107,7 @@ auto build_blocked_regions(
         }
         base_nfp_ptr = &exact_storage;
       } else {
-        const auto exact_status = computed.status();
+        const auto exact_status = computed.error();
 
         std::shared_ptr<const cache::NfpCacheValue> fallback_cached;
         if (cache_ptr != nullptr) {

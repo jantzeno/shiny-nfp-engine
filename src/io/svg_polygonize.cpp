@@ -174,9 +174,9 @@ auto append_cubic_points(std::vector<geom::Point2> &ring,
 
 auto polygonize_svg_path(std::string_view svg_path_data,
                          const SvgImportConfig &config)
-    -> util::StatusOr<geom::PolygonWithHoles> {
+    -> std::expected<geom::PolygonWithHoles, util::Status> {
   if (config.curve_flattening_tolerance <= 0.0) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   Parser parser{.input = svg_path_data};
@@ -192,7 +192,7 @@ auto polygonize_svg_path(std::string_view svg_path_data,
     }
 
     if (command == '\0') {
-      return util::Status::invalid_input;
+      return std::unexpected(util::Status::invalid_input);
     }
 
     const bool relative =
@@ -201,7 +201,7 @@ auto polygonize_svg_path(std::string_view svg_path_data,
 
     if (opcode == 'Z') {
       if (current_ring.size() < 3U) {
-        return util::Status::invalid_input;
+        return std::unexpected(util::Status::invalid_input);
       }
       rings.push_back(current_ring);
       current_ring.clear();
@@ -214,11 +214,11 @@ auto polygonize_svg_path(std::string_view svg_path_data,
       const auto x = parser.read_number();
       const auto y = parser.read_number();
       if (!x || !y) {
-        return util::Status::invalid_input;
+        return std::unexpected(util::Status::invalid_input);
       }
 
       if (!current_ring.empty()) {
-        return util::Status::invalid_input;
+        return std::unexpected(util::Status::invalid_input);
       }
 
       current = resolve_point(current, relative, *x, *y);
@@ -229,14 +229,14 @@ auto polygonize_svg_path(std::string_view svg_path_data,
     }
 
     if (current_ring.empty()) {
-      return util::Status::invalid_input;
+      return std::unexpected(util::Status::invalid_input);
     }
 
     if (opcode == 'L') {
       const auto x = parser.read_number();
       const auto y = parser.read_number();
       if (!x || !y) {
-        return util::Status::invalid_input;
+        return std::unexpected(util::Status::invalid_input);
       }
       current = resolve_point(current, relative, *x, *y);
       current_ring.push_back(current);
@@ -249,7 +249,7 @@ auto polygonize_svg_path(std::string_view svg_path_data,
       const auto x = parser.read_number();
       const auto y = parser.read_number();
       if (!cx || !cy || !x || !y) {
-        return util::Status::invalid_input;
+        return std::unexpected(util::Status::invalid_input);
       }
       const auto control = resolve_point(current, relative, *cx, *cy);
       const auto end = resolve_point(current, relative, *x, *y);
@@ -267,7 +267,7 @@ auto polygonize_svg_path(std::string_view svg_path_data,
       const auto x = parser.read_number();
       const auto y = parser.read_number();
       if (!c1x || !c1y || !c2x || !c2y || !x || !y) {
-        return util::Status::invalid_input;
+        return std::unexpected(util::Status::invalid_input);
       }
       const auto control_a = resolve_point(current, relative, *c1x, *c1y);
       const auto control_b = resolve_point(current, relative, *c2x, *c2y);
@@ -278,14 +278,14 @@ auto polygonize_svg_path(std::string_view svg_path_data,
       continue;
     }
 
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   if (!current_ring.empty()) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
   if (rings.empty()) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   geom::PolygonWithHoles polygon;
@@ -296,7 +296,7 @@ auto polygonize_svg_path(std::string_view svg_path_data,
 
   polygon = geom::normalize_polygon(polygon);
   if (polygon.outer().size() < 3U) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   return polygon;

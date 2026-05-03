@@ -342,7 +342,7 @@ region_can_fit_piece_exact(const geom::PolygonWithHoles &region,
                            const geom::PolygonWithHoles &piece)
     -> std::optional<bool> {
   auto ifp = nfp::compute_ifp(region, piece);
-  if (!ifp.ok()) {
+  if (!ifp.has_value()) {
     return std::nullopt;
   }
   return !ifp.value().empty();
@@ -416,7 +416,7 @@ auto try_exact_fit_candidate_impl(WorkingBin &bin, const PieceInstance &piece,
 
           auto ifp =
               nfp::compute_ifp(free_regions[region_index], rotated_piece);
-          if (!ifp.ok()) {
+          if (!ifp.has_value()) {
             continue;
           }
 
@@ -708,7 +708,7 @@ auto find_best_for_bin(
                 bin.state.container, bin.exclusion_regions, obstacles,
                 rotated_piece, mirrored_revision, active_rotation, strategy,
                 nfp_cache, &candidate_generation_diagnostics);
-            if (nfp_points.ok()) {
+            if (nfp_points.has_value()) {
               if (search_metrics != nullptr) {
                 search_metrics->record(candidate_generation_diagnostics);
               }
@@ -732,7 +732,7 @@ auto find_best_for_bin(
                           "piece={} bin={} rotation={} strategy={} status={}",
                           piece.expanded.expanded_piece_id, bin.state.bin_id,
                           rotation_value, static_cast<int>(strategy),
-                          static_cast<int>(nfp_points.status()));
+                          static_cast<int>(nfp_points.error()));
             }
           } catch (const std::exception &ex) {
             ++diagnostics.nfp_generation_failures;
@@ -1064,7 +1064,7 @@ auto find_best_for_bin(
 //                 bin.state.container, bin.exclusion_regions, obstacles,
 //                 rotated_piece, mirrored_revision, active_rotation, strategy,
 //                 nfp_cache, &candidate_generation_diagnostics);
-//             if (nfp_points.ok()) {
+//             if (nfp_points.has_value()) {
 //               if (search_metrics != nullptr) {
 //                 search_metrics->record(candidate_generation_diagnostics);
 //               }
@@ -1090,7 +1090,7 @@ auto find_best_for_bin(
 //                           status={}", piece.expanded.expanded_piece_id,
 //                           bin.state.bin_id, rotation_value,
 //                           static_cast<int>(strategy),
-//                           static_cast<int>(nfp_points.status()));
+//                           static_cast<int>(nfp_points.error()));
 //             }
 //           } catch (const std::exception &ex) {
 //             ++diagnostics.nfp_generation_failures;

@@ -50,6 +50,6 @@ struct OrDataset {
 };
 
 [[nodiscard]] auto load_or_dataset(const std::filesystem::path &path)
-    -> util::StatusOr<OrDataset>;
+    -> std::expected<OrDataset, util::Status>;
 
 } // namespace shiny::nesting::io

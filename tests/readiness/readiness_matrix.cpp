@@ -286,10 +286,10 @@ auto readiness_cases() -> std::vector<ReadinessCase> {
   const auto svg_fixtures = fixtures / "sparrow";
   const auto strip_dataset = shiny::nesting::io::load_or_dataset(
       fixtures / "or_datasets/strip_dataset.json");
-  REQUIRE(strip_dataset.ok());
+  REQUIRE(strip_dataset.has_value());
   const auto explicit_bins = shiny::nesting::io::load_or_dataset(
       fixtures / "or_datasets/explicit_bins_dataset.json");
-  REQUIRE(explicit_bins.ok());
+  REQUIRE(explicit_bins.has_value());
 
   return {
       {
@@ -518,7 +518,7 @@ auto run_readiness_case(const ReadinessCase &test_case,
   const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::steady_clock::now() - started);
 
-  REQUIRE(result.ok());
+  REQUIRE(result.has_value());
   REQUIRE(result.value().layout_valid());
 
   const auto artifact_stem =

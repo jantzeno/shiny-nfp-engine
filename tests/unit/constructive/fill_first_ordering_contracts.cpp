@@ -84,7 +84,7 @@ TEST_CASE("fill-first engine exposes deterministic primary order and gap-fill or
           "[constructive][fill-first][ordering]") {
   const auto request = ordering_request();
   const auto normalized = normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   const auto config = make_fill_first_config(request.execution);
   REQUIRE(config.allow_part_overflow == request.execution.allow_part_overflow);
@@ -117,11 +117,11 @@ TEST_CASE("fill-first engine exposes deterministic primary order and gap-fill or
 TEST_CASE("fill-first engine records frontier advance and overflow events in the constructive replay",
           "[constructive][fill-first][replay]") {
   const auto normalized = normalize_request(overflow_request());
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   FillFirstEngine engine;
   const auto result_or = engine.solve(normalized.value(), SolveControl{});
-  REQUIRE(result_or.ok());
+  REQUIRE(result_or.has_value());
 
   const auto &result = result_or.value();
   REQUIRE(result.stop_reason == StopReason::completed);

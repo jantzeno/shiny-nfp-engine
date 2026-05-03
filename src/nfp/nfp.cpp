@@ -97,11 +97,11 @@ merge_polygon_set(std::vector<geom::PolygonWithHoles> polygons)
         }
 
         auto unioned = geom::try_union_polygons(lhs, rhs);
-        if (!unioned.ok()) {
+        if (!unioned.has_value()) {
           SHINY_DEBUG(
               "nfp: merge_polygon_set union failed status={} lhs_outer={} "
               "rhs_outer={}",
-              util::status_name(unioned.status()), lhs.outer().size(),
+              util::status_name(unioned.error()), lhs.outer().size(),
               rhs.outer().size());
           return std::nullopt;
         }
@@ -131,7 +131,7 @@ merge_polygon_set(std::vector<geom::PolygonWithHoles> polygons)
 // when A and B are non-convex with sufficiently complex reflex pockets.
 auto compute_nfp(const geom::PolygonWithHoles &fixed,
                  const geom::PolygonWithHoles &moving)
-    -> util::StatusOr<std::vector<geom::PolygonWithHoles>> {
+    -> std::expected<std::vector<geom::PolygonWithHoles>, util::Status> {
   const auto sanitized_fixed = geom::sanitize_polygon(fixed);
   const auto sanitized_moving = geom::sanitize_polygon(moving);
   const auto &normalized_fixed = sanitized_fixed.polygon;
@@ -146,7 +146,7 @@ auto compute_nfp(const geom::PolygonWithHoles &fixed,
     if (!moving_validity.is_valid()) {
       log_invalid_input("moving", sanitized_moving, moving_validity);
     }
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   if (normalized_fixed.holes().empty() && normalized_moving.holes().empty() &&
@@ -155,40 +155,40 @@ auto compute_nfp(const geom::PolygonWithHoles &fixed,
     auto convex_nfp =
         compute_convex_nfp(geom::Polygon(normalized_fixed.outer()),
                            geom::Polygon(normalized_moving.outer()));
-    if (!convex_nfp.ok()) {
+    if (!convex_nfp.has_value()) {
       SHINY_DEBUG("nfp: convex fast path failed status={}",
-                  util::status_name(convex_nfp.status()));
+                  util::status_name(convex_nfp.error()));
       auto orbiting = compute_orbiting_nfp(normalized_fixed, normalized_moving);
-      log_orbiting_fallback("convex_fast_path_failure", orbiting.status());
-      if (orbiting.ok()) {
+      log_orbiting_fallback("convex_fast_path_failure", orbiting.error());
+      if (orbiting.has_value()) {
         return orbiting;
       }
-      return convex_nfp.status();
+      return std::unexpected(convex_nfp.error());
     }
     return std::vector<geom::PolygonWithHoles>{std::move(convex_nfp).value()};
   }
 
   auto fixed_parts_or = decomp::decompose_convex(normalized_fixed);
-  if (!fixed_parts_or.ok()) {
+  if (!fixed_parts_or.has_value()) {
     SHINY_DEBUG("nfp: fixed decomposition failed status={}",
-                util::status_name(fixed_parts_or.status()));
+                util::status_name(fixed_parts_or.error()));
     auto orbiting = compute_orbiting_nfp(normalized_fixed, normalized_moving);
-    log_orbiting_fallback("fixed_decomposition_failure", orbiting.status());
-    if (orbiting.ok()) {
+    log_orbiting_fallback("fixed_decomposition_failure", orbiting.error());
+    if (orbiting.has_value()) {
       return orbiting;
     }
-    return fixed_parts_or.status();
+    return std::unexpected(fixed_parts_or.error());
   }
   auto moving_parts_or = decomp::decompose_convex(normalized_moving);
-  if (!moving_parts_or.ok()) {
+  if (!moving_parts_or.has_value()) {
     SHINY_DEBUG("nfp: moving decomposition failed status={}",
-                util::status_name(moving_parts_or.status()));
+                util::status_name(moving_parts_or.error()));
     auto orbiting = compute_orbiting_nfp(normalized_fixed, normalized_moving);
-    log_orbiting_fallback("moving_decomposition_failure", orbiting.status());
-    if (orbiting.ok()) {
+    log_orbiting_fallback("moving_decomposition_failure", orbiting.error());
+    if (orbiting.has_value()) {
       return orbiting;
     }
-    return moving_parts_or.status();
+    return std::unexpected(moving_parts_or.error());
   }
 
   std::vector<geom::PolygonWithHoles> aggregate;
@@ -199,17 +199,17 @@ auto compute_nfp(const geom::PolygonWithHoles &fixed,
   for (const auto &fixed_part : fixed_parts) {
     for (const auto &moving_part : moving_parts) {
       auto pair_nfp = compute_convex_nfp(fixed_part, moving_part);
-      if (!pair_nfp.ok()) {
+      if (!pair_nfp.has_value()) {
         SHINY_DEBUG("nfp: convex pair failed status={} fixed_outer={} "
                     "moving_outer={}",
-                    util::status_name(pair_nfp.status()),
+                    util::status_name(pair_nfp.error()),
                     fixed_part.outer().size(), moving_part.outer().size());
         auto pair_orbiting =
             compute_orbiting_nfp(geom::PolygonWithHoles(fixed_part.outer()),
                                  geom::PolygonWithHoles(moving_part.outer()));
         log_orbiting_fallback("convex_pair_failure_local",
-                              pair_orbiting.status());
-        if (pair_orbiting.ok()) {
+                              pair_orbiting.error());
+        if (pair_orbiting.has_value()) {
           auto &pair_polygons = pair_orbiting.value();
           aggregate.insert(aggregate.end(),
                            std::make_move_iterator(pair_polygons.begin()),
@@ -219,11 +219,11 @@ auto compute_nfp(const geom::PolygonWithHoles &fixed,
 
         auto orbiting =
             compute_orbiting_nfp(normalized_fixed, normalized_moving);
-        log_orbiting_fallback("convex_pair_failure_global", orbiting.status());
-        if (orbiting.ok()) {
+        log_orbiting_fallback("convex_pair_failure_global", orbiting.error());
+        if (orbiting.has_value()) {
           return orbiting;
         }
-        return pair_nfp.status();
+        return std::unexpected(pair_nfp.error());
       }
       aggregate.push_back(std::move(pair_nfp).value());
     }
@@ -231,11 +231,11 @@ auto compute_nfp(const geom::PolygonWithHoles &fixed,
 
   if (aggregate.empty()) {
     auto orbiting = compute_orbiting_nfp(normalized_fixed, normalized_moving);
-    log_orbiting_fallback("empty_aggregate", orbiting.status());
-    if (orbiting.ok()) {
+    log_orbiting_fallback("empty_aggregate", orbiting.error());
+    if (orbiting.has_value()) {
       return orbiting;
     }
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   }
 
   return merge_polygon_set(std::move(aggregate));

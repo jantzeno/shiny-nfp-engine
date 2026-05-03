@@ -122,7 +122,7 @@ auto solve_checked(const NestingRequest &request,
     -> shiny::nesting::NestingResult {
   REQUIRE(request.is_valid());
   const auto solved = shiny::nesting::solve(request, control);
-  REQUIRE(solved.ok());
+  REQUIRE(solved.has_value());
   return solved.value();
 }
 

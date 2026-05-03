@@ -73,7 +73,7 @@ auto single_bin_two_piece_request() -> NestingRequest {
 // Normalizes a NestingRequest and asserts success.
 auto do_normalize(const NestingRequest &req) -> NormalizedRequest {
   auto result = shiny::nesting::normalize_request(req);
-  REQUIRE(result.ok());
+  REQUIRE(result.has_value());
   return std::move(result).value();
 }
 
@@ -206,7 +206,7 @@ TEST_CASE("solve with allow_part_overflow=true produces a valid layout report",
 
   const auto result = shiny::nesting::solve(req);
 
-  REQUIRE(result.ok());
+  REQUIRE(result.has_value());
   // finalize_result() populates result->validation; overflow-bin placements
   // must not introduce outside_container or piece_overlap issues.
   REQUIRE(result.value().validation.valid);

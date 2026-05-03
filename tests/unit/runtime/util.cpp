@@ -6,20 +6,19 @@
 #include "util/logging.hpp"
 #include "util/status.hpp"
 
-TEST_CASE("status or carries values and error states", "[util][status]") {
-  shiny::nesting::util::StatusOr<std::vector<int>> value_or(
+TEST_CASE("Expected carries values and error states", "[util][status]") {
+  std::expected<std::vector<int>, shiny::nesting::util::Status> value_or(
       std::vector<int>{1, 2, 3});
 
-  REQUIRE(value_or.ok());
+  REQUIRE(value_or.has_value());
   REQUIRE(static_cast<bool>(value_or));
-  REQUIRE(value_or.status() == shiny::nesting::util::Status::ok);
   REQUIRE(value_or.value().size() == 3U);
 
-  shiny::nesting::util::StatusOr<std::string> error_or(
-      shiny::nesting::util::Status::invalid_input);
-  REQUIRE_FALSE(error_or.ok());
+  std::expected<std::string, shiny::nesting::util::Status> error_or(
+      std::unexpected(shiny::nesting::util::Status::invalid_input));
+  REQUIRE_FALSE(error_or.has_value());
   REQUIRE_FALSE(static_cast<bool>(error_or));
-  REQUIRE(error_or.status() == shiny::nesting::util::Status::invalid_input);
+  REQUIRE(error_or.error() == shiny::nesting::util::Status::invalid_input);
 
   SHINY_NESTING_LOG(info, "status-or test exercised logging hook");
 }

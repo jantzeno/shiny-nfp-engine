@@ -106,29 +106,29 @@ constexpr std::uintmax_t kMaxJsonInputBytes = 4U * 1024U * 1024U;
 }
 
 [[nodiscard]] auto read_json_tree(const fs::path &path)
-    -> util::StatusOr<pt::ptree> {
+    -> std::expected<pt::ptree, util::Status> {
   if (!path_is_safe_json(path)) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   std::error_code error;
   if (!fs::exists(path, error) || error) {
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   }
 
   const auto bytes = fs::file_size(path, error);
   if (error) {
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   }
   if (bytes > kMaxJsonInputBytes) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   pt::ptree tree;
   try {
     pt::read_json(path.string(), tree);
   } catch (...) {
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   }
 
   return tree;
@@ -155,10 +155,10 @@ constexpr std::uintmax_t kMaxJsonInputBytes = 4U * 1024U * 1024U;
 } // namespace
 
 auto load_polygon_set(const fs::path &path)
-    -> util::StatusOr<std::vector<geom::PolygonWithHoles>> {
+    -> std::expected<std::vector<geom::PolygonWithHoles>, util::Status> {
   auto tree_or = read_json_tree(path);
-  if (!tree_or.ok()) {
-    return tree_or.status();
+  if (!tree_or.has_value()) {
+    return std::unexpected(tree_or.error());
   }
 
   std::vector<geom::PolygonWithHoles> polygons;
@@ -171,10 +171,10 @@ auto load_polygon_set(const fs::path &path)
     } else if (const auto outer = tree.get_child_optional("outer")) {
       polygons.push_back(parse_polygon_node(tree));
     } else {
-      return util::Status::invalid_input;
+      return std::unexpected(util::Status::invalid_input);
     }
   } catch (...) {
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   }
 
   return polygons;

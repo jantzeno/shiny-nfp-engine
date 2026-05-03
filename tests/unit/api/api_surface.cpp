@@ -108,7 +108,7 @@ TEST_CASE("request builder supports simple solve and full-success helpers",
   REQUIRE(request.is_valid());
 
   const auto result = shiny::nesting::solve(request);
-  REQUIRE(result.ok());
+  REQUIRE(result.has_value());
   REQUIRE(result.value().is_full_success());
   REQUIRE(result.value().layout_valid());
   REQUIRE(result.value().summary().full_success);
@@ -147,7 +147,7 @@ TEST_CASE(
 
   REQUIRE(request.is_valid());
   const auto normalized = shiny::nesting::normalize_nesting_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   const auto *config = production_strategy_config_ptr<ProductionSearchConfig>(
       normalized.value().execution,
@@ -211,7 +211,7 @@ TEST_CASE("solve control builder covers time limits and cancellation",
   source.request_stop();
   const auto cancelled = shiny::nesting::solve(
       request, SolveControlBuilder{}.with_cancellation(source.token()).build());
-  REQUIRE(cancelled.ok());
+  REQUIRE(cancelled.has_value());
   REQUIRE(cancelled.value().stop_reason == StopReason::cancelled);
 }
 
@@ -222,7 +222,7 @@ TEST_CASE("profile builder keeps search presets internal to the public solve "
 
   const auto result =
       shiny::nesting::solve(request, ProfileSolveControl{.random_seed = 29U});
-  REQUIRE(result.ok());
+  REQUIRE(result.has_value());
   CHECK(result.value().strategy == StrategyKind::metaheuristic_search);
   CHECK(result.value().search.optimizer == OptimizerKind::none);
 
@@ -248,7 +248,7 @@ TEST_CASE("profile builder round-trips knapsack objective mode and piece "
                            })
                            .build_checked();
 
-  REQUIRE(request.ok());
+  REQUIRE(request.has_value());
   const auto dto = shiny::nesting::api::to_dto(request.value());
   CHECK(dto.objective_mode == ObjectiveMode::maximize_value);
   REQUIRE(dto.pieces.size() == 1U);
@@ -281,7 +281,7 @@ TEST_CASE("stable DTO helpers round-trip requests and expose result summaries",
 
   const auto result =
       shiny::nesting::solve(roundtrip_request, roundtrip_control);
-  REQUIRE(result.ok());
+  REQUIRE(result.has_value());
 
   const auto result_dto = shiny::nesting::api::to_dto(result.value());
   REQUIRE(result_dto.summary.full_success);
@@ -323,13 +323,13 @@ TEST_CASE("request builder preserves invalid-input semantics",
 
   const auto request = make_invalid_request();
   REQUIRE_FALSE(request.is_valid());
-  REQUIRE_FALSE(shiny::nesting::solve(request).ok());
+  REQUIRE_FALSE(shiny::nesting::solve(request).has_value());
 
   const auto request2 = make_invalid_request();
   const auto checked =
       request2.is_valid()
-          ? shiny::nesting::util::StatusOr<NestingRequest>{request2}
-          : shiny::nesting::util::StatusOr<NestingRequest>{
-                shiny::nesting::util::Status::invalid_input};
-  REQUIRE_FALSE(checked.ok());
+          ? std::expected<NestingRequest, shiny::nesting::util::Status>{request2}
+          : std::expected<NestingRequest, shiny::nesting::util::Status>{
+                std::unexpected(shiny::nesting::util::Status::invalid_input)};
+  REQUIRE_FALSE(checked.has_value());
 }

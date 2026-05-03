@@ -118,7 +118,7 @@ TEST_CASE("solution pool keeps the strongest recent candidates",
 TEST_CASE("large-item disruption swaps a large dissimilar piece forward",
           "[search][disruption]") {
   auto normalized = shiny::nesting::normalize_request(strip_case_request());
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   const std::array<double, 3> areas{8.0, 8.0, 24.0};
   const std::array<std::size_t, 3> order{0U, 1U, 2U};
@@ -148,7 +148,7 @@ TEST_CASE("large-item disruption keeps two candidates on two-piece fixtures",
   });
 
   auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   const std::array<double, 2> areas{8.0, 4.0};
   const std::array<std::size_t, 2> order{0U, 1U};
@@ -183,12 +183,12 @@ TEST_CASE("strip optimizer iteration budget scales with piece count",
 TEST_CASE("strip optimizer improves a constructive seed on a strip-style case",
           "[search][strip-optimizer]") {
   auto normalized = shiny::nesting::normalize_request(strip_case_request());
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   FillFirstEngine packer;
   const auto seed =
       packer.solve(normalized.value(), SolveControl{.random_seed = 3});
-  REQUIRE(seed.ok());
+  REQUIRE(seed.has_value());
   // FillFirstEngine places all 3 pieces (the bin is exactly filled at 100%),
   // so the optimizer will find the seed is already optimal.
   REQUIRE(seed.value().layout.placement_trace.size() == 3U);
@@ -229,12 +229,12 @@ TEST_CASE("strip optimizer reports configurable phase and separator replay",
   request.execution.production.infeasible_rollback_after = 1;
 
   auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   FillFirstEngine packer;
   const auto seed =
       packer.solve(normalized.value(), SolveControl{.random_seed = 3});
-  REQUIRE(seed.ok());
+  REQUIRE(seed.has_value());
 
   shiny::nesting::runtime::Stopwatch stopwatch;
   const shiny::nesting::runtime::TimeBudget budget(0);
@@ -272,12 +272,12 @@ TEST_CASE(
   request.execution.production.max_iterations = 5;
   request.execution.production.separator_worker_count = 1;
   auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   FillFirstEngine packer;
   const auto seed =
       packer.solve(normalized.value(), SolveControl{.random_seed = 3});
-  REQUIRE(seed.ok());
+  REQUIRE(seed.has_value());
   const auto seed_entry = SolutionPoolEntry{
       .order = {0U, 1U, 2U},
       .metrics =
@@ -306,7 +306,7 @@ TEST_CASE(
 
   request.execution.production.separator_worker_count = 2;
   normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
   shiny::nesting::runtime::Stopwatch multi_stopwatch;
   const auto multi = optimizer.optimize(
       normalized.value(), SolveControl{.random_seed = 13}, budget,
@@ -328,8 +328,8 @@ TEST_CASE(
   const auto production =
       shiny::nesting::solve(production_request, SolveControl{.random_seed = 7});
 
-  REQUIRE(constructive.ok());
-  REQUIRE(production.ok());
+  REQUIRE(constructive.has_value());
+  REQUIRE(production.has_value());
   REQUIRE(production.value().layout.placement_trace.size() >=
           constructive.value().layout.placement_trace.size());
   REQUIRE(production.value().layout.placement_trace.size() == 3U);

@@ -27,10 +27,10 @@ struct NormalizedRequest {
 };
 
 [[nodiscard]] auto normalize_request(const NestingRequest &request)
-    -> util::StatusOr<NormalizedRequest>;
+    -> std::expected<NormalizedRequest, util::Status>;
 
 [[nodiscard]] auto
 to_bounding_box_decoder_request(const NormalizedRequest &request)
-    -> util::StatusOr<pack::DecoderRequest>;
+    -> std::expected<pack::DecoderRequest, util::Status>;
 
 } // namespace shiny::nesting

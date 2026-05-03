@@ -13,11 +13,11 @@ constexpr double kOverlapAreaEpsilon = 1e-9;
 
 auto quantify_overlap(const adapters::PortPolygon &lhs,
                       const adapters::PortPolygon &rhs)
-    -> util::StatusOr<OverlapProxyResult> {
+    -> std::expected<OverlapProxyResult, util::Status> {
   const auto intersection_or = geom::try_intersection_polygons(
       adapters::to_engine_polygon(lhs), adapters::to_engine_polygon(rhs));
-  if (!intersection_or.ok()) {
-    return intersection_or.status();
+  if (!intersection_or.has_value()) {
+    return std::unexpected(intersection_or.error());
   }
 
   const double overlap_area = geom::polygon_area_sum(intersection_or.value());

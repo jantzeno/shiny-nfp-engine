@@ -408,7 +408,7 @@ auto OrderEvaluator::evaluate(
       reordered_request_for(order, evaluated.piece_indexed_forced_rotations,
                             request_),
       decode_control);
-  if (result_or.ok() &&
+  if (result_or.has_value() &&
       !validation::layout_has_geometry_violation(request_, result_or.value())) {
     evaluated.result = result_or.value();
     validation::finalize_result(request_, evaluated.result);

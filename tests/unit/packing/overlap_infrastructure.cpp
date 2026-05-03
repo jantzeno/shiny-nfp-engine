@@ -80,7 +80,7 @@ TEST_CASE("penetration depth returns squared distance to NFP boundary",
   auto nfp = shiny::nesting::nfp::compute_convex_nfp(
       shiny::nesting::geom::Polygon(rectangle(0.0, 0.0, 2.0, 2.0).outer()),
       shiny::nesting::geom::Polygon(rectangle(0.0, 0.0, 2.0, 2.0).outer()));
-  REQUIRE(nfp.ok());
+  REQUIRE(nfp.has_value());
 
   shiny::nesting::cache::PenetrationDepthCache cache;
   const auto depth = shiny::nesting::nfp::compute_penetration_depth_squared(

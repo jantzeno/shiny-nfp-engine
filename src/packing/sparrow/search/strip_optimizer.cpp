@@ -139,7 +139,7 @@ namespace {
 
   const auto result_or =
       packer.solve(reordered_request_for(order, request), decode_control);
-  if (result_or.ok() &&
+  if (result_or.has_value() &&
       !validation::layout_has_geometry_violation(request, result_or.value())) {
     evaluated.result = result_or.value();
     validation::finalize_result(request, evaluated.result);

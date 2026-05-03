@@ -35,7 +35,7 @@ TEST_CASE("svg path polygonization covers line and curve commands",
           {.curve_flattening_tolerance =
                fixture.get<double>("tolerance", 0.25)});
 
-      REQUIRE(result.ok());
+      REQUIRE(result.has_value());
       REQUIRE(result.value().holes().size() ==
               fixture.get<std::size_t>("expected.hole_count", 0));
       REQUIRE(result.value().outer().size() >=
@@ -58,5 +58,5 @@ TEST_CASE("svg path polygonization covers line and curve commands",
 TEST_CASE("svg path polygonization rejects invalid open paths", "[io][svg]") {
   const auto result =
       shiny::nesting::io::polygonize_svg_path("M 0 0 L 4 0 L 4 2", {});
-  REQUIRE(result.status() == shiny::nesting::util::Status::invalid_input);
+  REQUIRE(result.error() == shiny::nesting::util::Status::invalid_input);
 }

@@ -290,9 +290,9 @@ TEST_CASE("hybrid NFP candidate strategy is arrangement union perfect",
       container, exclusion_regions, obstacle_span, moving_piece, 1U,
       {.degrees = 0.0}, CandidateStrategy::nfp_hybrid);
 
-  REQUIRE(arrangement.ok());
-  REQUIRE(perfect.ok());
-  REQUIRE(hybrid.ok());
+  REQUIRE(arrangement.has_value());
+  REQUIRE(perfect.has_value());
+  REQUIRE(hybrid.has_value());
 
   auto expected = normalize_candidates(arrangement.value());
   const auto normalized_perfect = normalize_candidates(perfect.value());
@@ -324,7 +324,7 @@ TEST_CASE("actual-polygon MTG repro piece produces bed-domain candidates",
        << kBed1Id
        << "; this pins the lower-level bed-domain candidate "
           "generation for that same piece/bin case.");
-  REQUIRE(points.ok());
+  REQUIRE(points.has_value());
   REQUIRE_FALSE(points.value().empty());
 }
 
@@ -346,17 +346,17 @@ TEST_CASE("NFP perfect-fit candidates stay inside the feasible domain",
   const auto points = shiny::nesting::pack::generate_nfp_candidate_points(
       container, exclusion_regions, obstacle_span, moving_piece, 17U,
       {.degrees = 0.0}, CandidateStrategy::nfp_perfect);
-  REQUIRE(points.ok());
+  REQUIRE(points.has_value());
   REQUIRE_FALSE(points.value().empty());
 
   const auto domain = shiny::nesting::nfp::compute_ifp(container, moving_piece);
-  REQUIRE(domain.ok());
+  REQUIRE(domain.has_value());
   const auto blocked_base = shiny::nesting::geom::translate(
       obstacles.front().polygon,
       shiny::nesting::geom::Vector2(-obstacles.front().translation.x(),
                                     -obstacles.front().translation.y()));
   auto blocked = shiny::nesting::nfp::compute_nfp(blocked_base, moving_piece);
-  REQUIRE(blocked.ok());
+  REQUIRE(blocked.has_value());
   std::vector<PolygonWithHoles> blocked_world;
   blocked_world.reserve(blocked.value().size());
   for (const auto &polygon : blocked.value()) {
@@ -414,7 +414,7 @@ TEST_CASE("fixture-backed NFP candidate generation covers synthetic geometry "
           {.degrees = 0.0}, CandidateStrategy::nfp_hybrid, &cache,
           &diagnostics);
 
-      REQUIRE(points.ok());
+      REQUIRE(points.has_value());
       REQUIRE(points.value().size() >=
               expected.get<std::size_t>("min_candidates"));
       REQUIRE_FALSE(diagnostics.used_conservative_bbox_fallback());
@@ -428,7 +428,7 @@ TEST_CASE("fixture-backed NFP candidate generation covers synthetic geometry "
           obstacle_span, moving_piece,
           shiny::nesting::geom::polygon_revision(moving_piece),
           {.degrees = 0.0}, &cache, &diagnostics);
-      REQUIRE(blocked.ok());
+      REQUIRE(blocked.has_value());
       REQUIRE_FALSE(blocked.value().polygons.empty());
       REQUIRE(blocked.value().accuracy ==
               shiny::nesting::cache::NfpCacheAccuracy::exact);
@@ -459,7 +459,7 @@ TEST_CASE("candidate generation returns candidates directly after bbox NFP "
     const auto status_or = shiny::nesting::pack::generate_nfp_candidate_points(
         container, exclusion_regions, obstacles, moving_piece, 17U,
         {.degrees = 0.0}, strategy, &cache, &diagnostics);
-    REQUIRE(status_or.ok());
+    REQUIRE(status_or.has_value());
     REQUIRE_FALSE(status_or.value().empty());
     REQUIRE(diagnostics.used_conservative_bbox_fallback());
   }
@@ -484,7 +484,7 @@ TEST_CASE("anchor strategy skips obstacle NFP generation by default",
       container, exclusion_regions, obstacles, moving_piece, 17U,
       {.degrees = 0.0}, CandidateStrategy::anchor_vertex, &cache, &diagnostics);
 
-  REQUIRE(points.ok());
+  REQUIRE(points.has_value());
   REQUIRE_FALSE(points.value().empty());
   REQUIRE(diagnostics.exact_nfp_cache_hits == 0U);
   REQUIRE(diagnostics.conservative_bbox_cache_hits == 0U);
@@ -520,7 +520,7 @@ TEST_CASE("exact NFP cache entries stay separate from fallback entries",
       container, exclusion_regions, obstacles, moving_piece, 17U,
       {.degrees = 0.0}, CandidateStrategy::nfp_perfect, &cache, &diagnostics);
 
-  REQUIRE(points.ok());
+  REQUIRE(points.has_value());
   REQUIRE_FALSE(points.value().empty());
   REQUIRE(diagnostics.exact_nfp_computations > 0U);
   REQUIRE(diagnostics.conservative_bbox_fallbacks == 0U);
@@ -565,7 +565,7 @@ TEST_CASE("bbox fallback cache entries are labeled separately from exact NFPs",
       {.degrees = 0.0}, CandidateStrategy::nfp_perfect, &cache,
       &first_diagnostics);
 
-  REQUIRE(first.ok());
+  REQUIRE(first.has_value());
   REQUIRE_FALSE(first.value().empty());
   REQUIRE(first_diagnostics.conservative_bbox_fallbacks > 0U);
   REQUIRE(first_diagnostics.exact_nfp_cache_hits == 0U);
@@ -598,7 +598,7 @@ TEST_CASE("bbox fallback cache entries are labeled separately from exact NFPs",
       {.degrees = 0.0}, CandidateStrategy::nfp_perfect, &cache,
       &second_diagnostics);
 
-  REQUIRE(second.ok());
+  REQUIRE(second.has_value());
   REQUIRE(second_diagnostics.conservative_bbox_cache_hits > 0U);
   REQUIRE(second_diagnostics.exact_nfp_cache_hits == 0U);
   REQUIRE(second_diagnostics.conservative_bbox_fallbacks == 0U);
@@ -617,7 +617,7 @@ TEST_CASE(
           container, exclusion_regions, obstacles, moving_piece, 99U,
           {.degrees = 0.0}, CandidateStrategy::anchor_vertex);
 
-  REQUIRE(anchor_points.ok());
+  REQUIRE(anchor_points.has_value());
 
   const auto candidate_translations =
       normalize_candidate_translations(anchor_points.value());
@@ -653,7 +653,7 @@ TEST_CASE("concave piece produces feasible candidate beyond raw vertex anchors",
       container, exclusion_regions, obstacles, moving_piece, 99U,
       {.degrees = 0.0}, CandidateStrategy::nfp_perfect);
 
-  REQUIRE(points.ok());
+  REQUIRE(points.has_value());
 
   const auto candidate_translations =
       normalize_candidate_translations(points.value());

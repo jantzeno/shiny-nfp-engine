@@ -65,10 +65,10 @@ struct ImportPreprocessRequest {
 };
 
 [[nodiscard]] auto flatten_ring(const ImportedRing &ring, double tolerance)
-    -> util::StatusOr<geom::Ring>;
+    -> std::expected<geom::Ring, util::Status>;
 
 [[nodiscard]] auto
 preprocess_import_request(const ImportPreprocessRequest &request)
-    -> util::StatusOr<NormalizedRequest>;
+    -> std::expected<NormalizedRequest, util::Status>;
 
 } // namespace shiny::nesting::io

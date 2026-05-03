@@ -21,7 +21,7 @@ TEST_CASE("json polygon sets load and round trip", "[io][json]") {
       shiny::nesting::test::fixture_root() / fs::path{"io/polygon_set.json"};
   const auto loaded = shiny::nesting::io::load_polygon_set(fixture_path);
 
-  REQUIRE(loaded.ok());
+  REQUIRE(loaded.has_value());
   REQUIRE(loaded.value().size() == 2U);
 
   const auto output_path = make_temp_path("polygon_roundtrip.json");
@@ -29,7 +29,7 @@ TEST_CASE("json polygon sets load and round trip", "[io][json]") {
           shiny::nesting::util::Status::ok);
 
   const auto roundtrip = shiny::nesting::io::load_polygon_set(output_path);
-  REQUIRE(roundtrip.ok());
+  REQUIRE(roundtrip.has_value());
   REQUIRE(roundtrip.value().size() == loaded.value().size());
 
   for (std::size_t index = 0; index < loaded.value().size(); ++index) {
@@ -41,7 +41,7 @@ TEST_CASE("json polygon sets load and round trip", "[io][json]") {
 TEST_CASE("json io rejects traversal and persists layout outputs",
           "[io][json]") {
   REQUIRE(shiny::nesting::io::load_polygon_set(fs::path{"../escape.json"})
-              .status() == shiny::nesting::util::Status::invalid_input);
+              .error() == shiny::nesting::util::Status::invalid_input);
 
   const auto layout_path = make_temp_path("layout.json");
   const auto cut_plan_path = make_temp_path("cut_plan.json");

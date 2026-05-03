@@ -67,7 +67,7 @@ TEST_CASE("overlap proxy quantifies convex and concave piece overlap",
       shiny::nesting::pack::sparrow::quantify::quantify_overlap(
           to_port_polygon(rectangle(0.0, 0.0, 4.0, 4.0)),
           to_port_polygon(rectangle(2.0, 2.0, 6.0, 6.0)));
-  REQUIRE(convex_overlap_or.ok());
+  REQUIRE(convex_overlap_or.has_value());
   CHECK(convex_overlap_or.value().has_overlap);
   CHECK(shiny::nesting::test::sparrow::nearly_equal(
       convex_overlap_or.value().overlap_area, 4.0));
@@ -76,7 +76,7 @@ TEST_CASE("overlap proxy quantifies convex and concave piece overlap",
       shiny::nesting::pack::sparrow::quantify::quantify_overlap(
           to_port_polygon(concave_l_shape()),
           to_port_polygon(rectangle(1.0, 1.0, 4.0, 4.0)));
-  REQUIRE(concave_overlap_or.ok());
+  REQUIRE(concave_overlap_or.has_value());
   CHECK(concave_overlap_or.value().has_overlap);
   CHECK(shiny::nesting::test::sparrow::nearly_equal(
       concave_overlap_or.value().overlap_area, 5.0));
@@ -88,7 +88,7 @@ TEST_CASE("overlap proxy reports zero overlap for holes and near-touching pieces
       shiny::nesting::pack::sparrow::quantify::quantify_overlap(
           to_port_polygon(polygon_with_hole()),
           to_port_polygon(rectangle(3.0, 3.0, 5.0, 5.0)));
-  REQUIRE(hole_overlap_or.ok());
+  REQUIRE(hole_overlap_or.has_value());
   CHECK_FALSE(hole_overlap_or.value().has_overlap);
   CHECK(shiny::nesting::test::sparrow::nearly_equal(
       hole_overlap_or.value().overlap_area, 0.0));
@@ -97,7 +97,7 @@ TEST_CASE("overlap proxy reports zero overlap for holes and near-touching pieces
       shiny::nesting::pack::sparrow::quantify::quantify_overlap(
           to_port_polygon(rectangle(0.0, 0.0, 2.0, 2.0)),
           to_port_polygon(rectangle(2.0, 0.0, 4.0, 2.0)));
-  REQUIRE(near_touching_overlap_or.ok());
+  REQUIRE(near_touching_overlap_or.has_value());
   CHECK_FALSE(near_touching_overlap_or.value().has_overlap);
   CHECK(shiny::nesting::test::sparrow::nearly_equal(
       near_touching_overlap_or.value().overlap_area, 0.0));

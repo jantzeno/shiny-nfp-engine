@@ -166,14 +166,14 @@ auto append_polygon_vertices(CandidateAccumulator &accumulator,
 build_base_domain(const geom::PolygonWithHoles &container,
                   std::span<const geom::PolygonWithHoles> exclusion_regions,
                   const geom::PolygonWithHoles &moving_piece)
-    -> util::StatusOr<std::vector<geom::PolygonWithHoles>> {
+    -> std::expected<std::vector<geom::PolygonWithHoles>, util::Status> {
   auto ifp = nfp::compute_ifp(container, moving_piece);
-  if (ifp.ok()) {
+  if (ifp.has_value()) {
     return ifp.value();
   }
 
   SHINY_DEBUG("candidate_generation: build_base_domain compute_ifp returned {}",
-              util::status_name(ifp.status()));
+              util::status_name(ifp.error()));
 
   std::vector<geom::PolygonWithHoles> domain{container};
   for (const auto &region : exclusion_regions) {
@@ -184,7 +184,7 @@ build_base_domain(const geom::PolygonWithHoles &container,
           "domain_outer={} obstacle_outer={}",
           util::status_name(subtract_status), container.outer().size(),
           region.outer().size());
-      return subtract_status;
+      return std::unexpected(subtract_status);
     }
   }
   return domain;
@@ -539,11 +539,11 @@ auto generate_nfp_candidate_points(
     const geom::ResolvedRotation moving_rotation,
     const CandidateStrategy strategy, cache::NfpCache *cache,
     CandidateGenerationDiagnostics *diagnostics)
-    -> util::StatusOr<std::vector<GeneratedCandidatePoint>> {
+    -> std::expected<std::vector<GeneratedCandidatePoint>, util::Status> {
   try {
     const auto strategy_id = strategy_index(strategy);
     if (strategy_id >= kCandidateStrategyCount) {
-      return util::Status::invalid_input;
+      return std::unexpected(util::Status::invalid_input);
     }
     if (diagnostics != nullptr) {
       *diagnostics = {};
@@ -551,8 +551,8 @@ auto generate_nfp_candidate_points(
     }
 
     auto domain = build_base_domain(container, exclusion_regions, moving_piece);
-    if (!domain.ok()) {
-      return domain.status();
+    if (!domain.has_value()) {
+      return std::unexpected(domain.error());
     }
 
     BlockedRegions blocked;
@@ -560,8 +560,8 @@ auto generate_nfp_candidate_points(
       auto blocked_or =
           build_blocked_regions(obstacles, moving_piece, moving_piece_revision,
                                 moving_rotation, cache, diagnostics);
-      if (!blocked_or.ok()) {
-        return blocked_or.status();
+      if (!blocked_or.has_value()) {
+        return std::unexpected(blocked_or.error());
       }
       blocked = std::move(blocked_or).value();
     }
@@ -576,7 +576,7 @@ auto generate_nfp_candidate_points(
                   util::status_name(strategy_status),
                   static_cast<int>(strategy), domain.value().size(),
                   blocked.polygons.size());
-      return strategy_status;
+      return std::unexpected(strategy_status);
     }
 
     if (diagnostics != nullptr) {
@@ -590,14 +590,14 @@ auto generate_nfp_candidate_points(
                 "strategy={} moving_rev={} obstacle_count={} error={}",
                 static_cast<int>(strategy), moving_piece_revision,
                 obstacles.size(), ex.what());
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   } catch (...) {
     SHINY_DEBUG("candidate_generation: generate_nfp_candidate_points threw "
                 "strategy={} moving_rev={} obstacle_count={} with unknown "
                 "exception",
                 static_cast<int>(strategy), moving_piece_revision,
                 obstacles.size());
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   }
 }
 

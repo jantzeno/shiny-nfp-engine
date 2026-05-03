@@ -133,7 +133,7 @@ TEST_CASE("request normalization accepts rotation ranges",
   });
 
   const auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
   REQUIRE(shiny::nesting::geom::materialize_rotations(
               normalized.value().request.execution.default_rotations) ==
           std::vector<double>{0.0, 90.0, 180.0});
@@ -159,10 +159,10 @@ TEST_CASE("constructive solve refines sampled rotation ranges locally",
   });
 
   const auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
   shiny::nesting::pack::constructive::FillFirstEngine engine;
   const auto result = engine.solve(normalized.value(), {});
-  REQUIRE(result.ok());
+  REQUIRE(result.has_value());
   REQUIRE(result.value().layout.placement_trace.size() == 1U);
   const auto refined_angle =
       result.value().layout.placement_trace.front().resolved_rotation.degrees;
@@ -199,10 +199,10 @@ TEST_CASE("constructive solve can use mirrored placements when enabled",
 
   const auto baseline_normalized =
       shiny::nesting::normalize_request(baseline_request);
-  REQUIRE(baseline_normalized.ok());
+  REQUIRE(baseline_normalized.has_value());
   shiny::nesting::pack::constructive::FillFirstEngine baseline_engine;
   const auto baseline = baseline_engine.solve(baseline_normalized.value(), {});
-  REQUIRE(baseline.ok());
+  REQUIRE(baseline.has_value());
   REQUIRE(baseline.value().layout.placement_trace.empty());
 
   auto mirrored_request = baseline_request;
@@ -210,11 +210,11 @@ TEST_CASE("constructive solve can use mirrored placements when enabled",
 
   const auto mirrored_normalized =
       shiny::nesting::normalize_request(mirrored_request);
-  REQUIRE(mirrored_normalized.ok());
+  REQUIRE(mirrored_normalized.has_value());
   shiny::nesting::pack::constructive::FillFirstEngine mirrored_engine;
   const auto mirrored =
       mirrored_engine.solve(mirrored_normalized.value(), {});
-  REQUIRE(mirrored.ok());
+  REQUIRE(mirrored.has_value());
   REQUIRE(mirrored.value().layout.placement_trace.size() == 1U);
   REQUIRE(mirrored.value()
               .layout.bins.front()

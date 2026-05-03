@@ -323,10 +323,10 @@ auto log_solve_finish(const NestingRequest &request,
 } // namespace
 
 auto solve(const NestingRequest &request, const SolveControl &control)
-    -> util::StatusOr<NestingResult> {
+    -> std::expected<NestingResult, util::Status> {
   auto normalized_request = normalize_request(request);
-  if (!normalized_request.ok()) {
-    return normalized_request.status();
+  if (!normalized_request.has_value()) {
+    return std::unexpected(normalized_request.error());
   }
 
   runtime::Stopwatch stopwatch;
@@ -335,8 +335,8 @@ auto solve(const NestingRequest &request, const SolveControl &control)
   if (request.execution.strategy == StrategyKind::bounding_box) {
     auto decoder_request =
         to_bounding_box_decoder_request(normalized_request.value());
-    if (!decoder_request.ok()) {
-      return decoder_request.status();
+    if (!decoder_request.has_value()) {
+      return std::unexpected(decoder_request.error());
     }
 
     const std::uint32_t configured_attempts =
@@ -384,7 +384,7 @@ auto solve(const NestingRequest &request, const SolveControl &control)
         });
     const auto best_attempt_index = best_bounding_box_attempt_index(results);
     if (!best_attempt_index.has_value()) {
-      return util::Status::invalid_input;
+      return std::unexpected(util::Status::invalid_input);
     }
 
     const bool hit_operation_limit =
@@ -421,7 +421,7 @@ auto solve(const NestingRequest &request, const SolveControl &control)
         log::strategy_name(request.execution.strategy),
         log::production_optimizer_name(request.execution.production_optimizer),
         log::request_surface_summary(request));
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   const auto runner_class = log::effective_runner_class_name(request.execution);
@@ -436,7 +436,7 @@ auto solve(const NestingRequest &request, const SolveControl &control)
 
   search::BrkgaProductionSearch search;
   auto result = search.solve(normalized_request.value(), control);
-  if (result.ok()) {
+  if (result.has_value()) {
     result.value().strategy = StrategyKind::metaheuristic_search;
     result.value().effective_seed = control.random_seed;
     validation::finalize_result(normalized_request.value(), result.value());
@@ -446,20 +446,20 @@ auto solve(const NestingRequest &request, const SolveControl &control)
 }
 
 auto solve(const ProfileRequest &request, const ProfileSolveControl &control)
-    -> util::StatusOr<NestingResult> {
+    -> std::expected<NestingResult, util::Status> {
   // Validate basic profile preconditions (profile recognized, time limit
   // present for non-Quick profiles) before the full translation step.
   if (const auto v = request.validate(); !v) {
-    return v.error();
+    return std::unexpected(v.error());
   }
   auto translated_request = to_nesting_request(request);
-  if (!translated_request.ok()) {
-    return translated_request.status();
+  if (!translated_request.has_value()) {
+    return std::unexpected(translated_request.error());
   }
   const auto normalized_profile_request =
       normalize_request(translated_request.value());
-  if (!normalized_profile_request.ok()) {
-    return normalized_profile_request.status();
+  if (!normalized_profile_request.has_value()) {
+    return std::unexpected(normalized_profile_request.error());
   }
 
   const auto started_at = std::chrono::steady_clock::now();
@@ -580,7 +580,7 @@ auto solve(const ProfileRequest &request, const ProfileSolveControl &control)
       .workspace = control.workspace,
   };
 
-  auto result = [&]() -> util::StatusOr<NestingResult> {
+  auto result = [&]() -> std::expected<NestingResult, util::Status> {
     if (request.profile == SolveProfile::quick) {
       return solve(translated_request.value(), translated_control);
     }
@@ -597,8 +597,8 @@ auto solve(const ProfileRequest &request, const ProfileSolveControl &control)
     pack::constructive::FillFirstEngine constructive_engine;
     auto constructive_result =
         constructive_engine.solve(normalized_request, constructive_control);
-    if (!constructive_result.ok()) {
-      return constructive_result.status();
+    if (!constructive_result.has_value()) {
+      return std::unexpected(constructive_result.error());
     }
 
     emit_profile_snapshot(constructive_result.value().layout, StopReason::none,
@@ -660,7 +660,7 @@ auto solve(const ProfileRequest &request, const ProfileSolveControl &control)
     return sparrow_result;
   }();
 
-  if (result.ok()) {
+  if (result.has_value()) {
     if (time_limit_requested.load() &&
         result.value().stop_reason == StopReason::cancelled) {
       result.value().stop_reason = StopReason::time_limit_reached;

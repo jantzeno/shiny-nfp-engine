@@ -7,7 +7,7 @@ TEST_CASE("OR-Datasets strip schema loads", "[io][or-datasets]") {
   const auto dataset = shiny::nesting::io::load_or_dataset(
       shiny::nesting::test::fixture_root() / "or_datasets/strip_dataset.json");
 
-  REQUIRE(dataset.ok());
+  REQUIRE(dataset.has_value());
   REQUIRE(dataset.value().name == "fixture_strip");
   REQUIRE(dataset.value().uses_strip_container());
   REQUIRE_FALSE(dataset.value().uses_explicit_bins());
@@ -21,7 +21,7 @@ TEST_CASE("OR-Datasets explicit-bin schema loads", "[io][or-datasets]") {
       shiny::nesting::test::fixture_root() /
       "or_datasets/explicit_bins_dataset.json");
 
-  REQUIRE(dataset.ok());
+  REQUIRE(dataset.has_value());
   REQUIRE(dataset.value().name == "fixture_bins");
   REQUIRE_FALSE(dataset.value().uses_strip_container());
   REQUIRE(dataset.value().uses_explicit_bins());

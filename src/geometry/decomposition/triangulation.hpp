@@ -15,9 +15,9 @@ struct TriangulationResult {
 };
 
 [[nodiscard]] auto triangulate_polygon(const geom::Polygon &polygon)
-    -> util::StatusOr<TriangulationResult>;
+    -> std::expected<TriangulationResult, util::Status>;
 
 [[nodiscard]] auto triangulate_polygon(const geom::PolygonWithHoles &polygon)
-    -> util::StatusOr<TriangulationResult>;
+    -> std::expected<TriangulationResult, util::Status>;
 
 } // namespace shiny::nesting::decomp

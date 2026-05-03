@@ -19,6 +19,6 @@ namespace shiny::nesting {
 
 [[nodiscard]] auto solve(const NestingRequest &request,
                          const SolveControl &control = {})
-    -> util::StatusOr<NestingResult>;
+    -> std::expected<NestingResult, util::Status>;
 
 } // namespace shiny::nesting

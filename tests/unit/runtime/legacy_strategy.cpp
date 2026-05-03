@@ -70,7 +70,7 @@ TEST_CASE("legacy strategy kinds route to the declared solver path",
 
     const auto result =
         shiny::nesting::solve(request, SolveControl{.random_seed = 17});
-    REQUIRE(result.ok());
+    REQUIRE(result.has_value());
     REQUIRE(result.value().strategy == StrategyKind::bounding_box);
     REQUIRE(result.value().layout_valid());
   }
@@ -81,7 +81,7 @@ TEST_CASE("legacy strategy kinds route to the declared solver path",
 
     const auto result =
         shiny::nesting::solve(request, SolveControl{.random_seed = 17});
-    REQUIRE(result.ok());
+    REQUIRE(result.has_value());
     REQUIRE(result.value().strategy == StrategyKind::metaheuristic_search);
     REQUIRE(result.value().search.optimizer == OptimizerKind::brkga);
     REQUIRE(result.value().all_parts_placed());

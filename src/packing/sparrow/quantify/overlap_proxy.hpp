@@ -12,6 +12,6 @@ struct OverlapProxyResult {
 
 [[nodiscard]] auto quantify_overlap(const adapters::PortPolygon &lhs,
                                     const adapters::PortPolygon &rhs)
-    -> util::StatusOr<OverlapProxyResult>;
+    -> std::expected<OverlapProxyResult, util::Status>;
 
 } // namespace shiny::nesting::pack::sparrow::quantify

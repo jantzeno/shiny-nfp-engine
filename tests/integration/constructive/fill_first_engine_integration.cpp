@@ -93,7 +93,7 @@ TEST_CASE("fill-first integration keeps selected-bin scope when overflow opens a
   });
 
   const auto result_or = shiny::nesting::solve(request, ProfileSolveControl{});
-  REQUIRE(result_or.ok());
+  REQUIRE(result_or.has_value());
 
   const auto &result = result_or.value();
   REQUIRE(result.stop_reason == StopReason::completed);
@@ -142,7 +142,7 @@ TEST_CASE("fill-first integration keeps maintained assignment pieces pinned and 
   });
 
   const auto result_or = shiny::nesting::solve(request, ProfileSolveControl{});
-  REQUIRE(result_or.ok());
+  REQUIRE(result_or.has_value());
 
   const auto &result = result_or.value();
   REQUIRE(result.stop_reason == StopReason::completed);
@@ -187,7 +187,7 @@ TEST_CASE("fill-first integration intersects selected bin scope with maintained 
   });
 
   const auto result_or = shiny::nesting::solve(request, ProfileSolveControl{});
-  REQUIRE(result_or.ok());
+  REQUIRE(result_or.has_value());
 
   const auto &result = result_or.value();
   REQUIRE(result.stop_reason == StopReason::completed);
@@ -221,10 +221,10 @@ TEST_CASE("fill-first integration produces a deterministic stable layout for a r
   });
 
   const auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
   shiny::nesting::pack::constructive::FillFirstEngine engine;
   const auto result_or = engine.solve(normalized.value(), {});
-  REQUIRE(result_or.ok());
+  REQUIRE(result_or.has_value());
 
   const auto &result = result_or.value();
   REQUIRE(result.stop_reason == StopReason::completed);
@@ -266,7 +266,7 @@ TEST_CASE("fill-first integration dense single-bin layout meets utilization floo
   }
 
   const auto result_or = shiny::nesting::solve(request, ProfileSolveControl{});
-  REQUIRE(result_or.ok());
+  REQUIRE(result_or.has_value());
 
   const auto &result = result_or.value();
   REQUIRE(result.stop_reason == StopReason::completed);
@@ -308,7 +308,7 @@ TEST_CASE(
   });
 
   const auto result_or = shiny::nesting::solve(request, ProfileSolveControl{});
-  REQUIRE(result_or.ok());
+  REQUIRE(result_or.has_value());
 
   const auto &result = result_or.value();
   REQUIRE(result.stop_reason == StopReason::completed);
@@ -376,10 +376,10 @@ TEST_CASE(
   });
 
   const auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
   shiny::nesting::pack::constructive::FillFirstEngine engine;
   const auto result_or = engine.solve(normalized.value(), {});
-  REQUIRE(result_or.ok());
+  REQUIRE(result_or.has_value());
 
   const auto &result = result_or.value();
   REQUIRE(result.stop_reason == StopReason::completed);
@@ -397,10 +397,10 @@ TEST_CASE(
   NestingRequest request_no_gf = request;
   request_no_gf.execution.irregular.enable_gap_fill = false;
   const auto normalized_no_gf = shiny::nesting::normalize_request(request_no_gf);
-  REQUIRE(normalized_no_gf.ok());
+  REQUIRE(normalized_no_gf.has_value());
   shiny::nesting::pack::constructive::FillFirstEngine engine_no_gf;
   const auto result_no_gf_or = engine_no_gf.solve(normalized_no_gf.value(), {});
-  REQUIRE(result_no_gf_or.ok());
+  REQUIRE(result_no_gf_or.has_value());
   CHECK(result_no_gf_or.value().stop_reason == StopReason::completed);
   CHECK(result_no_gf_or.value().layout.unplaced_piece_ids.size() == 3U);
 }
@@ -434,7 +434,7 @@ TEST_CASE("fill-first integration overflow bin opens with expected utilization f
   });
 
   const auto result_or = shiny::nesting::solve(request, ProfileSolveControl{});
-  REQUIRE(result_or.ok());
+  REQUIRE(result_or.has_value());
 
   const auto &result = result_or.value();
   REQUIRE(result.stop_reason == StopReason::completed);

@@ -678,7 +678,7 @@ TEST_CASE("REGRESSION: actual-polygon MTG constructive does not return to bed1 "
       PieceOrdering::largest_area_first;
 
   auto normalized = normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   pack::constructive::FillFirstEngine packer;
   const auto solved =
@@ -687,7 +687,7 @@ TEST_CASE("REGRESSION: actual-polygon MTG constructive does not return to bed1 "
                        .time_limit_milliseconds = kActualPolygonTimeCapMs,
                        .random_seed = 0,
                    });
-  REQUIRE(solved.ok());
+  REQUIRE(solved.has_value());
   const auto &result = solved.value();
 
   INFO(actual_polygon_layout_summary(result));
@@ -722,7 +722,7 @@ TEST_CASE("REGRESSION: actual-polygon MTG nfp_perfect does not return to bed1 "
       PieceOrdering::largest_area_first;
 
   auto normalized = normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   pack::constructive::FillFirstEngine packer;
   const auto solved =
@@ -731,7 +731,7 @@ TEST_CASE("REGRESSION: actual-polygon MTG nfp_perfect does not return to bed1 "
                        .time_limit_milliseconds = kActualPolygonTimeCapMs,
                        .random_seed = 0,
                    });
-  REQUIRE(solved.ok());
+  REQUIRE(solved.has_value());
   const auto &result = solved.value();
 
   INFO(actual_polygon_layout_summary(result));

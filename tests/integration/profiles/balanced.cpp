@@ -69,8 +69,8 @@ auto make_exploration_seed(const NestingRequest &request,
                            const shiny::nesting::SolveControl &control)
     -> shiny::nesting::search::SolutionPoolEntry {
   const auto normalized = shiny::nesting::normalize_request(request);
-  CHECK(normalized.ok());
-  if (!normalized.ok()) {
+  CHECK(normalized.has_value());
+  if (!normalized.has_value()) {
     return {};
   }
 
@@ -186,7 +186,7 @@ TEST_CASE(
   const auto adapted_or =
       shiny::nesting::pack::sparrow::adapters::adapt_request(
           request, shiny::nesting::test::sparrow::make_profile_control(123));
-  REQUIRE(adapted_or.ok());
+  REQUIRE(adapted_or.has_value());
 
   const auto &adapted = adapted_or.value();
   CHECK(adapted.seed_flow.profile == SolveProfile::balanced);
@@ -270,7 +270,7 @@ TEST_CASE("balanced Sparrow exploration phase stays bounded by the configured it
   const shiny::nesting::SolveControl control{.random_seed = 11U};
   const auto seed = make_exploration_seed(request, control);
   const auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   shiny::nesting::runtime::Stopwatch stopwatch;
   const shiny::nesting::runtime::TimeBudget time_budget(0U);
@@ -296,7 +296,7 @@ TEST_CASE("balanced Sparrow exploration accepts escape moves inside the record a
   const shiny::nesting::SolveControl control{.random_seed = 17U};
   const auto seed = make_exploration_seed(request, control);
   const auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   shiny::nesting::runtime::Stopwatch stopwatch;
   const shiny::nesting::runtime::TimeBudget time_budget(0U);
@@ -319,7 +319,7 @@ TEST_CASE("balanced Sparrow large-item disruption is deterministic and shape-awa
           "[sparrow][integration][balanced]") {
   const auto request = make_exploration_request();
   const auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
   shiny::nesting::runtime::DeterministicRng rng(23U);
 
   const auto result =
@@ -386,8 +386,8 @@ TEST_CASE("balanced profile solve routes through Sparrow while quick profile sta
                             .random_seed = 19U,
                         });
 
-  REQUIRE(quick.ok());
-  REQUIRE(balanced.ok());
+  REQUIRE(quick.has_value());
+  REQUIRE(balanced.has_value());
   CHECK(quick.value().strategy == StrategyKind::bounding_box);
   CHECK_FALSE(quick.value().search.sparrow_polished);
   CHECK(balanced.value().strategy == StrategyKind::metaheuristic_search);

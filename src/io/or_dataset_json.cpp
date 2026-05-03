@@ -36,25 +36,25 @@ constexpr std::uintmax_t kMaxJsonInputBytes = 8U * 1024U * 1024U;
 }
 
 [[nodiscard]] auto read_json_tree(const fs::path &path)
-    -> util::StatusOr<pt::ptree> {
+    -> std::expected<pt::ptree, util::Status> {
   if (!path_is_safe_json(path)) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   std::error_code error;
   if (!fs::exists(path, error) || error) {
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   }
   const auto bytes = fs::file_size(path, error);
   if (error || bytes > kMaxJsonInputBytes) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   pt::ptree tree;
   try {
     pt::read_json(path.string(), tree);
   } catch (...) {
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   }
   return tree;
 }
@@ -112,10 +112,10 @@ constexpr std::uintmax_t kMaxJsonInputBytes = 8U * 1024U * 1024U;
 } // namespace detail
 
 auto load_or_dataset(const std::filesystem::path &path)
-    -> util::StatusOr<OrDataset> {
+    -> std::expected<OrDataset, util::Status> {
   auto tree_or = detail::read_json_tree(path);
-  if (!tree_or.ok()) {
-    return tree_or.status();
+  if (!tree_or.has_value()) {
+    return std::unexpected(tree_or.error());
   }
 
   try {
@@ -123,7 +123,7 @@ auto load_or_dataset(const std::filesystem::path &path)
     OrDataset dataset;
     dataset.name = tree.get<std::string>("name", "");
     if (dataset.name.empty()) {
-      return util::Status::invalid_input;
+      return std::unexpected(util::Status::invalid_input);
     }
 
     for (const auto &item_node : tree.get_child("items")) {
@@ -148,7 +148,7 @@ auto load_or_dataset(const std::filesystem::path &path)
       }
       item.polygon = detail::parse_shape(item_tree.get_child("shape"));
       if (!geom::validate_polygon(item.polygon).is_valid()) {
-        return util::Status::invalid_input;
+        return std::unexpected(util::Status::invalid_input);
       }
       dataset.items.push_back(std::move(item));
     }
@@ -170,7 +170,7 @@ auto load_or_dataset(const std::filesystem::path &path)
         }
         bin.polygon = detail::parse_shape(bin_tree.get_child("shape"));
         if (!geom::validate_polygon(bin.polygon).is_valid()) {
-          return util::Status::invalid_input;
+          return std::unexpected(util::Status::invalid_input);
         }
         dataset.bins.push_back(std::move(bin));
       }
@@ -178,12 +178,12 @@ auto load_or_dataset(const std::filesystem::path &path)
 
     if (dataset.items.empty() ||
         (!dataset.strip_height.has_value() && dataset.bins.empty())) {
-      return util::Status::invalid_input;
+      return std::unexpected(util::Status::invalid_input);
     }
 
     return dataset;
   } catch (...) {
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   }
 }
 

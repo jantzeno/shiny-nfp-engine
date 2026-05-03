@@ -220,10 +220,10 @@ merge_polygon_set(std::vector<geom::PolygonWithHoles> polygons)
       [](const geom::PolygonWithHoles &lhs, const geom::PolygonWithHoles &rhs)
           -> std::optional<geom::PolygonWithHoles> {
         auto unioned = geom::try_union_polygons(lhs, rhs);
-        if (!unioned.ok()) {
+        if (!unioned.has_value()) {
           SHINY_DEBUG("orbiting_nfp: merge union failed status={} lhs_outer={} "
                       "rhs_outer={}",
-                      util::status_name(unioned.status()), lhs.outer().size(),
+                      util::status_name(unioned.error()), lhs.outer().size(),
                       rhs.outer().size());
           return std::nullopt;
         }
@@ -238,13 +238,13 @@ merge_polygon_set(std::vector<geom::PolygonWithHoles> polygons)
 
 [[nodiscard]] auto has_actual_overlap(const geom::Ring &stationary,
                                       const geom::Ring &orbiting)
-    -> util::StatusOr<bool> {
+    -> std::expected<bool, util::Status> {
   auto overlap = geom::try_intersection_polygons(
       geom::PolygonWithHoles(stationary), geom::PolygonWithHoles(orbiting));
-  if (!overlap.ok()) {
+  if (!overlap.has_value()) {
     SHINY_DEBUG("orbiting_nfp: overlap intersection failed status={}",
-                util::status_name(overlap.status()));
-    return overlap.status();
+                util::status_name(overlap.error()));
+    return std::unexpected(overlap.error());
   }
   double overlap_area = 0.0;
   for (const auto &polygon : overlap.value()) {
@@ -584,21 +584,21 @@ struct CollisionEvent {
 }
 
 [[nodiscard]] auto build_path_polygon(const std::vector<geom::Point2> &path)
-    -> util::StatusOr<geom::PolygonWithHoles> {
+    -> std::expected<geom::PolygonWithHoles, util::Status> {
   if (path.size() < 3U) {
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   }
 
   auto simplified = geom::simplify_collinear_ring(path);
   if (simplified.size() < 3U) {
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   }
 
   const auto polygon =
       geom::normalize_polygon(geom::PolygonWithHoles(std::move(simplified)));
   if (!geom::validate_polygon(polygon).is_valid() ||
       geom::polygon_area(polygon) <= kContactTolerance * kContactTolerance) {
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   }
 
   return polygon;
@@ -607,7 +607,7 @@ struct CollisionEvent {
 [[nodiscard]] auto trace_nfp_boundary(const geom::Ring &stationary,
                                       const geom::Ring &orbiting,
                                       const geom::Point2 &start_position)
-    -> util::StatusOr<geom::PolygonWithHoles> {
+    -> std::expected<geom::PolygonWithHoles, util::Status> {
   std::vector<geom::Point2> path;
   path.reserve(128U);
   path.push_back(start_position);
@@ -824,9 +824,9 @@ auto append_start_positions(std::vector<geom::Point2> &start_positions,
 [[nodiscard]] auto
 compute_simple_orbiting_nfp(const geom::PolygonWithHoles &fixed,
                             const geom::PolygonWithHoles &moving)
-    -> util::StatusOr<geom::PolygonWithHoles> {
+    -> std::expected<geom::PolygonWithHoles, util::Status> {
   if (!fixed.holes().empty() || !moving.holes().empty()) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   const auto stationary = ensure_ccw(fixed.outer());
@@ -837,7 +837,7 @@ compute_simple_orbiting_nfp(const geom::PolygonWithHoles &fixed,
       ensure_ccw(geom::compute_convex_hull(geom::Polygon(orbiting)).outer());
   if (stationary.size() < 3U || stationary_hull.size() < 3U ||
       orbiting.size() < 3U || orbiting_hull.size() < 3U) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   for (const auto &start_position :
@@ -845,27 +845,27 @@ compute_simple_orbiting_nfp(const geom::PolygonWithHoles &fixed,
     const auto orbiting_at_start = geom::translate(
         orbiting, geom::Vector2(start_position.x(), start_position.y()));
     auto overlap = has_actual_overlap(stationary, orbiting_at_start);
-    if (!overlap.ok()) {
-      return overlap.status();
+    if (!overlap.has_value()) {
+      return std::unexpected(overlap.error());
     }
     if (overlap.value()) {
       continue;
     }
 
     if (auto traced = trace_nfp_boundary(stationary, orbiting, start_position);
-        traced.ok()) {
+        traced.has_value()) {
       return traced;
     }
   }
 
-  return util::Status::computation_failed;
+  return std::unexpected(util::Status::computation_failed);
 }
 
 } // namespace
 
 auto compute_orbiting_nfp(const geom::PolygonWithHoles &fixed,
                           const geom::PolygonWithHoles &moving)
-    -> util::StatusOr<std::vector<geom::PolygonWithHoles>> {
+    -> std::expected<std::vector<geom::PolygonWithHoles>, util::Status> {
   const auto normalized_fixed = geom::sanitize_polygon(fixed).polygon;
   const auto normalized_moving = geom::sanitize_polygon(moving).polygon;
 
@@ -874,7 +874,7 @@ auto compute_orbiting_nfp(const geom::PolygonWithHoles &fixed,
     SHINY_DEBUG("orbiting_nfp: invalid input fixed_outer={} moving_outer={}",
                 normalized_fixed.outer().size(),
                 normalized_moving.outer().size());
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   const auto vertex_product =
@@ -885,7 +885,7 @@ auto compute_orbiting_nfp(const geom::PolygonWithHoles &fixed,
         "moving_outer={} vertex_product={}",
         normalized_fixed.outer().size(), normalized_moving.outer().size(),
         vertex_product);
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   }
 
   if (normalized_fixed.holes().empty() && normalized_moving.holes().empty() &&
@@ -893,18 +893,18 @@ auto compute_orbiting_nfp(const geom::PolygonWithHoles &fixed,
       geom::polygon_is_convex(geom::Polygon(normalized_moving.outer()))) {
     if (auto simple_nfp =
             compute_simple_orbiting_nfp(normalized_fixed, normalized_moving);
-        simple_nfp.ok()) {
+        simple_nfp.has_value()) {
       return std::vector<geom::PolygonWithHoles>{std::move(simple_nfp).value()};
     }
   }
 
   auto fixed_parts_or = decomp::decompose_convex(normalized_fixed);
-  if (!fixed_parts_or.ok()) {
-    return fixed_parts_or.status();
+  if (!fixed_parts_or.has_value()) {
+    return std::unexpected(fixed_parts_or.error());
   }
   auto moving_parts_or = decomp::decompose_convex(normalized_moving);
-  if (!moving_parts_or.ok()) {
-    return moving_parts_or.status();
+  if (!moving_parts_or.has_value()) {
+    return std::unexpected(moving_parts_or.error());
   }
 
   std::vector<geom::PolygonWithHoles> aggregate;
@@ -917,21 +917,21 @@ auto compute_orbiting_nfp(const geom::PolygonWithHoles &fixed,
       auto pair_nfp = compute_simple_orbiting_nfp(
           geom::PolygonWithHoles(fixed_part.outer()),
           geom::PolygonWithHoles(moving_part.outer()));
-      if (pair_nfp.ok()) {
+      if (pair_nfp.has_value()) {
         aggregate.push_back(std::move(pair_nfp).value());
         continue;
       }
 
       auto convex_nfp = compute_convex_nfp(fixed_part, moving_part);
-      if (!convex_nfp.ok()) {
-        return convex_nfp.status();
+      if (!convex_nfp.has_value()) {
+        return std::unexpected(convex_nfp.error());
       }
       aggregate.push_back(std::move(convex_nfp).value());
     }
   }
 
   if (aggregate.empty()) {
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   }
 
   return merge_polygon_set(std::move(aggregate));

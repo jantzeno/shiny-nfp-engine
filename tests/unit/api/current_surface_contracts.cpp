@@ -181,8 +181,8 @@ TEST_CASE("api contracts reject invalid request families",
       if (test_case.invalid_before_normalization) {
         REQUIRE_FALSE(test_case.request.is_valid());
       }
-      REQUIRE_FALSE(shiny::nesting::normalize_request(test_case.request).ok());
-      REQUIRE(shiny::nesting::normalize_request(test_case.request).status() ==
+      REQUIRE_FALSE(shiny::nesting::normalize_request(test_case.request).has_value());
+      REQUIRE(shiny::nesting::normalize_request(test_case.request).error() ==
               Status::invalid_input);
     }
   }
@@ -209,10 +209,10 @@ TEST_CASE("api contracts accept edge-legal requests",
   for (const auto &request : cases) {
     REQUIRE(request.is_valid());
     const auto normalized = shiny::nesting::normalize_request(request);
-    REQUIRE(normalized.ok());
+    REQUIRE(normalized.has_value());
     const auto result = shiny::nesting::solve(
         request, SolveControlBuilder{}.with_random_seed(0).build());
-    REQUIRE(result.ok());
+    REQUIRE(result.has_value());
     REQUIRE(result.value().stop_reason == StopReason::completed);
     REQUIRE(result.value().layout_valid());
     REQUIRE(result.value().all_parts_placed());
@@ -233,7 +233,7 @@ TEST_CASE(
 
   const auto normalized = shiny::nesting::normalize_request(request);
 
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
   REQUIRE(normalized.value().request.execution.selected_bin_ids ==
           std::vector<std::uint32_t>{2U});
   REQUIRE(normalized.value().request.bins.size() == 1U);
@@ -332,8 +332,8 @@ TEST_CASE("packing and search contracts preserve bins, seeds, and validity",
                                          .with_operation_limit(4)
                                          .build());
 
-  REQUIRE(first.ok());
-  REQUIRE(second.ok());
+  REQUIRE(first.has_value());
+  REQUIRE(second.has_value());
   REQUIRE(first.value().effective_seed == 17U);
   REQUIRE((first.value().stop_reason == StopReason::operation_limit_reached ||
            first.value().stop_reason == StopReason::completed));
@@ -360,7 +360,7 @@ TEST_CASE(
 
   const auto result = shiny::nesting::solve(request);
 
-  REQUIRE(result.ok());
+  REQUIRE(result.has_value());
   REQUIRE(result.value().stop_reason == StopReason::completed);
   REQUIRE(result.value().layout_valid());
   REQUIRE_FALSE(result.value().all_parts_placed());
@@ -373,7 +373,7 @@ TEST_CASE(
 TEST_CASE("IO artifacts expose deterministic IDs and reject unsafe paths",
           "[contracts][io][artifacts]") {
   const auto solved = shiny::nesting::solve(base_request());
-  REQUIRE(solved.ok());
+  REQUIRE(solved.has_value());
 
   const auto layout_path = temp_path("layout.json");
   const auto svg_path = temp_path("layout.svg");

@@ -134,26 +134,26 @@ auto populate_adjacency(const std::vector<geom::Polygon> &triangles,
 } // namespace
 
 auto triangulate_polygon(const geom::Polygon &polygon)
-    -> util::StatusOr<TriangulationResult> {
+    -> std::expected<TriangulationResult, util::Status> {
   return triangulate_polygon(geom::PolygonWithHoles(polygon.outer()));
 }
 
 auto triangulate_polygon(const geom::PolygonWithHoles &polygon)
-    -> util::StatusOr<TriangulationResult> {
+    -> std::expected<TriangulationResult, util::Status> {
   const auto normalized = geom::normalize_polygon(polygon);
   if (!geom::validate_polygon(normalized).is_valid()) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   std::vector<geom::Point2> flat_points;
   const auto earcut_polygon = build_earcut_polygon(normalized, flat_points);
   if (earcut_polygon.empty() || flat_points.size() < 3U) {
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   }
 
   const auto indices = mapbox::earcut<std::uint32_t>(earcut_polygon);
   if (indices.size() < 3U || indices.size() % 3U != 0U) {
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   }
 
   std::vector<geom::Polygon> triangles;
@@ -177,7 +177,7 @@ auto triangulate_polygon(const geom::PolygonWithHoles &polygon)
   }
 
   if (triangles.empty()) {
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   }
 
   std::vector<std::array<std::int32_t, 3>> neighbours(triangles.size(),

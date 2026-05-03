@@ -22,6 +22,6 @@ struct PortRequestAdapterResult {
 
 [[nodiscard]] auto adapt_request(const ProfileRequest &request,
                                  const ProfileSolveControl &control)
-    -> util::StatusOr<PortRequestAdapterResult>;
+    -> std::expected<PortRequestAdapterResult, util::Status>;
 
 } // namespace shiny::nesting::pack::sparrow::adapters

@@ -96,7 +96,7 @@ TEST_CASE("shared neighborhood operators produce order changes",
           "[search][metaheuristic][neighborhood]") {
   const auto normalized =
       shiny::nesting::normalize_request(neighborhood_request());
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   shiny::nesting::runtime::Stopwatch stopwatch;
   shiny::nesting::runtime::TimeBudget time_budget;
@@ -146,7 +146,7 @@ TEST_CASE("order evaluator honors forced rotation assignments",
   });
 
   const auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   shiny::nesting::runtime::Stopwatch stopwatch;
   shiny::nesting::runtime::TimeBudget time_budget;

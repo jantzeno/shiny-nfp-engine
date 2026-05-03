@@ -132,7 +132,7 @@ TEST_CASE("triangulation exposes deterministic adjacency",
       {0.0, 0.0}, {4.0, 0.0}, {4.0, 1.0}, {1.0, 1.0}, {1.0, 4.0}, {0.0, 4.0}});
 
   auto triangulation_or = triangulate_polygon(polygon);
-  REQUIRE(triangulation_or.ok());
+  REQUIRE(triangulation_or.has_value());
   const auto &triangulation = triangulation_or.value();
 
   REQUIRE(triangulation.triangles.size() == triangulation.neighbours.size());
@@ -171,7 +171,7 @@ TEST_CASE("regression keeps the deterministic L-shape partition",
       {0.0, 0.0}, {4.0, 0.0}, {4.0, 1.0}, {1.0, 1.0}, {1.0, 4.0}, {0.0, 4.0}});
 
   auto pieces_or = decompose_convex(polygon);
-  REQUIRE(pieces_or.ok());
+  REQUIRE(pieces_or.has_value());
   auto pieces = std::move(pieces_or).value();
 
   REQUIRE(pieces.size() == 2U);
@@ -195,11 +195,11 @@ TEST_CASE("adjacency-aware merge never uses more pieces than restart greedy",
       const auto polygon = make_staircase_polygon(seed);
 
       auto actual_or = decompose_convex(polygon);
-      REQUIRE(actual_or.ok());
+      REQUIRE(actual_or.has_value());
       const auto &actual = actual_or.value();
 
       auto triangulation_or = triangulate_polygon(polygon);
-      REQUIRE(triangulation_or.ok());
+      REQUIRE(triangulation_or.has_value());
       auto greedy_pieces =
           greedy_pairwise_merge(std::move(triangulation_or).value().triangles,
                                 [](const Polygon &lhs, const Polygon &rhs) {

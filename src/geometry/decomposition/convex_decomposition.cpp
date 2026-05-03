@@ -222,15 +222,15 @@ auto is_convex(const geom::Polygon &polygon) -> bool {
 }
 
 auto decompose_convex(const geom::Polygon &polygon)
-    -> util::StatusOr<std::vector<geom::Polygon>> {
+    -> std::expected<std::vector<geom::Polygon>, util::Status> {
   return decompose_convex(geom::PolygonWithHoles{polygon.outer()});
 }
 
 auto decompose_convex(const geom::PolygonWithHoles &polygon)
-    -> util::StatusOr<std::vector<geom::Polygon>> {
+    -> std::expected<std::vector<geom::Polygon>, util::Status> {
   const auto normalized = geom::normalize_polygon(polygon);
   if (!geom::validate_polygon(normalized).is_valid()) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   if (normalized.holes().empty() &&
@@ -239,8 +239,8 @@ auto decompose_convex(const geom::PolygonWithHoles &polygon)
   }
 
   auto triangulation_or = triangulate_polygon(normalized);
-  if (!triangulation_or.ok()) {
-    return triangulation_or.status();
+  if (!triangulation_or.has_value()) {
+    return std::unexpected(triangulation_or.error());
   }
 
   auto triangulation = std::move(triangulation_or).value();

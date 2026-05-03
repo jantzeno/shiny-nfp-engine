@@ -86,18 +86,18 @@ auto append_segment_samples(const ImportedPathSegment &segment,
 [[nodiscard]] auto ring_from_shape(const ImportedShape &shape,
                                    const ImportPreprocessOptions &options,
                                    const bool normalize_piece_origins)
-    -> util::StatusOr<geom::PolygonWithHoles> {
+    -> std::expected<geom::PolygonWithHoles, util::Status> {
   auto outer_or = flatten_ring(shape.outer, options.flatten_tolerance);
-  if (!outer_or.ok()) {
-    return outer_or.status();
+  if (!outer_or.has_value()) {
+    return std::unexpected(outer_or.error());
   }
 
   geom::PolygonWithHoles polygon;
   polygon.outer() = std::move(outer_or.value());
   for (const auto &hole : shape.holes) {
     auto hole_or = flatten_ring(hole, options.flatten_tolerance);
-    if (!hole_or.ok()) {
-      return hole_or.status();
+    if (!hole_or.has_value()) {
+      return std::unexpected(hole_or.error());
     }
     polygon.holes().push_back(std::move(hole_or.value()));
   }
@@ -121,10 +121,10 @@ auto append_segment_samples(const ImportedPathSegment &segment,
 } // namespace detail
 
 auto flatten_ring(const ImportedRing &ring, const double tolerance)
-    -> util::StatusOr<geom::Ring> {
+    -> std::expected<geom::Ring, util::Status> {
   if (!ring.closed || ring.segments.empty() || !std::isfinite(tolerance) ||
       tolerance <= 0.0) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   std::vector<geom::Point2> samples;
@@ -146,18 +146,18 @@ auto flatten_ring(const ImportedRing &ring, const double tolerance)
     flattened.pop_back();
   }
   if (flattened.size() < 3U) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
   return flattened;
 }
 
 auto preprocess_import_request(const ImportPreprocessRequest &request)
-    -> util::StatusOr<NormalizedRequest> {
+    -> std::expected<NormalizedRequest, util::Status> {
   if (!std::isfinite(request.options.flatten_tolerance) ||
       request.options.flatten_tolerance <= 0.0 ||
       !std::isfinite(request.options.simplify_epsilon) ||
       request.options.simplify_epsilon < 0.0) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   NestingRequest normalized_request = request.base_request;
@@ -175,8 +175,8 @@ auto preprocess_import_request(const ImportPreprocessRequest &request)
 
     auto polygon_or =
         detail::ring_from_shape(bin.shape, request.options, false);
-    if (!polygon_or.ok()) {
-      return polygon_or.status();
+    if (!polygon_or.has_value()) {
+      return std::unexpected(polygon_or.error());
     }
 
     normalized_request.bins.push_back({
@@ -191,8 +191,8 @@ auto preprocess_import_request(const ImportPreprocessRequest &request)
   for (const auto &piece : request.pieces) {
     auto polygon_or = detail::ring_from_shape(
         piece.shape, request.options, request.options.normalize_piece_origins);
-    if (!polygon_or.ok()) {
-      return polygon_or.status();
+    if (!polygon_or.has_value()) {
+      return std::unexpected(polygon_or.error());
     }
 
     normalized_request.pieces.push_back({

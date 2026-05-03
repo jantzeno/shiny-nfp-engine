@@ -85,7 +85,7 @@ auto heavy_profile_request(const SolveProfile profile,
     });
   }
   const auto request = builder.build_checked();
-  REQUIRE(request.ok());
+  REQUIRE(request.has_value());
   return request.value();
 }
 
@@ -98,10 +98,10 @@ TEST_CASE("profile request builder exposes quick balanced and maximum search pro
                            .with_allow_part_overflow(false)
                            .build_checked();
 
-  REQUIRE(request.ok());
+  REQUIRE(request.has_value());
 
   const auto translated = shiny::nesting::to_nesting_request(request.value());
-  REQUIRE(translated.ok());
+  REQUIRE(translated.has_value());
   REQUIRE(translated.value().execution.strategy ==
           StrategyKind::bounding_box);
   REQUIRE(translated.value().execution.selected_bin_ids ==
@@ -113,7 +113,7 @@ TEST_CASE("profile request builder requires a time limit for balanced and maximu
           "[api][profiles]") {
   const auto missing_time_limit =
       simple_profile_request(SolveProfile::balanced).build_checked();
-  REQUIRE_FALSE(missing_time_limit.ok());
+  REQUIRE_FALSE(missing_time_limit.has_value());
 
   const auto balanced =
       simple_profile_request(SolveProfile::balanced, 1'000U).build_checked();
@@ -121,16 +121,16 @@ TEST_CASE("profile request builder requires a time limit for balanced and maximu
       simple_profile_request(SolveProfile::maximum_search, 1'000U)
           .build_checked();
 
-  REQUIRE(balanced.ok());
-  REQUIRE(maximum.ok());
+  REQUIRE(balanced.has_value());
+  REQUIRE(maximum.has_value());
 
   const auto balanced_request =
       shiny::nesting::to_nesting_request(balanced.value());
   const auto maximum_request =
       shiny::nesting::to_nesting_request(maximum.value());
 
-  REQUIRE(balanced_request.ok());
-  REQUIRE(maximum_request.ok());
+  REQUIRE(balanced_request.has_value());
+  REQUIRE(maximum_request.has_value());
   REQUIRE(balanced_request.value().execution.strategy ==
           StrategyKind::metaheuristic_search);
   REQUIRE(balanced_request.value().execution.production_optimizer ==
@@ -165,17 +165,17 @@ TEST_CASE("profile request builder pins piece assignments through assigned bin i
                               .assigned_bin_id = 22,
                           })
                           .build_checked();
-  REQUIRE(pinned.ok());
+  REQUIRE(pinned.has_value());
 
   const auto translated = shiny::nesting::to_nesting_request(pinned.value());
-  REQUIRE(translated.ok());
+  REQUIRE(translated.has_value());
   REQUIRE(translated.value().pieces.back().allowed_bin_ids ==
           std::vector<std::uint32_t>{22U});
 
   const auto invalid = simple_profile_request(SolveProfile::quick)
                            .with_maintain_bed_assignment()
                            .build_checked();
-  REQUIRE_FALSE(invalid.ok());
+  REQUIRE_FALSE(invalid.has_value());
 }
 
 TEST_CASE("profile solve control builder round-trips request and control through the DTO surface",
@@ -194,7 +194,7 @@ TEST_CASE("profile solve control builder round-trips request and control through
 
   const auto solved =
       shiny::nesting::solve(roundtrip_request, roundtrip_control);
-  REQUIRE(solved.ok());
+  REQUIRE(solved.has_value());
   REQUIRE(solved.value().stop_reason == StopReason::time_limit_reached);
 
   const auto active_bin_id =
@@ -249,11 +249,11 @@ TEST_CASE(
                                .polygon = rectangle(0.0, 0.0, 4.0, 4.0),
                            })
                            .build_checked();
-  REQUIRE(request.ok());
+  REQUIRE(request.has_value());
 
   const auto result = shiny::nesting::solve(
       request.value(), ProfileSolveControlBuilder{}.build());
-  REQUIRE(result.ok());
+  REQUIRE(result.has_value());
   REQUIRE(result.value().layout_valid());
   REQUIRE(result.value().stop_reason == StopReason::completed);
   REQUIRE_FALSE(result.value().all_parts_placed());
@@ -284,7 +284,7 @@ TEST_CASE(
       builder.with_time_limit_ms(*time_limit_ms);
     }
     const auto built = builder.build_checked();
-    REQUIRE(built.ok());
+    REQUIRE(built.has_value());
     return built.value();
   };
 
@@ -296,12 +296,12 @@ TEST_CASE(
 
   const auto quick_result =
       shiny::nesting::solve(build_request(SolveProfile::quick, std::nullopt), control);
-  REQUIRE(quick_result.ok());
+  REQUIRE(quick_result.has_value());
   REQUIRE(quick_result.value().layout_valid());
 
   const auto balanced_result = shiny::nesting::solve(
       build_request(SolveProfile::balanced, 300U), control);
-  REQUIRE(balanced_result.ok());
+  REQUIRE(balanced_result.has_value());
   REQUIRE(balanced_result.value().layout_valid());
 
   REQUIRE(balanced_result.value().placed_parts() >=

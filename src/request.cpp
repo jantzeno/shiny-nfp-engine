@@ -167,7 +167,7 @@ active_production_strategy_config_is_valid(const ExecutionPolicy &execution)
 
 } // namespace detail
 
-auto ProfileRequest::validate() const -> util::Expected<void> {
+auto ProfileRequest::validate() const -> std::expected<void, util::Status> {
   if (!api::profile_is_valid(profile)) {
     return std::unexpected(util::Status::invalid_input);
   }
@@ -183,7 +183,7 @@ auto ProfileRequest::is_valid() const -> bool {
   if (!validate()) {
     return false;
   }
-  return to_nesting_request(*this).ok();
+  return to_nesting_request(*this).has_value();
 }
 
 auto ProductionSearchConfig::is_valid() const -> bool {
@@ -296,9 +296,9 @@ auto NestingRequest::is_valid() const -> bool {
 }
 
 auto normalize_request(const NestingRequest &request)
-    -> util::StatusOr<NormalizedRequest> {
+    -> std::expected<NormalizedRequest, util::Status> {
   if (!request.is_valid()) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   NormalizedRequest normalized;
@@ -325,7 +325,7 @@ auto normalize_request(const NestingRequest &request)
     normalized_bin.polygon =
         detail::normalize_bin_polygon(bin, request.preprocess);
     if (geom::validate_polygon(normalized_bin.polygon).is_valid() == false) {
-      return util::Status::invalid_input;
+      return std::unexpected(util::Status::invalid_input);
     }
     if (normalized_bin.geometry_revision == 0U) {
       normalized_bin.geometry_revision =
@@ -335,7 +335,7 @@ auto normalize_request(const NestingRequest &request)
   }
 
   if (normalized.request.bins.empty()) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   for (const auto &piece : request.pieces) {
@@ -346,7 +346,7 @@ auto normalize_request(const NestingRequest &request)
         detail::sort_unique_ids(normalized_piece.allowed_bin_ids);
 
     if (geom::validate_polygon(normalized_piece.polygon).is_valid() == false) {
-      return util::Status::invalid_input;
+      return std::unexpected(util::Status::invalid_input);
     }
     if (normalized_piece.geometry_revision == 0U) {
       normalized_piece.geometry_revision =
@@ -356,7 +356,7 @@ auto normalize_request(const NestingRequest &request)
   }
 
   if (normalized.request.pieces.empty()) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   std::unordered_set<std::uint32_t> used_bin_ids;
@@ -395,23 +395,23 @@ auto normalize_request(const NestingRequest &request)
 }
 
 auto normalize_nesting_request(const NestingRequest &request)
-    -> util::StatusOr<NestingRequest> {
+    -> std::expected<NestingRequest, util::Status> {
   const auto normalized = normalize_request(request);
-  if (!normalized.ok()) {
-    return normalized.status();
+  if (!normalized.has_value()) {
+    return std::unexpected(normalized.error());
   }
   return normalized.value().request;
 }
 
 auto to_nesting_request(const ProfileRequest &request)
-    -> util::StatusOr<NestingRequest> {
+    -> std::expected<NestingRequest, util::Status> {
   if (const auto v = request.validate(); !v) {
-    return v.error();
+    return std::unexpected(v.error());
   }
 
   const auto preset = api::profile_preset(request.profile);
   if (!preset.production.is_valid()) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   NestingRequest translated{};
@@ -431,7 +431,7 @@ auto to_nesting_request(const ProfileRequest &request)
       if (piece.assigned_bin_id.has_value()) {
         translated_piece.allowed_bin_ids = {*piece.assigned_bin_id};
       } else if (translated_piece.allowed_bin_ids.empty()) {
-        return util::Status::invalid_input;
+        return std::unexpected(util::Status::invalid_input);
       }
     }
     translated_piece.allowed_bin_ids =
@@ -440,16 +440,16 @@ auto to_nesting_request(const ProfileRequest &request)
   }
 
   if (!translated.is_valid()) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   return translated;
 }
 
 auto to_bounding_box_decoder_request(const NormalizedRequest &request)
-    -> util::StatusOr<pack::DecoderRequest> {
+    -> std::expected<pack::DecoderRequest, util::Status> {
   if (!request.request.is_valid()) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   pack::DecoderRequest decoder_request;
@@ -477,7 +477,7 @@ auto to_bounding_box_decoder_request(const NormalizedRequest &request)
                        return bin.bin_id == expanded_bin.source_bin_id;
                      });
     if (source_it == request.request.bins.end()) {
-      return util::Status::invalid_input;
+      return std::unexpected(util::Status::invalid_input);
     }
 
     decoder_request.bins.push_back({
@@ -504,7 +504,7 @@ auto to_bounding_box_decoder_request(const NormalizedRequest &request)
                        return piece.piece_id == expanded_piece.source_piece_id;
                      });
     if (source_it == request.request.pieces.end()) {
-      return util::Status::invalid_input;
+      return std::unexpected(util::Status::invalid_input);
     }
 
     pack::PieceInput piece{
@@ -534,7 +534,7 @@ auto to_bounding_box_decoder_request(const NormalizedRequest &request)
   }
 
   if (!decoder_request.config.is_valid()) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
   return decoder_request;
 }

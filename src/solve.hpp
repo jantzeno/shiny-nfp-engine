@@ -14,6 +14,6 @@ namespace shiny::nesting {
 
 [[nodiscard]] auto solve(const ProfileRequest &request,
                          const ProfileSolveControl &control = {})
-    -> util::StatusOr<NestingResult>;
+    -> std::expected<NestingResult, util::Status>;
 
 } // namespace shiny::nesting

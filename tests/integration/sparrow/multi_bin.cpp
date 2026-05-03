@@ -215,14 +215,14 @@ TEST_CASE("multi-bin legality classifier gates inter-bin overlap work by assignm
           "[sparrow][multi-bin][legality]") {
   const auto normalized =
       shiny::nesting::normalize_request(make_overflow_request());
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   const auto adapted =
       shiny::nesting::pack::sparrow::adapters::to_port_instance(
           normalized.value());
   const auto solved = shiny::nesting::solve(make_overflow_request(),
                                             SolveControl{.random_seed = 0});
-  REQUIRE(solved.ok());
+  REQUIRE(solved.has_value());
   const auto seed =
       shiny::nesting::pack::constructive::export_sparrow_seed(solved.value());
 
@@ -249,7 +249,7 @@ TEST_CASE("multi-bin legality classifier gates inter-bin overlap work by assignm
       make_profile_assignment_request(SolveProfile::maximum_search);
   const auto pinned_or = shiny::nesting::pack::sparrow::adapters::adapt_request(
       pinned_request, ProfileSolveControl{.random_seed = 17U});
-  REQUIRE(pinned_or.ok());
+  REQUIRE(pinned_or.has_value());
 
   const auto pinned_decision =
       shiny::nesting::pack::sparrow::classify_bin_legality(
@@ -270,15 +270,15 @@ TEST_CASE("profile solve warm-starts multi-bin Sparrow search from the fill-firs
   const auto profile_request =
       make_profile_assignment_request(SolveProfile::balanced);
   const auto translated = shiny::nesting::to_nesting_request(profile_request);
-  REQUIRE(translated.ok());
+  REQUIRE(translated.has_value());
 
   const auto normalized = shiny::nesting::normalize_request(translated.value());
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   shiny::nesting::pack::constructive::FillFirstEngine constructive_engine;
   const auto constructive = constructive_engine.solve(
       normalized.value(), SolveControl{.random_seed = 21U});
-  REQUIRE(constructive.ok());
+  REQUIRE(constructive.has_value());
 
   std::vector<ProfileProgressSnapshot> progress;
   const auto solved = shiny::nesting::solve(
@@ -290,7 +290,7 @@ TEST_CASE("profile solve warm-starts multi-bin Sparrow search from the fill-firs
                            .random_seed = 21U,
                        });
 
-  REQUIRE(solved.ok());
+  REQUIRE(solved.has_value());
   REQUIRE_FALSE(progress.empty());
   CHECK(shiny::nesting::test::sparrow::same_layout(
       constructive.value().layout, progress.front().current_layout));
@@ -302,13 +302,13 @@ TEST_CASE("multi-bin move classifier enumerates legal move classes and weak-bin 
           "[sparrow][multi-bin][legality]") {
   const auto normalized =
       shiny::nesting::normalize_request(make_overflow_request());
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
   const auto instance =
       shiny::nesting::pack::sparrow::adapters::to_port_instance(
           normalized.value());
   const auto solved = shiny::nesting::solve(make_overflow_request(),
                                             SolveControl{.random_seed = 0});
-  REQUIRE(solved.ok());
+  REQUIRE(solved.has_value());
   const auto seed =
       shiny::nesting::pack::constructive::export_sparrow_seed(solved.value());
 
@@ -371,7 +371,7 @@ TEST_CASE("stock=3 bin definition is expanded to 3 copies with pieces distribute
     const auto result =
         shiny::nesting::solve(request, SolveControl{.operation_limit = 200U,
                                                     .random_seed = 7U});
-    REQUIRE(result.ok());
+    REQUIRE(result.has_value());
     CHECK(result.value().all_parts_placed());
     CHECK(result.value().validation.valid);
 

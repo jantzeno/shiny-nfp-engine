@@ -20,9 +20,9 @@ namespace shiny::nesting::decomp {
 //
 // Returns `invalid_input` for self-intersecting or zero-area inputs.
 [[nodiscard]] auto decompose_convex(const geom::Polygon &polygon)
-    -> util::StatusOr<std::vector<geom::Polygon>>;
+    -> std::expected<std::vector<geom::Polygon>, util::Status>;
 
 [[nodiscard]] auto decompose_convex(const geom::PolygonWithHoles &polygon)
-    -> util::StatusOr<std::vector<geom::Polygon>>;
+    -> std::expected<std::vector<geom::Polygon>, util::Status>;
 
 } // namespace shiny::nesting::decomp

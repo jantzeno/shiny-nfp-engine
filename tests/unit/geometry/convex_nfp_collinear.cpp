@@ -49,7 +49,7 @@ TEST_CASE("compute_convex_nfp tolerates collinear vertices on the outer ring",
   // post-processing), this convex hexagon still reaches the convex NFP kernel
   // with a degenerate edge. The function must tolerate that input shape.
   const auto result = compute_convex_nfp(fixed_with_collinear, moving);
-  REQUIRE(result.ok());
+  REQUIRE(result.has_value());
   REQUIRE_FALSE(result.value().outer().empty());
 }
 
@@ -71,6 +71,6 @@ TEST_CASE("compute_convex_nfp tolerates collinear vertices on both inputs",
 
   const auto result =
       compute_convex_nfp(fixed_with_collinear, moving_with_collinear);
-  REQUIRE(result.ok());
+  REQUIRE(result.has_value());
   REQUIRE_FALSE(result.value().outer().empty());
 }

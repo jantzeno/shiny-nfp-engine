@@ -144,7 +144,7 @@ TEST_CASE("shared search layout validation rejects non-conserving layouts",
   });
 
   const auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   shiny::nesting::NestingResult result;
   result.total_parts = 2;
@@ -201,7 +201,7 @@ TEST_CASE("result finalization repairs conservation and exposes "
   });
 
   const auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   shiny::nesting::NestingResult result;
   result.total_parts = 2;
@@ -240,7 +240,7 @@ TEST_CASE("result finalization preserves invalid conservation evidence",
           "[solve][production][result][validation]") {
   auto request = duplicate_piece_request();
   const auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   shiny::nesting::NestingResult result;
   result.total_parts = normalized.value().expanded_pieces.size();
@@ -289,7 +289,7 @@ TEST_CASE("solution pool validates layouts instead of trusting stale metadata",
   });
 
   const auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   shiny::nesting::NestingResult stale_valid;
   stale_valid.total_parts = 1;
@@ -355,7 +355,7 @@ TEST_CASE("BRKGA rotation genes solve a rotation-critical fixture",
 
   const auto solved =
       shiny::nesting::solve(request, SolveControl{.random_seed = 7});
-  REQUIRE(solved.ok());
+  REQUIRE(solved.has_value());
   REQUIRE(solved.value().placed_parts() == 1U);
   REQUIRE(solved.value().layout.placement_trace.front().rotation_index.value ==
           1U);
@@ -394,7 +394,7 @@ TEST_CASE("shared validation reports every issue kind",
   });
 
   const auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   shiny::nesting::NestingResult result;
   result.total_parts = normalized.value().expanded_pieces.size();
@@ -469,7 +469,7 @@ TEST_CASE("shared validation uses exact spacing instead of AABB-only rejection",
   });
 
   const auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   shiny::nesting::NestingResult result;
   result.total_parts = 2;
@@ -499,7 +499,7 @@ TEST_CASE("shared validation uses exact spacing instead of AABB-only rejection",
 
   request.execution.part_spacing = 0.75;
   const auto tighter = shiny::nesting::normalize_request(request);
-  REQUIRE(tighter.ok());
+  REQUIRE(tighter.has_value());
   const auto invalid_report =
       shiny::nesting::validation::validate_layout(tighter.value(), result);
   REQUIRE_FALSE(invalid_report.valid);
@@ -532,8 +532,8 @@ TEST_CASE("production search improves the constructive seed and records "
                               .random_seed = 17,
                           });
 
-  REQUIRE(constructive.ok());
-  REQUIRE(production.ok());
+  REQUIRE(constructive.has_value());
+  REQUIRE(production.has_value());
   REQUIRE(constructive.value().layout.placement_trace.size() == 1U);
   REQUIRE(production.value().layout.placement_trace.size() == 2U);
   REQUIRE(production.value().layout.unplaced_piece_ids.empty());
@@ -568,7 +568,7 @@ TEST_CASE("production search respects operation limits and cancellation",
                    .operation_limit = 1,
                    .random_seed = 3,
                });
-  REQUIRE(limited.ok());
+  REQUIRE(limited.has_value());
   REQUIRE(limited.value().stop_reason == StopReason::operation_limit_reached);
   REQUIRE(limited.value().layout_valid());
   require_summary_consistency(limited.value());
@@ -578,7 +578,7 @@ TEST_CASE("production search respects operation limits and cancellation",
 
   const auto unlimited = shiny::nesting::solve(
       request, SolveControl{.operation_limit = 0, .random_seed = 3});
-  REQUIRE(unlimited.ok());
+  REQUIRE(unlimited.has_value());
   REQUIRE(unlimited.value().stop_reason != StopReason::operation_limit_reached);
   require_summary_consistency(unlimited.value());
 
@@ -586,7 +586,7 @@ TEST_CASE("production search respects operation limits and cancellation",
   source.request_stop();
   const auto cancelled = shiny::nesting::solve(
       request, SolveControl{.cancellation = source.token()});
-  REQUIRE(cancelled.ok());
+  REQUIRE(cancelled.has_value());
   REQUIRE(cancelled.value().stop_reason == StopReason::cancelled);
   REQUIRE(cancelled.value().layout_valid());
   require_summary_consistency(cancelled.value());
@@ -608,7 +608,7 @@ TEST_CASE("production search progress remains monotonic when duplicate "
                    .random_seed = 11,
                });
 
-  REQUIRE(solved.ok());
+  REQUIRE(solved.has_value());
   const auto &result = solved.value();
   REQUIRE(result.search.optimizer == OptimizerKind::brkga);
   REQUIRE_FALSE(result.search.progress.empty());
@@ -646,7 +646,7 @@ TEST_CASE("production search obeys time budgets under search",
                                   snapshots.push_back(snapshot);
                                 },
                             .time_limit_milliseconds = 1});
-  REQUIRE(result.ok());
+  REQUIRE(result.has_value());
   REQUIRE(result.value().stop_reason == StopReason::time_limit_reached);
   REQUIRE(result.value().layout_valid());
   require_summary_consistency(result.value());
@@ -679,7 +679,7 @@ TEST_CASE("public strategies conserve layouts under limits and cancellation",
     CAPTURE(static_cast<int>(strategy_case.optimizer));
     const auto limited = shiny::nesting::solve(
         request, SolveControl{.operation_limit = 1, .random_seed = 5});
-    REQUIRE(limited.ok());
+    REQUIRE(limited.has_value());
     REQUIRE(limited.value().layout_valid());
     require_summary_consistency(limited.value());
 
@@ -689,7 +689,7 @@ TEST_CASE("public strategies conserve layouts under limits and cancellation",
         request, SolveControl{.cancellation = source.token(),
                               .operation_limit = 1,
                               .random_seed = 5});
-    REQUIRE(cancelled.ok());
+    REQUIRE(cancelled.has_value());
     REQUIRE(cancelled.value().layout_valid());
     require_summary_consistency(cancelled.value());
   }
@@ -709,5 +709,5 @@ TEST_CASE("production search keeps strict small-population BRKGA validation",
   request.execution.production.mutant_count = 2;
   REQUIRE_FALSE(request.execution.production.is_valid());
   REQUIRE_FALSE(request.is_valid());
-  REQUIRE_FALSE(shiny::nesting::solve(request).ok());
+  REQUIRE_FALSE(shiny::nesting::solve(request).has_value());
 }

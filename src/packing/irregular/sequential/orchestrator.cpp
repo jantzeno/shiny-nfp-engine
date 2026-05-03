@@ -122,9 +122,9 @@ auto interrupted(const SolveControl &control) -> bool {
 
 auto solve_irregular_constructive(const NormalizedRequest &request,
                                   const SolveControl &control)
-    -> util::StatusOr<NestingResult> {
+    -> std::expected<NestingResult, util::Status> {
   if (!request.request.is_valid()) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   const auto piece_instances = order_piece_instances(
@@ -132,7 +132,7 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
   auto bin_instances = build_bin_instances(request);
   if (piece_instances.size() != request.expanded_pieces.size() ||
       bin_instances.size() != request.expanded_bins.size()) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   std::unordered_map<std::uint32_t, const PieceInstance *> piece_by_id;
@@ -461,9 +461,9 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
 
 // auto solve_irregular_constructive_bak(const NormalizedRequest &request,
 //                                   const SolveControl &control)
-//     -> util::StatusOr<NestingResult> {
+//     -> std::expected<NestingResult, util::Status> {
 //   if (!request.request.is_valid()) {
-//     return util::Status::invalid_input;
+//     return std::unexpected(util::Status::invalid_input);
 //   }
 
 //   const auto piece_instances = order_piece_instances(
@@ -471,7 +471,7 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
 //   auto bin_instances = build_bin_instances(request);
 //   if (piece_instances.size() != request.expanded_pieces.size() ||
 //       bin_instances.size() != request.expanded_bins.size()) {
-//     return util::Status::invalid_input;
+//     return std::unexpected(util::Status::invalid_input);
 //   }
 
 //   std::unordered_map<std::uint32_t, const PieceInstance *> piece_by_id;

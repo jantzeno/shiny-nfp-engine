@@ -69,8 +69,8 @@ struct ProfileRequest {
 
   /// Returns an error status if the request fails basic validity checks,
   /// otherwise returns void. Prefer this over is_valid() when the caller
-  /// needs to propagate the failure through a util::Expected<T> chain.
-  [[nodiscard]] auto validate() const -> util::Expected<void>;
+  /// needs to propagate the failure through a std::expected<T, util::Status> chain.
+  [[nodiscard]] auto validate() const -> std::expected<void, util::Status>;
 };
 
 struct NestingRequest {
@@ -83,9 +83,9 @@ struct NestingRequest {
 };
 
 [[nodiscard]] auto to_nesting_request(const ProfileRequest &request)
-    -> util::StatusOr<NestingRequest>;
+    -> std::expected<NestingRequest, util::Status>;
 
 [[nodiscard]] auto normalize_nesting_request(const NestingRequest &request)
-    -> util::StatusOr<NestingRequest>;
+    -> std::expected<NestingRequest, util::Status>;
 
 } // namespace shiny::nesting

@@ -9,6 +9,6 @@ namespace shiny::nesting::nfp {
 
 [[nodiscard]] auto compute_nfp(const geom::PolygonWithHoles &fixed,
                                const geom::PolygonWithHoles &moving)
-    -> util::StatusOr<std::vector<geom::PolygonWithHoles>>;
+    -> std::expected<std::vector<geom::PolygonWithHoles>, util::Status>;
 
 } // namespace shiny::nesting::nfp

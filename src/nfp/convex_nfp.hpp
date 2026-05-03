@@ -7,6 +7,6 @@ namespace shiny::nesting::nfp {
 
 [[nodiscard]] auto compute_convex_nfp(const geom::Polygon &fixed,
                                       const geom::Polygon &moving)
-    -> util::StatusOr<geom::PolygonWithHoles>;
+    -> std::expected<geom::PolygonWithHoles, util::Status>;
 
 } // namespace shiny::nesting::nfp

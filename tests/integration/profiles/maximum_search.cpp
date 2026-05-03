@@ -67,15 +67,15 @@ auto make_compression_seed(const NestingRequest &request,
                            const shiny::nesting::SolveControl &control)
     -> shiny::nesting::search::SolutionPoolEntry {
   const auto normalized = shiny::nesting::normalize_request(request);
-  CHECK(normalized.ok());
-  if (!normalized.ok()) {
+  CHECK(normalized.has_value());
+  if (!normalized.has_value()) {
     return {};
   }
 
   shiny::nesting::pack::constructive::FillFirstEngine packer;
   const auto seed = packer.solve(normalized.value(), control);
-  CHECK(seed.ok());
-  if (!seed.ok()) {
+  CHECK(seed.has_value());
+  if (!seed.has_value()) {
     return {};
   }
 
@@ -189,7 +189,7 @@ TEST_CASE("maximum-search request adapter maps profile request into the Sparrow 
   const auto adapted_or =
       shiny::nesting::pack::sparrow::adapters::adapt_request(
           request, shiny::nesting::test::sparrow::make_profile_control(321));
-  REQUIRE(adapted_or.ok());
+  REQUIRE(adapted_or.has_value());
 
   const auto &adapted = adapted_or.value();
   CHECK(adapted.seed_flow.profile == SolveProfile::maximum_search);
@@ -281,7 +281,7 @@ TEST_CASE("maximum-search compression phase produces a deterministic shrink sche
   const shiny::nesting::SolveControl control{.random_seed = 31U};
   const auto seed = make_compression_seed(request, control);
   const auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   shiny::nesting::runtime::Stopwatch stopwatch;
   const shiny::nesting::runtime::TimeBudget time_budget(0U);
@@ -311,7 +311,7 @@ TEST_CASE("maximum-search compression phase exposes accepted-move and iteration 
   const shiny::nesting::SolveControl control{.random_seed = 37U};
   const auto seed = make_compression_seed(request, control);
   const auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   shiny::nesting::runtime::Stopwatch stopwatch;
   const shiny::nesting::runtime::TimeBudget time_budget(0U);
@@ -421,7 +421,7 @@ TEST_CASE("maximum-search optimize driver produces deterministic exploration and
   const shiny::nesting::SolveControl control{.random_seed = 41U};
   const auto seed = make_compression_seed(request, control);
   const auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   const shiny::nesting::pack::sparrow::optimize::OptimizeConfig config{
       .exploration = {.iteration_budget = 4U,
@@ -494,8 +494,8 @@ TEST_CASE("maximum-search profile solve routes through the deeper Sparrow path a
                            .random_seed = 23U,
                        });
 
-  REQUIRE(balanced.ok());
-  REQUIRE(maximum.ok());
+  REQUIRE(balanced.has_value());
+  REQUIRE(maximum.has_value());
   CHECK(maximum.value().strategy == StrategyKind::metaheuristic_search);
   CHECK(maximum.value().search.sparrow_polished);
   CHECK(maximum.value().search.optimizer ==

@@ -97,6 +97,6 @@ TEST_CASE("irregular constructive multi-start rejects unbounded solve control",
 
   const auto solved = solve(request, SolveControl{.random_seed = 99});
 
-  REQUIRE_FALSE(solved.ok());
-  REQUIRE(solved.status() == util::Status::invalid_input);
+  REQUIRE_FALSE(solved.has_value());
+  REQUIRE(solved.error() == util::Status::invalid_input);
 }

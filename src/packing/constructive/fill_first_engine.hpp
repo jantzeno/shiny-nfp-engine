@@ -28,7 +28,7 @@ class FillFirstEngine {
 public:
   [[nodiscard]] auto solve(const NormalizedRequest &request,
                            const SolveControl &control)
-      -> util::StatusOr<NestingResult>;
+      -> std::expected<NestingResult, util::Status>;
 };
 
 } // namespace shiny::nesting::pack::constructive

@@ -32,12 +32,12 @@ inner_fit_rectangle_bounds(const geom::Box2 &container_bounds,
 [[nodiscard]] auto
 compute_inner_fit_polygon(const geom::PolygonWithHoles &container,
                           const geom::PolygonWithHoles &piece)
-    -> util::StatusOr<std::vector<geom::PolygonWithHoles>>;
+    -> std::expected<std::vector<geom::PolygonWithHoles>, util::Status>;
 
 // Backward-compatible alias for existing callers. Returns the same
 // translation-region set as `compute_inner_fit_polygon`.
 [[nodiscard]] auto compute_ifp(const geom::PolygonWithHoles &container,
                                const geom::PolygonWithHoles &piece)
-    -> util::StatusOr<std::vector<geom::PolygonWithHoles>>;
+    -> std::expected<std::vector<geom::PolygonWithHoles>, util::Status>;
 
 } // namespace shiny::nesting::nfp

@@ -26,7 +26,7 @@ auto export_sparrow_seed(const NestingResult &result) -> sparrow::SeedSolution {
 
 auto FillFirstEngine::solve(const NormalizedRequest &request,
                             const SolveControl &control)
-    -> util::StatusOr<NestingResult> {
+    -> std::expected<NestingResult, util::Status> {
   return detail::solve_irregular_constructive(request, control);
 }
 

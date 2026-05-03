@@ -22,6 +22,6 @@ struct BlockedRegions {
     const geom::PolygonWithHoles &moving_piece,
     std::uint64_t moving_piece_revision, geom::ResolvedRotation moving_rotation,
     cache::NfpCache *cache_ptr, CandidateGenerationDiagnostics *diagnostics)
-    -> util::StatusOr<BlockedRegions>;
+    -> std::expected<BlockedRegions, util::Status>;
 
 } // namespace shiny::nesting::pack

@@ -62,7 +62,7 @@ TEST_CASE("knapsack request adapter maps piece values into the Sparrow instance"
   const auto adapted_or =
       shiny::nesting::pack::sparrow::adapters::adapt_request(
           make_knapsack_request(), ProfileSolveControl{.random_seed = 7U});
-  REQUIRE(adapted_or.ok());
+  REQUIRE(adapted_or.has_value());
 
   const auto &instance = adapted_or.value().instance;
   CHECK(instance.objective_mode == ObjectiveMode::maximize_value);
@@ -109,7 +109,7 @@ TEST_CASE("knapsack move legality enumerates value-swap inject and eject classes
   const auto adapted_or =
       shiny::nesting::pack::sparrow::adapters::adapt_request(
           make_knapsack_request(), ProfileSolveControl{.random_seed = 11U});
-  REQUIRE(adapted_or.ok());
+  REQUIRE(adapted_or.has_value());
 
   const auto &instance = adapted_or.value().instance;
   const auto low_piece_id = instance.pieces.front().instance.expanded_piece_id;
@@ -135,7 +135,7 @@ TEST_CASE("knapsack move legality enumerates value-swap inject and eject classes
   pinned_request.pieces[2].allowed_bin_ids = {1U};
   const auto pinned_or = shiny::nesting::pack::sparrow::adapters::adapt_request(
       pinned_request, ProfileSolveControl{.random_seed = 11U});
-  REQUIRE(pinned_or.ok());
+  REQUIRE(pinned_or.has_value());
   const auto pinned_piece_id =
       pinned_or.value().instance.pieces.front().instance.expanded_piece_id;
   const auto pinned_bin_id =
@@ -161,7 +161,7 @@ TEST_CASE("maximum-search knapsack solve places the highest-value subset when no
           "[sparrow][integration][knapsack]") {
   const auto solved = shiny::nesting::solve(
       make_knapsack_request(), ProfileSolveControl{.random_seed = 19U});
-  REQUIRE(solved.ok());
+  REQUIRE(solved.has_value());
   REQUIRE(solved.value().validation.valid);
   REQUIRE(solved.value().layout.placement_trace.size() == 1U);
   CHECK(solved.value().layout.placement_trace.front().piece_id == 12U);

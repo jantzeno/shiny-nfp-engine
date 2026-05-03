@@ -63,9 +63,9 @@ public:
 
   [[nodiscard]] auto build() const -> ProfileRequest { return request_; }
 
-  [[nodiscard]] auto build_checked() const -> util::StatusOr<ProfileRequest> {
+  [[nodiscard]] auto build_checked() const -> std::expected<ProfileRequest, util::Status> {
     if (!request_.is_valid()) {
-      return util::Status::invalid_input;
+      return std::unexpected(util::Status::invalid_input);
     }
     return request_;
   }
@@ -184,9 +184,9 @@ public:
 
   [[nodiscard]] auto build() const -> NestingRequest { return request_; }
 
-  [[nodiscard]] auto build_checked() const -> util::StatusOr<NestingRequest> {
+  [[nodiscard]] auto build_checked() const -> std::expected<NestingRequest, util::Status> {
     if (!request_.is_valid()) {
-      return util::Status::invalid_input;
+      return std::unexpected(util::Status::invalid_input);
     }
     return request_;
   }

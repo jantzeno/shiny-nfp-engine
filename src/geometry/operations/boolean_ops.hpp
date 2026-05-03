@@ -20,7 +20,7 @@ namespace shiny::nesting::geom {
 
 [[nodiscard]] auto try_union_polygons(const PolygonWithHoles &lhs,
                                       const PolygonWithHoles &rhs)
-    -> util::StatusOr<std::vector<PolygonWithHoles>>;
+    -> std::expected<std::vector<PolygonWithHoles>, util::Status>;
 
 /**
  * @brief Computes the polygonal intersection of two regions.
@@ -35,7 +35,7 @@ namespace shiny::nesting::geom {
 
 [[nodiscard]] auto try_intersection_polygons(const PolygonWithHoles &lhs,
                                              const PolygonWithHoles &rhs)
-    -> util::StatusOr<std::vector<PolygonWithHoles>>;
+    -> std::expected<std::vector<PolygonWithHoles>, util::Status>;
 
 /**
  * @brief Computes the polygonal difference `lhs - rhs`.
@@ -50,7 +50,7 @@ namespace shiny::nesting::geom {
 
 [[nodiscard]] auto try_difference_polygons(const PolygonWithHoles &lhs,
                                            const PolygonWithHoles &rhs)
-    -> util::StatusOr<std::vector<PolygonWithHoles>>;
+    -> std::expected<std::vector<PolygonWithHoles>, util::Status>;
 
 /**
  * @brief Subtracts `obstacle` from every region in `regions`, in place.

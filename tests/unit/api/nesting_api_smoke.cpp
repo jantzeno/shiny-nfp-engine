@@ -39,20 +39,20 @@ TEST_CASE("public nesting API round-trip: normalize and solve accept a valid req
           Ring{{0.1, 0.1}, {0.4, 0.1}, {0.4, 0.4}, {0.1, 0.4}}),
   });
 
-  // normalize_request returns util::StatusOr (std::expected-style sum type).
-  // Test both .ok() and .value() access to exercise the C++23 API patterns.
+  // normalize_request returns std::expected<NormalizedRequest, util::Status>.
+  // Test .has_value() and .value() access to exercise the C++23 API patterns.
   const auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
   REQUIRE(normalized.value().expanded_pieces.size() == 1U);
   REQUIRE(normalized.value().expanded_bins.size() == 1U);
 
-  // solve returns util::StatusOr<NestingResult> — field order matches
+  // solve returns std::expected<NestingResult, util::Status> — field order matches
   // SolveControl declaration (operation_limit before random_seed).
   SolveControl control{};
   control.operation_limit = 10U;
   control.random_seed = 0U;
   const auto result = shiny::nesting::solve(request, control);
-  REQUIRE(result.ok());
+  REQUIRE(result.has_value());
   REQUIRE(result.value().placed_parts() >= 1U);
   REQUIRE(result.value().validation.valid);
 

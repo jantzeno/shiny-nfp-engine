@@ -83,7 +83,7 @@ TEST_CASE("convex decomposition preserves area across convex, concave, and "
           "[decomposition][nfp]") {
   const auto convex = rectangle(4.0, 3.0);
   auto convex_parts = decompose_convex(convex);
-  REQUIRE(convex_parts.ok());
+  REQUIRE(convex_parts.has_value());
   REQUIRE(convex_parts.value().size() == 1U);
   REQUIRE(approx_equal(sum_area(convex_parts.value()),
                        shiny::nesting::geom::polygon_area(convex)));
@@ -98,7 +98,7 @@ TEST_CASE("convex decomposition preserves area across convex, concave, and "
           shiny::nesting::geom::Point2(0.0, 4.0),
       }));
   auto l_parts = decompose_convex(l_shape);
-  REQUIRE(l_parts.ok());
+  REQUIRE(l_parts.has_value());
   REQUIRE(l_parts.value().size() == 2U);
   REQUIRE(approx_equal(sum_area(l_parts.value()),
                        shiny::nesting::geom::polygon_area(l_shape)));
@@ -114,7 +114,7 @@ TEST_CASE("convex decomposition preserves area across convex, concave, and "
             shiny::nesting::geom::Point2(4.0, 4.0),
             shiny::nesting::geom::Point2(4.0, 2.0)}}));
   auto holed_parts = decompose_convex(holed);
-  REQUIRE(holed_parts.ok());
+  REQUIRE(holed_parts.has_value());
   REQUIRE(!holed_parts.value().empty());
   REQUIRE(approx_equal(sum_area(holed_parts.value()),
                        shiny::nesting::geom::polygon_area(holed)));
@@ -132,7 +132,7 @@ TEST_CASE("nfp helpers compute convex NFP, decomposition NFP, orbiting "
   auto convex_nfp = shiny::nesting::nfp::compute_convex_nfp(
       shiny::nesting::geom::Polygon(fixed_square.outer()),
       shiny::nesting::geom::Polygon(moving_square.outer()));
-  REQUIRE(convex_nfp.ok());
+  REQUIRE(convex_nfp.has_value());
   REQUIRE(
       shiny::nesting::geom::validate_polygon(convex_nfp.value()).is_valid());
   const auto convex_bounds =
@@ -155,7 +155,7 @@ TEST_CASE("nfp helpers compute convex NFP, decomposition NFP, orbiting "
       }));
 
   auto concave_nfp = shiny::nesting::nfp::compute_nfp(concave, moving_square);
-  REQUIRE(concave_nfp.ok());
+  REQUIRE(concave_nfp.has_value());
   REQUIRE(!concave_nfp.value().empty());
   for (const auto &polygon : concave_nfp.value()) {
     REQUIRE(shiny::nesting::geom::validate_polygon(polygon).is_valid());
@@ -164,7 +164,7 @@ TEST_CASE("nfp helpers compute convex NFP, decomposition NFP, orbiting "
 
   auto orbiting_concave =
       shiny::nesting::nfp::compute_orbiting_nfp(concave, moving_square);
-  REQUIRE(orbiting_concave.ok());
+  REQUIRE(orbiting_concave.has_value());
   REQUIRE(!orbiting_concave.value().empty());
   for (const auto &polygon : orbiting_concave.value()) {
     REQUIRE(shiny::nesting::geom::validate_polygon(polygon).is_valid());
@@ -173,7 +173,7 @@ TEST_CASE("nfp helpers compute convex NFP, decomposition NFP, orbiting "
 
   auto orbiting_nfp =
       shiny::nesting::nfp::compute_orbiting_nfp(fixed_square, moving_square);
-  REQUIRE(orbiting_nfp.ok());
+  REQUIRE(orbiting_nfp.has_value());
   REQUIRE(orbiting_nfp.value().size() == 1U);
   const auto orbiting_bounds =
       shiny::nesting::geom::compute_bounds(orbiting_nfp.value().front());
@@ -181,7 +181,7 @@ TEST_CASE("nfp helpers compute convex NFP, decomposition NFP, orbiting "
 
   auto ifp = shiny::nesting::nfp::compute_ifp(rectangle(10.0, 6.0),
                                               rectangle(3.0, 2.0));
-  REQUIRE(ifp.ok());
+  REQUIRE(ifp.has_value());
   REQUIRE(ifp.value().size() == 1U);
   const auto ifp_bounds =
       shiny::nesting::geom::compute_bounds(ifp.value().front());
@@ -205,7 +205,7 @@ TEST_CASE("general IFP excludes concave container notches", "[nfp][ifp]") {
 
   auto ifp =
       shiny::nesting::nfp::compute_inner_fit_polygon(l_shape, moving_square);
-  REQUIRE(ifp.ok());
+  REQUIRE(ifp.has_value());
   REQUIRE(!ifp.value().empty());
   for (const auto &polygon : ifp.value()) {
     REQUIRE(shiny::nesting::geom::validate_polygon(polygon).is_valid());
@@ -258,9 +258,9 @@ TEST_CASE("MTG actual-polygon CGAL regression pairs return typed NFP outcomes",
     REQUIRE(shiny::nesting::geom::validate_polygon(moving).is_valid());
 
     const auto nfp = shiny::nesting::nfp::compute_nfp(fixed, moving);
-    REQUIRE((nfp.ok() ||
-             nfp.status() == shiny::nesting::util::Status::computation_failed));
-    if (nfp.ok()) {
+    REQUIRE((nfp.has_value() ||
+             nfp.error() == shiny::nesting::util::Status::computation_failed));
+    if (nfp.has_value()) {
       REQUIRE_FALSE(nfp.value().empty());
       for (const auto &polygon : nfp.value()) {
         REQUIRE(shiny::nesting::geom::validate_polygon(polygon).is_valid());
@@ -278,7 +278,7 @@ TEST_CASE("MTG actual-polygon regression pair computes exact NFP",
       mtg_piece_polygon(fixture, 16U), {.degrees = 270.0});
 
   const auto nfp = shiny::nesting::nfp::compute_nfp(fixed, moving);
-  REQUIRE(nfp.ok());
+  REQUIRE(nfp.has_value());
   REQUIRE_FALSE(nfp.value().empty());
   for (const auto &polygon : nfp.value()) {
     REQUIRE(shiny::nesting::geom::validate_polygon(polygon).is_valid());
@@ -299,7 +299,7 @@ TEST_CASE("nfp cache stores hits and evicts least recently used entries",
 
   const auto first_value = shiny::nesting::nfp::compute_ifp(
       rectangle(8.0, 5.0), rectangle(2.0, 1.0));
-  REQUIRE(first_value.ok());
+  REQUIRE(first_value.has_value());
   cache.put(first_key,
             shiny::nesting::cache::NfpCacheValue{
                 .polygons = first_value.value(),
@@ -317,7 +317,7 @@ TEST_CASE("nfp cache stores hits and evicts least recently used entries",
 
   const auto second_value = shiny::nesting::nfp::compute_ifp(
       rectangle(6.0, 4.0), rectangle(1.0, 1.0));
-  REQUIRE(second_value.ok());
+  REQUIRE(second_value.has_value());
   cache.put(second_key,
             shiny::nesting::cache::NfpCacheValue{
                 .polygons = second_value.value(),
@@ -347,7 +347,7 @@ TEST_CASE("compute_nfp sanitizes duplicate and collinear user geometry",
   REQUIRE(sanitized.duplicate_vertices > 0U);
 
   const auto result = shiny::nesting::nfp::compute_nfp(noisy_fixed, moving);
-  REQUIRE(result.ok());
+  REQUIRE(result.has_value());
   REQUIRE_FALSE(result.value().empty());
 }
 

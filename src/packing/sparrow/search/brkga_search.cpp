@@ -300,7 +300,7 @@ evaluate_genes(std::span<const double> genes, const NormalizedRequest &request,
   EvaluatedChromosome evaluated;
   evaluated.genes.assign(genes.begin(), genes.end());
   evaluated.forced_rotations = std::move(forced_rotations);
-  if (result_or.ok() &&
+  if (result_or.has_value() &&
       !validation::layout_has_geometry_violation(request, result_or.value())) {
     evaluated.result = result_or.value();
     validation::finalize_result(request, evaluated.result);
@@ -495,9 +495,9 @@ polish_best(const EvaluatedChromosome &seed, const NormalizedRequest &request,
 
 auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
                                   const SolveControl &control)
-    -> util::StatusOr<NestingResult> {
+    -> std::expected<NestingResult, util::Status> {
   if (!request.request.is_valid()) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   runtime::DeterministicRng rng(control.random_seed);

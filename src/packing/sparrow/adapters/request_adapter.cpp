@@ -105,16 +105,16 @@ auto adapt_request(const NormalizedRequest &request,
 
 auto adapt_request(const ProfileRequest &request,
                    const ProfileSolveControl &control)
-    -> util::StatusOr<PortRequestAdapterResult> {
+    -> std::expected<PortRequestAdapterResult, util::Status> {
   const auto nesting_request_or = to_nesting_request(request);
-  if (!nesting_request_or.ok()) {
-    return nesting_request_or.status();
+  if (!nesting_request_or.has_value()) {
+    return std::unexpected(nesting_request_or.error());
   }
 
   const auto normalized_request_or =
       normalize_request(nesting_request_or.value());
-  if (!normalized_request_or.ok()) {
-    return normalized_request_or.status();
+  if (!normalized_request_or.has_value()) {
+    return std::unexpected(normalized_request_or.error());
   }
 
   auto adapted = PortRequestAdapterResult{

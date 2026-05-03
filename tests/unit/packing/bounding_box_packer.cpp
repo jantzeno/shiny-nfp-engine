@@ -278,7 +278,7 @@ TEST_CASE("bounding box solve selects the best deterministic attempt and emits "
         snapshots.push_back(snapshot);
       }});
 
-  REQUIRE(result.ok());
+  REQUIRE(result.has_value());
   REQUIRE(result.value().layout.placement_trace.size() == 3U);
   REQUIRE(result.value().stop_reason == StopReason::completed);
   REQUIRE(snapshots.size() == 3U);
@@ -309,7 +309,7 @@ TEST_CASE(
                                 },
                             .operation_limit = 1});
 
-  REQUIRE(result.ok());
+  REQUIRE(result.has_value());
   REQUIRE(result.value().stop_reason == StopReason::operation_limit_reached);
   REQUIRE(snapshots.size() == 1U);
 }

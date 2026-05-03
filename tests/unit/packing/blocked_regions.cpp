@@ -43,7 +43,7 @@ TEST_CASE("build_blocked_regions with no obstacles produces an empty result",
   const auto result = build_blocked_regions(empty, moving_piece, 0U,
                                             zero_rotation, nullptr, nullptr);
 
-  REQUIRE(result.ok());
+  REQUIRE(result.has_value());
   REQUIRE(result.value().polygons.empty());
   REQUIRE(result.value().accuracy == NfpCacheAccuracy::exact);
 }
@@ -66,7 +66,7 @@ TEST_CASE("build_blocked_regions with one square obstacle produces a non-empty "
       build_blocked_regions(std::span(&obstacle, 1U), moving_piece, 0U,
                             zero_rotation, nullptr, nullptr);
 
-  REQUIRE(result.ok());
+  REQUIRE(result.has_value());
   REQUIRE_FALSE(result.value().polygons.empty());
 
   const auto blocked_area =
@@ -102,7 +102,7 @@ TEST_CASE("build_blocked_regions with two separate obstacles produces at least "
       build_blocked_regions(std::span(obstacles), moving_piece, 0U,
                             zero_rotation, nullptr, nullptr);
 
-  REQUIRE(result.ok());
+  REQUIRE(result.has_value());
   // Each convex-square obstacle contributes exactly one polygon to the result.
   REQUIRE(result.value().polygons.size() >= 2U);
 
@@ -131,7 +131,7 @@ TEST_CASE("build_blocked_regions accuracy degrades to conservative_bbox when "
       build_blocked_regions(std::span(&obstacle, 1U), moving_piece, 0U,
                             zero_rotation, nullptr, nullptr);
 
-  REQUIRE(result.ok());
+  REQUIRE(result.has_value());
   // The fallback polygon is a bounding-box approximation: non-empty and has
   // the conservative_bbox_fallback accuracy flag.
   REQUIRE_FALSE(result.value().polygons.empty());

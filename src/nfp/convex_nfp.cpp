@@ -26,12 +26,12 @@ namespace {
 
 [[nodiscard]] auto pairwise_sum_convex_nfp(const geom::Polygon &fixed,
                                            const geom::Polygon &moving)
-    -> util::StatusOr<geom::PolygonWithHoles> {
+    -> std::expected<geom::PolygonWithHoles, util::Status> {
   const auto reflected_moving = reflect_polygon(moving);
   const auto &fixed_ring = fixed.outer();
   const auto &moving_ring = reflected_moving.outer();
   if (fixed_ring.size() < 3U || moving_ring.size() < 3U) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   std::vector<geom::Point2> point_cloud;
@@ -47,14 +47,14 @@ namespace {
       std::span<const geom::Point2>(point_cloud.data(), point_cloud.size()));
   auto simplified = geom::simplify_collinear_ring(hull.outer());
   if (simplified.size() < 3U) {
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   }
 
   const auto polygon =
       geom::normalize_polygon(geom::PolygonWithHoles(std::move(simplified)));
   if (!geom::validate_polygon(polygon).is_valid() ||
       geom::polygon_area(polygon) <= 0.0) {
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   }
 
   return polygon;
@@ -72,7 +72,7 @@ namespace {
 // Returns a single connected polygon (with holes possible only when the
 // input pieces themselves were not convex — guarded against above).
 auto compute_convex_nfp(const geom::Polygon &fixed, const geom::Polygon &moving)
-    -> util::StatusOr<geom::PolygonWithHoles> {
+    -> std::expected<geom::PolygonWithHoles, util::Status> {
   const auto normalized_fixed = geom::Polygon(
       geom::sanitize_polygon(geom::PolygonWithHoles(fixed.outer()))
           .polygon.outer());
@@ -84,24 +84,24 @@ auto compute_convex_nfp(const geom::Polygon &fixed, const geom::Polygon &moving)
   const auto moving_validity = geom::validate_polygon(normalized_moving);
 
   if (!fixed_validity.is_valid() || !moving_validity.is_valid()) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   const auto fixed_convex = geom::polygon_is_convex(normalized_fixed);
   const auto moving_convex = geom::polygon_is_convex(normalized_moving);
   if (!fixed_convex || !moving_convex) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   const auto reflected_moving = reflect_polygon(normalized_moving);
   const auto reflected_validity = geom::validate_polygon(reflected_moving);
   if (!reflected_validity.is_valid()) {
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   auto pairwise_sum_nfp =
       pairwise_sum_convex_nfp(normalized_fixed, normalized_moving);
-  if (pairwise_sum_nfp.ok()) {
+  if (pairwise_sum_nfp.has_value()) {
     SHINY_DEBUG("nfp: convex pairwise-sum hull succeeded fixed_outer={} "
                 "moving_outer={}",
                 normalized_fixed.outer().size(),
@@ -112,7 +112,7 @@ auto compute_convex_nfp(const geom::Polygon &fixed, const geom::Polygon &moving)
   SHINY_DEBUG(
       "nfp: convex pairwise-sum hull failed fixed_outer={} moving_outer={}",
       normalized_fixed.outer().size(), normalized_moving.outer().size());
-  return util::Status::computation_failed;
+  return std::unexpected(util::Status::computation_failed);
 }
 
 } // namespace shiny::nesting::nfp

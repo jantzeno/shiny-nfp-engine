@@ -6,7 +6,7 @@ namespace shiny::nesting::pack {
 
 auto IrregularConstructivePacker::solve(const NormalizedRequest &request,
                                         const SolveControl &control)
-    -> util::StatusOr<NestingResult> {
+    -> std::expected<NestingResult, util::Status> {
   constructive::FillFirstEngine engine;
   return engine.solve(request, control);
 }

@@ -78,7 +78,7 @@ TEST_CASE("normalized requests preserve engine-owned constraints",
   }};
 
   const auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
   REQUIRE(normalized.value().request.bins.size() == 1);
   REQUIRE(normalized.value().request.bins.front().bin_id == 20);
   REQUIRE(normalized.value().expanded_bins.size() == 2);
@@ -101,7 +101,7 @@ TEST_CASE("normalized requests preserve engine-owned constraints",
 
   const auto decoder_request =
       shiny::nesting::to_bounding_box_decoder_request(normalized.value());
-  REQUIRE(decoder_request.ok());
+  REQUIRE(decoder_request.has_value());
   REQUIRE(decoder_request.value().bins.size() == 2);
   REQUIRE(decoder_request.value().pieces.size() == 2);
   REQUIRE(decoder_request.value().config.placement.part_clearance == 1.5);
@@ -138,11 +138,11 @@ TEST_CASE("bounding-box decoder preserves explicit empty bin restrictions",
   }};
 
   const auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   const auto decoder_request =
       shiny::nesting::to_bounding_box_decoder_request(normalized.value());
-  REQUIRE(decoder_request.ok());
+  REQUIRE(decoder_request.has_value());
   REQUIRE(decoder_request.value().bins.size() == 1);
   REQUIRE(decoder_request.value().pieces.size() == 1);
   REQUIRE(decoder_request.value().pieces.front().restricted_to_allowed_bins);
@@ -167,7 +167,7 @@ TEST_CASE("piece-local rotations must narrow the execution default set",
   }};
 
   REQUIRE_FALSE(request.is_valid());
-  REQUIRE_FALSE(shiny::nesting::normalize_request(request).ok());
+  REQUIRE_FALSE(shiny::nesting::normalize_request(request).has_value());
 }
 
 TEST_CASE("normalized requests materialize type-erased strategy configs",
@@ -193,7 +193,7 @@ TEST_CASE("normalized requests materialize type-erased strategy configs",
 
   REQUIRE(request.is_valid());
   const auto normalized = shiny::nesting::normalize_request(request);
-  REQUIRE(normalized.ok());
+  REQUIRE(normalized.has_value());
 
   const auto *prod =
       shiny::nesting::production_strategy_config_ptr<

@@ -80,15 +80,15 @@ template <typename Fn>
 auto try_binary_boolean(const std::string_view operation,
                         const PolygonWithHoles &lhs,
                         const PolygonWithHoles &rhs, Fn &&fn)
-    -> util::StatusOr<std::vector<PolygonWithHoles>> {
+    -> std::expected<std::vector<PolygonWithHoles>, util::Status> {
   try {
     return fn();
   } catch (const std::exception &ex) {
     log_boolean_failure(operation, lhs, rhs, &ex);
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   } catch (...) {
     log_boolean_failure(operation, lhs, rhs, nullptr);
-    return util::Status::computation_failed;
+    return std::unexpected(util::Status::computation_failed);
   }
 }
 
@@ -113,7 +113,7 @@ auto union_polygons(const PolygonWithHoles &lhs, const PolygonWithHoles &rhs)
 
 auto try_union_polygons(const PolygonWithHoles &lhs,
                         const PolygonWithHoles &rhs)
-    -> util::StatusOr<std::vector<PolygonWithHoles>> {
+    -> std::expected<std::vector<PolygonWithHoles>, util::Status> {
   return try_binary_boolean("union", lhs, rhs,
                             [&]() { return union_polygons(lhs, rhs); });
 }
@@ -133,7 +133,7 @@ auto intersection_polygons(const PolygonWithHoles &lhs,
 
 auto try_intersection_polygons(const PolygonWithHoles &lhs,
                                const PolygonWithHoles &rhs)
-    -> util::StatusOr<std::vector<PolygonWithHoles>> {
+    -> std::expected<std::vector<PolygonWithHoles>, util::Status> {
   return try_binary_boolean("intersection", lhs, rhs,
                             [&]() { return intersection_polygons(lhs, rhs); });
 }
@@ -156,7 +156,7 @@ auto difference_polygons(const PolygonWithHoles &lhs,
 
 auto try_difference_polygons(const PolygonWithHoles &lhs,
                              const PolygonWithHoles &rhs)
-    -> util::StatusOr<std::vector<PolygonWithHoles>> {
+    -> std::expected<std::vector<PolygonWithHoles>, util::Status> {
   return try_binary_boolean("difference", lhs, rhs,
                             [&]() { return difference_polygons(lhs, rhs); });
 }
@@ -220,8 +220,8 @@ auto try_subtract_region_set(std::vector<PolygonWithHoles> &regions,
   std::vector<PolygonWithHoles> next_regions;
   for (const auto &region : regions) {
     auto difference = try_difference_polygons(region, obstacle);
-    if (!difference.ok()) {
-      return difference.status();
+    if (!difference.has_value()) {
+      return difference.error();
     }
     const auto &difference_regions = difference.value();
     next_regions.insert(next_regions.end(), difference_regions.begin(),

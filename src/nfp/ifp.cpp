@@ -87,7 +87,7 @@ normalize_regions(std::vector<geom::PolygonWithHoles> regions)
 
 [[nodiscard]] auto compute_general_ifp(const geom::PolygonWithHoles &container,
                                        const geom::PolygonWithHoles &piece)
-    -> util::StatusOr<std::vector<geom::PolygonWithHoles>> {
+    -> std::expected<std::vector<geom::PolygonWithHoles>, util::Status> {
   const auto container_bounds = geom::compute_bounds(container);
   const auto piece_bounds = geom::compute_bounds(piece);
   const auto move_bounds =
@@ -102,17 +102,17 @@ normalize_regions(std::vector<geom::PolygonWithHoles> regions)
   const auto container_bbox =
       geom::normalize_polygon(geom::box_to_polygon(container_bounds));
   auto obstacles = geom::try_difference_polygons(container_bbox, container);
-  if (!obstacles.ok()) {
+  if (!obstacles.has_value()) {
     SHINY_DEBUG("ifp: container obstacle extraction failed status={}",
-                util::status_name(obstacles.status()));
-    return obstacles.status();
+                util::status_name(obstacles.error()));
+    return std::unexpected(obstacles.error());
   }
   for (const auto &obstacle : obstacles.value()) {
     auto blocked = compute_nfp(obstacle, piece);
-    if (!blocked.ok()) {
+    if (!blocked.has_value()) {
       SHINY_DEBUG("ifp: blocked-region NFP failed status={}",
-                  util::status_name(blocked.status()));
-      return blocked.status();
+                  util::status_name(blocked.error()));
+      return std::unexpected(blocked.error());
     }
     for (const auto &blocked_region : blocked.value()) {
       const auto subtract_status =
@@ -120,7 +120,7 @@ normalize_regions(std::vector<geom::PolygonWithHoles> regions)
       if (subtract_status != util::Status::ok) {
         SHINY_DEBUG("ifp: subtract blocked region failed status={}",
                     util::status_name(subtract_status));
-        return subtract_status;
+        return std::unexpected(subtract_status);
       }
       if (feasible_regions.empty()) {
         return feasible_regions;
@@ -157,7 +157,7 @@ auto inner_fit_rectangle_bounds(const geom::Box2 &container_bounds,
 
 auto compute_inner_fit_polygon(const geom::PolygonWithHoles &container,
                                const geom::PolygonWithHoles &piece)
-    -> util::StatusOr<std::vector<geom::PolygonWithHoles>> {
+    -> std::expected<std::vector<geom::PolygonWithHoles>, util::Status> {
   const auto normalized_container = geom::sanitize_polygon(container).polygon;
   const auto normalized_piece = geom::sanitize_polygon(piece).polygon;
 
@@ -166,7 +166,7 @@ auto compute_inner_fit_polygon(const geom::PolygonWithHoles &container,
     SHINY_DEBUG("ifp: invalid input container_outer={} piece_outer={}",
                 normalized_container.outer().size(),
                 normalized_piece.outer().size());
-    return util::Status::invalid_input;
+    return std::unexpected(util::Status::invalid_input);
   }
 
   const auto container_bounds = is_axis_aligned_rectangle(normalized_container);
@@ -193,7 +193,7 @@ auto compute_inner_fit_polygon(const geom::PolygonWithHoles &container,
 
 auto compute_ifp(const geom::PolygonWithHoles &container,
                  const geom::PolygonWithHoles &piece)
-    -> util::StatusOr<std::vector<geom::PolygonWithHoles>> {
+    -> std::expected<std::vector<geom::PolygonWithHoles>, util::Status> {
   return compute_inner_fit_polygon(container, piece);
 }
 

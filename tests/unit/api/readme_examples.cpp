@@ -34,10 +34,10 @@ TEST_CASE("README public API examples compile and execute",
                                .polygon = rectangle(0.0, 0.0, 3.0, 2.0),
                            })
                            .build_checked();
-  REQUIRE(request.ok());
+  REQUIRE(request.has_value());
 
   const auto solved = solve(request.value());
-  REQUIRE(solved.ok());
+  REQUIRE(solved.has_value());
   REQUIRE(solved.value().is_full_success());
 
   const auto production_request =
@@ -53,18 +53,18 @@ TEST_CASE("README public API examples compile and execute",
               .polygon = rectangle(0.0, 0.0, 3.0, 2.0),
           })
           .build_checked();
-  REQUIRE(production_request.ok());
+  REQUIRE(production_request.has_value());
 
   const auto timed =
       solve(production_request.value(),
             api::ProfileSolveControlBuilder{}.with_random_seed(7).build());
-  REQUIRE(timed.ok());
+  REQUIRE(timed.has_value());
   REQUIRE(timed.value().stop_reason == StopReason::time_limit_reached);
 
   const auto request_dto = api::to_dto(request.value());
   const auto roundtrip = solve(api::to_request(request_dto),
                                api::to_solve_control(request_dto.control));
-  REQUIRE(roundtrip.ok());
+  REQUIRE(roundtrip.has_value());
   const auto result_dto = api::to_dto(roundtrip.value());
   REQUIRE(result_dto.summary.full_success);
 

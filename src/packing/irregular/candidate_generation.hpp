@@ -93,6 +93,6 @@ auto limit_candidate_points(std::vector<GeneratedCandidatePoint> &points,
     std::uint64_t moving_piece_revision, geom::ResolvedRotation moving_rotation,
     CandidateStrategy strategy, cache::NfpCache *cache = nullptr,
     CandidateGenerationDiagnostics *diagnostics = nullptr)
-    -> util::StatusOr<std::vector<GeneratedCandidatePoint>>;
+    -> std::expected<std::vector<GeneratedCandidatePoint>, util::Status>;
 
 } // namespace shiny::nesting::pack

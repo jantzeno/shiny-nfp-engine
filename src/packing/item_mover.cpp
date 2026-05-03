@@ -328,7 +328,7 @@ auto move_item(const CollisionTracker &tracker, const std::size_t item_index,
       geom::Vector2(-current_bounds.min.x(), -current_bounds.min.y()));
   auto move_regions_or =
       nfp::compute_inner_fit_polygon(tracker.container(), local_piece);
-  if (!move_regions_or.ok()) {
+  if (!move_regions_or.has_value()) {
     return std::nullopt;
   }
   const auto &move_regions = move_regions_or.value();

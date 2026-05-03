@@ -17,7 +17,7 @@ namespace shiny::nesting::io {
  * @return Parsed polygon set or an error status.
  */
 [[nodiscard]] auto load_polygon_set(const std::filesystem::path &path)
-    -> util::StatusOr<std::vector<geom::PolygonWithHoles>>;
+    -> std::expected<std::vector<geom::PolygonWithHoles>, util::Status>;
 
 /**
  * @brief Saves a polygon set to the repo JSON interchange format.

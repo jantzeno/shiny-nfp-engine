@@ -26,6 +26,6 @@ struct SvgImportConfig {
  */
 [[nodiscard]] auto polygonize_svg_path(std::string_view svg_path_data,
                                        const SvgImportConfig &config = {})
-    -> util::StatusOr<geom::PolygonWithHoles>;
+    -> std::expected<geom::PolygonWithHoles, util::Status>;
 
 } // namespace shiny::nesting::io
