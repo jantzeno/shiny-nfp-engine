@@ -16,7 +16,7 @@
 #include "geometry/queries/sanitize.hpp"
 #include "geometry/queries/validity.hpp"
 #include "geometry/transforms/transform.hpp"
-#include "internal/legacy_solve.hpp"
+#include "solve.hpp"
 #include "internal/request_normalization.hpp"
 #include "io/json.hpp"
 #include "io/layout_svg.hpp"

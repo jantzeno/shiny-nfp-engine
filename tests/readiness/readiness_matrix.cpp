@@ -26,7 +26,7 @@
 #include "geometry/polygon.hpp"
 #include "geometry/queries/normalize.hpp"
 #include "geometry/transforms/transform.hpp"
-#include "internal/legacy_solve.hpp"
+#include "solve.hpp"
 #include "io/json.hpp"
 #include "io/layout_svg.hpp"
 #include "io/or_dataset_json.hpp"

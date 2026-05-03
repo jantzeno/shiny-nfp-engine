@@ -49,6 +49,9 @@ struct BinInput {
   std::uint64_t geometry_revision{0};
   place::PlacementStartCorner start_corner{
       place::PlacementStartCorner::bottom_left};
+  /// Original `BinRequest::bin_id` from the caller's request; used to track
+  /// group membership for group-segregated overflow.
+  std::uint32_t source_request_bin_id{0};
 };
 
 /**
@@ -65,10 +68,25 @@ struct DecoderRequest {
   std::vector<PieceInput> pieces{};
   place::PlacementPolicy policy{place::PlacementPolicy::bottom_left};
   PackingConfig config{};
+  /// When true, unplaceable pieces overflow into a new engine-created bin
+  /// cloned from the most-recently-opened bin for the piece's assignment group.
+  bool allow_part_overflow{false};
 };
 
 // InterruptionProbe is defined in runtime/interruption.hpp and aliased
 // into this namespace via that header.
+
+/**
+ * @brief Records one overflow bin created during a decode run.
+ */
+struct DecoderOverflowEvent {
+  /// `BinInput.bin_id` of the user bin that served as the template.
+  std::uint32_t template_bin_id{0};
+  /// `bin_id` assigned to the newly-created overflow bin.
+  std::uint32_t overflow_bin_id{0};
+  /// `BinInput.source_request_bin_id` of the template (caller's bin group).
+  std::uint32_t source_request_bin_id{0};
+};
 
 /**
  * @brief Output of one constructive decode run.
@@ -85,6 +103,7 @@ struct DecoderResult {
   std::vector<BinState> bins{};
   Layout layout{};
   bool interrupted{false};
+  std::vector<DecoderOverflowEvent> overflow_events{};
 };
 
 } // namespace shiny::nesting::pack

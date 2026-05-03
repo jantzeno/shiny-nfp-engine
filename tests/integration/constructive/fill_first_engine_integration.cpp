@@ -5,7 +5,7 @@
 #include "request.hpp"
 #include "result.hpp"
 
-#include "internal/legacy_solve.hpp"
+#include "solve.hpp"
 #include "packing/bin_identity.hpp"
 #include "packing/constructive/fill_first_engine.hpp"
 #include "internal/request_normalization.hpp"

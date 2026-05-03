@@ -443,35 +443,6 @@ auto original_order(const NormalizedRequest &request)
   return order;
 }
 
-auto descending_area_order(std::span<const double> piece_areas)
-    -> std::vector<std::size_t> {
-  std::vector<std::size_t> order(piece_areas.size());
-  std::iota(order.begin(), order.end(), 0U);
-  std::stable_sort(order.begin(), order.end(),
-                   [&](const std::size_t lhs, const std::size_t rhs) {
-                     if (piece_areas[lhs] != piece_areas[rhs]) {
-                       return piece_areas[lhs] > piece_areas[rhs];
-                     }
-                     return lhs < rhs;
-                   });
-  return order;
-}
-
-auto reverse_order(const NormalizedRequest &request)
-    -> std::vector<std::size_t> {
-  auto order = original_order(request);
-  std::reverse(order.begin(), order.end());
-  return order;
-}
-
-auto random_order(const std::size_t piece_count, runtime::DeterministicRng &rng)
-    -> std::vector<std::size_t> {
-  std::vector<std::size_t> order(piece_count);
-  std::iota(order.begin(), order.end(), 0U);
-  rng.shuffle(order);
-  return order;
-}
-
 auto original_forced_rotations(const NormalizedRequest &request)
     -> std::vector<std::optional<geom::RotationIndex>> {
   if (request.forced_rotations.size() == request.expanded_pieces.size()) {
@@ -648,44 +619,6 @@ auto propose_move(
   }
 
   return move;
-}
-
-auto random_operator(runtime::DeterministicRng &rng,
-                     const bool include_destroy_repair) -> NeighborhoodSearch {
-  const std::size_t count = include_destroy_repair ? 11U : 6U;
-  return static_cast<NeighborhoodSearch>(rng.uniform_index(count));
-}
-
-auto all_alns_operators() -> std::vector<NeighborhoodSearch> {
-  return {
-      NeighborhoodSearch::random_destroy_repair,
-      NeighborhoodSearch::area_destroy_repair,
-      NeighborhoodSearch::related_destroy_repair,
-      NeighborhoodSearch::cluster_destroy_repair,
-      NeighborhoodSearch::regret_destroy_repair,
-      NeighborhoodSearch::large_item_swap,
-      NeighborhoodSearch::rotation_change,
-      NeighborhoodSearch::relocate,
-  };
-}
-
-// Maximisation objective: larger is better. The lexicographic
-// priority is encoded as huge weights so adding the lower terms
-// can never invert the order set by a higher-priority delta:
-//   placed_parts (10¹²) ≫ bin_count (10⁹) ≫ strip_length (10⁴) ≫
-//   utilization (10³). All call sites compute `delta = candidate -
-//   current` and accept on positive delta (see SA Metropolis,
-//   LAHC history compare, etc.).
-auto objective_score(const LayoutMetrics &metrics) -> double {
-  if (maximize_value(metrics)) {
-    return metrics.placed_value * 1'000'000'000'000.0 +
-           static_cast<double>(metrics.placed_parts) * 1'000'000'000.0 -
-           metrics.strip_length * 10'000.0 + metrics.utilization * 1'000.0 -
-           static_cast<double>(metrics.bin_count) * 100.0;
-  }
-  return static_cast<double>(metrics.placed_parts) * 1'000'000'000'000.0 -
-         static_cast<double>(metrics.bin_count) * 1'000'000'000.0 -
-         metrics.strip_length * 10'000.0 + metrics.utilization * 1'000.0;
 }
 
 auto primary_metrics_preserved(const LayoutMetrics &candidate,

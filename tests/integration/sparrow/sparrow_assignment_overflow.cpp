@@ -13,7 +13,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "internal/legacy_solve.hpp"
+#include "solve.hpp"
 #include "packing/constructive/fill_first_engine.hpp"
 #include "packing/sparrow/adapters/layout_adapter.hpp"
 #include "packing/sparrow/solution.hpp"

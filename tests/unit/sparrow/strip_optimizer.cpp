@@ -14,7 +14,7 @@
 #include "packing/sparrow/search/disruption.hpp"
 #include "packing/sparrow/search/solution_pool.hpp"
 #include "packing/sparrow/search/strip_optimizer.hpp"
-#include "internal/legacy_solve.hpp"
+#include "solve.hpp"
 #include "solve.hpp"
 
 namespace {

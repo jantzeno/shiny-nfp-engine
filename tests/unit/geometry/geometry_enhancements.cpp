@@ -6,7 +6,7 @@
 #include "geometry/transforms/rotation_refinement.hpp"
 #include "geometry/transforms/rtree_index.hpp"
 #include "geometry/transforms/transform.hpp"
-#include "internal/legacy_solve.hpp"
+#include "solve.hpp"
 #include "internal/request_normalization.hpp"
 #include "packing/constructive/fill_first_engine.hpp"
 #include "request.hpp"

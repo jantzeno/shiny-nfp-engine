@@ -5,7 +5,7 @@
 
 #include "geometry/polygon.hpp"
 #include "geometry/queries/normalize.hpp"
-#include "internal/legacy_solve.hpp"
+#include "solve.hpp"
 #include "request.hpp"
 #include "result.hpp"
 #include "solve.hpp"

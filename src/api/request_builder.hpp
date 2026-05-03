@@ -108,6 +108,11 @@ public:
     return *this;
   }
 
+  auto with_seed_from_rng(std::mt19937 &rng) -> ProfileSolveControlBuilder & {
+    control_.random_seed = seed_from_rng(rng);
+    return *this;
+  }
+
   auto with_workspace(pack::PackerWorkspace *workspace)
       -> ProfileSolveControlBuilder & {
     control_.workspace = workspace;
@@ -120,11 +125,10 @@ private:
   ProfileSolveControl control_{};
 };
 
-// NestingRequestBuilder is the legacy entry point for the three retained
-// strategy paths: bounding_box, sequential_backtrack, and
-// metaheuristic_search (BRKGA). It does not expose optimizer-specific tuning
-// parameters. Callers wanting profile-level control over search depth should
-// prefer ProfileRequestBuilder::with_profile(SolveProfile::maximum_search).
+// NestingRequestBuilder provides direct access to the bounding_box and
+// metaheuristic_search (BRKGA) strategy paths with explicit execution policy
+// configuration. Callers wanting profile-level control over search depth
+// should prefer ProfileRequestBuilder::with_profile().
 class NestingRequestBuilder {
 public:
   NestingRequestBuilder() {
@@ -182,6 +186,18 @@ public:
     return *this;
   }
 
+  auto with_allow_part_overflow(const bool allow_part_overflow)
+      -> NestingRequestBuilder & {
+    request_.execution.allow_part_overflow = allow_part_overflow;
+    return *this;
+  }
+
+  auto with_maintain_bed_assignment(const bool maintain_bed_assignment = true)
+      -> NestingRequestBuilder & {
+    request_.execution.maintain_bed_assignment = maintain_bed_assignment;
+    return *this;
+  }
+
   [[nodiscard]] auto build() const -> NestingRequest { return request_; }
 
   [[nodiscard]] auto build_checked() const -> std::expected<NestingRequest, util::Status> {
@@ -231,6 +247,11 @@ public:
   auto with_seed_mode(const SeedProgressionMode seed_mode)
       -> SolveControlBuilder & {
     control_.seed_mode = seed_mode;
+    return *this;
+  }
+
+  auto with_seed_from_rng(std::mt19937 &rng) -> SolveControlBuilder & {
+    control_.random_seed = seed_from_rng(rng);
     return *this;
   }
 

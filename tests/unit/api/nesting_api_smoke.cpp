@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <optional>
 
-#include "internal/legacy_solve.hpp"
+#include "solve.hpp"
 #include "internal/request_normalization.hpp"
 
 namespace {

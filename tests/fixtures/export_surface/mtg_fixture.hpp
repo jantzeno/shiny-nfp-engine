@@ -13,7 +13,7 @@
 #include "packing/config.hpp"
 #include "placement/config.hpp"
 #include "placement/types.hpp"
-#include "internal/legacy_solve.hpp"
+#include "solve.hpp"
 #include "request.hpp"
 #include "result.hpp"
 #include "solve.hpp"
@@ -97,9 +97,6 @@ struct MtgRequestOptions {
 
   IrregularOptions irregular{};
   ProductionSearchConfig production{};
-  SAConfig simulated_annealing{};
-  ALNSConfig alns{};
-  LAHCConfig lahc{};
 
   place::PlacementPolicy placement_policy{place::PlacementPolicy::bottom_left};
   double part_spacing_mm{0.0};

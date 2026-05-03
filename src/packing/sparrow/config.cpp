@@ -1,6 +1,7 @@
 #include "packing/sparrow/config.hpp"
 
 #include <array>
+#include <chrono>
 
 namespace shiny::nesting::pack::sparrow {
 
@@ -210,8 +211,12 @@ constexpr std::array<PortLedgerEntry, 9> kPortLedger{{
 [[nodiscard]] auto seed_flow_plan(const std::uint64_t public_seed,
                                   const SeedProgressionMode seed_mode,
                                   const SolveProfile profile) -> SeedFlowPlan {
-  const std::uint64_t root_seed =
+  std::uint64_t root_seed =
       public_seed == 0 ? profile_seed_anchor(profile) : public_seed;
+  if (seed_mode == SeedProgressionMode::random) {
+    root_seed ^= static_cast<std::uint64_t>(
+        std::chrono::steady_clock::now().time_since_epoch().count());
+  }
   return {
       .profile = profile,
       .seed_mode = seed_mode,

@@ -147,8 +147,7 @@ target("shiny_nesting_engine")
     -- boundaries.
     --
     -- Internal headers under src/internal/ are NOT exported:
-    --   - src/internal/legacy_strategy.hpp  (strategy-era enums and configs)
-    --   - src/internal/legacy_solve.hpp     (NestingRequest solve overload)
+    --   - src/execution_policy.hpp  (strategy-era enums and configs)
     --   - src/internal/request_normalization.hpp (normalized request details)
     -- These are transitively included by request.hpp / solve.cpp but are not
     -- part of the supported downstream API surface.
@@ -237,7 +236,7 @@ target("shiny_nesting_engine_tests")
     add_files("tests/unit/geometry/decomposition_internal.cpp")
     add_files("tests/unit/runtime/execution_runtime.cpp")
     add_files("tests/unit/runtime/layout_validation.cpp")
-    add_files("tests/unit/runtime/legacy_strategy.cpp")
+    add_files("tests/unit/runtime/execution_policy.cpp")
     add_files("tests/unit/geometry/geometry_enhancements.cpp")
     add_files("tests/unit/geometry/geometry_foundation.cpp")
     add_files("tests/unit/geometry/geometry_normalize.cpp")

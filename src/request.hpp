@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "geometry/polygon.hpp"
-#include "internal/legacy_strategy.hpp"
+#include "execution_policy.hpp"
 #include "placement/types.hpp"
 #include "util/status.hpp"
 

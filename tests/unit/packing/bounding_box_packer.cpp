@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "algorithm_kind.hpp"
-#include "internal/legacy_solve.hpp"
+#include "solve.hpp"
 #include "packing/bounding_box_packer.hpp"
 #include "solve.hpp"
 

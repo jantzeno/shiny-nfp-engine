@@ -8,7 +8,7 @@
 #include <string_view>
 #include <vector>
 
-#include "internal/legacy_solve.hpp"
+#include "solve.hpp"
 #include "packing/layout.hpp"
 #include "packing/sparrow/config.hpp"
 #include "solve.hpp"

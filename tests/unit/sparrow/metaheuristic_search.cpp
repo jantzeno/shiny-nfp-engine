@@ -5,8 +5,6 @@
 #include <vector>
 
 #include "internal/request_normalization.hpp"
-#include "packing/sparrow/search/detail/cooling_schedule.hpp"
-#include "packing/sparrow/search/detail/lahc.hpp"
 #include "packing/sparrow/search/detail/neighborhood_search.hpp"
 #include "request.hpp"
 #include "runtime/deterministic_rng.hpp"
@@ -15,18 +13,13 @@
 namespace {
 
 using shiny::nesting::BinRequest;
-using shiny::nesting::CoolingScheduleKind;
 using shiny::nesting::NestingRequest;
-using shiny::nesting::OptimizerKind;
 using shiny::nesting::PieceRequest;
-using shiny::nesting::SAConfig;
 using shiny::nesting::SolveControl;
 using shiny::nesting::StopReason;
 using shiny::nesting::StrategyKind;
 using shiny::nesting::geom::PolygonWithHoles;
 using shiny::nesting::runtime::DeterministicRng;
-using shiny::nesting::search::detail::CoolingSchedule;
-using shiny::nesting::search::detail::LateAcceptanceHistory;
 using shiny::nesting::search::detail::NeighborhoodSearch;
 using shiny::nesting::search::detail::OrderEvaluator;
 
@@ -57,40 +50,6 @@ auto neighborhood_request() -> NestingRequest {
 }
 
 } // namespace
-
-TEST_CASE("cooling schedules cool and clamp to the configured floor",
-          "[search][metaheuristic][cooling]") {
-  for (const auto kind :
-       {CoolingScheduleKind::geometric, CoolingScheduleKind::linear,
-        CoolingScheduleKind::adaptive, CoolingScheduleKind::lundy_mees}) {
-    SAConfig config;
-    config.cooling_schedule = kind;
-    config.max_refinements = 10;
-    config.initial_temperature = 1.0;
-    config.final_temperature = 0.1;
-
-    CoolingSchedule schedule(config);
-    double temperature = schedule.initial_temperature();
-    for (std::size_t iteration = 0; iteration < 10U; ++iteration) {
-      const double next =
-          schedule.next_temperature(temperature, iteration, true);
-      REQUIRE(next <= temperature + 1e-9);
-      REQUIRE(next >= config.final_temperature - 1e-9);
-      temperature = next;
-    }
-  }
-}
-
-TEST_CASE("late acceptance history compares against historical scores",
-          "[search][metaheuristic][lahc]") {
-  LateAcceptanceHistory history(3, 10.0);
-  REQUIRE(history.accepts(10.0, 10.0));
-  REQUIRE_FALSE(history.accepts(9.0, 10.0));
-  history.advance(8.0);
-  history.advance(7.0);
-  history.advance(6.0);
-  REQUIRE(history.accepts(7.0, 6.0));
-}
 
 TEST_CASE("shared neighborhood operators produce order changes",
           "[search][metaheuristic][neighborhood]") {

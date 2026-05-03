@@ -1,17 +1,5 @@
 #pragma once
 
-// Internal header: not part of the public exported surface.
-//
-// Contains the strategy-era execution types (StrategyKind,
-// ProductionOptimizerKind, ExecutionPolicy, and associated configs) that have
-// been moved off the primary API path. Include this header only in
-// implementation files and internal engine boundaries that need to dispatch
-// through the legacy NestingRequest path.
-//
-// Downstream consumers should use ProfileRequest and ProfileRequestBuilder
-// instead. The legacy NestingRequest solve overload is declared in
-// src/internal/legacy_solve.hpp.
-
 #include <cstddef>
 #include <cstdint>
 #include <utility>
@@ -23,11 +11,6 @@
 #include "placement/types.hpp"
 
 namespace shiny::nesting {
-
-// These enums are also used by the public ProfileRequest surface and are
-// transitively visible to any file that includes request.hpp (which includes
-// this header). They live here because both public and legacy types depend on
-// them and this avoids a circular include.
 
 enum class PieceOrdering : std::uint8_t {
   input = 0,
@@ -48,13 +31,6 @@ enum class StrategyKind : std::uint8_t {
 
 enum class ProductionOptimizerKind : std::uint8_t {
   brkga = 0,
-};
-
-enum class CoolingScheduleKind : std::uint8_t {
-  geometric = 0,
-  linear = 1,
-  adaptive = 2,
-  lundy_mees = 3,
 };
 
 enum class CandidateStrategy : std::uint8_t {
@@ -104,43 +80,10 @@ struct ProductionSearchConfig {
   // it risks saturating doubles after many consecutive amplifications.
   double gls_weight_cap{1e6};
   // Plateau detection window for the Sparrow strip optimizer's internal
-  // acceptance history. Equivalent to SAConfig::plateau_window but lives here
-  // so that SAConfig can be fully decoupled from ExecutionPolicy.
+  // acceptance history.
   std::size_t plateau_window{8};
 
   [[nodiscard]] auto is_valid() const -> bool;
-};
-
-struct SAConfig {
-  CoolingScheduleKind cooling_schedule{CoolingScheduleKind::geometric};
-  std::size_t max_refinements{48};
-  std::size_t restart_count{2};
-  double initial_temperature{0.25};
-  double final_temperature{0.01};
-  double lundy_beta{0.025};
-  std::size_t plateau_window{8};
-  double reheating_factor{1.5};
-  std::size_t perturbation_swaps{2};
-};
-
-struct ALNSConfig {
-  std::size_t max_refinements{48};
-  std::size_t destroy_min_count{1};
-  std::size_t destroy_max_count{3};
-  double initial_acceptance_ratio{0.04};
-  double final_acceptance_ratio{0.005};
-  double reaction_factor{0.2};
-  double reward_improve{4.0};
-  double reward_accept{1.5};
-  double reward_reject{0.25};
-  std::size_t segment_length{8};
-};
-
-struct LAHCConfig {
-  std::size_t max_refinements{48};
-  std::size_t history_length{12};
-  std::size_t plateau_limit{16};
-  std::size_t perturbation_swaps{2};
 };
 
 struct IrregularOptions {
@@ -159,12 +102,6 @@ struct IrregularOptions {
   [[nodiscard]] auto is_valid() const -> bool;
 };
 
-struct StrategyConfig {
-  StrategyKind kind{StrategyKind::bounding_box};
-  using Payload = std::variant<std::monostate>;
-  Payload payload{};
-};
-
 struct ProductionStrategyConfig {
   ProductionOptimizerKind kind{ProductionOptimizerKind::brkga};
   using Payload = std::variant<std::monostate, ProductionSearchConfig>;
@@ -175,12 +112,12 @@ struct ExecutionPolicy {
   StrategyKind strategy{StrategyKind::bounding_box};
   ProductionOptimizerKind production_optimizer{ProductionOptimizerKind::brkga};
   ObjectiveMode objective_mode{ObjectiveMode::placement_count};
-  StrategyConfig strategy_config{};
   ProductionStrategyConfig production_strategy_config{};
   place::PlacementPolicy placement_policy{place::PlacementPolicy::bottom_left};
   geom::DiscreteRotationSet default_rotations{{0.0, 90.0, 180.0, 270.0}};
   double part_spacing{0.0};
   bool allow_part_overflow{true};
+  bool maintain_bed_assignment{false};
   bool enable_part_in_part_placement{false};
   bool explore_concave_candidates{false};
   std::vector<std::uint32_t> selected_bin_ids{};
@@ -189,37 +126,6 @@ struct ExecutionPolicy {
   IrregularOptions irregular{};
   ProductionSearchConfig production{};
 };
-
-template <typename Config>
-[[nodiscard]] auto
-resolve_primary_strategy_config(const ExecutionPolicy &execution,
-                                StrategyKind direct_kind, const Config &legacy)
-    -> const Config & {
-  if (execution.strategy_config.kind == direct_kind) {
-    if (const auto *config =
-            std::get_if<Config>(&execution.strategy_config.payload);
-        config != nullptr) {
-      return *config;
-    }
-  }
-  return legacy;
-}
-
-template <typename Config>
-[[nodiscard]] auto has_primary_strategy_config(const ExecutionPolicy &execution,
-                                               StrategyKind direct_kind)
-    -> bool {
-  return execution.strategy_config.kind == direct_kind &&
-         std::get_if<Config>(&execution.strategy_config.payload) != nullptr;
-}
-
-template <typename Config>
-auto set_primary_strategy_config(ExecutionPolicy &execution,
-                                 StrategyKind direct_kind, Config config)
-    -> void {
-  execution.strategy_config.kind = direct_kind;
-  execution.strategy_config.payload = std::move(config);
-}
 
 template <typename Config>
 [[nodiscard]] auto
@@ -237,16 +143,6 @@ auto set_production_strategy_config(ExecutionPolicy &execution,
                                     Config config) -> void {
   execution.production_strategy_config.kind = production_kind;
   execution.production_strategy_config.payload = std::move(config);
-}
-
-template <typename Config>
-[[nodiscard]] auto primary_strategy_config_ptr(const ExecutionPolicy &execution,
-                                               StrategyKind direct_kind)
-    -> const Config * {
-  if (execution.strategy_config.kind == direct_kind) {
-    return std::get_if<Config>(&execution.strategy_config.payload);
-  }
-  return nullptr;
 }
 
 template <typename Config>
@@ -271,20 +167,6 @@ resolve_production_strategy_config(const ExecutionPolicy &execution,
     return *config;
   }
   return legacy;
-}
-
-template <typename Config>
-[[nodiscard]] auto
-resolve_strategy_config(const ExecutionPolicy &execution,
-                        StrategyKind direct_kind,
-                        ProductionOptimizerKind production_kind,
-                        const Config &legacy) -> const Config & {
-  if (execution.strategy == StrategyKind::metaheuristic_search &&
-      execution.production_optimizer == production_kind) {
-    return resolve_production_strategy_config(execution, production_kind,
-                                              legacy);
-  }
-  return resolve_primary_strategy_config(execution, direct_kind, legacy);
 }
 
 } // namespace shiny::nesting

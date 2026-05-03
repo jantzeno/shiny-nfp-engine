@@ -1,6 +1,6 @@
 #include "solve.hpp"
 
-#include "internal/legacy_solve.hpp"
+#include "solve.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -406,6 +406,13 @@ auto solve(const NestingRequest &request, const SolveControl &control)
             control, time_budget, stopwatch, best_result.interrupted,
             hit_operation_limit),
     };
+    for (const auto &ev : best_result.overflow_events) {
+      result.constructive.overflow_events.push_back({
+          .template_bin_id = ev.template_bin_id,
+          .overflow_bin_id = ev.overflow_bin_id,
+          .source_request_bin_id = ev.source_request_bin_id,
+      });
+    }
     validation::finalize_result(normalized_request.value(), result);
     log_solve_finish(request, control,
                      log::strategy_name(request.execution.strategy),
@@ -435,10 +442,15 @@ auto solve(const NestingRequest &request, const SolveControl &control)
               normalized_request.value().expanded_bins.size());
 
   search::BrkgaProductionSearch search;
-  auto result = search.solve(normalized_request.value(), control);
+  SolveControl effective_control = control;
+  if (control.seed_mode == SeedProgressionMode::random) {
+    effective_control.random_seed ^= static_cast<std::uint64_t>(
+        std::chrono::steady_clock::now().time_since_epoch().count());
+  }
+  auto result = search.solve(normalized_request.value(), effective_control);
   if (result.has_value()) {
     result.value().strategy = StrategyKind::metaheuristic_search;
-    result.value().effective_seed = control.random_seed;
+    result.value().effective_seed = control.random_seed;  // public seed
     validation::finalize_result(normalized_request.value(), result.value());
     log_solve_finish(request, control, "brkga", runner_class, result.value());
   }

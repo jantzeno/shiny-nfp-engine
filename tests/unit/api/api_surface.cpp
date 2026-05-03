@@ -6,13 +6,12 @@
 
 #include "api/dto.hpp"
 #include "api/request_builder.hpp"
-#include "internal/legacy_solve.hpp"
+#include "solve.hpp"
 #include "runtime/cancellation.hpp"
 #include "solve.hpp"
 
 namespace {
 
-using shiny::nesting::ALNSConfig;
 using shiny::nesting::BinRequest;
 using shiny::nesting::NestingRequest;
 using shiny::nesting::ObjectiveMode;

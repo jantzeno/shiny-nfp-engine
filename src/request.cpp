@@ -421,6 +421,7 @@ auto to_nesting_request(const ProfileRequest &request)
   translated.execution.production_optimizer = preset.production_optimizer;
   translated.execution.objective_mode = request.objective_mode;
   translated.execution.allow_part_overflow = request.allow_part_overflow;
+  translated.execution.maintain_bed_assignment = request.maintain_bed_assignment;
   translated.execution.selected_bin_ids = request.selected_bin_ids;
   translated.execution.production = preset.production;
 
@@ -485,6 +486,7 @@ auto to_bounding_box_decoder_request(const NormalizedRequest &request)
         .polygon = source_it->polygon,
         .geometry_revision = source_it->geometry_revision,
         .start_corner = source_it->start_corner,
+        .source_request_bin_id = expanded_bin.source_bin_id,
     });
     expanded_bin_ids_by_source[expanded_bin.source_bin_id].push_back(
         expanded_bin.expanded_bin_id);
@@ -532,6 +534,9 @@ auto to_bounding_box_decoder_request(const NormalizedRequest &request)
 
     decoder_request.pieces.push_back(std::move(piece));
   }
+
+  decoder_request.allow_part_overflow =
+      request.request.execution.allow_part_overflow;
 
   if (!decoder_request.config.is_valid()) {
     return std::unexpected(util::Status::invalid_input);

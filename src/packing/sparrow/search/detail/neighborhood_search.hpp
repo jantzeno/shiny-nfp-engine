@@ -77,15 +77,6 @@ private:
 [[nodiscard]] auto original_order(const NormalizedRequest &request)
     -> std::vector<std::size_t>;
 
-[[nodiscard]] auto descending_area_order(std::span<const double> piece_areas)
-    -> std::vector<std::size_t>;
-
-[[nodiscard]] auto reverse_order(const NormalizedRequest &request)
-    -> std::vector<std::size_t>;
-
-[[nodiscard]] auto random_order(std::size_t piece_count,
-                                runtime::DeterministicRng &rng)
-    -> std::vector<std::size_t>;
 
 [[nodiscard]] auto original_forced_rotations(const NormalizedRequest &request)
     -> std::vector<std::optional<geom::RotationIndex>>;
@@ -97,19 +88,6 @@ private:
     std::span<const std::size_t> piece_rotation_counts,
     runtime::DeterministicRng &rng, NeighborhoodSearch op,
     std::size_t intensity = 1U) -> NeighborhoodMove;
-
-[[nodiscard]] auto random_operator(runtime::DeterministicRng &rng,
-                                   bool include_destroy_repair = true)
-    -> NeighborhoodSearch;
-
-// Canonical operator set used by ALNS-style adaptive selection drivers.
-// Centralised here so adding a new operator only requires touching this
-// list (plus any operator-specific dispatch in `propose_move`). Keep
-// the list ordered destroy-repair → swaps → rotation/relocate so the
-// adaptive weight table semantics are stable across drivers.
-[[nodiscard]] auto all_alns_operators() -> std::vector<NeighborhoodSearch>;
-
-[[nodiscard]] auto objective_score(const LayoutMetrics &metrics) -> double;
 
 [[nodiscard]] auto primary_metrics_preserved(const LayoutMetrics &candidate,
                                              const LayoutMetrics &reference)

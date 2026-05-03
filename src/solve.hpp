@@ -9,8 +9,9 @@
 
 namespace shiny::nesting {
 
-// The legacy NestingRequest overload is declared in
-// src/internal/legacy_solve.hpp for internal engine use only.
+[[nodiscard]] auto solve(const NestingRequest &request,
+                         const SolveControl &control = {})
+    -> std::expected<NestingResult, util::Status>;
 
 [[nodiscard]] auto solve(const ProfileRequest &request,
                          const ProfileSolveControl &control = {})

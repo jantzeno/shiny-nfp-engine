@@ -97,21 +97,6 @@ bounding_box_heuristic_name(const pack::BoundingBoxHeuristic heuristic)
   return "unknown";
 }
 
-[[nodiscard]] constexpr auto
-cooling_schedule_name(const CoolingScheduleKind schedule) -> std::string_view {
-  switch (schedule) {
-  case CoolingScheduleKind::geometric:
-    return "geometric";
-  case CoolingScheduleKind::linear:
-    return "linear";
-  case CoolingScheduleKind::adaptive:
-    return "adaptive";
-  case CoolingScheduleKind::lundy_mees:
-    return "lundy_mees";
-  }
-  return "unknown";
-}
-
 [[nodiscard]] constexpr auto seed_mode_name(const SeedProgressionMode mode)
     -> std::string_view {
   switch (mode) {

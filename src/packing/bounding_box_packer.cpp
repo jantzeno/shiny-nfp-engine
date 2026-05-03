@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <optional>
 #include <span>
+#include <unordered_map>
 #include <vector>
 
 #include "geometry/operations/boolean_ops.hpp"
@@ -517,6 +518,10 @@ start_corner_on_top(const place::PlacementStartCorner start_corner) -> bool {
 [[nodiscard]] auto make_empty_bin(const BinInput &bin) -> BinPackingState {
   BinPackingState state{};
   state.bin_state.bin_id = bin.bin_id;
+  state.bin_state.identity = {
+      .lifecycle = BinLifecycle::user_created,
+      .source_request_bin_id = bin.source_request_bin_id,
+  };
   state.bin_state.container = geom::normalize_polygon(bin.polygon);
   state.bin_state.container_geometry_revision = bin.geometry_revision;
   state.bin_state.start_corner = bin.start_corner;
@@ -524,6 +529,41 @@ start_corner_on_top(const place::PlacementStartCorner start_corner) -> bool {
   state.container_bounds = compute_bounds(state.bin_state.container);
   state.free_rectangles.push_back(state.container_bounds);
   return state;
+}
+
+/// Returns the template BinInput to use for an overflow bin, or nullptr if
+/// overflow is not permitted for this piece.
+///
+/// Quadrant rules:
+///   maintain=false, overflow=false  -> allow_part_overflow=false -> nullptr
+///   maintain=false, overflow=true   -> unrestricted piece -> last_user_bin_input
+///   maintain=true,  overflow=false  -> allow_part_overflow=false -> nullptr
+///   maintain=true,  overflow=true   -> restricted piece -> last_bin_per_group[group]
+[[nodiscard]] auto overflow_template_for(
+    const PieceInput &piece, const DecoderRequest &request,
+    const BinInput *last_user_bin_input,
+    const std::unordered_map<std::uint32_t, const BinInput *>
+        &last_bin_per_group) -> const BinInput * {
+  if (!request.allow_part_overflow) {
+    return nullptr;
+  }
+  if (!piece.restricted_to_allowed_bins) {
+    return last_user_bin_input;
+  }
+  // maintain=true, overflow=true: overflow only within the piece's assignment
+  // group so pieces from different groups cannot co-mingle in the same bin.
+  if (piece.allowed_bin_ids.empty()) {
+    return nullptr;
+  }
+  const auto bin_it =
+      std::ranges::find_if(request.bins, [&](const BinInput &b) {
+        return b.bin_id == piece.allowed_bin_ids.front();
+      });
+  if (bin_it == request.bins.end()) {
+    return nullptr;
+  }
+  const auto group_it = last_bin_per_group.find(bin_it->source_request_bin_id);
+  return group_it != last_bin_per_group.end() ? group_it->second : nullptr;
 }
 
 [[nodiscard]] auto piece_metrics_for(const PieceInput &piece,
@@ -1258,6 +1298,8 @@ decode_single(const DecoderRequest &request,
 
   std::vector<BinPackingState> working_bins;
   std::vector<bool> opened_bins(request.bins.size(), false);
+  const BinInput *last_user_bin_input = nullptr;
+  std::unordered_map<std::uint32_t, const BinInput *> last_bin_per_group;
   for (std::size_t piece_index = 0; piece_index < request.pieces.size();
        ++piece_index) {
     if (interrupted(interruption_requested)) {
@@ -1329,6 +1371,9 @@ decode_single(const DecoderRequest &request,
                     piece.piece_id, new_bin.bin_state.bin_id,
                     working_bins.size() + 1U);
         opened_bins[request_bin_index] = true;
+        last_user_bin_input = &request.bins[request_bin_index];
+        last_bin_per_group[bin_input.source_request_bin_id] =
+            &request.bins[request_bin_index];
         working_bins.push_back(std::move(new_bin));
         placed = true;
         break;
@@ -1344,10 +1389,43 @@ decode_single(const DecoderRequest &request,
       break;
     }
 
-    result.layout.unplaced_piece_ids.push_back(piece.piece_id);
-    SHINY_DEBUG("BoundingBoxPacker::decode_single: piece remained unplaced "
-                "piece_id={} unplaced_count={}",
-                piece.piece_id, result.layout.unplaced_piece_ids.size());
+    // Attempt overflow bin creation before declaring the piece unplaced.
+    if (const BinInput *tpl = overflow_template_for(
+            piece, request, last_user_bin_input, last_bin_per_group);
+        tpl != nullptr) {
+      const auto overflow_id =
+          working_bins.empty()
+              ? 1U
+              : working_bins.back().bin_state.bin_id + 1U;
+      auto overflow_bin = make_empty_bin(*tpl);
+      overflow_bin.bin_state.bin_id = overflow_id;
+      overflow_bin.bin_state.identity = {
+          .lifecycle = BinLifecycle::engine_overflow,
+          .source_request_bin_id = tpl->source_request_bin_id,
+          .template_bin_id = tpl->bin_id,
+      };
+      if (const auto sel = find_best_for_bin(overflow_bin, piece, request);
+          sel.has_value()) {
+        apply_selection(overflow_bin, piece, *sel,
+                        result.layout.placement_trace, true,
+                        request.config.placement.part_clearance);
+        result.overflow_events.push_back({
+            .template_bin_id = tpl->bin_id,
+            .overflow_bin_id = overflow_id,
+            .source_request_bin_id = tpl->source_request_bin_id,
+        });
+        last_bin_per_group[tpl->source_request_bin_id] = tpl;
+        working_bins.push_back(std::move(overflow_bin));
+        placed = true;
+      }
+    }
+
+    if (!placed) {
+      result.layout.unplaced_piece_ids.push_back(piece.piece_id);
+      SHINY_DEBUG("BoundingBoxPacker::decode_single: piece remained unplaced "
+                  "piece_id={} unplaced_count={}",
+                  piece.piece_id, result.layout.unplaced_piece_ids.size());
+    }
   }
 
   result.bins.reserve(working_bins.size());
@@ -1356,6 +1434,7 @@ decode_single(const DecoderRequest &request,
     result.bins.push_back(bin.bin_state);
     result.layout.bins.push_back({
         .bin_id = bin.bin_state.bin_id,
+        .identity = bin.bin_state.identity,
         .container = bin.bin_state.container,
         .occupied = bin.bin_state.occupied,
         .placements = bin.bin_state.placements,
