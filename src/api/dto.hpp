@@ -3,13 +3,40 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <vector>
 
+#include "api/solve_control.hpp"
 #include "request.hpp"
 #include "result.hpp"
-#include "solve.hpp"
 
 namespace shiny::nesting::api {
+
+struct BinProgressSummaryDto {
+  std::uint32_t bin_id{0};
+  std::size_t placed_count{0};
+  double utilization_percent{0.0};
+  bool active{false};
+};
+
+struct ProfileSolveControlDto {
+  std::size_t operation_limit{0};
+  std::uint64_t random_seed{0};
+  SeedProgressionMode seed_mode{SeedProgressionMode::increment};
+};
+
+struct ProfileSolveRequestDto {
+  std::vector<BinRequest> bins{};
+  std::vector<PieceRequest> pieces{};
+  PreprocessPolicy preprocess{};
+  SolveProfile profile{SolveProfile::balanced};
+  ObjectiveMode objective_mode{ObjectiveMode::placement_count};
+  std::optional<std::uint64_t> time_limit_milliseconds{};
+  std::vector<std::uint32_t> selected_bin_ids{};
+  bool allow_part_overflow{true};
+  bool maintain_bed_assignment{false};
+  ProfileSolveControlDto control{};
+};
 
 struct SolveControlDto {
   std::size_t operation_limit{0};
@@ -30,6 +57,22 @@ struct LayoutDto {
   std::size_t bin_count{0};
   std::size_t placement_count{0};
   std::vector<std::uint32_t> unplaced_piece_ids{};
+};
+
+struct ProfileProgressSnapshotDto {
+  SolveProfile profile{SolveProfile::balanced};
+  ProgressPhase phase{ProgressPhase::none};
+  std::string phase_detail{};
+  LayoutDto current_layout{};
+  LayoutDto best_layout{};
+  std::optional<std::uint32_t> active_bin_id{};
+  std::vector<BinProgressSummaryDto> bin_summary{};
+  std::size_t placed_count{0};
+  double utilization_percent{0.0};
+  std::uint64_t elapsed_time_milliseconds{0};
+  std::optional<std::uint64_t> remaining_time_milliseconds{};
+  StopReason stop_reason{StopReason::none};
+  bool improved{false};
 };
 
 struct LayoutValidationIssueDto {
@@ -80,6 +123,15 @@ struct SolveResultDto {
   };
 }
 
+[[nodiscard]] inline auto to_dto(const ProfileSolveControl &control)
+    -> ProfileSolveControlDto {
+  return {
+      .operation_limit = control.operation_limit,
+      .random_seed = control.random_seed,
+      .seed_mode = control.seed_mode,
+  };
+}
+
 [[nodiscard]] inline auto to_solve_control(const SolveControlDto &dto)
     -> SolveControl {
   return {
@@ -87,6 +139,32 @@ struct SolveResultDto {
       .time_limit_milliseconds = dto.time_limit_milliseconds,
       .random_seed = dto.random_seed,
       .seed_mode = dto.seed_mode,
+  };
+}
+
+[[nodiscard]] inline auto to_solve_control(const ProfileSolveControlDto &dto)
+    -> ProfileSolveControl {
+  return {
+      .operation_limit = dto.operation_limit,
+      .random_seed = dto.random_seed,
+      .seed_mode = dto.seed_mode,
+  };
+}
+
+[[nodiscard]] inline auto to_dto(const ProfileRequest &request,
+                                 const ProfileSolveControl &control = {})
+    -> ProfileSolveRequestDto {
+  return {
+      .bins = request.bins,
+      .pieces = request.pieces,
+      .preprocess = request.preprocess,
+      .profile = request.profile,
+      .objective_mode = request.objective_mode,
+      .time_limit_milliseconds = request.time_limit_milliseconds,
+      .selected_bin_ids = request.selected_bin_ids,
+      .allow_part_overflow = request.allow_part_overflow,
+      .maintain_bed_assignment = request.maintain_bed_assignment,
+      .control = to_dto(control),
   };
 }
 
@@ -109,6 +187,21 @@ struct SolveResultDto {
       .pieces = dto.pieces,
       .preprocess = dto.preprocess,
       .execution = dto.execution,
+  };
+}
+
+[[nodiscard]] inline auto to_request(const ProfileSolveRequestDto &dto)
+    -> ProfileRequest {
+  return {
+      .bins = dto.bins,
+      .pieces = dto.pieces,
+      .preprocess = dto.preprocess,
+      .profile = dto.profile,
+      .objective_mode = dto.objective_mode,
+      .time_limit_milliseconds = dto.time_limit_milliseconds,
+      .selected_bin_ids = dto.selected_bin_ids,
+      .allow_part_overflow = dto.allow_part_overflow,
+      .maintain_bed_assignment = dto.maintain_bed_assignment,
   };
 }
 
@@ -154,6 +247,41 @@ struct SolveResultDto {
       .bin_count = layout.bins.size(),
       .placement_count = layout.placement_trace.size(),
       .unplaced_piece_ids = layout.unplaced_piece_ids,
+  };
+}
+
+[[nodiscard]] inline auto to_dto(const BinProgressSummary &summary)
+    -> BinProgressSummaryDto {
+  return {
+      .bin_id = summary.bin_id,
+      .placed_count = summary.placed_count,
+      .utilization_percent = summary.utilization_percent,
+      .active = summary.active,
+  };
+}
+
+[[nodiscard]] inline auto to_dto(const ProfileProgressSnapshot &snapshot)
+    -> ProfileProgressSnapshotDto {
+  std::vector<BinProgressSummaryDto> bin_summary;
+  bin_summary.reserve(snapshot.bin_summary.size());
+  for (const auto &entry : snapshot.bin_summary) {
+    bin_summary.push_back(to_dto(entry));
+  }
+
+  return {
+      .profile = snapshot.profile,
+      .phase = snapshot.phase,
+      .phase_detail = snapshot.phase_detail,
+      .current_layout = to_dto(snapshot.current_layout),
+      .best_layout = to_dto(snapshot.best_layout),
+      .active_bin_id = snapshot.active_bin_id,
+      .bin_summary = std::move(bin_summary),
+      .placed_count = snapshot.placed_count,
+      .utilization_percent = snapshot.utilization_percent,
+      .elapsed_time_milliseconds = snapshot.elapsed_time_milliseconds,
+      .remaining_time_milliseconds = snapshot.remaining_time_milliseconds,
+      .stop_reason = snapshot.stop_reason,
+      .improved = snapshot.improved,
   };
 }
 

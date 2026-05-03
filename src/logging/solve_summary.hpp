@@ -22,18 +22,8 @@ namespace shiny::nesting::log {
   switch (kind) {
   case StrategyKind::bounding_box:
     return "bounding_box";
-  case StrategyKind::sequential_backtrack:
-    return "sequential_backtrack";
   case StrategyKind::metaheuristic_search:
     return "metaheuristic_search";
-  case StrategyKind::simulated_annealing:
-    return "simulated_annealing";
-  case StrategyKind::alns:
-    return "alns";
-  case StrategyKind::gdrr:
-    return "gdrr";
-  case StrategyKind::lahc:
-    return "lahc";
   }
   return "unknown";
 }
@@ -44,14 +34,6 @@ production_optimizer_name(const ProductionOptimizerKind kind)
   switch (kind) {
   case ProductionOptimizerKind::brkga:
     return "brkga";
-  case ProductionOptimizerKind::simulated_annealing:
-    return "simulated_annealing";
-  case ProductionOptimizerKind::alns:
-    return "alns";
-  case ProductionOptimizerKind::gdrr:
-    return "gdrr";
-  case ProductionOptimizerKind::lahc:
-    return "lahc";
   }
   return "unknown";
 }
@@ -167,18 +149,8 @@ cooling_schedule_name(const CoolingScheduleKind schedule) -> std::string_view {
   switch (strategy) {
   case StrategyKind::bounding_box:
     return "shiny::nesting::pack::BoundingBoxPacker";
-  case StrategyKind::sequential_backtrack:
-    return "shiny::nesting::pack::SequentialBacktrackPacker";
   case StrategyKind::metaheuristic_search:
     return "shiny::nesting::search::BrkgaProductionSearch";
-  case StrategyKind::simulated_annealing:
-    return "shiny::nesting::search::SimulatedAnnealingSearch";
-  case StrategyKind::alns:
-    return "shiny::nesting::search::AlnsSearch";
-  case StrategyKind::gdrr:
-    return "shiny::nesting::search::GdrrSearch";
-  case StrategyKind::lahc:
-    return "shiny::nesting::search::LahcSearch";
   }
   return "unknown";
 }
@@ -189,14 +161,6 @@ production_runner_class_name(const ProductionOptimizerKind optimizer)
   switch (optimizer) {
   case ProductionOptimizerKind::brkga:
     return "shiny::nesting::search::BrkgaProductionSearch";
-  case ProductionOptimizerKind::simulated_annealing:
-    return "shiny::nesting::search::SimulatedAnnealingSearch";
-  case ProductionOptimizerKind::alns:
-    return "shiny::nesting::search::AlnsSearch";
-  case ProductionOptimizerKind::gdrr:
-    return "shiny::nesting::search::GdrrSearch";
-  case ProductionOptimizerKind::lahc:
-    return "shiny::nesting::search::LahcSearch";
   }
   return "unknown";
 }
@@ -362,37 +326,9 @@ production_settings_summary(const ExecutionPolicy &execution,
   switch (optimizer) {
   case ProductionOptimizerKind::brkga:
     return shared;
-  case ProductionOptimizerKind::simulated_annealing:
-    return std::format(
-        "{} sa[max_refinements={} restart_count={} cooling_schedule={} "
-        "initial_temperature={:.3g} final_temperature={:.3g}]",
-        shared, execution.simulated_annealing.max_refinements,
-        execution.simulated_annealing.restart_count,
-        cooling_schedule_name(execution.simulated_annealing.cooling_schedule),
-        execution.simulated_annealing.initial_temperature,
-        execution.simulated_annealing.final_temperature);
-  case ProductionOptimizerKind::alns:
-    return std::format(
-        "{} alns[max_refinements={} destroy_min={} destroy_max={} "
-        "segment_length={}]",
-        shared, execution.alns.max_refinements,
-        execution.alns.destroy_min_count, execution.alns.destroy_max_count,
-        execution.alns.segment_length);
-  case ProductionOptimizerKind::gdrr:
-    return std::format("{} gdrr[max_refinements={} initial_goal_ratio={:.3g} "
-                       "goal_decay={:.3g} ruin_swap_count={}]",
-                       shared, execution.gdrr.max_refinements,
-                       execution.gdrr.initial_goal_ratio,
-                       execution.gdrr.goal_decay,
-                       execution.gdrr.ruin_swap_count);
-  case ProductionOptimizerKind::lahc:
-    return std::format(
-        "{} lahc[max_refinements={} history_length={} plateau_limit={} "
-        "perturbation_swaps={}]",
-        shared, execution.lahc.max_refinements, execution.lahc.history_length,
-        execution.lahc.plateau_limit, execution.lahc.perturbation_swaps);
+  default:
+    return shared;
   }
-  return shared;
 }
 
 [[nodiscard]] inline auto
@@ -400,25 +336,12 @@ strategy_settings_summary(const ExecutionPolicy &execution) -> std::string {
   switch (execution.strategy) {
   case StrategyKind::bounding_box:
     return bounding_box_settings_summary(execution);
-  case StrategyKind::sequential_backtrack:
-    return irregular_settings_summary(execution);
   case StrategyKind::metaheuristic_search:
     return production_settings_summary(execution,
                                        execution.production_optimizer);
-  case StrategyKind::simulated_annealing:
-    return production_settings_summary(
-        execution, ProductionOptimizerKind::simulated_annealing);
-  case StrategyKind::alns:
-    return production_settings_summary(execution,
-                                       ProductionOptimizerKind::alns);
-  case StrategyKind::gdrr:
-    return production_settings_summary(execution,
-                                       ProductionOptimizerKind::gdrr);
-  case StrategyKind::lahc:
-    return production_settings_summary(execution,
-                                       ProductionOptimizerKind::lahc);
+  default:
+    return "unknown";
   }
-  return "unknown";
 }
 
 } // namespace shiny::nesting::log

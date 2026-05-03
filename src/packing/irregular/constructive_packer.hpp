@@ -1,5 +1,6 @@
 #pragma once
 
+#include "internal/request_normalization.hpp"
 #include "result.hpp"
 #include "solve.hpp"
 

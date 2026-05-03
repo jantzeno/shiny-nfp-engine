@@ -28,6 +28,7 @@
 #include "geometry/queries/validity.hpp"
 #include "geometry/transforms/transform.hpp"
 #include "geometry/types.hpp"
+#include "internal/request_normalization.hpp"
 #include "observer.hpp"
 #include "packing/common.hpp"
 #include "packing/config.hpp"
@@ -74,7 +75,7 @@ validity_issue_name(const geom::PolygonValidityIssue issue) -> const char * {
   auto candidate = std::filesystem::current_path();
   for (int hop = 0; hop < 8; ++hop) {
     auto try_path = candidate / "tests" / "fixtures";
-    if (std::filesystem::exists(try_path / "integration" / "mtg_test.svg")) {
+    if (std::filesystem::exists(try_path / "export_surface" / "mtg_test.svg")) {
       return try_path;
     }
     if (!candidate.has_parent_path() || candidate == candidate.parent_path()) {
@@ -326,7 +327,7 @@ auto boxes_violate_spacing(const geom::Box2 &a, const geom::Box2 &b,
 
 auto load_mtg_fixture() -> MtgFixture {
   const auto root = resolve_fixture_root();
-  const auto svg_path = root / "integration" / "mtg_test.svg";
+  const auto svg_path = root / "export_surface" / "mtg_test.svg";
 
   MtgFixture fixture{};
   fixture.source_path = svg_path;
@@ -767,10 +768,6 @@ auto make_request(const MtgFixture &fixture, const MtgRequestOptions &options)
       options.bounding_box_deterministic_attempts;
   request.execution.irregular = options.irregular;
   request.execution.production = options.production;
-  request.execution.simulated_annealing = options.simulated_annealing;
-  request.execution.alns = options.alns;
-  request.execution.gdrr = options.gdrr;
-  request.execution.lahc = options.lahc;
 
   return request;
 }
@@ -969,7 +966,7 @@ void validate_layout(const MtgFixture &fixture, const NestingRequest &request,
                      << total_placed << " (unplaced "
                      << result.layout.unplaced_piece_ids.size() << ")");
     REQUIRE(total_placed == *expected.expected_placed_count);
-    REQUIRE(result.placed_parts() == kBaselinePieceCount);
+    REQUIRE(result.placed_parts() == *expected.expected_placed_count);
   }
 
   for (const auto &[bid, count] : expected.per_bed_counts) {

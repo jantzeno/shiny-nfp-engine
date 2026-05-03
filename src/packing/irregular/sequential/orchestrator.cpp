@@ -8,7 +8,10 @@
 #include <utility>
 #include <vector>
 
+#include "runtime/timing.hpp"
+
 #include "logging/shiny_log.hpp"
+#include "packing/constructive/ordering.hpp"
 #include "packing/irregular/workspace.hpp"
 #include "validation/layout_validation.hpp"
 
@@ -140,6 +143,8 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
 
   // runtime::Stopwatch stopwatch;
   // const runtime::TimeBudget time_budget(control.time_limit_milliseconds);
+  runtime::Stopwatch stopwatch;
+  const runtime::TimeBudget time_budget(control.time_limit_milliseconds);
 
   std::optional<runtime::DeterministicRng> rng_storage;
   runtime::DeterministicRng *rng_ptr = nullptr;
@@ -167,6 +172,7 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
   std::size_t candidate_evaluations_completed = 0;
   std::size_t sequence = 0;
   StopReason stop_reason = StopReason::completed;
+  ConstructiveReplay constructive_replay{};
 
   for (std::size_t piece_index = 0; piece_index < piece_instances.size();
        ++piece_index) {
@@ -178,6 +184,10 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
     //   stop_reason = StopReason::time_limit_reached;
     //   break;
     // }
+    if (time_budget.expired(stopwatch)) {
+      stop_reason = StopReason::time_limit_reached;
+      break;
+    }
     const auto &piece = piece_instances[piece_index];
     ++processed_pieces;
 
@@ -187,7 +197,8 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
         piece, request, bin_instances, opened_bins, opened_flags, trace,
         control, search_throttle, placements_completed, piece_instances.size(),
         attempt_context, &workspace->nfp_cache, &workspace->search_metrics,
-        rng_ptr);
+        rng_ptr, &constructive_replay,
+        ConstructivePlacementPhase::primary_order);
     candidate_evaluations_completed +=
         attempt_context.candidate_evaluations_completed;
 
@@ -306,6 +317,8 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
                   ? std::nullopt
                   : std::optional<std::size_t>(static_cast<std::size_t>(
                         std::distance(trace.begin(), original_trace_index)));
+          const bool opened_new_bin = original_trace_index != trace.end() &&
+                                      original_trace_index->opened_new_bin;
 
           bin.state.placements.erase(
               bin.state.placements.begin() +
@@ -334,8 +347,8 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
           if (search_result.candidate.has_value() &&
               better_candidate(bin, request.request.execution.placement_policy,
                                *search_result.candidate, current_candidate)) {
-            apply_candidate(bin, *search_result.candidate, trace, false,
-                            request.request.execution);
+            apply_candidate(bin, *search_result.candidate, trace,
+                            opened_new_bin, request.request.execution);
             restore_placement_position(placement_index);
             if (trace_index.has_value()) {
               restore_trace_position(*trace_index);
@@ -344,7 +357,7 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
             continue;
           }
 
-          apply_candidate(bin, current_candidate, trace, false,
+          apply_candidate(bin, current_candidate, trace, opened_new_bin,
                           request.request.execution);
           restore_placement_position(placement_index);
           if (trace_index.has_value()) {
@@ -358,41 +371,81 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
         break;
       }
     }
+  }
 
-    std::vector<std::uint32_t> remaining_unplaced;
-    remaining_unplaced.reserve(unplaced_piece_ids.size());
-    for (const auto piece_id : unplaced_piece_ids) {
-      const auto piece_it = piece_by_id.find(piece_id);
-      if (piece_it == piece_by_id.end()) {
+  // Multi-pass gap-fill: attempt to place pieces that failed during the primary
+  // ordering pass by retrying them after each pass that makes progress.
+  //
+  // Deferred vs. unplaceable distinction:
+  //   - A piece is *deferred* when it fails in a pass but a subsequent
+  //     placement in the same pass opens a new bin, giving it a retry
+  //     opportunity in the next pass.
+  //   - A piece is *unplaceable* when it survives a full pass in which nothing
+  //     was placed — no new bin was opened, so no retry can help.
+  //
+  // This loop is naturally frontier-monotonic: each pass can only open bins
+  // forward, never revisiting already-exhausted frontier positions.
+  //
+  // kMaxGapFillPasses caps worst-case iterations to keep termination obvious.
+  static constexpr std::uint32_t kMaxGapFillPasses{64};
+
+  if (stop_reason == StopReason::completed &&
+      request.request.execution.irregular.enable_gap_fill &&
+      !unplaced_piece_ids.empty()) {
+    for (std::uint32_t gap_pass = 0;
+         gap_pass < kMaxGapFillPasses && !unplaced_piece_ids.empty();
+         ++gap_pass) {
+      bool made_progress = false;
+
+      std::vector<std::uint32_t> remaining_unplaced;
+      remaining_unplaced.reserve(unplaced_piece_ids.size());
+
+      const auto gap_fill_order = constructive::build_fill_first_gap_fill_order(
+          request, unplaced_piece_ids);
+      for (const auto &ordered_piece : gap_fill_order) {
+        const auto piece_id = ordered_piece.expanded_piece_id;
+        const auto piece_it = piece_by_id.find(piece_id);
+        if (piece_it == piece_by_id.end()) {
+          remaining_unplaced.push_back(piece_id);
+          continue;
+        }
+
+        PlacementAttemptContext retry_attempt{};
+        const auto placement_status = try_place_piece(
+            *piece_it->second, request, bin_instances, opened_bins,
+            opened_flags, trace, control, search_throttle, placements_completed,
+            piece_instances.size(), retry_attempt, &workspace->nfp_cache,
+            &workspace->search_metrics, nullptr, &constructive_replay,
+            ConstructivePlacementPhase::gap_fill);
+        candidate_evaluations_completed +=
+            retry_attempt.candidate_evaluations_completed;
+
+        if (placement_status == PlacementSearchStatus::found) {
+          ++placements_completed;
+          made_progress = true;
+          continue;
+        }
+
         remaining_unplaced.push_back(piece_id);
-        continue;
       }
 
-      PlacementAttemptContext retry_attempt{};
-      const auto placement_status = try_place_piece(
-          *piece_it->second, request, bin_instances, opened_bins, opened_flags,
-          trace, control, search_throttle, placements_completed,
-          piece_instances.size(), retry_attempt, &workspace->nfp_cache,
-          &workspace->search_metrics, nullptr);
-      candidate_evaluations_completed +=
-          retry_attempt.candidate_evaluations_completed;
+      unplaced_piece_ids = std::move(remaining_unplaced);
 
-      if (placement_status == PlacementSearchStatus::found) {
-        ++placements_completed;
-        continue;
+      // If nothing was placed this pass, every remaining candidate is
+      // unplaceable on the current frontier — stop retrying.
+      if (!made_progress) {
+        break;
       }
-
-      remaining_unplaced.push_back(piece_id);
     }
-    unplaced_piece_ids = std::move(remaining_unplaced);
   }
 
   NestingResult result{
-      .strategy = StrategyKind::sequential_backtrack,
+      .strategy = StrategyKind::metaheuristic_search,
       .layout = build_layout(opened_bins, trace, unplaced_piece_ids),
       .total_parts = piece_instances.size(),
       .effective_seed = control.random_seed,
       .stop_reason = stop_reason,
+      .constructive = std::move(constructive_replay),
   };
   validation::finalize_result(request, result);
 

@@ -26,6 +26,7 @@
 #include "geometry/polygon.hpp"
 #include "geometry/queries/normalize.hpp"
 #include "geometry/transforms/transform.hpp"
+#include "internal/legacy_solve.hpp"
 #include "io/json.hpp"
 #include "io/layout_svg.hpp"
 #include "io/or_dataset_json.hpp"
@@ -282,7 +283,7 @@ auto request_from_or_dataset(const OrDataset &dataset) -> NestingRequest {
 
 auto readiness_cases() -> std::vector<ReadinessCase> {
   const auto fixtures = shiny::nesting::test::fixture_root();
-  const auto svg_fixtures = fixtures.parent_path() / "files" / "tests";
+  const auto svg_fixtures = fixtures / "sparrow";
   const auto strip_dataset = shiny::nesting::io::load_or_dataset(
       fixtures / "or_datasets/strip_dataset.json");
   REQUIRE(strip_dataset.ok());
@@ -391,17 +392,8 @@ auto readiness_options() -> ReadinessOptions {
 
 auto production_optimizer_from_name(std::string_view name)
     -> ProductionOptimizerKind {
-  if (name == "simulated_annealing") {
-    return ProductionOptimizerKind::simulated_annealing;
-  }
-  if (name == "alns") {
-    return ProductionOptimizerKind::alns;
-  }
-  if (name == "gdrr") {
-    return ProductionOptimizerKind::gdrr;
-  }
-  if (name == "lahc") {
-    return ProductionOptimizerKind::lahc;
+  if (name == "brkga") {
+    return ProductionOptimizerKind::brkga;
   }
   return ProductionOptimizerKind::brkga;
 }
@@ -491,6 +483,22 @@ auto read_text_file(const fs::path &path) -> std::string {
   REQUIRE(input.is_open());
   return {std::istreambuf_iterator<char>(input),
           std::istreambuf_iterator<char>()};
+}
+
+auto xmake_public_headers() -> std::vector<std::string> {
+  const auto repo_root =
+      shiny::nesting::test::fixture_root().parent_path().parent_path();
+  const auto xmake = read_text_file(repo_root / "xmake.lua");
+  const std::regex header_pattern(
+      R"lit("(src/[^"]+\.hpp|src/[^"]+\(\*\*\.hpp\))")lit");
+  std::sregex_iterator it(xmake.begin(), xmake.end(), header_pattern);
+  std::sregex_iterator end;
+
+  std::vector<std::string> headers;
+  for (; it != end; ++it) {
+    headers.push_back((*it)[1].str());
+  }
+  return headers;
 }
 
 auto run_readiness_case(const ReadinessCase &test_case,
@@ -644,8 +652,7 @@ TEST_CASE("readiness matrix stays within baseline envelope",
 }
 
 TEST_CASE("svg readiness fixtures remain parseable", "[readiness]") {
-  const auto svg_fixtures =
-      shiny::nesting::test::fixture_root().parent_path() / "files" / "tests";
+  const auto svg_fixtures = shiny::nesting::test::fixture_root() / "sparrow";
   for (const auto &file_name : {"readiness_full_irregular_set.svg",
                                 "readiness_partial_interlocking_set.svg",
                                 "readiness_grain_exclusion_constraints.svg"}) {
@@ -661,7 +668,7 @@ TEST_CASE("svg readiness fixtures remain parseable", "[readiness]") {
 TEST_CASE("readiness sanitizer smoke exports representative layouts",
           "[readiness-sanitizer]") {
   const auto fixtures = shiny::nesting::test::fixture_root();
-  const auto svg_fixtures = fixtures.parent_path() / "files" / "tests";
+  const auto svg_fixtures = fixtures / "sparrow";
   const auto test_case = ReadinessCase{
       .id = "svg-full-irregular-set",
       .request = request_from_svg_fixture(svg_fixtures /
@@ -676,5 +683,72 @@ TEST_CASE("readiness sanitizer smoke exports representative layouts",
 
   const auto observation =
       run_readiness_case(test_case, "brkga", 17, artifact_dir);
-  REQUIRE(observation.placed_parts > 0U);
+  REQUIRE(observation.placed_parts >= 2U);
+}
+
+TEST_CASE("public exports keep runtime progress public and packing "
+          "telemetry private",
+          "[readiness][public-surface]") {
+  const auto headers = xmake_public_headers();
+
+  const std::vector<std::string> expected_stable_surface = {
+      "src/api/dto.hpp",
+      "src/api/profiles.hpp",
+      "src/api/request_builder.hpp",
+      "src/api/solve_control.hpp",
+      "src/request.hpp",
+      "src/result.hpp",
+      "src/solve.hpp",
+      "src/runtime/cancellation.hpp",
+      "src/runtime/progress.hpp",
+  };
+
+  for (const auto &header : expected_stable_surface) {
+    INFO("stable public surface header missing: " << header);
+    REQUIRE(std::find(headers.begin(), headers.end(), header) != headers.end());
+  }
+
+  INFO("runtime progress header must remain public");
+  REQUIRE(std::find(headers.begin(), headers.end(),
+                    "src/runtime/progress.hpp") != headers.end());
+
+  INFO("legacy packing telemetry header must not remain public");
+  REQUIRE(std::find(headers.begin(), headers.end(),
+                    "src/packing/telemetry/progress.hpp") == headers.end());
+
+  INFO("bounding-box decoder headers must stay private once request-surface "
+       "conversion moves internal");
+  REQUIRE(std::find(headers.begin(), headers.end(),
+                    "src/packing/decoder.hpp") == headers.end());
+  REQUIRE(std::find(headers.begin(), headers.end(),
+                    "src/packing/bin_state.hpp") == headers.end());
+
+  INFO("layout and packing config headers must remain internal once request "
+       "and result expose only stable public surfaces");
+  REQUIRE(std::find(headers.begin(), headers.end(), "src/packing/layout.hpp") ==
+          headers.end());
+  REQUIRE(std::find(headers.begin(), headers.end(), "src/packing/config.hpp") ==
+          headers.end());
+  REQUIRE(std::find(headers.begin(), headers.end(),
+                    "src/packing/bin_identity.hpp") == headers.end());
+
+  INFO("Sparrow internals must stay out of the public export list");
+  REQUIRE(std::none_of(headers.begin(), headers.end(), [](const auto &header) {
+    return header.find("src/packing/sparrow/") != std::string::npos;
+  }));
+
+  INFO("constructive implementation headers must stay out of the public export "
+       "list");
+  REQUIRE(std::none_of(headers.begin(), headers.end(), [](const auto &header) {
+    return header.find("src/packing/constructive/") != std::string::npos;
+  }));
+
+  INFO("geometry decomposition and triangulation headers must stay private so "
+       "UI render-prep remains outside the solver public surface");
+  REQUIRE(std::find(headers.begin(), headers.end(),
+                    "src/geometry/decomposition/triangulation.hpp") ==
+          headers.end());
+  REQUIRE(std::find(headers.begin(), headers.end(),
+                    "src/geometry/decomposition/convex_decomposition.hpp") ==
+          headers.end());
 }

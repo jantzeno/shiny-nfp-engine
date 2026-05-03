@@ -1,5 +1,6 @@
 #pragma once
 
+#include <expected>
 #include <optional>
 #include <string_view>
 #include <utility>
@@ -100,5 +101,30 @@ private:
   Status status_{Status::ok};
   std::optional<T> value_{};
 };
+
+/**
+ * @brief Preferred return type for new public APIs and Sparrow-port boundaries.
+ *
+ * Type alias for `std::expected<T, Status>`. Use this for all new internal
+ * Sparrow-port functions and new public solve helpers. Keep `StatusOr<T>` on
+ * existing surfaces until they are materially rewritten.
+ *
+ * @see to_expected() for bridging old-style StatusOr returns into new code.
+ */
+template <class T> using Expected = std::expected<T, Status>;
+
+/**
+ * @brief Bridges a `StatusOr<T>` into the `Expected<T>` vocabulary.
+ *
+ * Use at integration points where an old-style return meets a new Sparrow-port
+ * boundary that expects `util::Expected<T>`.
+ */
+template <class T>
+[[nodiscard]] auto to_expected(StatusOr<T> &&source) -> Expected<T> {
+  if (source.ok()) {
+    return std::move(source).value();
+  }
+  return std::unexpected(source.status());
+}
 
 } // namespace shiny::nesting::util

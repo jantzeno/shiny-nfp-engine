@@ -4,13 +4,134 @@
 #include <utility>
 #include <vector>
 
+#include "api/solve_control.hpp"
 #include "request.hpp"
-#include "solve.hpp"
 
 namespace shiny::nesting::api {
 
+class ProfileRequestBuilder {
+public:
+  auto add_bin(BinRequest bin) -> ProfileRequestBuilder & {
+    request_.bins.push_back(std::move(bin));
+    return *this;
+  }
+
+  auto add_piece(PieceRequest piece) -> ProfileRequestBuilder & {
+    request_.pieces.push_back(std::move(piece));
+    return *this;
+  }
+
+  auto with_preprocess(PreprocessPolicy preprocess) -> ProfileRequestBuilder & {
+    request_.preprocess = std::move(preprocess);
+    return *this;
+  }
+
+  auto with_profile(const SolveProfile profile) -> ProfileRequestBuilder & {
+    request_.profile = profile;
+    return *this;
+  }
+
+  auto with_objective_mode(const ObjectiveMode objective_mode)
+      -> ProfileRequestBuilder & {
+    request_.objective_mode = objective_mode;
+    return *this;
+  }
+
+  auto with_time_limit_ms(const std::uint64_t time_limit_milliseconds)
+      -> ProfileRequestBuilder & {
+    request_.time_limit_milliseconds = time_limit_milliseconds;
+    return *this;
+  }
+
+  auto with_selected_bins(std::vector<std::uint32_t> bin_ids)
+      -> ProfileRequestBuilder & {
+    request_.selected_bin_ids = std::move(bin_ids);
+    return *this;
+  }
+
+  auto with_allow_part_overflow(const bool allow_part_overflow)
+      -> ProfileRequestBuilder & {
+    request_.allow_part_overflow = allow_part_overflow;
+    return *this;
+  }
+
+  auto with_maintain_bed_assignment(const bool maintain_bed_assignment = true)
+      -> ProfileRequestBuilder & {
+    request_.maintain_bed_assignment = maintain_bed_assignment;
+    return *this;
+  }
+
+  [[nodiscard]] auto build() const -> ProfileRequest { return request_; }
+
+  [[nodiscard]] auto build_checked() const -> util::StatusOr<ProfileRequest> {
+    if (!request_.is_valid()) {
+      return util::Status::invalid_input;
+    }
+    return request_;
+  }
+
+  [[nodiscard]] auto is_valid() const -> bool { return request_.is_valid(); }
+
+private:
+  ProfileRequest request_{};
+};
+
+class ProfileSolveControlBuilder {
+public:
+  auto with_progress(ProfileProgressObserver on_progress)
+      -> ProfileSolveControlBuilder & {
+    control_.on_progress = std::move(on_progress);
+    return *this;
+  }
+
+  auto with_cancellation(runtime::CancellationToken cancellation)
+      -> ProfileSolveControlBuilder & {
+    control_.cancellation = cancellation;
+    return *this;
+  }
+
+  auto with_operation_limit(const std::size_t operation_limit)
+      -> ProfileSolveControlBuilder & {
+    control_.operation_limit = operation_limit;
+    return *this;
+  }
+
+  auto with_random_seed(const std::uint64_t random_seed)
+      -> ProfileSolveControlBuilder & {
+    control_.random_seed = random_seed;
+    return *this;
+  }
+
+  auto with_seed_mode(const SeedProgressionMode seed_mode)
+      -> ProfileSolveControlBuilder & {
+    control_.seed_mode = seed_mode;
+    return *this;
+  }
+
+  auto with_workspace(pack::PackerWorkspace *workspace)
+      -> ProfileSolveControlBuilder & {
+    control_.workspace = workspace;
+    return *this;
+  }
+
+  [[nodiscard]] auto build() const -> ProfileSolveControl { return control_; }
+
+private:
+  ProfileSolveControl control_{};
+};
+
+// NestingRequestBuilder is the legacy entry point for the three retained
+// strategy paths: bounding_box, sequential_backtrack, and
+// metaheuristic_search (BRKGA). It does not expose optimizer-specific tuning
+// parameters. Callers wanting profile-level control over search depth should
+// prefer ProfileRequestBuilder::with_profile(SolveProfile::maximum_search).
 class NestingRequestBuilder {
 public:
+  NestingRequestBuilder() {
+    request_.execution.strategy = StrategyKind::bounding_box;
+    request_.execution.production_optimizer = ProductionOptimizerKind::brkga;
+  }
+
   auto add_bin(BinRequest bin) -> NestingRequestBuilder & {
     request_.bins.push_back(std::move(bin));
     return *this;
@@ -26,19 +147,9 @@ public:
     return *this;
   }
 
-  auto with_execution(ExecutionPolicy execution) -> NestingRequestBuilder & {
-    request_.execution = std::move(execution);
-    return *this;
-  }
-
-  auto with_strategy(const StrategyKind strategy) -> NestingRequestBuilder & {
-    request_.execution.strategy = strategy;
-    return *this;
-  }
-
-  auto with_production_optimizer(const ProductionOptimizerKind optimizer)
+  auto with_objective_mode(const ObjectiveMode objective_mode)
       -> NestingRequestBuilder & {
-    request_.execution.production_optimizer = optimizer;
+    request_.execution.objective_mode = objective_mode;
     return *this;
   }
 
@@ -68,86 +179,6 @@ public:
   auto with_bounding_box_config(pack::BoundingBoxPackingConfig config)
       -> NestingRequestBuilder & {
     request_.execution.bounding_box = std::move(config);
-    return *this;
-  }
-
-  auto with_strategy_config(const StrategyKind strategy, const SAConfig &config)
-      -> NestingRequestBuilder & {
-    request_.execution.strategy = strategy;
-    request_.execution.simulated_annealing = config;
-    set_primary_strategy_config(request_.execution, strategy, config);
-    return *this;
-  }
-
-  auto with_strategy_config(const StrategyKind strategy,
-                            const ALNSConfig &config)
-      -> NestingRequestBuilder & {
-    request_.execution.strategy = strategy;
-    request_.execution.alns = config;
-    set_primary_strategy_config(request_.execution, strategy, config);
-    return *this;
-  }
-
-  auto with_strategy_config(const StrategyKind strategy,
-                            const GDRRConfig &config)
-      -> NestingRequestBuilder & {
-    request_.execution.strategy = strategy;
-    request_.execution.gdrr = config;
-    set_primary_strategy_config(request_.execution, strategy, config);
-    return *this;
-  }
-
-  auto with_strategy_config(const StrategyKind strategy,
-                            const LAHCConfig &config)
-      -> NestingRequestBuilder & {
-    request_.execution.strategy = strategy;
-    request_.execution.lahc = config;
-    set_primary_strategy_config(request_.execution, strategy, config);
-    return *this;
-  }
-
-  auto with_production_config(const ProductionOptimizerKind optimizer,
-                              const ProductionSearchConfig &config)
-      -> NestingRequestBuilder & {
-    request_.execution.production_optimizer = optimizer;
-    request_.execution.production = config;
-    set_production_strategy_config(request_.execution, optimizer, config);
-    return *this;
-  }
-
-  auto with_production_config(const ProductionOptimizerKind optimizer,
-                              const SAConfig &config)
-      -> NestingRequestBuilder & {
-    request_.execution.production_optimizer = optimizer;
-    request_.execution.simulated_annealing = config;
-    set_production_strategy_config(request_.execution, optimizer, config);
-    return *this;
-  }
-
-  auto with_production_config(const ProductionOptimizerKind optimizer,
-                              const ALNSConfig &config)
-      -> NestingRequestBuilder & {
-    request_.execution.production_optimizer = optimizer;
-    request_.execution.alns = config;
-    set_production_strategy_config(request_.execution, optimizer, config);
-    return *this;
-  }
-
-  auto with_production_config(const ProductionOptimizerKind optimizer,
-                              const GDRRConfig &config)
-      -> NestingRequestBuilder & {
-    request_.execution.production_optimizer = optimizer;
-    request_.execution.gdrr = config;
-    set_production_strategy_config(request_.execution, optimizer, config);
-    return *this;
-  }
-
-  auto with_production_config(const ProductionOptimizerKind optimizer,
-                              const LAHCConfig &config)
-      -> NestingRequestBuilder & {
-    request_.execution.production_optimizer = optimizer;
-    request_.execution.lahc = config;
-    set_production_strategy_config(request_.execution, optimizer, config);
     return *this;
   }
 

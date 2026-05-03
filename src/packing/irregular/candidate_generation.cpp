@@ -355,26 +355,15 @@ auto append_arrangement_strategy(
     const std::vector<geom::PolygonWithHoles> &domain,
     const std::vector<geom::PolygonWithHoles> &blocked,
     const cache::NfpCacheAccuracy nfp_accuracy) -> util::Status {
-  if (nfp_accuracy == cache::NfpCacheAccuracy::conservative_bbox_fallback) {
-    const auto perfect_status = append_feasible_region_vertices(
-        accumulator, domain, blocked,
-        place::PlacementCandidateSource::perfect_slide, nfp_accuracy);
-    if (perfect_status != util::Status::ok) {
-      return perfect_status;
-    }
-    return append_arrangement_intersections(accumulator, domain, blocked,
-                                            nfp_accuracy);
-  }
-
-  for (const auto &region : domain) {
-    append_polygon_vertices(accumulator, region,
-                            place::PlacementCandidateSource::perfect_slide,
-                            nfp_accuracy);
-  }
-  const auto inside_status =
-      append_points_inside_domain(accumulator, domain, blocked, nfp_accuracy);
-  if (inside_status != util::Status::ok) {
-    return inside_status;
+  // Both the exact and conservative-fallback paths use the same superset
+  // structure: boolean-subtracted feasible-region vertices first (via
+  // append_feasible_region_vertices, which handles both accuracy modes
+  // internally), then blocked-vertex / boundary intersection candidates.
+  const auto vertex_status = append_feasible_region_vertices(
+      accumulator, domain, blocked,
+      place::PlacementCandidateSource::perfect_slide, nfp_accuracy);
+  if (vertex_status != util::Status::ok) {
+    return vertex_status;
   }
   return append_arrangement_intersections(accumulator, domain, blocked,
                                           nfp_accuracy);
@@ -531,8 +520,10 @@ auto limit_candidate_points(std::vector<GeneratedCandidatePoint> &points,
 //     obstacle NFPs when available. If exact NFP fails, conservative bbox
 //     fallback geometry is cached and labelled explicitly as fallback.
 //
-//   * nfp_arrangement — extends `nfp_perfect` with blocked-vertex and boundary
-//     intersection candidates to capture single-edge slide placements.
+//   * nfp_arrangement — extends `nfp_perfect` with boundary intersection
+//     candidates (domain edge ∩ blocked edge) to capture single-edge slide
+//     placements. Both the exact and conservative-fallback sub-paths use the
+//     same feasible-region vertex superset before adding intersection points.
 //
 //   * nfp_hybrid     — unions the robust constructive anchors used by the
 //     packer with the exact/fallback-labelled NFP candidates above.

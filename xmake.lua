@@ -1,7 +1,7 @@
 set_project("shiny-nesting-engine")
 set_version("0.1.0")
 
-set_languages("cxx20")
+set_languages("cxx23")
 set_warnings("allextra", "error")
 
 local workspace_root = path.absolute(path.join(os.projectdir(), ".."))
@@ -141,26 +141,40 @@ target("shiny_nesting_engine")
     add_includedirs("src", {public = true})
     add_sysincludedirs(boost_root, {public = true})
     add_sysincludedirs(earcut_include_dir)
+    -- Stable public entry points plus transitive headers still required by the
+    -- current request/result surface. Milestone 7 tracks shrinking this list as
+    -- backend-only packing types are pushed back behind public DTO/request
+    -- boundaries.
+    --
+    -- Internal headers under src/internal/ are NOT exported:
+    --   - src/internal/legacy_strategy.hpp  (strategy-era enums and configs)
+    --   - src/internal/legacy_solve.hpp     (NestingRequest solve overload)
+    --   - src/internal/request_normalization.hpp (normalized request details)
+    -- These are transitively included by request.hpp / solve.cpp but are not
+    -- part of the supported downstream API surface.
     add_headerfiles(
         "src/algorithm_kind.hpp",
-        "src/api/(**.hpp)",
+        "src/api/dto.hpp",
+        "src/api/profiles.hpp",
+        "src/api/request_builder.hpp",
+        "src/api/solve_control.hpp",
         "src/observer.hpp",
         "src/request.hpp",
         "src/result.hpp",
         "src/solve.hpp",
-        "src/cache/(**.hpp)",
-        "src/geometry/(**.hpp)",
-        "src/io/(**.hpp)",
-        "src/logging/(**.hpp)",
-        "src/nfp/(**.hpp)",
-        "src/packing/(**.hpp)",
+        "src/geometry/concepts.hpp",
+        "src/geometry/polygon.hpp",
+        "src/geometry/types.hpp",
+        "src/geometry/vector_ops.hpp",
+        "src/geometry/operations/*.hpp",
+        "src/geometry/queries/*.hpp",
+        "src/geometry/transforms/*.hpp",
         "src/placement/(**.hpp)",
-        "src/predicates/(**.hpp)",
-        "src/runtime/(**.hpp)",
-        "src/search/(**.hpp)",
-        "src/validation/(**.hpp)",
-        "src/util/(**.hpp)")
+        "src/runtime/cancellation.hpp",
+        "src/runtime/progress.hpp",
+        "src/util/status.hpp")
     add_files(
+        "src/api/*.cpp",
         "src/request.cpp",
         "src/solve.cpp",
         "src/cache/*.cpp",
@@ -171,6 +185,19 @@ target("shiny_nesting_engine")
         "src/io/*.cpp",
         "src/nfp/*.cpp",
         "src/packing/*.cpp",
+        "src/packing/constructive/*.cpp",
+        "src/packing/sparrow/*.cpp",
+        "src/packing/sparrow/adapters/*.cpp",
+        "src/packing/sparrow/eval/*.cpp",
+        "src/packing/sparrow/optimize/*.cpp",
+        "src/packing/sparrow/quantify/*.cpp",
+        "src/packing/sparrow/runtime/*.cpp",
+        "src/packing/sparrow/search/brkga_search.cpp",
+        "src/packing/sparrow/search/disruption.cpp",
+        "src/packing/sparrow/search/solution_pool.cpp",
+        "src/packing/sparrow/search/strip_optimizer.cpp",
+        "src/packing/sparrow/search/detail/*.cpp",
+        "src/packing/sparrow/sample/*.cpp",
         "src/packing/bounding_box/*.cpp",
         "src/packing/irregular/*.cpp",
         "src/packing/irregular/sequential/*.cpp",
@@ -179,8 +206,6 @@ target("shiny_nesting_engine")
         "src/predicates/*.cpp",
         "src/runtime/*.cpp",
         "src/validation/*.cpp")
-    add_files("src/search/*.cpp")
-    add_files("src/search/detail/*.cpp")
     add_deps("shiny_logging")
     add_vendor_warning_suppression_flags()
     add_thread_support_flags()
@@ -197,56 +222,73 @@ target("shiny_nesting_engine_tests")
     add_includedirs("tests")
     add_sysincludedirs(boost_root)
     add_sysincludedirs(earcut_include_dir)
-    add_files("tests/unit/api_surface.cpp")
-    add_files("tests/unit/aabb_prerejection.cpp")
-    add_files("tests/unit/boost_geometry_smoke.cpp")
-    add_files("tests/unit/bounding_box_packer.cpp")
-    add_files("tests/unit/cache.cpp")
-    add_files("tests/unit/candidate_generation.cpp")
-    add_files("tests/unit/constructive_irregular.cpp")
-    add_files("tests/unit/convex_nfp_collinear.cpp")
-    add_files("tests/unit/cutting.cpp")
-    add_files("tests/unit/decomposition_internal.cpp")
-    add_files("tests/unit/execution_runtime.cpp")
-    add_files("tests/unit/geometry_enhancements.cpp")
-    add_files("tests/unit/geometry_foundation.cpp")
-    add_files("tests/unit/geometry_normalize.cpp")
-    add_files("tests/unit/import_preprocess.cpp")
-    add_files("tests/unit/io_json.cpp")
-    add_files("tests/unit/io_svg_polygonize.cpp")
-    add_files("tests/unit/metaheuristic_search.cpp")
-    add_files("tests/unit/nfp_geometry.cpp")
-    add_files("tests/unit/or_dataset_json.cpp")
-    add_files("tests/unit/overlap_infrastructure.cpp")
-    add_files("tests/unit/current_surface_contracts.cpp")
-    add_files("tests/unit/polygon_ops.cpp")
-    add_files("tests/unit/predicates.cpp")
-    add_files("tests/unit/production_search.cpp")
-    add_files("tests/unit/readme_examples.cpp")
-    add_files("tests/unit/request_normalization.cpp")
-    add_files("tests/unit/separator.cpp")
-    add_files("tests/unit/sequential_backtrack.cpp")
-    add_files("tests/unit/strategy_registry.cpp")
-    add_files("tests/unit/strip_optimizer.cpp")
-    add_files("tests/unit/util.cpp")
+    add_files("tests/unit/api/api_surface.cpp")
+    add_files("tests/unit/api/current_surface_contracts.cpp")
+    add_files("tests/unit/api/profiles.cpp")
+    add_files("tests/unit/api/readme_examples.cpp")
+    add_files("tests/unit/geometry/aabb_prerejection.cpp")
+    add_files("tests/unit/geometry/boost_geometry_smoke.cpp")
+    add_files("tests/unit/packing/bounding_box_packer.cpp")
+    add_files("tests/unit/packing/cache.cpp")
+    add_files("tests/unit/packing/candidate_generation.cpp")
+    add_files("tests/unit/constructive/constructive_irregular.cpp")
+    add_files("tests/unit/geometry/convex_nfp_collinear.cpp")
+    add_files("tests/unit/packing/cutting.cpp")
+    add_files("tests/unit/geometry/decomposition_internal.cpp")
+    add_files("tests/unit/runtime/execution_runtime.cpp")
+    add_files("tests/unit/runtime/layout_validation.cpp")
+    add_files("tests/unit/runtime/legacy_strategy.cpp")
+    add_files("tests/unit/geometry/geometry_enhancements.cpp")
+    add_files("tests/unit/geometry/geometry_foundation.cpp")
+    add_files("tests/unit/geometry/geometry_normalize.cpp")
+    add_files("tests/unit/io/import_preprocess.cpp")
+    add_files("tests/unit/io/io_json.cpp")
+    add_files("tests/unit/io/io_svg_polygonize.cpp")
+    add_files("tests/unit/sparrow/metaheuristic_search.cpp")
+    add_files("tests/unit/api/nesting_api_smoke.cpp")
+    add_files("tests/unit/constructive/fill_first_ordering_contracts.cpp")
+    add_files("tests/unit/geometry/nfp_geometry.cpp")
+    add_files("tests/unit/io/or_dataset_json.cpp")
+    add_files("tests/unit/packing/overlap_infrastructure.cpp")
+    add_files("tests/unit/packing/packing_scoring.cpp")
+    add_files("tests/unit/packing/blocked_regions.cpp")
+    add_files("tests/unit/geometry/polygon_ops.cpp")
+    add_files("tests/unit/geometry/predicates.cpp")
+    add_files("tests/unit/sparrow/production_search.cpp")
+    add_files("tests/unit/api/request_normalization.cpp")
+    add_files("tests/unit/packing/separator.cpp")
+    add_files("tests/unit/sparrow/sparrow_constructive_seed.cpp")
+    add_files("tests/unit/sparrow/sparrow_quantify.cpp")
+    add_files("tests/unit/sparrow/sparrow_sampling.cpp")
+    add_files("tests/unit/sparrow/sparrow_separator.cpp")
+    add_files("tests/unit/sparrow/sparrow_tracker.cpp")
+    add_files("tests/unit/sparrow/strip_optimizer.cpp")
+    add_files("tests/unit/runtime/util.cpp")
     add_files("tests/readiness/readiness_matrix.cpp")
+    add_files("tests/readiness/sparrow_readiness_matrix.cpp")
     add_files("tests/topology/polygon_union.cpp")
-    add_files("tests/support/mtg_fixture.cpp")
-    add_files("tests/integration/mtg_bounding_box_engine_surface.cpp")
-    add_files("tests/integration/metaheuristic_search.cpp")
-    add_files("tests/integration/representative_layouts.cpp")
-    add_files("tests/integration/mtg_bb_heuristics.cpp")
-    add_files("tests/integration/mtg_bin_assignment.cpp")
-    add_files("tests/integration/mtg_engine_bug_repros.cpp")
-    add_files("tests/integration/mtg_exclusion_zones.cpp")
-    add_files("tests/integration/mtg_limits.cpp")
-    add_files("tests/integration/mtg_margins.cpp")
-    add_files("tests/integration/mtg_seeds.cpp")
-    add_files("tests/integration/mtg_sliders.cpp")
-    add_files("tests/integration/mtg_start_corners.cpp")
-    add_files("tests/integration/mtg_test_nesting_matrix.cpp")
-    add_files("tests/integration/public_surface_manifest.cpp")
-    add_files("tests/integration/sequential_backtrack.cpp")
+    add_files("tests/fixtures/export_surface/mtg_fixture.cpp")
+    add_files("tests/integration/export_surface/mtg_bounding_box_engine_surface.cpp")
+    add_files("tests/integration/sparrow/metaheuristic_search.cpp")
+    add_files("tests/integration/sparrow/representative_layouts.cpp")
+    add_files("tests/integration/export_surface/mtg_bb_heuristics.cpp")
+    add_files("tests/integration/export_surface/mtg_bin_assignment.cpp")
+    add_files("tests/integration/export_surface/mtg_engine_bug_repros.cpp")
+    add_files("tests/integration/export_surface/mtg_exclusion_zones.cpp")
+    add_files("tests/integration/export_surface/mtg_limits.cpp")
+    add_files("tests/integration/export_surface/mtg_margins.cpp")
+    add_files("tests/integration/export_surface/mtg_seeds.cpp")
+    add_files("tests/integration/export_surface/mtg_sliders.cpp")
+    add_files("tests/integration/export_surface/mtg_sliders_reject.cpp")
+    add_files("tests/integration/export_surface/mtg_start_corners.cpp")
+    add_files("tests/integration/export_surface/mtg_test_nesting_matrix.cpp")
+    add_files("tests/integration/constructive/fill_first_engine_integration.cpp")
+    add_files("tests/integration/export_surface/public_surface_manifest.cpp")
+    add_files("tests/integration/sparrow/multi_bin.cpp")
+    add_files("tests/integration/sparrow/knapsack.cpp")
+    add_files("tests/integration/sparrow/sparrow_assignment_overflow.cpp")
+    add_files("tests/integration/profiles/balanced.cpp")
+    add_files("tests/integration/profiles/maximum_search.cpp")
     add_sysincludedirs(nanosvg_dir)
     add_deps("shiny_logging")
     add_vendor_warning_suppression_flags()

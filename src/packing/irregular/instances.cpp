@@ -19,6 +19,8 @@ struct PieceOrderingMetrics {
   double max_dimension{0.0};
   double hull_diameter_score{0.0};
   std::int32_t priority{0};
+  double item_value{1.0};
+  double value_density{1.0};
 };
 
 [[nodiscard]] auto piece_order_metrics_for(const PieceInstance &piece,
@@ -36,6 +38,11 @@ struct PieceOrderingMetrics {
       .max_dimension = max_dimension,
       .hull_diameter_score = hull_area * max_dimension,
       .priority = piece.source->priority,
+      .item_value = piece.source->value,
+      .value_density =
+          geom::polygon_area(piece.source->polygon) > kAreaEpsilon
+              ? piece.source->value / geom::polygon_area(piece.source->polygon)
+              : piece.source->value,
   };
 }
 
@@ -63,6 +70,16 @@ auto order_piece_instances(std::vector<PieceInstance> pieces,
             metrics_by_id.at(lhs.expanded.expanded_piece_id);
         const auto &rhs_metrics =
             metrics_by_id.at(rhs.expanded.expanded_piece_id);
+
+        if (execution.objective_mode == ObjectiveMode::maximize_value) {
+          if (!almost_equal(lhs_metrics.value_density,
+                            rhs_metrics.value_density)) {
+            return lhs_metrics.value_density > rhs_metrics.value_density;
+          }
+          if (!almost_equal(lhs_metrics.item_value, rhs_metrics.item_value)) {
+            return lhs_metrics.item_value > rhs_metrics.item_value;
+          }
+        }
 
         switch (execution.irregular.piece_ordering) {
         case PieceOrdering::input:

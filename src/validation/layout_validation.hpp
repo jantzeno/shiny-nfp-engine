@@ -1,6 +1,6 @@
 #pragma once
 
-#include "request.hpp"
+#include "internal/request_normalization.hpp"
 #include "result.hpp"
 
 namespace shiny::nesting::validation {

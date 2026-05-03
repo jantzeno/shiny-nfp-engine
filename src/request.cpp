@@ -1,10 +1,12 @@
-#include "request.hpp"
+#include "internal/request_normalization.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <unordered_map>
 #include <unordered_set>
 
+#include "api/profiles.hpp"
+#include "geometry/operations/simplify.hpp"
 #include "geometry/queries/normalize.hpp"
 #include "geometry/queries/validity.hpp"
 #include "geometry/transforms/transform.hpp"
@@ -51,11 +53,9 @@ rotation_set_is_subset(const geom::DiscreteRotationSet &subset,
                        const geom::DiscreteRotationSet &superset) -> bool {
   const auto subset_angles = geom::materialize_rotations(subset);
   const auto superset_angles = geom::materialize_rotations(superset);
-  return std::all_of(
-      subset_angles.begin(), subset_angles.end(), [&](const double angle) {
-        return std::find(superset_angles.begin(), superset_angles.end(),
-                         angle) != superset_angles.end();
-      });
+  return std::ranges::all_of(subset_angles, [&](const double angle) {
+    return std::ranges::contains(superset_angles, angle);
+  });
 }
 
 [[nodiscard]] auto normalize_piece_polygon(const PieceRequest &piece,
@@ -93,8 +93,8 @@ rotation_set_is_subset(const geom::DiscreteRotationSet &subset,
 
 [[nodiscard]] auto sort_unique_ids(std::vector<std::uint32_t> ids)
     -> std::vector<std::uint32_t> {
-  std::sort(ids.begin(), ids.end());
-  ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+  std::ranges::sort(ids);
+  ids.erase(std::ranges::unique(ids).begin(), ids.end());
   return ids;
 }
 
@@ -102,10 +102,15 @@ rotation_set_is_subset(const geom::DiscreteRotationSet &subset,
 production_optimizer_is_valid(const ProductionOptimizerKind optimizer) -> bool {
   switch (optimizer) {
   case ProductionOptimizerKind::brkga:
-  case ProductionOptimizerKind::simulated_annealing:
-  case ProductionOptimizerKind::alns:
-  case ProductionOptimizerKind::gdrr:
-  case ProductionOptimizerKind::lahc:
+    return true;
+  }
+  return false;
+}
+
+[[nodiscard]] auto objective_mode_is_valid(const ObjectiveMode mode) -> bool {
+  switch (mode) {
+  case ObjectiveMode::placement_count:
+  case ObjectiveMode::maximize_value:
     return true;
   }
   return false;
@@ -114,12 +119,7 @@ production_optimizer_is_valid(const ProductionOptimizerKind optimizer) -> bool {
 [[nodiscard]] auto strategy_kind_is_valid(const StrategyKind strategy) -> bool {
   switch (strategy) {
   case StrategyKind::bounding_box:
-  case StrategyKind::sequential_backtrack:
   case StrategyKind::metaheuristic_search:
-  case StrategyKind::simulated_annealing:
-  case StrategyKind::alns:
-  case StrategyKind::gdrr:
-  case StrategyKind::lahc:
     return true;
   }
   return false;
@@ -127,36 +127,7 @@ production_optimizer_is_valid(const ProductionOptimizerKind optimizer) -> bool {
 
 void synchronize_strategy_configs(ExecutionPolicy &execution) {
   switch (execution.strategy) {
-  case StrategyKind::simulated_annealing:
-    if (!has_primary_strategy_config<SAConfig>(
-            execution, StrategyKind::simulated_annealing)) {
-      set_primary_strategy_config(execution, StrategyKind::simulated_annealing,
-                                  execution.simulated_annealing);
-    }
-    break;
-  case StrategyKind::alns:
-    if (!has_primary_strategy_config<ALNSConfig>(execution,
-                                                 StrategyKind::alns)) {
-      set_primary_strategy_config(execution, StrategyKind::alns,
-                                  execution.alns);
-    }
-    break;
-  case StrategyKind::gdrr:
-    if (!has_primary_strategy_config<GDRRConfig>(execution,
-                                                 StrategyKind::gdrr)) {
-      set_primary_strategy_config(execution, StrategyKind::gdrr,
-                                  execution.gdrr);
-    }
-    break;
-  case StrategyKind::lahc:
-    if (!has_primary_strategy_config<LAHCConfig>(execution,
-                                                 StrategyKind::lahc)) {
-      set_primary_strategy_config(execution, StrategyKind::lahc,
-                                  execution.lahc);
-    }
-    break;
   case StrategyKind::bounding_box:
-  case StrategyKind::sequential_backtrack:
   case StrategyKind::metaheuristic_search:
     break;
   }
@@ -169,60 +140,13 @@ void synchronize_strategy_configs(ExecutionPolicy &execution) {
                                      execution.production);
     }
     break;
-  case ProductionOptimizerKind::simulated_annealing:
-    if (!has_production_strategy_config<SAConfig>(
-            execution, ProductionOptimizerKind::simulated_annealing)) {
-      set_production_strategy_config(
-          execution, ProductionOptimizerKind::simulated_annealing,
-          execution.simulated_annealing);
-    }
-    break;
-  case ProductionOptimizerKind::alns:
-    if (!has_production_strategy_config<ALNSConfig>(
-            execution, ProductionOptimizerKind::alns)) {
-      set_production_strategy_config(execution, ProductionOptimizerKind::alns,
-                                     execution.alns);
-    }
-    break;
-  case ProductionOptimizerKind::gdrr:
-    if (!has_production_strategy_config<GDRRConfig>(
-            execution, ProductionOptimizerKind::gdrr)) {
-      set_production_strategy_config(execution, ProductionOptimizerKind::gdrr,
-                                     execution.gdrr);
-    }
-    break;
-  case ProductionOptimizerKind::lahc:
-    if (!has_production_strategy_config<LAHCConfig>(
-            execution, ProductionOptimizerKind::lahc)) {
-      set_production_strategy_config(execution, ProductionOptimizerKind::lahc,
-                                     execution.lahc);
-    }
-    break;
   }
 }
 
 [[nodiscard]] auto
 active_strategy_config_is_valid(const ExecutionPolicy &execution) -> bool {
   switch (execution.strategy) {
-  case StrategyKind::simulated_annealing:
-    return resolve_primary_strategy_config(execution,
-                                           StrategyKind::simulated_annealing,
-                                           execution.simulated_annealing)
-        .is_valid();
-  case StrategyKind::alns:
-    return resolve_primary_strategy_config(execution, StrategyKind::alns,
-                                           execution.alns)
-        .is_valid();
-  case StrategyKind::gdrr:
-    return resolve_primary_strategy_config(execution, StrategyKind::gdrr,
-                                           execution.gdrr)
-        .is_valid();
-  case StrategyKind::lahc:
-    return resolve_primary_strategy_config(execution, StrategyKind::lahc,
-                                           execution.lahc)
-        .is_valid();
   case StrategyKind::bounding_box:
-  case StrategyKind::sequential_backtrack:
   case StrategyKind::metaheuristic_search:
     return true;
   }
@@ -237,28 +161,30 @@ active_production_strategy_config_is_valid(const ExecutionPolicy &execution)
     return resolve_production_strategy_config(
                execution, ProductionOptimizerKind::brkga, execution.production)
         .is_valid();
-  case ProductionOptimizerKind::simulated_annealing:
-    return resolve_production_strategy_config(
-               execution, ProductionOptimizerKind::simulated_annealing,
-               execution.simulated_annealing)
-        .is_valid();
-  case ProductionOptimizerKind::alns:
-    return resolve_production_strategy_config(
-               execution, ProductionOptimizerKind::alns, execution.alns)
-        .is_valid();
-  case ProductionOptimizerKind::gdrr:
-    return resolve_production_strategy_config(
-               execution, ProductionOptimizerKind::gdrr, execution.gdrr)
-        .is_valid();
-  case ProductionOptimizerKind::lahc:
-    return resolve_production_strategy_config(
-               execution, ProductionOptimizerKind::lahc, execution.lahc)
-        .is_valid();
   }
   return false;
 }
 
 } // namespace detail
+
+auto ProfileRequest::validate() const -> util::Expected<void> {
+  if (!api::profile_is_valid(profile)) {
+    return std::unexpected(util::Status::invalid_input);
+  }
+  if (api::profile_requires_time_limit(profile) &&
+      (!time_limit_milliseconds.has_value() ||
+       *time_limit_milliseconds == 0U)) {
+    return std::unexpected(util::Status::invalid_input);
+  }
+  return {};
+}
+
+auto ProfileRequest::is_valid() const -> bool {
+  if (!validate()) {
+    return false;
+  }
+  return to_nesting_request(*this).ok();
+}
 
 auto ProductionSearchConfig::is_valid() const -> bool {
   return population_size >= 2U && elite_count >= 1U &&
@@ -285,54 +211,6 @@ auto ProductionSearchConfig::is_valid() const -> bool {
          separator_focused_samples >= 1U &&
          separator_coordinate_descent_iterations >= 1U &&
          std::isfinite(gls_weight_cap) && gls_weight_cap >= 1.0;
-}
-
-auto SAConfig::is_valid() const -> bool {
-  switch (cooling_schedule) {
-  case CoolingScheduleKind::geometric:
-  case CoolingScheduleKind::linear:
-  case CoolingScheduleKind::adaptive:
-  case CoolingScheduleKind::lundy_mees:
-    break;
-  default:
-    return false;
-  }
-
-  return max_refinements >= 1U && restart_count >= 1U &&
-         std::isfinite(initial_temperature) && initial_temperature > 0.0 &&
-         std::isfinite(final_temperature) && final_temperature > 0.0 &&
-         initial_temperature >= final_temperature &&
-         std::isfinite(lundy_beta) && lundy_beta > 0.0 &&
-         plateau_window <= 1024U && std::isfinite(reheating_factor) &&
-         reheating_factor >= 1.0 && perturbation_swaps <= 32U;
-}
-
-auto ALNSConfig::is_valid() const -> bool {
-  return max_refinements >= 1U && destroy_min_count >= 1U &&
-         destroy_max_count >= destroy_min_count && destroy_max_count <= 64U &&
-         std::isfinite(initial_acceptance_ratio) &&
-         initial_acceptance_ratio >= 0.0 &&
-         std::isfinite(final_acceptance_ratio) &&
-         final_acceptance_ratio >= 0.0 &&
-         initial_acceptance_ratio >= final_acceptance_ratio &&
-         std::isfinite(reaction_factor) && reaction_factor > 0.0 &&
-         reaction_factor <= 1.0 && std::isfinite(reward_improve) &&
-         reward_improve >= 0.0 && std::isfinite(reward_accept) &&
-         reward_accept >= 0.0 && std::isfinite(reward_reject) &&
-         reward_reject >= 0.0 && segment_length >= 1U;
-}
-
-auto GDRRConfig::is_valid() const -> bool {
-  return max_refinements >= 1U && std::isfinite(initial_goal_ratio) &&
-         initial_goal_ratio > 0.0 && initial_goal_ratio <= 1.0 &&
-         std::isfinite(goal_decay) && goal_decay > 0.0 && goal_decay < 1.0 &&
-         ruin_swap_count <= 32U;
-}
-
-auto LAHCConfig::is_valid() const -> bool {
-  return max_refinements >= 1U && history_length >= 1U &&
-         history_length <= 4096U && plateau_limit <= 4096U &&
-         perturbation_swaps <= 32U;
 }
 
 auto IrregularOptions::is_valid() const -> bool {
@@ -377,12 +255,11 @@ auto NestingRequest::is_valid() const -> bool {
   }
   if (!detail::strategy_kind_is_valid(execution.strategy) ||
       !detail::production_optimizer_is_valid(execution.production_optimizer) ||
+      !detail::objective_mode_is_valid(execution.objective_mode) ||
       !detail::rotation_set_is_valid(execution.default_rotations) ||
       !execution.bounding_box.is_valid() ||
       !execution.deterministic_attempts.is_valid() ||
       !execution.irregular.is_valid() || !execution.production.is_valid() ||
-      !execution.simulated_annealing.is_valid() || !execution.alns.is_valid() ||
-      !execution.gdrr.is_valid() || !execution.lahc.is_valid() ||
       !detail::active_strategy_config_is_valid(execution) ||
       !detail::active_production_strategy_config_is_valid(execution)) {
     return false;
@@ -402,6 +279,9 @@ auto NestingRequest::is_valid() const -> bool {
   std::unordered_set<std::uint32_t> piece_ids;
   for (const auto &piece : pieces) {
     if (piece.quantity == 0U || !piece_ids.insert(piece.piece_id).second) {
+      return false;
+    }
+    if (!std::isfinite(piece.value) || piece.value < 0.0) {
       return false;
     }
     if (piece.allowed_rotations.has_value() &&
@@ -512,6 +392,58 @@ auto normalize_request(const NestingRequest &request)
   }
 
   return normalized;
+}
+
+auto normalize_nesting_request(const NestingRequest &request)
+    -> util::StatusOr<NestingRequest> {
+  const auto normalized = normalize_request(request);
+  if (!normalized.ok()) {
+    return normalized.status();
+  }
+  return normalized.value().request;
+}
+
+auto to_nesting_request(const ProfileRequest &request)
+    -> util::StatusOr<NestingRequest> {
+  if (const auto v = request.validate(); !v) {
+    return v.error();
+  }
+
+  const auto preset = api::profile_preset(request.profile);
+  if (!preset.production.is_valid()) {
+    return util::Status::invalid_input;
+  }
+
+  NestingRequest translated{};
+  translated.bins = request.bins;
+  translated.preprocess = request.preprocess;
+  translated.execution.strategy = preset.strategy;
+  translated.execution.production_optimizer = preset.production_optimizer;
+  translated.execution.objective_mode = request.objective_mode;
+  translated.execution.allow_part_overflow = request.allow_part_overflow;
+  translated.execution.selected_bin_ids = request.selected_bin_ids;
+  translated.execution.production = preset.production;
+
+  translated.pieces.reserve(request.pieces.size());
+  for (const auto &piece : request.pieces) {
+    auto translated_piece = piece;
+    if (request.maintain_bed_assignment) {
+      if (piece.assigned_bin_id.has_value()) {
+        translated_piece.allowed_bin_ids = {*piece.assigned_bin_id};
+      } else if (translated_piece.allowed_bin_ids.empty()) {
+        return util::Status::invalid_input;
+      }
+    }
+    translated_piece.allowed_bin_ids =
+        detail::sort_unique_ids(std::move(translated_piece.allowed_bin_ids));
+    translated.pieces.push_back(std::move(translated_piece));
+  }
+
+  if (!translated.is_valid()) {
+    return util::Status::invalid_input;
+  }
+
+  return translated;
 }
 
 auto to_bounding_box_decoder_request(const NormalizedRequest &request)

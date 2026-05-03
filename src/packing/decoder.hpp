@@ -2,13 +2,13 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 #include <optional>
 #include <vector>
 
 #include "geometry/transforms/transform.hpp"
 #include "packing/bin_state.hpp"
 #include "packing/config.hpp"
+#include "runtime/interruption.hpp"
 
 namespace shiny::nesting::pack {
 
@@ -67,7 +67,8 @@ struct DecoderRequest {
   PackingConfig config{};
 };
 
-using InterruptionProbe = std::function<bool()>;
+// InterruptionProbe is defined in runtime/interruption.hpp and aliased
+// into this namespace via that header.
 
 /**
  * @brief Output of one constructive decode run.

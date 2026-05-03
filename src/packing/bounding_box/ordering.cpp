@@ -40,8 +40,8 @@ template <typename MetricSelector>
 auto sort_order_descending(std::vector<std::size_t> &order,
                            std::span<const PieceOrderingMetrics> metrics,
                            const MetricSelector &selector) -> void {
-  std::stable_sort(order.begin(), order.end(),
-                   [&](const std::size_t lhs, const std::size_t rhs) {
+  std::ranges::stable_sort(order,
+                            [&](const std::size_t lhs, const std::size_t rhs) {
                      const double lhs_metric = selector(metrics[lhs]);
                      const double rhs_metric = selector(metrics[rhs]);
                      if (!almost_equal(lhs_metric, rhs_metric)) {
@@ -55,7 +55,7 @@ auto sort_order_descending(std::vector<std::size_t> &order,
 template <typename Comparator>
 auto sort_order(std::vector<std::size_t> &order, const Comparator &comparator)
     -> void {
-  std::stable_sort(order.begin(), order.end(), comparator);
+  std::ranges::stable_sort(order, comparator);
 }
 
 } // namespace
@@ -76,7 +76,7 @@ auto append_unique_order(const DecoderRequest &request,
                          std::vector<std::vector<std::uint32_t>> &keys,
                          std::vector<std::size_t> order) -> void {
   const std::vector<std::uint32_t> key = piece_order_key(request, order);
-  if (std::find(keys.begin(), keys.end(), key) != keys.end()) {
+  if (std::ranges::contains(keys, key)) {
     return;
   }
   keys.push_back(key);

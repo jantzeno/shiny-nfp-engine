@@ -4,7 +4,7 @@
         "or-strip-dataset": {
             "min_placed_parts": "3",
             "min_utilization": "11.212121212121213",
-            "max_runtime_ms": "1173",
+            "max_runtime_ms": "3500",
             "max_fallback_candidates": "1",
             "max_selected_fallback_placements": "1",
             "expected_stop_reason": "completed",

@@ -13,10 +13,6 @@ namespace shiny::nesting {
 enum class OptimizerKind : std::uint8_t {
   none = 0,
   brkga = 1,
-  simulated_annealing = 2,
-  alns = 3,
-  gdrr = 4,
-  lahc = 5,
 };
 
 struct SearchProgressEntry {
@@ -73,6 +69,44 @@ struct SearchReplay {
   SearchFallbackMetrics fallback_metrics{};
 };
 
+enum class ConstructiveFrontierExhaustionDecision : std::uint8_t {
+  exhausted = 0,
+  fit_may_exist = 1,
+};
+
+enum class ConstructiveFrontierAdvanceReason : std::uint8_t {
+  initial_bin_opened = 0,
+  next_bin_opened = 1,
+  overflow_bin_opened = 2,
+};
+
+struct ConstructiveFrontierChangeEvent {
+  std::optional<std::uint32_t> previous_bin_id{};
+  std::uint32_t next_bin_id{0};
+  std::uint32_t piece_id{0};
+  ConstructiveFrontierAdvanceReason reason{
+      ConstructiveFrontierAdvanceReason::initial_bin_opened};
+};
+
+struct ConstructiveOverflowEvent {
+  std::uint32_t template_bin_id{0};
+  std::uint32_t overflow_bin_id{0};
+  std::uint32_t source_request_bin_id{0};
+};
+
+struct ConstructiveExhaustionEvent {
+  std::uint32_t piece_id{0};
+  std::uint32_t frontier_bin_id{0};
+  ConstructiveFrontierExhaustionDecision decision{
+      ConstructiveFrontierExhaustionDecision::fit_may_exist};
+};
+
+struct ConstructiveReplay {
+  std::vector<ConstructiveFrontierChangeEvent> frontier_changes{};
+  std::vector<ConstructiveOverflowEvent> overflow_events{};
+  std::vector<ConstructiveExhaustionEvent> exhaustion_events{};
+};
+
 enum class LayoutValidationIssueKind : std::uint8_t {
   missing_piece = 0,
   duplicate_piece = 1,
@@ -121,6 +155,7 @@ struct NestingResult {
   std::size_t total_parts{0};
   std::uint64_t effective_seed{0};
   StopReason stop_reason{StopReason::none};
+  ConstructiveReplay constructive{};
   SearchReplay search{};
   LayoutValidationReport validation{};
 

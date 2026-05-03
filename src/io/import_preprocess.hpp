@@ -4,7 +4,7 @@
 #include <optional>
 #include <vector>
 
-#include "request.hpp"
+#include "internal/request_normalization.hpp"
 
 namespace shiny::nesting::io {
 

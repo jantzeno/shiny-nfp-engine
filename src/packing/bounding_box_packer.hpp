@@ -1,5 +1,9 @@
 #pragma once
 
+#include <cstddef>
+#include <functional>
+#include <vector>
+
 #include "packing/decoder.hpp"
 
 namespace shiny::nesting::pack {

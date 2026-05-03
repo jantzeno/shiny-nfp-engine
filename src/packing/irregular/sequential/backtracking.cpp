@@ -190,7 +190,8 @@ auto try_place_piece(
     ProgressThrottle &search_throttle, const std::size_t placed_parts,
     const std::size_t total_parts, PlacementAttemptContext &attempt_context,
     cache::NfpCache *nfp_cache, PackerSearchMetrics *search_metrics,
-    runtime::DeterministicRng *rng_ptr,
+    runtime::DeterministicRng *rng_ptr, ConstructiveReplay *constructive_replay,
+    const ConstructivePlacementPhase placement_phase,
     const TrialStateRecorder *trial_recorder) -> PlacementSearchStatus {
   const auto candidate_strategy =
       request.request.execution.irregular.candidate_strategy;
@@ -234,7 +235,8 @@ auto try_place_piece(
           trial_recorder->snapshot_bin(frontier_index);
         }
         apply_candidate(opened_bins[frontier_index], *result.candidate, trace,
-                        false, request.request.execution, trial_recorder);
+                        false, request.request.execution, placement_phase,
+                        trial_recorder);
         return PlacementSearchStatus::found;
       }
 
@@ -254,13 +256,24 @@ auto try_place_piece(
           }
           apply_candidate(opened_bins[frontier_index],
                           *exact_fit_result.candidate, trace, false,
-                          request.request.execution, trial_recorder);
+                          request.request.execution, placement_phase,
+                          trial_recorder);
           return PlacementSearchStatus::found;
         }
       }
 
       const auto frontier_status = frontier_exhaustion_status_for_piece(
           opened_bins[frontier_index], piece, request.request.execution);
+      if (constructive_replay != nullptr) {
+        constructive_replay->exhaustion_events.push_back({
+            .piece_id = piece.expanded.expanded_piece_id,
+            .frontier_bin_id = opened_bins[frontier_index].state.bin_id,
+            .decision =
+                frontier_status == FrontierExhaustionStatus::exhausted
+                    ? ConstructiveFrontierExhaustionDecision::exhausted
+                    : ConstructiveFrontierExhaustionDecision::fit_may_exist,
+        });
+      }
       if (frontier_status != FrontierExhaustionStatus::exhausted) {
         return PlacementSearchStatus::no_candidate;
       }
@@ -278,7 +291,8 @@ auto try_place_piece(
           trial_recorder->snapshot_bin(bin_index);
         }
         apply_candidate(opened_bins[bin_index], *result.candidate, trace, false,
-                        request.request.execution, trial_recorder);
+                        request.request.execution, placement_phase,
+                        trial_recorder);
         return PlacementSearchStatus::found;
       }
     }
@@ -299,6 +313,16 @@ auto try_place_piece(
       if (use_strict_frontier) {
         const auto frontier_status = frontier_exhaustion_status_for_piece(
             working_bin, piece, request.request.execution);
+        if (constructive_replay != nullptr) {
+          constructive_replay->exhaustion_events.push_back({
+              .piece_id = piece.expanded.expanded_piece_id,
+              .frontier_bin_id = working_bin.state.bin_id,
+              .decision =
+                  frontier_status == FrontierExhaustionStatus::exhausted
+                      ? ConstructiveFrontierExhaustionDecision::exhausted
+                      : ConstructiveFrontierExhaustionDecision::fit_may_exist,
+          });
+        }
         if (frontier_status != FrontierExhaustionStatus::exhausted) {
           return PlacementSearchStatus::no_candidate;
         }
@@ -308,8 +332,21 @@ auto try_place_piece(
     }
 
     apply_candidate(working_bin, *result.candidate, trace, true,
-                    request.request.execution, trial_recorder);
+                    request.request.execution, placement_phase, trial_recorder);
     opened_flags[bin_index] = true;
+    if (constructive_replay != nullptr) {
+      constructive_replay->frontier_changes.push_back({
+          .previous_bin_id = opened_bins.empty()
+                                 ? std::nullopt
+                                 : std::optional<std::uint32_t>(
+                                       opened_bins.back().state.bin_id),
+          .next_bin_id = working_bin.state.bin_id,
+          .piece_id = piece.expanded.expanded_piece_id,
+          .reason = opened_bins.empty()
+                        ? ConstructiveFrontierAdvanceReason::initial_bin_opened
+                        : ConstructiveFrontierAdvanceReason::next_bin_opened,
+      });
+    }
     opened_bins.push_back(std::move(working_bin));
     if (trial_recorder != nullptr && trial_recorder->record_opened_bin) {
       trial_recorder->record_opened_bin(bin_index);
@@ -319,9 +356,10 @@ auto try_place_piece(
 
   if (use_strict_frontier && request.request.execution.allow_part_overflow &&
       overflow_template_index.has_value()) {
+    const auto template_instance = bin_instances[*overflow_template_index];
     const auto new_bin_index = append_overflow_bin_instance(
-        bin_instances, opened_flags, bin_instances[*overflow_template_index],
-        bin_instances[*overflow_template_index].expanded.expanded_bin_id);
+        bin_instances, opened_flags, template_instance,
+        template_instance.expanded.expanded_bin_id);
     auto working_bin = make_working_bin(bin_instances[new_bin_index]);
     refresh_bin_state(working_bin, request.request.execution);
     auto result = find_best(working_bin);
@@ -330,8 +368,28 @@ auto try_place_piece(
     }
     if (result.candidate.has_value()) {
       apply_candidate(working_bin, *result.candidate, trace, true,
-                      request.request.execution, trial_recorder);
+                      request.request.execution, placement_phase,
+                      trial_recorder);
       opened_flags[new_bin_index] = true;
+      if (constructive_replay != nullptr) {
+        constructive_replay->overflow_events.push_back({
+            .template_bin_id = template_instance.expanded.expanded_bin_id,
+            .overflow_bin_id = working_bin.state.bin_id,
+            .source_request_bin_id =
+                template_instance.expanded.identity.source_request_bin_id != 0U
+                    ? template_instance.expanded.identity.source_request_bin_id
+                    : template_instance.expanded.source_bin_id,
+        });
+        constructive_replay->frontier_changes.push_back({
+            .previous_bin_id = opened_bins.empty()
+                                   ? std::nullopt
+                                   : std::optional<std::uint32_t>(
+                                         opened_bins.back().state.bin_id),
+            .next_bin_id = working_bin.state.bin_id,
+            .piece_id = piece.expanded.expanded_piece_id,
+            .reason = ConstructiveFrontierAdvanceReason::overflow_bin_opened,
+        });
+      }
       opened_bins.push_back(std::move(working_bin));
       if (trial_recorder != nullptr && trial_recorder->record_opened_bin) {
         trial_recorder->record_opened_bin(new_bin_index);
@@ -548,7 +606,8 @@ auto try_backtrack_place_piece(
       const auto status = try_place_piece(
           *retry_piece, request, bin_instances, opened_bins, opened_flags,
           trace, control, search_throttle, trace.size(), total_parts,
-          attempt_context, nfp_cache, search_metrics, rng_ptr, &trial_recorder);
+          attempt_context, nfp_cache, search_metrics, rng_ptr, nullptr,
+          ConstructivePlacementPhase::primary_order, &trial_recorder);
       if (status == PlacementSearchStatus::interrupted) {
         return status;
       }

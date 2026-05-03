@@ -12,11 +12,11 @@
 
 #include "cache/nfp_cache.hpp"
 #include "geometry/transforms/rotation_refinement.hpp"
+#include "internal/request_normalization.hpp"
 #include "observer.hpp"
 #include "packing/bin_state.hpp"
 #include "packing/irregular/workspace.hpp"
 #include "packing/layout.hpp"
-#include "request.hpp"
 #include "result.hpp"
 #include "runtime/deterministic_rng.hpp"
 #include "runtime/hash.hpp"
@@ -125,6 +125,8 @@ auto remove_trace_entries_for_piece(
 auto apply_candidate(WorkingBin &bin, const CandidatePlacement &candidate,
                      std::vector<PlacementTraceEntry> &trace,
                      bool opened_new_bin, const ExecutionPolicy &execution,
+                     ConstructivePlacementPhase phase =
+                         ConstructivePlacementPhase::primary_order,
                      const TrialStateRecorder *trial_recorder = nullptr)
     -> void;
 auto remove_piece_from_bins(std::vector<WorkingBin> &bins,
@@ -209,6 +211,9 @@ struct PlacementSearchResult {
     std::size_t total_parts, PlacementAttemptContext &attempt_context,
     cache::NfpCache *nfp_cache, PackerSearchMetrics *search_metrics,
     runtime::DeterministicRng *rng_ptr,
+    ConstructiveReplay *constructive_replay = nullptr,
+    ConstructivePlacementPhase placement_phase =
+        ConstructivePlacementPhase::primary_order,
     const TrialStateRecorder *trial_recorder = nullptr)
     -> PlacementSearchStatus;
 

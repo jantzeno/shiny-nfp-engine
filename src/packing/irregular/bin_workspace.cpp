@@ -229,6 +229,7 @@ auto apply_candidate(WorkingBin &bin, const CandidatePlacement &candidate,
                      std::vector<PlacementTraceEntry> &trace,
                      const bool opened_new_bin,
                      const ExecutionPolicy &execution,
+                     const ConstructivePlacementPhase phase,
                      const TrialStateRecorder *trial_recorder) -> void {
   bin.state.placements.push_back({
       .placement = candidate.placement,
@@ -239,6 +240,7 @@ auto apply_candidate(WorkingBin &bin, const CandidatePlacement &candidate,
       .nfp_accuracy = candidate.nfp_accuracy,
       .inside_hole = candidate.inside_hole,
       .hole_index = candidate.hole_index,
+      .phase = phase,
       .score = candidate.score,
   });
   bin.placement_bounds.push_back(candidate.bounds);
@@ -265,6 +267,7 @@ auto apply_candidate(WorkingBin &bin, const CandidatePlacement &candidate,
       .opened_new_bin = opened_new_bin,
       .inside_hole = candidate.inside_hole,
       .hole_index = candidate.hole_index,
+      .phase = phase,
       .score = candidate.score,
   });
   if (trial_recorder != nullptr &&

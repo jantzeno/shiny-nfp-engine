@@ -4,6 +4,7 @@
 #include <cmath>
 #include <limits>
 
+#include "geometry/operations/simplify.hpp"
 #include "geometry/queries/normalize.hpp"
 
 namespace shiny::nesting::io {

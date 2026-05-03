@@ -1,47 +1,57 @@
 #pragma once
 
-#include <atomic>
-#include <memory>
+#include <stop_token>
 
-#include "packing/decoder.hpp"
+#include "runtime/interruption.hpp"
 
 namespace shiny::nesting::runtime {
 
+/**
+ * @brief Lightweight cancellation observer backed by std::stop_token.
+ *
+ * Wraps std::stop_token to preserve the existing stop_requested() polling
+ * interface while removing the shared_ptr<atomic<bool>> implementation. A
+ * default-constructed token is always non-stopping, matching the semantics of
+ * a default-constructed std::stop_token.
+ */
 class CancellationToken {
 public:
   CancellationToken() = default;
-  explicit CancellationToken(std::shared_ptr<std::atomic<bool>> flag)
-      : flag_(std::move(flag)) {}
+  explicit CancellationToken(std::stop_token token)
+      : token_(std::move(token)) {}
 
   [[nodiscard]] auto stop_requested() const -> bool {
-    return flag_ != nullptr && flag_->load();
+    return token_.stop_requested();
   }
 
 private:
-  std::shared_ptr<std::atomic<bool>> flag_{};
+  std::stop_token token_{};
 };
 
+/**
+ * @brief Cancellation owner backed by std::stop_source.
+ *
+ * Wraps std::stop_source to preserve the existing token() / request_stop()
+ * interface while removing the shared_ptr<atomic<bool>> implementation. The
+ * stop state is shared between all CancellationTokens produced by token().
+ */
 class CancellationSource {
 public:
-  CancellationSource() : flag_(std::make_shared<std::atomic<bool>>(false)) {}
+  CancellationSource() = default;
 
   [[nodiscard]] auto token() const -> CancellationToken {
-    return CancellationToken(flag_);
+    return CancellationToken(source_.get_token());
   }
 
-  void request_stop() const {
-    if (flag_ != nullptr) {
-      flag_->store(true);
-    }
-  }
+  void request_stop() { source_.request_stop(); }
 
 private:
-  std::shared_ptr<std::atomic<bool>> flag_{};
+  std::stop_source source_{};
 };
 
 [[nodiscard]] inline auto
 make_interruption_probe(const CancellationToken &token)
-    -> pack::InterruptionProbe {
+    -> InterruptionProbe {
   return [token]() { return token.stop_requested(); };
 }
 

@@ -7,76 +7,12 @@ import re
 import sys
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 XMAKE_FILE = REPO_ROOT / "xmake.lua"
 
 INTENTIONALLY_EXCLUDED = {
-    "tests/regression/genetic_search_observer.cpp": (
-        "legacy jostle/genetic observer API removed from current search surface"
-    ),
-    "tests/regression/masonry_trace.cpp": (
-        "legacy masonry search API removed from current search surface"
-    ),
-    "tests/regression/search_observer.cpp": (
-        "legacy jostle observer API removed from current search surface"
-    ),
-    "tests/unit/benchmark_contract.cpp": (
-        "legacy benchmark support headers removed from current tool surface"
-    ),
-    "tests/regression/concave_bin_concave_piece.cpp": (
-        "legacy nonconvex NFP API removed from current NFP surface"
-    ),
-    "tests/regression/degenerate_triangle_pair.cpp": (
-        "legacy convex NFP result API removed from current NFP surface"
-    ),
-    "tests/regression/l_shape_sliding.cpp": (
-        "legacy nonconvex NFP API removed from current NFP surface"
-    ),
-    "tests/unit/convex_nfp.cpp": (
-        "legacy convex IFP/NFP result API removed from current NFP surface"
-    ),
-    "tests/unit/decomposition.cpp": (
-        "legacy decomposition engine/cache API removed from current decomposition surface"
-    ),
-    "tests/unit/decomposition_headers.cpp": (
-        "legacy generic cache-store header contract removed from current cache surface"
-    ),
-    "tests/unit/genetic_search.cpp": (
-        "legacy genetic search API removed from current production-search surface"
-    ),
-    "tests/unit/masonry.cpp": (
-        "legacy masonry packing API removed from current packing surface"
-    ),
-    "tests/unit/masonry_search.cpp": (
-        "legacy masonry search API removed from current search surface"
-    ),
-    "tests/unit/nonconvex_fixtures.cpp": (
-        "legacy nonconvex NFP API removed from current NFP surface"
-    ),
-    "tests/unit/nonconvex_nfp.cpp": (
-        "legacy nonconvex NFP/engine API removed from current NFP surface"
-    ),
-    "tests/unit/nfp_cache.cpp": (
-        "legacy generic cache-store NFP overloads removed from current cache surface"
-    ),
-    "tests/unit/nfp_headers.cpp": (
-        "legacy milestone header contract references removed NFP/cache API surface"
-    ),
-    "tests/unit/orbital_verifier.cpp": (
-        "legacy orbital verifier API removed from current NFP surface"
-    ),
-    "tests/unit/packing.cpp": (
-        "legacy constructive decoder API removed from current packing surface"
-    ),
-    "tests/unit/placement.cpp": (
-        "legacy placement engine API removed from current placement surface"
-    ),
-    "tests/unit/profile_decode_benchmark_contract.cpp": (
-        "legacy benchmark support headers removed from current tool surface"
-    ),
-    "tests/unit/search.cpp": (
-        "legacy jostle search API removed from current search surface"
+    "tests/support/mtg_fixture.cpp": (
+        "fixture implementation moved to tests/fixtures/export_surface/mtg_fixture.cpp"
     ),
 }
 

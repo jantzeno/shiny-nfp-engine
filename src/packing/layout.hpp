@@ -13,6 +13,11 @@
 
 namespace shiny::nesting::pack {
 
+enum class ConstructivePlacementPhase : std::uint8_t {
+  primary_order = 0,
+  gap_fill = 1,
+};
+
 /**
  * @brief Fully realized placed piece within one bin.
  *
@@ -35,6 +40,7 @@ struct PlacedPiece {
   cache::NfpCacheAccuracy nfp_accuracy{cache::NfpCacheAccuracy::exact};
   bool inside_hole{false};
   std::int32_t hole_index{-1};
+  ConstructivePlacementPhase phase{ConstructivePlacementPhase::primary_order};
   double score{0.0};
 };
 
@@ -64,6 +70,7 @@ struct PlacementTraceEntry {
   bool opened_new_bin{false};
   bool inside_hole{false};
   std::int32_t hole_index{-1};
+  ConstructivePlacementPhase phase{ConstructivePlacementPhase::primary_order};
   double score{0.0};
 };
 
