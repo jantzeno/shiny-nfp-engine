@@ -1,6 +1,7 @@
 #include "geometry/operations/boolean_ops.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <string_view>
 
 #include <boost/geometry.hpp>
@@ -46,14 +47,57 @@ namespace bg = boost::geometry;
   return lhs.holes().size() < rhs.holes().size();
 }
 
+// Boost geometry's boolean operations sometimes produce near-duplicate
+// consecutive vertices (x/y coordinates differing by ~1e-14) when input
+// polygons share an edge. These near-duplicates are not caught by the exact
+// equality check in normalize_polygon, which causes simplify_normalized_ring
+// to receive a degenerate ring and incorrectly remove valid vertices. This
+// function removes consecutive vertices that are within epsilon of each other,
+// collapsing the degenerate near-duplicate pairs before normalization.
+[[nodiscard]] auto remove_near_consecutive_duplicates_ring(const Ring &ring)
+    -> Ring {
+  constexpr double kNearDuplicateEpsilon = 1e-10;
+  Ring cleaned;
+  cleaned.reserve(ring.size());
+  for (const auto &pt : ring) {
+    if (!cleaned.empty()) {
+      const auto dx = pt.x() - cleaned.back().x();
+      const auto dy = pt.y() - cleaned.back().y();
+      if (std::sqrt(dx * dx + dy * dy) <= kNearDuplicateEpsilon) {
+        continue;
+      }
+    }
+    cleaned.push_back(pt);
+  }
+  if (cleaned.size() > 1U) {
+    const auto dx = cleaned.front().x() - cleaned.back().x();
+    const auto dy = cleaned.front().y() - cleaned.back().y();
+    if (std::sqrt(dx * dx + dy * dy) <= kNearDuplicateEpsilon) {
+      cleaned.pop_back();
+    }
+  }
+  return cleaned;
+}
+
+[[nodiscard]] auto clean_boolean_output_polygon(const PolygonWithHoles &polygon)
+    -> PolygonWithHoles {
+  PolygonWithHoles cleaned{};
+  cleaned.outer() = remove_near_consecutive_duplicates_ring(polygon.outer());
+  cleaned.holes().reserve(polygon.holes().size());
+  for (const auto &hole : polygon.holes()) {
+    cleaned.holes().push_back(remove_near_consecutive_duplicates_ring(hole));
+  }
+  return cleaned;
+}
+
 [[nodiscard]] auto normalize_output(const std::vector<PolygonWithHoles> &output)
     -> std::vector<PolygonWithHoles> {
   std::vector<PolygonWithHoles> normalized_output;
   normalized_output.reserve(output.size());
   for (const auto &polygon : output) {
-    normalized_output.push_back(simplify_polygon(polygon));
+    normalized_output.push_back(
+        simplify_polygon(clean_boolean_output_polygon(polygon)));
   }
-
   std::sort(normalized_output.begin(), normalized_output.end(), polygon_less);
   return normalized_output;
 }
@@ -125,9 +169,11 @@ auto intersection_polygons(const PolygonWithHoles &lhs,
     return {};
   }
 
+  const auto lhs_prepared = prepare_boolean_input(lhs);
+  const auto rhs_prepared = prepare_boolean_input(rhs);
+
   std::vector<PolygonWithHoles> output;
-  bg::intersection(prepare_boolean_input(lhs), prepare_boolean_input(rhs),
-                   output);
+  bg::intersection(lhs_prepared, rhs_prepared, output);
   return normalize_output(output);
 }
 

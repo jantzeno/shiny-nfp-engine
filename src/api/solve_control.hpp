@@ -28,6 +28,7 @@ struct SolveControl {
   std::uint64_t time_limit_milliseconds{0};
   std::uint64_t random_seed{0};
   bool cancellation_requested{false};
+  bool emit_empty_transitions{false};
   SeedProgressionMode seed_mode{SeedProgressionMode::increment};
   pack::PackerWorkspace *workspace{nullptr};
 };
@@ -53,12 +54,14 @@ struct ProfileSolveControl {
 }
 
 /// Return the next seed in the increment progression.
-[[nodiscard]] constexpr auto increment_seed(std::uint64_t seed) -> std::uint64_t {
+[[nodiscard]] constexpr auto increment_seed(std::uint64_t seed)
+    -> std::uint64_t {
   return seed + 1U;
 }
 
 /// Return the previous seed in the decrement progression.
-[[nodiscard]] constexpr auto decrement_seed(std::uint64_t seed) -> std::uint64_t {
+[[nodiscard]] constexpr auto decrement_seed(std::uint64_t seed)
+    -> std::uint64_t {
   return seed - 1U;
 }
 

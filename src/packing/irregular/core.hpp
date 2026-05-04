@@ -188,6 +188,7 @@ struct PlacementSearchResult {
 [[nodiscard]] auto find_best_for_bin(
     WorkingBin &bin, const PieceInstance &piece,
     const NormalizedRequest &request, const SolveControl &control,
+    const runtime::TimeBudget &time_budget, const runtime::Stopwatch &stopwatch,
     ProgressThrottle &search_throttle, std::size_t placed_parts,
     std::size_t total_parts, PlacementAttemptContext &attempt_context,
     cache::NfpCache *nfp_cache, PackerSearchMetrics *search_metrics,
@@ -195,7 +196,9 @@ struct PlacementSearchResult {
 
 [[nodiscard]] auto frontier_exhaustion_status_for_piece(
     WorkingBin &bin, const PieceInstance &piece,
-    const ExecutionPolicy &execution) -> FrontierExhaustionStatus;
+    const ExecutionPolicy &execution,
+    const runtime::TimeBudget &time_budget,
+    const runtime::Stopwatch &stopwatch) -> FrontierExhaustionStatus;
 
 [[nodiscard]] auto try_exact_fit_candidate(
     WorkingBin &bin, const PieceInstance &piece,
@@ -207,6 +210,7 @@ struct PlacementSearchResult {
     std::vector<BinInstance> &bin_instances,
     std::vector<WorkingBin> &opened_bins, std::vector<bool> &opened_flags,
     std::vector<PlacementTraceEntry> &trace, const SolveControl &control,
+    const runtime::TimeBudget &time_budget, const runtime::Stopwatch &stopwatch,
     ProgressThrottle &search_throttle, std::size_t placed_parts,
     std::size_t total_parts, PlacementAttemptContext &attempt_context,
     cache::NfpCache *nfp_cache, PackerSearchMetrics *search_metrics,
@@ -223,7 +227,9 @@ struct PlacementSearchResult {
     std::vector<WorkingBin> &opened_bins, std::vector<bool> &opened_flags,
     std::vector<PlacementTraceEntry> &trace,
     const std::unordered_map<std::uint32_t, const PieceInstance *> &piece_by_id,
-    const SolveControl &control, ProgressThrottle &search_throttle,
+    const SolveControl &control,
+    const runtime::TimeBudget &time_budget, const runtime::Stopwatch &stopwatch,
+    ProgressThrottle &search_throttle,
     std::size_t total_parts, PlacementAttemptContext &attempt_context,
     cache::NfpCache *nfp_cache, PackerSearchMetrics *search_metrics,
     runtime::DeterministicRng *rng_ptr, std::uint32_t max_backtrack_pieces)

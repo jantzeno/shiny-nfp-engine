@@ -58,3 +58,4 @@ vendor/
 artifacts/
 benchmarks/
 *.log
+docs/

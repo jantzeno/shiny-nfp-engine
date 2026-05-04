@@ -52,6 +52,12 @@ namespace {
   fixture.pieces.push_back(make_piece(4, "bed2-square-a", kBed2Id, 6.0, 6.0));
   fixture.pieces.push_back(make_piece(5, "bed2-square-b", kBed2Id, 5.0, 5.0));
   fixture.pieces.push_back(make_piece(6, "bed1-strip", kBed1Id, 7.0, 4.0));
+  // Additional pieces to increase packing density so that different BRKGA
+  // random seeds produce observably different bin assignments.
+  fixture.pieces.push_back(make_piece(7, "bed1-wide", kBed1Id, 8.0, 5.0));
+  fixture.pieces.push_back(make_piece(8, "bed2-rect", kBed2Id, 7.0, 4.0));
+  fixture.pieces.push_back(make_piece(9, "bed1-narrow", kBed1Id, 10.0, 3.0));
+  fixture.pieces.push_back(make_piece(10, "bed2-small", kBed2Id, 5.0, 4.0));
   return fixture;
 }
 

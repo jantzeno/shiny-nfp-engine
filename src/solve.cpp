@@ -339,6 +339,15 @@ auto solve(const NestingRequest &request, const SolveControl &control)
       return std::unexpected(decoder_request.error());
     }
 
+    if (control.operation_limit == 0U) {
+      SHINY_WARN("solve: unbounded solve control rejected strategy={} "
+                 "request=[{}] control=[{}]",
+                 log::strategy_name(request.execution.strategy),
+                 log::request_surface_summary(request),
+                 log::control_surface_summary(control));
+      return std::unexpected(util::Status::invalid_input);
+    }
+
     const std::uint32_t configured_attempts =
         decoder_request.value().config.deterministic_attempts.max_attempts;
     if (control.operation_limit > 0U) {
@@ -367,6 +376,7 @@ auto solve(const NestingRequest &request, const SolveControl &control)
       return control.cancellation.stop_requested() ||
              time_budget.expired(stopwatch);
     };
+    std::size_t attempt_progress_seq = 0;
     std::vector<pack::DecoderResult> results = packer.decode_attempts(
         decoder_request.value(), interruption_requested,
         [&](const std::size_t attempt_index,
@@ -374,13 +384,35 @@ auto solve(const NestingRequest &request, const SolveControl &control)
           emit_snapshot(
               control,
               ProgressSnapshot{
-                  .sequence = attempt_index + 1U,
+                  .sequence = ++attempt_progress_seq,
                   .placements_successful = result.layout.placement_trace.size(),
                   .total_requested_parts =
                       normalized_request.value().expanded_pieces.size(),
                   .layout = result.layout,
                   .stop_reason = StopReason::none,
               });
+          // Emit a "starting next attempt" pulse with an empty layout so
+          // observers can detect when a new multi-start attempt is about to
+          // begin.  This enables cancellation triggers based on sequence
+          // advancement combined with an empty-layout sentinel.
+          const bool more_attempts_left =
+              attempt_index + 1U <
+              static_cast<std::size_t>(
+                  decoder_request.value()
+                      .config.deterministic_attempts.max_attempts);
+          if (more_attempts_left && !interruption_requested() &&
+              control.emit_empty_transitions) {
+            emit_snapshot(
+                control,
+                ProgressSnapshot{
+                    .sequence = ++attempt_progress_seq,
+                    .placements_successful = 0U,
+                    .total_requested_parts =
+                        normalized_request.value().expanded_pieces.size(),
+                    .layout = {},
+                    .stop_reason = StopReason::none,
+                });
+          }
         });
     const auto best_attempt_index = best_bounding_box_attempt_index(results);
     if (!best_attempt_index.has_value()) {
@@ -412,6 +444,31 @@ auto solve(const NestingRequest &request, const SolveControl &control)
           .overflow_bin_id = ev.overflow_bin_id,
           .source_request_bin_id = ev.source_request_bin_id,
       });
+    }
+    // Synthesize frontier_changes from the layout bins: one event per bin
+    // opened, reflecting the initial open and any overflow opens.
+    {
+      std::optional<std::uint32_t> prev_bin_id;
+      for (const auto &bin : best_result.layout.bins) {
+        const bool is_overflow =
+            bin.identity.lifecycle == pack::BinLifecycle::engine_overflow;
+        const std::uint32_t piece_id =
+            !bin.placements.empty() ? bin.placements.front().placement.piece_id
+                                    : 0U;
+        result.constructive.frontier_changes.push_back({
+            .previous_bin_id = prev_bin_id,
+            .next_bin_id = bin.bin_id,
+            .piece_id = piece_id,
+            .reason =
+                prev_bin_id.has_value()
+                    ? (is_overflow
+                           ? ConstructiveFrontierAdvanceReason::
+                                 overflow_bin_opened
+                           : ConstructiveFrontierAdvanceReason::next_bin_opened)
+                    : ConstructiveFrontierAdvanceReason::initial_bin_opened,
+        });
+        prev_bin_id = bin.bin_id;
+      }
     }
     validation::finalize_result(normalized_request.value(), result);
     log_solve_finish(request, control,
@@ -450,7 +507,7 @@ auto solve(const NestingRequest &request, const SolveControl &control)
   auto result = search.solve(normalized_request.value(), effective_control);
   if (result.has_value()) {
     result.value().strategy = StrategyKind::metaheuristic_search;
-    result.value().effective_seed = control.random_seed;  // public seed
+    result.value().effective_seed = control.random_seed; // public seed
     validation::finalize_result(normalized_request.value(), result.value());
     log_solve_finish(request, control, "brkga", runner_class, result.value());
   }

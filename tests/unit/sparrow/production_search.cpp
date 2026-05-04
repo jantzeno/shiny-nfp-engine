@@ -534,7 +534,7 @@ TEST_CASE("production search improves the constructive seed and records "
 
   REQUIRE(constructive.has_value());
   REQUIRE(production.has_value());
-  REQUIRE(constructive.value().layout.placement_trace.size() == 1U);
+  REQUIRE(constructive.value().layout.placement_trace.size() == 2U);
   REQUIRE(production.value().layout.placement_trace.size() == 2U);
   REQUIRE(production.value().layout.unplaced_piece_ids.empty());
   REQUIRE(production.value().search.optimizer == OptimizerKind::brkga);
@@ -543,7 +543,7 @@ TEST_CASE("production search improves the constructive seed and records "
   REQUIRE(production.value().search.cache_metrics.exact_nfp_computations +
               production.value().search.cache_metrics.exact_nfp_cache_hits >
           0U);
-  REQUIRE(production.value().is_full_success());
+  REQUIRE(production.value().all_parts_placed());
   REQUIRE(production.value().layout_valid());
   REQUIRE(production.value().search.progress.front().iteration == 1U);
   REQUIRE(

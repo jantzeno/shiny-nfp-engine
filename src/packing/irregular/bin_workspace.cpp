@@ -111,6 +111,40 @@ auto ensure_free_regions_cached(WorkingBin &bin,
     return;
   }
 
+  // Incremental path: if we have a previously-computed cache and placements
+  // have only been appended (count grew), subtract only the newly-added
+  // placements rather than recomputing from scratch.  This reduces
+  // per-placement cost from O(N) polygon-difference operations to O(1) for
+  // forward-only passes.  Note: rebuild_working_bin() clears placements, so
+  // placements_at_cache >= placements.size() after a rebuild — the incremental
+  // path is never taken after a rebuild.
+  const bool can_update_incrementally =
+      !bin.cached_free_regions.empty() &&
+      bin.placements_at_cache < bin.state.placements.size();
+
+  if (can_update_incrementally) {
+    auto &regions = bin.cached_free_regions;
+    for (std::size_t i = bin.placements_at_cache;
+         i < bin.state.placements.size(); ++i) {
+      subtract_obstacle(
+          regions,
+          execution.enable_part_in_part_placement
+              ? bin.state.placements[i].polygon
+              : fill_polygon_holes(bin.state.placements[i].polygon),
+          execution.part_spacing);
+    }
+    if (execution.irregular.merge_free_regions) {
+      merge_touching_regions(regions);
+    }
+    bin.cached_region_bboxes.clear();
+    bin.cached_region_bboxes.reserve(regions.size());
+    for (const auto &region : regions) {
+      bin.cached_region_bboxes.push_back(geom::compute_bounds(region));
+    }
+    bin.placements_at_cache = bin.state.placements.size();
+    return;
+  }
+
   std::vector<geom::PolygonWithHoles> regions{bin.state.container};
   for (const auto &zone : bin.exclusion_regions) {
     subtract_obstacle(regions, zone, execution.part_spacing);
@@ -158,7 +192,11 @@ auto rebuild_working_bin(WorkingBin &bin, const ExecutionPolicy &execution)
   }
   ++bin.state.occupied_region_revision;
   refresh_bin_state(bin, execution);
+  // Invalidate the free-region cache completely: placements may have been
+  // removed or reordered, so the incremental path cannot be used.
   bin.free_regions_valid = false;
+  bin.cached_free_regions.clear();
+  bin.placements_at_cache = 0;
 }
 
 auto remove_trace_entries_for_piece(std::vector<PlacementTraceEntry> &trace,

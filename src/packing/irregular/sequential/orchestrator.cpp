@@ -195,9 +195,9 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
 
     auto placement_status = try_place_piece(
         piece, request, bin_instances, opened_bins, opened_flags, trace,
-        control, search_throttle, placements_completed, piece_instances.size(),
-        attempt_context, &workspace->nfp_cache, &workspace->search_metrics,
-        rng_ptr, &constructive_replay,
+        control, time_budget, stopwatch, search_throttle, placements_completed,
+        piece_instances.size(), attempt_context, &workspace->nfp_cache,
+        &workspace->search_metrics, rng_ptr, &constructive_replay,
         ConstructivePlacementPhase::primary_order);
     candidate_evaluations_completed +=
         attempt_context.candidate_evaluations_completed;
@@ -216,9 +216,10 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
       attempt_context = {};
       placement_status = try_backtrack_place_piece(
           piece, request, bin_instances, opened_bins, opened_flags, trace,
-          piece_by_id, control, search_throttle, piece_instances.size(),
-          attempt_context, &workspace->nfp_cache, &workspace->search_metrics,
-          rng_ptr, request.request.execution.irregular.max_backtrack_pieces);
+          piece_by_id, control, time_budget, stopwatch, search_throttle,
+          piece_instances.size(), attempt_context, &workspace->nfp_cache,
+          &workspace->search_metrics, rng_ptr,
+          request.request.execution.irregular.max_backtrack_pieces);
       candidate_evaluations_completed +=
           attempt_context.candidate_evaluations_completed;
     }
@@ -336,10 +337,10 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
           if (!search_result.candidate.has_value() &&
               search_result.status != PlacementSearchStatus::interrupted) {
             search_result = find_best_for_bin(
-                bin, *piece_it->second, request, control, search_throttle,
-                placements_completed, piece_instances.size(),
-                compaction_attempt, &workspace->nfp_cache,
-                &workspace->search_metrics, nullptr);
+                bin, *piece_it->second, request, control, time_budget,
+                stopwatch, search_throttle, placements_completed,
+                piece_instances.size(), compaction_attempt,
+                &workspace->nfp_cache, &workspace->search_metrics, nullptr);
           }
           candidate_evaluations_completed +=
               compaction_attempt.candidate_evaluations_completed;
@@ -386,8 +387,13 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
   // This loop is naturally frontier-monotonic: each pass can only open bins
   // forward, never revisiting already-exhausted frontier positions.
   //
-  // kMaxGapFillPasses caps worst-case iterations to keep termination obvious.
-  static constexpr std::uint32_t kMaxGapFillPasses{64};
+  // kMaxGapFillPasses caps worst-case iterations.  A single pass with
+  // large-first ordering is sufficient: large pieces trigger overflow-bin
+  // openings that give smaller pieces their placement opportunity in the
+  // same pass.  Additional passes would only help in pathological cases
+  // at the cost of O(N²) IFP re-evaluations; keep at 1 to match the
+  // original single-pass behavior and preserve performance.
+  static constexpr std::uint32_t kMaxGapFillPasses{1};
 
   if (stop_reason == StopReason::completed &&
       request.request.execution.irregular.enable_gap_fill &&
@@ -413,9 +419,10 @@ auto solve_irregular_constructive(const NormalizedRequest &request,
         PlacementAttemptContext retry_attempt{};
         const auto placement_status = try_place_piece(
             *piece_it->second, request, bin_instances, opened_bins,
-            opened_flags, trace, control, search_throttle, placements_completed,
-            piece_instances.size(), retry_attempt, &workspace->nfp_cache,
-            &workspace->search_metrics, nullptr, &constructive_replay,
+            opened_flags, trace, control, time_budget, stopwatch,
+            search_throttle, placements_completed, piece_instances.size(),
+            retry_attempt, &workspace->nfp_cache, &workspace->search_metrics,
+            nullptr, &constructive_replay,
             ConstructivePlacementPhase::gap_fill);
         candidate_evaluations_completed +=
             retry_attempt.candidate_evaluations_completed;

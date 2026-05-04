@@ -787,11 +787,17 @@ auto BrkgaProductionSearch::solve(const NormalizedRequest &request,
 
   NestingResult result = best->result;
   result.strategy = StrategyKind::metaheuristic_search;
+  // Give an explicit operation_limit cap priority over completed_full_solution.
+  // When the caller set operation_limit > 0, they asked for a bounded run;
+  // report operation_limit_reached even if the full solution was found within
+  // that budget, so the caller can reliably distinguish "ran to completion"
+  // (operation_limit == 0) from "ran to cap" (operation_limit > 0).
   result.stop_reason =
-      completed_full_solution
+      completed_full_solution && control.operation_limit == 0U
           ? StopReason::completed
           : detail::driver_stop_reason(control, time_budget, stopwatch,
-                                       hit_operation_limit);
+                                       hit_operation_limit ||
+                                           completed_full_solution);
   replay.cache_metrics.exact_nfp_cache_hits =
       workspace.search_metrics.exact_nfp_cache_hits;
   replay.cache_metrics.conservative_bbox_cache_hits =

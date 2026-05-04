@@ -519,10 +519,10 @@ auto try_exact_fit_candidate(WorkingBin &bin, const PieceInstance &piece,
                                       attempt_context);
 }
 
-auto frontier_exhaustion_status_for_piece(WorkingBin &bin,
-                                          const PieceInstance &piece,
-                                          const ExecutionPolicy &execution)
-    -> FrontierExhaustionStatus {
+auto frontier_exhaustion_status_for_piece(
+    WorkingBin &bin, const PieceInstance &piece,
+    const ExecutionPolicy &execution, const runtime::TimeBudget &time_budget,
+    const runtime::Stopwatch &stopwatch) -> FrontierExhaustionStatus {
   if (!piece_allows_bin(piece, bin.state.bin_id)) {
     return FrontierExhaustionStatus::exhausted;
   }
@@ -546,6 +546,9 @@ auto frontier_exhaustion_status_for_piece(WorkingBin &bin,
 
   for (std::size_t rotation_value = rotation_begin;
        rotation_value < rotation_end; ++rotation_value) {
+    if (time_budget.expired(stopwatch)) {
+      return FrontierExhaustionStatus::fit_may_exist;
+    }
     const geom::RotationIndex rotation_index{
         static_cast<std::uint16_t>(rotation_value)};
     const auto resolved_rotation =
@@ -604,6 +607,7 @@ auto frontier_exhaustion_status_for_piece(WorkingBin &bin,
 auto find_best_for_bin(
     WorkingBin &bin, const PieceInstance &piece,
     const NormalizedRequest &request, const SolveControl &control,
+    const runtime::TimeBudget &time_budget, const runtime::Stopwatch &stopwatch,
     ProgressThrottle &search_throttle, const std::size_t placed_parts,
     const std::size_t total_parts, PlacementAttemptContext &attempt_context,
     cache::NfpCache *nfp_cache, PackerSearchMetrics *search_metrics,
@@ -648,7 +652,7 @@ auto find_best_for_bin(
 
   for (std::size_t rotation_value = rotation_begin;
        rotation_value < rotation_end && !search_done; ++rotation_value) {
-    if (interrupted(control)) {
+    if (interrupted(control) || time_budget.expired(stopwatch)) {
       stop_status = PlacementSearchStatus::interrupted;
       break;
     }
@@ -788,7 +792,7 @@ auto find_best_for_bin(
           ++attempt_context.candidate_evaluations_completed;
           ++local_eval_count;
           if (local_eval_count % kInterruptCheckInterval == 0) {
-            if (interrupted(control)) {
+            if (interrupted(control) || time_budget.expired(stopwatch)) {
               stop_status = PlacementSearchStatus::interrupted;
               search_done = true;
               break;

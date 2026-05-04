@@ -68,6 +68,10 @@ auto build_fill_first_gap_fill_order(
 
   std::vector<std::uint32_t> retry_ids(unplaced_piece_ids.begin(),
                                        unplaced_piece_ids.end());
+  // Sort descending by priority index so that the smallest/lowest-priority
+  // pieces (highest index) are tried first in gap fill.  Unplaced pieces are
+  // retried in the reverse of the primary ordering: smaller pieces are more
+  // likely to fit into gaps left by the earlier pass.
   std::ranges::sort(retry_ids,
                      [&](const std::uint32_t lhs, const std::uint32_t rhs) {
                        return priority_by_piece.at(lhs) >

@@ -643,10 +643,9 @@ TEST_CASE("REGRESSION: actual-polygon MTG candidate-point coverage plateaus "
   const auto strategy = GENERATE(CandidateStrategy::anchor_vertex,
                                  CandidateStrategy::nfp_perfect);
 
-  // BUG: 6/18 parts placed
+  // Both candidate-point budgets now achieve full coverage (bug fixed).
   const auto low_coverage =
       solve_actual_polygon_constructive_case(strategy, 640U, 20'000U);
-  // BUG: 7/18 parts placed
   const auto default_coverage =
       solve_actual_polygon_constructive_case(strategy, 1200U, 20'000U);
 
@@ -659,7 +658,8 @@ TEST_CASE("REGRESSION: actual-polygon MTG candidate-point coverage plateaus "
   const auto low_placed = total_placed(*low_coverage.result);
   const auto default_placed = total_placed(*default_coverage.result);
 
-  REQUIRE(default_placed > low_placed);
+  REQUIRE(low_coverage.result->placed_parts() == kBaselinePieceCount);
+  REQUIRE(low_placed == static_cast<std::size_t>(kBaselinePieceCount));
   REQUIRE(default_coverage.result->placed_parts() == kBaselinePieceCount);
   REQUIRE(default_placed == static_cast<std::size_t>(kBaselinePieceCount));
 }

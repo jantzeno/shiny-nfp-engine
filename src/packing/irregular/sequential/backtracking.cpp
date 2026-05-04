@@ -187,6 +187,7 @@ auto try_place_piece(
     std::vector<BinInstance> &bin_instances,
     std::vector<WorkingBin> &opened_bins, std::vector<bool> &opened_flags,
     std::vector<PlacementTraceEntry> &trace, const SolveControl &control,
+    const runtime::TimeBudget &time_budget, const runtime::Stopwatch &stopwatch,
     ProgressThrottle &search_throttle, const std::size_t placed_parts,
     const std::size_t total_parts, PlacementAttemptContext &attempt_context,
     cache::NfpCache *nfp_cache, PackerSearchMetrics *search_metrics,
@@ -213,9 +214,10 @@ auto try_place_piece(
       }
     }
 
-    return find_best_for_bin(bin, piece, request, control, search_throttle,
-                             placed_parts, total_parts, attempt_context,
-                             nfp_cache, search_metrics, rng_ptr);
+    return find_best_for_bin(bin, piece, request, control, time_budget,
+                             stopwatch, search_throttle, placed_parts,
+                             total_parts, attempt_context, nfp_cache,
+                             search_metrics, rng_ptr);
   };
 
   const bool use_strict_frontier = !piece.restricted_to_allowed_bins;
@@ -262,8 +264,17 @@ auto try_place_piece(
         }
       }
 
-      const auto frontier_status = frontier_exhaustion_status_for_piece(
-          opened_bins[frontier_index], piece, request.request.execution);
+      // For nfp_perfect, try_exact_fit_candidate was skipped, so IFP is the
+      // only exhaustion signal.  For other strategies both NFP and exact-fit
+      // already failed — raw IFP (no placement constraints) gives false
+      // positives that permanently block frontier advancement; treat as
+      // exhausted so bed2 can open.
+      const auto frontier_status =
+          candidate_strategy == CandidateStrategy::nfp_perfect
+              ? frontier_exhaustion_status_for_piece(
+                    opened_bins[frontier_index], piece,
+                    request.request.execution, time_budget, stopwatch)
+              : FrontierExhaustionStatus::exhausted;
       if (constructive_replay != nullptr) {
         constructive_replay->exhaustion_events.push_back({
             .piece_id = piece.expanded.expanded_piece_id,
@@ -311,8 +322,16 @@ auto try_place_piece(
     }
     if (!result.candidate.has_value()) {
       if (use_strict_frontier) {
-        const auto frontier_status = frontier_exhaustion_status_for_piece(
-            working_bin, piece, request.request.execution);
+        // Same rationale as the frontier-bin check above: for non-nfp_perfect
+        // strategies, raw IFP on an empty bin gives false positives.  After
+        // NFP (find_best) already failed, skip the IFP guard so the bin
+        // proceeds to overflow logic instead of blocking indefinitely.
+        const auto frontier_status =
+            candidate_strategy == CandidateStrategy::nfp_perfect
+                ? frontier_exhaustion_status_for_piece(
+                      working_bin, piece, request.request.execution,
+                      time_budget, stopwatch)
+                : FrontierExhaustionStatus::exhausted;
         if (constructive_replay != nullptr) {
           constructive_replay->exhaustion_events.push_back({
               .piece_id = piece.expanded.expanded_piece_id,
@@ -543,7 +562,8 @@ auto try_backtrack_place_piece(
     std::vector<WorkingBin> &opened_bins, std::vector<bool> &opened_flags,
     std::vector<PlacementTraceEntry> &trace,
     const std::unordered_map<std::uint32_t, const PieceInstance *> &piece_by_id,
-    const SolveControl &control, ProgressThrottle &search_throttle,
+    const SolveControl &control, const runtime::TimeBudget &time_budget,
+    const runtime::Stopwatch &stopwatch, ProgressThrottle &search_throttle,
     const std::size_t total_parts, PlacementAttemptContext &attempt_context,
     cache::NfpCache *nfp_cache, PackerSearchMetrics *search_metrics,
     runtime::DeterministicRng *rng_ptr,
@@ -605,9 +625,9 @@ auto try_backtrack_place_piece(
     for (const auto *retry_piece : retry_order) {
       const auto status = try_place_piece(
           *retry_piece, request, bin_instances, opened_bins, opened_flags,
-          trace, control, search_throttle, trace.size(), total_parts,
-          attempt_context, nfp_cache, search_metrics, rng_ptr, nullptr,
-          ConstructivePlacementPhase::primary_order, &trial_recorder);
+          trace, control, time_budget, stopwatch, search_throttle, trace.size(),
+          total_parts, attempt_context, nfp_cache, search_metrics, rng_ptr,
+          nullptr, ConstructivePlacementPhase::primary_order, &trial_recorder);
       if (status == PlacementSearchStatus::interrupted) {
         return status;
       }

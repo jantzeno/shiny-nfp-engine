@@ -531,6 +531,7 @@ start_corner_on_top(const place::PlacementStartCorner start_corner) -> bool {
   return state;
 }
 
+// clang-format off
 /// Returns the template BinInput to use for an overflow bin, or nullptr if
 /// overflow is not permitted for this piece.
 ///
@@ -539,11 +540,12 @@ start_corner_on_top(const place::PlacementStartCorner start_corner) -> bool {
 ///   maintain=false, overflow=true   -> unrestricted piece -> last_user_bin_input
 ///   maintain=true,  overflow=false  -> allow_part_overflow=false -> nullptr
 ///   maintain=true,  overflow=true   -> restricted piece -> last_bin_per_group[group]
-[[nodiscard]] auto overflow_template_for(
-    const PieceInput &piece, const DecoderRequest &request,
-    const BinInput *last_user_bin_input,
-    const std::unordered_map<std::uint32_t, const BinInput *>
-        &last_bin_per_group) -> const BinInput * {
+// clang-format on
+[[nodiscard]] auto
+overflow_template_for(const PieceInput &piece, const DecoderRequest &request,
+                      const BinInput *last_user_bin_input,
+                      const std::unordered_map<std::uint32_t, const BinInput *>
+                          &last_bin_per_group) -> const BinInput * {
   if (!request.allow_part_overflow) {
     return nullptr;
   }
@@ -1131,10 +1133,20 @@ skyline_candidate_min_xs(const geom::Box2 &container_bounds,
       const bool mirrored = mirror_index == 1U;
       const auto source_polygon =
           mirrored ? geom::mirror(piece.polygon) : piece.polygon;
-      const auto rotated_piece =
+      geom::PolygonWithHoles rotated_piece =
           rotate_polygon(source_polygon, resolved_rotation->degrees);
       if (rotated_piece.outer().empty()) {
         continue;
+      }
+
+      // Force exact origin normalization immediately after rotation.
+      // Pieces with intrinsic SVG offsets would otherwise cause translation
+      // derivation to place geometry outside the container.
+      {
+        const geom::Box2 intrinsic_bounds = compute_bounds(rotated_piece);
+        rotated_piece = translate_polygon(
+            rotated_piece,
+            geom::Point2{-intrinsic_bounds.min.x(), -intrinsic_bounds.min.y()});
       }
 
       const auto rotated_bounds = compute_bounds(rotated_piece);
@@ -1394,9 +1406,7 @@ decode_single(const DecoderRequest &request,
             piece, request, last_user_bin_input, last_bin_per_group);
         tpl != nullptr) {
       const auto overflow_id =
-          working_bins.empty()
-              ? 1U
-              : working_bins.back().bin_state.bin_id + 1U;
+          working_bins.empty() ? 1U : working_bins.back().bin_state.bin_id + 1U;
       auto overflow_bin = make_empty_bin(*tpl);
       overflow_bin.bin_state.bin_id = overflow_id;
       overflow_bin.bin_state.identity = {

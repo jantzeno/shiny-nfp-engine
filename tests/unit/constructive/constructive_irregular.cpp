@@ -36,8 +36,13 @@ TEST_CASE("irregular constructive multi-start keeps the best layout after "
   options.allow_part_overflow = true;
   options.maintain_bed_assignment = false;
   options.selected_bin_ids = {};
+  // Use multiple deterministic attempts so the multi-start path emits
+  // "reset" progress pulses (empty layout, sequence >= 2) that trigger
+  // the cancellation condition below.
+  options.bounding_box_deterministic_attempts = 8;
 
-  const auto request = make_request(fixture, options);
+  auto request = make_request(fixture, options);
+  request.execution.default_rotations = {{0.0}};
   REQUIRE(request.is_valid());
 
   runtime::CancellationSource cancel_source{};
@@ -49,6 +54,7 @@ TEST_CASE("irregular constructive multi-start keeps the best layout after "
   SolveControl control{};
   control.operation_limit = 4;
   control.random_seed = 99;
+  control.emit_empty_transitions = true;
   control.cancellation = cancel_source.token();
   control.on_progress = [&](const ProgressSnapshot &snapshot) {
     observed.push_back(snapshot);
@@ -80,6 +86,29 @@ TEST_CASE("irregular constructive multi-start keeps the best layout after "
   REQUIRE(placed_parts(observed.back().layout) <
           placed_parts(solved.value().layout));
   REQUIRE(solved.value().layout_valid());
+  require_summary_consistency(solved.value());
+}
+
+TEST_CASE(
+    "irregular constructive multi-start with bounded operation limit succeeds",
+    "[solve][irregular][multi-start][budget]") {
+  const auto fixture = make_asymmetric_engine_surface_fixture();
+
+  MtgRequestOptions options{};
+  options.strategy = StrategyKind::bounding_box;
+  options.allow_part_overflow = true;
+  options.maintain_bed_assignment = false;
+  // Use multiple deterministic attempts to exercise the multi-start path.
+  options.bounding_box_deterministic_attempts = 4;
+
+  const auto request = make_request(fixture, options);
+  REQUIRE(request.is_valid());
+
+  const auto solved =
+      solve(request, SolveControl{.operation_limit = 4, .random_seed = 99});
+
+  REQUIRE(solved.has_value());
+  REQUIRE(solved.value().placed_parts() > 0U);
   require_summary_consistency(solved.value());
 }
 
