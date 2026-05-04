@@ -481,7 +481,7 @@ auto solve(const NestingRequest &request, const SolveControl &control)
       request.execution.production_optimizer !=
           ProductionOptimizerKind::brkga) {
     SHINY_WARN(
-        "solve: unsupported legacy strategy={} optimizer={} request=[{}]",
+        "solve: unsupported strategy={} optimizer={} request=[{}]",
         log::strategy_name(request.execution.strategy),
         log::production_optimizer_name(request.execution.production_optimizer),
         log::request_surface_summary(request));

@@ -513,7 +513,7 @@ auto limit_candidate_points(std::vector<GeneratedCandidatePoint> &points,
 // "obstacle-aware NFP geometry":
 //
 //   * anchor_vertex  — uses container/exclusion feasible-domain vertices only
-//     and skips obstacle NFP generation. Placement search can still add legacy
+//     and skips obstacle NFP generation. Placement search can still add
 //     anchors and skyline points on top of this domain-only seed set.
 //
 //   * nfp_perfect    — uses feasible-region vertices after subtracting exact

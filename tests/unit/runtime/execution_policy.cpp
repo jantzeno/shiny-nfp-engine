@@ -5,7 +5,6 @@
 
 #include "geometry/polygon.hpp"
 #include "geometry/queries/normalize.hpp"
-#include "solve.hpp"
 #include "request.hpp"
 #include "result.hpp"
 #include "solve.hpp"
@@ -61,8 +60,8 @@ auto minimal_production_request() -> NestingRequest {
 
 } // namespace
 
-TEST_CASE("legacy strategy kinds route to the declared solver path",
-          "[legacy][strategy][routing]") {
+TEST_CASE("strategy kinds route to the declared solver path",
+          "[strategy][routing]") {
   SECTION("bounding_box strategy routes to bounding-box packer") {
     auto request = base_request();
     request.execution.strategy = StrategyKind::bounding_box;
